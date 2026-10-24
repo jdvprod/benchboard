@@ -1,0 +1,7 @@
+// Cloudflare Workers static hosting: serves the built app from dist/ (no server code).
+// The Worker name must match the project name in the Cloudflare dashboard.
+{
+  "name": "benchboard",
+  "compatibility_date": "2025-10-01",
+  "assets": { "directory": "./dist" }
+}
