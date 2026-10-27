@@ -182,6 +182,8 @@ const scenarios = {
     await p.getByRole("button", { name: "Film", exact: true }).click(); ok("film lists plays", (await p.locator(".log.film li").count()) > 10);
     const xl = await download(p, () => p.getByRole("button", { name: "Download spreadsheet" }).click()); ok("spreadsheet downloads", xl.size > 3000, xl.name);
     const mr = await download(p, () => p.getByRole("button", { name: "Match report" }).click()); ok("match report has the box score", mr.text().includes("Box score") && mr.text().includes("Rival Prep"));
+    const mp = await download(p, () => p.getByRole("button", { name: "MaxPreps sheet" }).click());
+    { const h = mp.text(); ok("MaxPreps sheet has every category and Bea's tool kill counts as a kill", ["SP", "PTS", "ATT", "RE", "BHA", "DE"].every((c) => h.includes(`>${c}</th>`)) && /Bea Outside<\/td><td>\d+<\/td>/.test(h), mp.name); }
     const gfx = await download(p, () => p.getByRole("button", { name: "Share graphic" }).click()); ok("share graphic is a PNG", gfx.name.endsWith(".png") && gfx.size > 20000, gfx.size + " bytes");
     await p.getByRole("button", { name: /^Season \(/ }).click();
     const sr = await download(p, () => p.getByRole("button", { name: "Season report" }).click()); ok("season report has awards and situations", sr.text().includes("Situations") && sr.text().includes("1–0"));

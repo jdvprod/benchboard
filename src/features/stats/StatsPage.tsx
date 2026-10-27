@@ -14,6 +14,7 @@ import { activeSeason, defaultScope, resolveScope, Scope, seasonEvents, seasonMa
 import { buildXlsx } from "../../lib/xlsx";
 import { logText } from "../track/Tracker";
 import { matchReportHtml } from "./matchReport";
+import { maxprepsHtml } from "./maxpreps";
 import { shareFinalGraphic } from "./finalGraphic";
 import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
@@ -42,6 +43,7 @@ export function StatsPage() {
         {!single && S.kind === "games" && S.items.length > 0 && <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === ui.statsSeason); download(`${t.name} ${se?.name || "season"} report.html`.replace(/[^\w\- .]+/g, ""), seasonReportHtml(S.items, se), "text/html"); toast("Season report saved. Open it to print or share."); }}>Season report</button>}
         {single && !isScrim && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(single.m, single.R), "text/html"); toast("Match report saved. Open it to print or share."); }}>Match report</button>}
         {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => shareFinalGraphic(single.m, single.R)}>Share graphic</button>}
+        {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps.html`.replace(/[^\w\- .]+/g, ""), maxprepsHtml(single.m, single.R), "text/html"); toast("MaxPreps sheet saved. Open it next to MaxPreps' stat entry."); }}>MaxPreps sheet</button>}
         {single && <button className="btn sm" onClick={() => copyText(snapshot(single.m)).then((ok) => toast(ok ? "Summary copied" : "Couldn't copy here"))}>Copy summary</button>}
       </div>
     </div>
