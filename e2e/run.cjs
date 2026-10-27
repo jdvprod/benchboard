@@ -307,7 +307,7 @@ const scenarios = {
   async legal(browser) {
     const p = await newPage(browser, { phone: true });
     { const h = (await p.goto(U)).headers(); ok("pages are served with a content security policy", /script-src 'self'/.test(h["content-security-policy"] || "") && h["x-content-type-options"] === "nosniff"); }
-    for (const f of ["privacy", "terms", "consent-form"]) {
+    for (const f of ["privacy", "terms", "schools", "consent-form"]) {
       const r = await p.goto(U + "legal/" + f + ".html"); const body = await p.content();
       ok(`${f} page is published`, r.status() === 200 && !body.includes("%LEGAL"), String(r.status()));
       if (f === "consent-form") { await p.fill("#team", "E2E Varsity"); ok("parent form fills in the team name", (await p.locator("#teamOut").innerText()).includes("E2E Varsity")); }

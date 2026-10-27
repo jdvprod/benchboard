@@ -144,7 +144,8 @@ function PrivacyCard() {
   return <Card title="Privacy and your data">
     <div className="stack">
       <div className="row"><a className="btn sm" href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a><a className="btn sm" href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a>
-        <a className="btn sm" href={LEGAL.consent + (t ? "#team=" + encodeURIComponent(t.name) : "")} target="_blank" rel="noopener">Parent and guardian form</a></div>
+        <a className="btn sm" href={LEGAL.consent + (t ? "#team=" + encodeURIComponent(t.name) : "")} target="_blank" rel="noopener">Parent and guardian form</a>
+        <a className="btn sm" href={LEGAL.schools} target="_blank" rel="noopener">For schools</a></div>
       <p className="small muted" style={{ margin: 0 }}>Benchboard doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
       {user ? <>
         {step === "idle" && <SetRow title="Delete your account" sub="Removes your account and every cloud team you own (for everyone on it), and takes you off other teams. Data on this device stays unless you erase it too."><button className="btn sm" onClick={() => setStep("confirm")}>Delete account</button></SetRow>}
