@@ -57,6 +57,16 @@ Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/func
 
 A coach can still paste their own Anthropic key in Settings; then calls go straight from the browser with no daily limit.
 
+## Legal and privacy
+
+- `public/legal/`: Privacy Policy, Terms of Service and a printable parent and guardian permission form. Set the operator name, contact email, governing state and effective date in `package.json` → `"legal"`; the build fills them in. Bump `legal.version` when the terms change and signed-in users are asked to agree again.
+- Sign-up records which version of the terms was accepted and when (in the account's metadata). Older accounts agree once on their next sign-in.
+- Teams get a one-time reminder to confirm they have permission (school, club, families) to record players; recruiting profiles can't be published until the coach confirms family consent, and can be taken down from the player's page.
+- Settings → Privacy and your data: delete account (removes the account, every cloud team it owns, and its memberships; `delete_my_account()` in `schema.sql`), erase this device, and links to the documents.
+- AI prompts identify players only by jersey number and first name.
+
+These documents are a careful starting point written for this app, not legal advice. Have a lawyer review them before you charge money or sign up schools.
+
 ## Tests
 
 - `npm test`: engine unit tests plus backtesting, where thousands of random matches (every action, subs, timeouts, deletes, several devices, stats-only entries, score fixes) are checked against invariants: scores match rallies, rotations follow side-outs, team totals equal player totals, merging devices or deleting entries gives the same result, no metric is ever NaN.
