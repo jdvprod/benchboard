@@ -4,7 +4,7 @@ import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
 import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
-import { cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
+import { authSettings, cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
 import { deleteAccount, isLinked } from "../../cloud/sync";
 import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
@@ -114,6 +114,12 @@ function SetupCheck() {
       out.push(e?.status === 0 ? { label: "Database", state: "warn", detail: "Couldn't reach Supabase. Check your connection, or that the project isn't paused (free projects pause after a week without use)." }
         : { label: "Database", state: "todo", detail: "The tables aren't set up yet (or are from an older version). Run supabase/schema.sql in Supabase → SQL Editor." });
     }
+    try {
+      const st = await authSettings();
+      out.push(st.disable_signup ? { label: "Sign-up emails", state: "warn", detail: "New sign-ups are turned off in Supabase (Authentication → Sign In / Providers). Coaches can't create accounts until you turn them back on." }
+        : st.mailer_autoconfirm ? { label: "Sign-up emails", state: "warn", detail: "Coaches sign up without confirming their email. Password-reset emails need an email provider: Supabase's built-in email only reaches your own team (README: Sign-up and password emails)." }
+        : { label: "Sign-up emails", state: "warn", detail: "New accounts must confirm their email. Supabase's built-in email only reaches your own team, so connect an email provider (Authentication → Emails → SMTP Settings) or turn off Confirm email. Skip this if you already did." });
+    } catch { /* older projects: nothing to report */ }
     const user = currentUser();
     out.push(user ? { label: "Your account", state: "ok", detail: "Signed in as " + user.email + "." } : { label: "Your account", state: "todo", detail: "Sign in or create an account (Team tab or the avatar in the corner)." });
     if (t && !t.sample) out.push(isLinked(t.id) ? { label: "Team sync", state: "ok", detail: `${t.name} syncs to the cloud. Invite coaches from the Team tab.` } : { label: "Team sync", state: user ? "todo" : "wait", detail: user ? `Tap "Sync this team" on the Team tab so ${t.name} is backed up and shareable.` : "After you sign in, turn on sync for your team on the Team tab." });

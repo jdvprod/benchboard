@@ -119,6 +119,8 @@ export function signOut() { const s = session; setSession(null); if (s) call("/a
 export const rest = (path: string, init: RequestInit = {}) => call("/rest/v1/" + path, init);
 /** Call a Supabase Edge Function as the signed-in user. */
 export const fn = (name: string, body: unknown, signal?: AbortSignal) => call("/functions/v1/" + name, { method: "POST", body: JSON.stringify(body), signal });
+/** Public sign-up settings (e.g. whether new accounts must confirm their email). */
+export const authSettings = (): Promise<{ mailer_autoconfirm?: boolean; disable_signup?: boolean }> => call("/auth/v1/settings", { auth: false });
 export const rpc = (fn: string, args: Record<string, unknown>, anon = false) => call("/rest/v1/rpc/" + fn, { method: "POST", body: JSON.stringify(args), auth: !anon });
 export const upsert = (table: string, rows: unknown[], onConflict?: string) =>
   rest(table + (onConflict ? "?on_conflict=" + onConflict : ""), { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" } as any, body: JSON.stringify(rows) });

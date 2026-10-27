@@ -456,7 +456,7 @@ const scenarios = {
       ok("AI requests carry first names only, never last names", sent.length > 0 && sent.join("").includes("Nia") && !lasts.some((n) => sent.join("").includes(n)), lasts.filter((n) => sent.join("").includes(n)).join(", ")); }
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
-    ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact"].includes(x)), notOk.join(", "));
+    ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact", "Sign-up emails"].includes(x)) && notOk.includes("Sign-up emails"), notOk.join(", "));
     // a view-only parent account can follow along but can't change the team's data
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();

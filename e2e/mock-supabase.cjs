@@ -45,6 +45,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       for (let i = members.length - 1; i >= 0; i--) if (members[i].user_id === me) members.splice(i, 1);
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
+    if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
     if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 8);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, updated_at: r.updated_at } : null); }
