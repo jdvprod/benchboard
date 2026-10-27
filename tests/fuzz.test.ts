@@ -11,6 +11,9 @@ import { situations } from "../src/sports/volleyball/situations";
 import { tendencies } from "../src/sports/volleyball/tendencies";
 import { flags } from "../src/sports/volleyball/flags";
 
+/** FUZZ_SCALE=20 runs twenty times as many random matches (a deep backtest); CI uses 1. */
+const SCALE = Math.max(1, +(process.env.FUZZ_SCALE || 1));
+
 function rng(seed: number) { let a = seed >>> 0; return () => { a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const CODES = Object.keys(ACTIONS) as ActionCode[];
 const ROSTER = ["s", "oh1", "mb1", "opp", "oh2", "mb2", "lib", "ds", "oh3", "mb3"];
@@ -79,7 +82,7 @@ function checkSet(s: SetState, label: string) {
 }
 
 test("random matches: invariants hold for 1,500 matches", () => {
-  for (let seed = 1; seed <= 1500; seed++) {
+  for (let seed = 1; seed <= 1500 * SCALE; seed++) {
     const { events } = randomMatch(seed);
     const R = replay(mergeLogs([events]), { bestOf: 5 });
     R.sets.forEach((s) => checkSet(s, `seed ${seed} set ${s.n}`));
@@ -108,7 +111,7 @@ test("random matches: invariants hold for 1,500 matches", () => {
 });
 
 test("several devices: splitting a match across logs gives the same result", () => {
-  for (let seed = 1; seed <= 400; seed++) {
+  for (let seed = 1; seed <= 400 * SCALE; seed++) {
     const { events } = randomMatch(seed);
     const one = replay(mergeLogs([events]), { bestOf: 5 });
     const r = rng(seed * 7), logs: MatchEvent[][] = [[], [], []];
@@ -120,7 +123,7 @@ test("several devices: splitting a match across logs gives the same result", () 
 });
 
 test("deleting an entry is the same as never recording it", () => {
-  for (let seed = 1; seed <= 400; seed++) {
+  for (let seed = 1; seed <= 400 * SCALE; seed++) {
     const { events, deleted } = randomMatch(seed);
     const a = replay(mergeLogs([events]), { bestOf: 5 });
     const b = replay(mergeLogs([events.filter((e) => e.t !== "DEL" && !deleted.has(e.id))]), { bestOf: 5 });
@@ -129,7 +132,7 @@ test("deleting an entry is the same as never recording it", () => {
 });
 
 test("stats-only entries never move the score but always count for the player", () => {
-  for (let seed = 1; seed <= 400; seed++) {
+  for (let seed = 1; seed <= 400 * SCALE; seed++) {
     const { events } = randomMatch(seed, { ns: true });
     const full = replay(mergeLogs([events]), { bestOf: 5 });
     const scoring = replay(mergeLogs([events.filter((e: any) => !e.ns)]), { bestOf: 5 });
@@ -142,7 +145,7 @@ test("stats-only entries never move the score but always count for the player", 
 });
 
 test("score corrections stick and later rallies build on them", () => {
-  for (let seed = 1; seed <= 300; seed++) {
+  for (let seed = 1; seed <= 300 * SCALE; seed++) {
     const { events } = randomMatch(seed, { adj: true });
     const R = replay(mergeLogs([events]), { bestOf: 5 });
     for (const s of R.sets) { assert.ok(s.us >= 0 && s.them >= 0); for (const r of s.rallies) { assert.ok((r.us ?? 0) >= 0 && (r.them ?? 0) >= 0); } }
@@ -169,7 +172,7 @@ test("parsers never throw on junk and only return valid entries", () => {
 test("schedule paste skips impossible dates", () => { assert.equal(parseSchedule("2/31 vs Hoover").length, 0); assert.equal(parseSchedule("2/29/2028 vs Hoover").length, 1); });
 
 test("lineup fixes mid-set (rotation, serve, positions, libero) keep the lineup valid", () => {
-  for (let seed = 1; seed <= 600; seed++) {
+  for (let seed = 1; seed <= 600 * SCALE; seed++) {
     const r = rng(seed * 13), base = randomMatch(seed).events.filter((e) => e.t !== "DEL");
     const out: any[] = []; let ts = 0;
     for (const e of base) {
