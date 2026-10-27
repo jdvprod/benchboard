@@ -27,7 +27,7 @@
 <div class="howto">
 <h1>Parent and guardian permission</h1>
 <p class="meta">For coaches: fill in your team name, print or save as PDF, and send one to each family at the start of the season. Keep signed copies with your team records.</p>
-<div class="bar"><input id="team" placeholder="Your team name (e.g. Clovis North Varsity)" aria-label="Team name"><button onclick="print()">Print or save as PDF</button></div>
+<div class="bar"><input id="team" placeholder="Your team name (e.g. Clovis North Varsity)" aria-label="Team name"><button id="print" type="button">Print or save as PDF</button></div>
 </div>
 
 <div class="form">
@@ -47,12 +47,6 @@
 </div>
 </main>
 <footer><div class="in"><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a><a href="../">Open Benchboard</a></div></footer>
-<script>
-  const t = document.getElementById("team"), out = document.getElementById("teamOut");
-  const fromHash = decodeURIComponent((location.hash.match(/team=([^&]+)/) || [])[1] || "");
-  const set = (v) => { out.textContent = v || " ".repeat(40); };
-  t.value = fromHash; set(fromHash); t.addEventListener("input", () => set(t.value));
-  if (location.protocol.startsWith("http")) document.getElementById("privacyUrl").textContent = new URL("privacy.html", location.href).href.replace(/^https?:\/\//, "");
-</script>
+<script src="consent-form.js"></script>
 </body>
 </html>

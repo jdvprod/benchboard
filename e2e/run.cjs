@@ -14,13 +14,26 @@ const only = process.argv[2] || "";
 let failures = 0, passes = 0; const OPEN = new Set();
 const ok = (name, cond, detail = "") => { if (cond) { passes++; } else { failures++; console.log(`  ✗ ${name}${detail ? ": " + detail : ""}`); } };
 
+/** Apply dist/_headers like Cloudflare does (so the content security policy is tested), letting the app reach the local mock. */
+function headersFor(urlPath) {
+  const file = path.join(DIST, "_headers"); if (!fs.existsSync(file)) return {};
+  const out = {}; let match = false;
+  for (const line of fs.readFileSync(file, "utf8").split("\n")) {
+    if (!line.trim() || line.startsWith("#")) continue;
+    if (!/^\s/.test(line)) { const pat = line.trim(); match = pat === urlPath || (pat.endsWith("*") && urlPath.startsWith(pat.slice(0, -1))); continue; }
+    if (match) { const i = line.indexOf(":"); out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
+  }
+  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*");
+  return out;
+}
+
 function serveDist() {
   return new Promise((done) => {
     const srv = http.createServer((req, res) => {
       let f = decodeURIComponent(new URL(req.url, U).pathname); if (f.endsWith("/")) f += "index.html";
       const file = path.join(DIST, f);
       if (!file.startsWith(DIST) || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
-      res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream" }); fs.createReadStream(file).pipe(res);
+      res.writeHead(200, { "content-type": TYPES[path.extname(file)] || "application/octet-stream", ...headersFor(f) }); fs.createReadStream(file).pipe(res);
     });
     srv.listen(APP_PORT, () => done(srv));
   });
@@ -32,7 +45,7 @@ async function newPage(browser, { phone = false, tablet = false, dark = false, c
   if (skew) await ctx.addInitScript((ms) => { const real = Date.now; Date.now = () => real() + ms; }, skew);
   const page = await ctx.newPage(); page.errors = []; OPEN.add(page); page.on("close", () => OPEN.delete(page));
   page.on("pageerror", (e) => page.errors.push(e.message));
-  page.on("console", (m) => { if (m.type() === "error" && !/Failed to load resource|ERR_|fonts\.g/.test(m.text())) page.errors.push(m.text()); });
+  page.on("console", (m) => { const t = m.text(); if (m.type() === "error" && (/Content Security Policy/.test(t) || !/Failed to load resource|ERR_|fonts\.g/.test(t))) page.errors.push(t); });
   page.setDefaultTimeout(8000);
   return page;
 }
@@ -293,9 +306,11 @@ const scenarios = {
 
   async legal(browser) {
     const p = await newPage(browser, { phone: true });
+    { const h = (await p.goto(U)).headers(); ok("pages are served with a content security policy", /script-src 'self'/.test(h["content-security-policy"] || "") && h["x-content-type-options"] === "nosniff"); }
     for (const f of ["privacy", "terms", "consent-form"]) {
       const r = await p.goto(U + "legal/" + f + ".html"); const body = await p.content();
       ok(`${f} page is published`, r.status() === 200 && !body.includes("%LEGAL"), String(r.status()));
+      if (f === "consent-form") { await p.fill("#team", "E2E Varsity"); ok("parent form fills in the team name", (await p.locator("#teamOut").innerText()).includes("E2E Varsity")); }
       ok(`${f} page fits a phone`, (await overflow(p)) <= 1);
       { const cx = await contrast(p); ok(`${f} page text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
     }
