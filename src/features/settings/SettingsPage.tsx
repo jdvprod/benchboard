@@ -2,11 +2,11 @@ import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
-import { Card, ConfirmButton, Seg, SetRow, Switch } from "../../ui/kit";
+import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
 import { cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
 import { deleteAccount, isLinked } from "../../cloud/sync";
-import { LEGAL, LEGAL_EMAIL } from "../../app/legal";
+import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
 import { go } from "../../app/router";
 
@@ -60,8 +60,9 @@ export function SettingsPage() {
       <p className="small muted" style={{ marginTop: 6 }}>{state.persistent ? "Your browser has agreed to keep this data." : "Your browser may clear this data if space runs low."} Save a backup from Team → Backup to move data to another device or keep a copy.</p>
       <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => go("team")}>Backup & restore</button><button className="btn sm" onClick={() => { location.reload(); toast("Reloaded"); }}>Reload app</button></div>
     </Card>
+    <HelpCard />
     <PrivacyCard />
-    <p className="small muted" style={{ textAlign: "center" }}>Benchboard 2.0 · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
+    <p className="small muted" style={{ textAlign: "center" }}>Benchboard {APP_VERSION} · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
   </div>;
 }
 
@@ -137,6 +138,30 @@ function SetupCheck() {
 }
 
 /** Privacy, legal documents and deleting data. */
+/** What a coach needs to report a problem: version, device and app state. No names, stats or email. */
+export function diagnostics(): string {
+  const u = currentUser(), t = team();
+  return [`Benchboard ${APP_VERSION}`, `Browser: ${navigator.userAgent}`, `Screen: ${screen.width}×${screen.height} (window ${innerWidth}×${innerHeight})`,
+    `Installed: ${matchMedia("(display-mode: standalone)").matches ? "yes" : "no"} · Online: ${navigator.onLine ? "yes" : "no"} · Signed in: ${u ? "yes" : "no"}`,
+    `Teams on this device: ${all("teams").length} · This team synced: ${t && isLinked(t.id) ? "yes" : "no"}`, `Page: ${location.hash || "#/"}`].join("\n");
+}
+
+function HelpCard() {
+  const report = () => {
+    const body = "What happened (and what you tapped just before):\n\n\n---\n" + diagnostics();
+    if (LEGAL_EMAIL) location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Benchboard problem")}&body=${encodeURIComponent(body)}`;
+    else copyText(diagnostics()).then((ok) => toast(ok ? "Problem details copied. Paste them into your message." : "Couldn't copy."));
+  };
+  return <Card title="Help and feedback">
+    <div className="row">
+      <a className="btn sm" href="about.html" target="_blank" rel="noopener">Everything Benchboard does</a>
+      <button className="btn sm" onClick={report}>{LEGAL_EMAIL ? "Report a problem" : "Copy problem details"}</button>
+      {LEGAL_EMAIL && <a className="btn sm" href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Benchboard idea")}`}>Suggest a feature</a>}
+    </div>
+    <p className="small muted" style={{ margin: "8px 0 0" }}>Problem reports include the app version, your browser and screen size, so we can reproduce it. No player names or stats.</p>
+  </Card>;
+}
+
 function PrivacyCard() {
   const user = currentUser(), t = team();
   const [step, setStep] = useState<"idle" | "confirm" | "busy" | "deleted">("idle"), [typed, setTyped] = useState(""), [err, setErr] = useState("");

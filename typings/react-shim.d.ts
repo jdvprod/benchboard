@@ -15,6 +15,8 @@ declare module "react" {
   export function useMemo<T>(f: () => T, deps: any[]): T;
   export function useCallback<T>(f: T, deps: any[]): T;
   export function useSyncExternalStore<T>(s: (cb: () => void) => () => void, g: () => T): T;
+  export function lazy<T>(f: () => Promise<{ default: T }>): T;
+  export const Suspense: (p: { fallback?: any; children?: any }) => any;
   export const StrictMode: any; export const Fragment: any;
   export class Component<P = any, S = any> { constructor(p: P); props: P; state: S; setState(s: Partial<S> | ((s: S) => Partial<S>)): void; render(): any }
   const React: any; export default React;
