@@ -2,8 +2,8 @@
 :root{
   /* Palette: white, black, grey and Columbia blue. Red is used only for errors and destructive actions. */
   --bg:#F3F4F6; --surface:#FFFFFF; --surface-2:#F6F7F8; --ink:#0B0C0E; --muted:#686E77; --line:#E2E4E8;
-  --us:#2B79B0; --us-soft:#E6F2FA; --them:#6A707A; --them-soft:#ECEDF0;
-  --good:#2B79B0; --warn:#4A4F57; --bad:#C0352B; --accent:#2B79B0; --accent-ink:#FFFFFF;
+  --us:#2670A5; --us-soft:#E6F2FA; --them:#6A707A; --them-soft:#ECEDF0;
+  --good:#2670A5; --warn:#4A4F57; --bad:#C0352B; --accent:#2670A5; --accent-ink:#FFFFFF;
   --bar:#000000; --bar-2:#141518; --bar-ink:#F4F5F7; --bar-muted:#9298A1; --bar-line:#26282D; --us-bright:#9BD3F2; --them-bright:#C7CCD3;
   --shadow:0 1px 2px rgba(0,0,0,.05),0 1px 3px rgba(0,0,0,.04);
   --display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
@@ -336,10 +336,10 @@ body:has(.auth){padding-left:0;padding-bottom:0}
 @media (prefers-reduced-motion:no-preference){.auth-sheet-hd .live::before{animation:auth-blink 1.6s ease-in-out infinite}}
 @keyframes auth-blink{50%{opacity:.25}}
 .auth-sheet table{width:100%;border-collapse:collapse;font-size:13.5px}
-.auth-sheet th{font-family:var(--display);font-weight:600;font-size:11.5px;letter-spacing:.04em;color:#6E747D;text-transform:none;text-align:right;padding:6px 6px;border-bottom:1px solid #23252A}
+.auth-sheet th{font-family:var(--display);font-weight:600;font-size:11.5px;letter-spacing:.04em;color:#868C95;text-transform:none;text-align:right;padding:6px 6px;border-bottom:1px solid #23252A}
 .auth-sheet td{color:#D5D9DE;text-align:right;padding:7px 6px;border-bottom:1px solid #1A1C20}
 .auth-sheet th:nth-child(-n+2),.auth-sheet td:nth-child(-n+2){text-align:left}
-.auth-sheet td:first-child{color:#6E747D;width:28px}
+.auth-sheet td:first-child{color:#868C95;width:28px}
 .auth-sheet td.hi{color:#9BD3F2;font-weight:700}
 .auth-sheet tr:last-child td{border-bottom:0}
 .auth-rot{margin-top:14px;padding-top:12px;border-top:1px solid #23252A}
@@ -349,7 +349,7 @@ body:has(.auth){padding-left:0;padding-bottom:0}
 .auth-bars div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:5px;height:100%}
 .auth-bars i{display:block;width:100%;border-radius:4px 4px 1px 1px;background:#3A3E45}
 .auth-bars .top i{background:#9BD3F2}.auth-bars .low i{background:#2A2D32;outline:1px dashed #4A4E55;outline-offset:-1px}
-.auth-bars span{font-size:11px;color:#6E747D}
+.auth-bars span{font-size:11px;color:#868C95}
 @media (prefers-reduced-motion:no-preference){.auth-bars i{animation:auth-grow .9s cubic-bezier(.3,0,.2,1) both}.auth-bars div:nth-child(2) i{animation-delay:.06s}.auth-bars div:nth-child(3) i{animation-delay:.12s}.auth-bars div:nth-child(4) i{animation-delay:.18s}.auth-bars div:nth-child(5) i{animation-delay:.24s}.auth-bars div:nth-child(6) i{animation-delay:.3s}}
 @keyframes auth-grow{from{transform:scaleY(0);transform-origin:bottom}to{transform:scaleY(1);transform-origin:bottom}}
 .auth-feats{display:none;position:relative;z-index:1}

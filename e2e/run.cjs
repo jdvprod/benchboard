@@ -53,6 +53,25 @@ const a11y = (p) => p.evaluate(() => {
   for (const [k, n] of Object.entries(ids)) if (n > 1) out.push(`duplicate id "${k}"`);
   return [...new Set(out)].slice(0, 5);
 });
+/** Text contrast (WCAG AA): 4.5:1 for normal text, 3:1 for large text, in light and dark. */
+const contrastFn = () => {
+  const parse = (c) => { const m = c.match(/rgba?\(([^)]+)\)/); if (!m) return null; const [r, g, b, a = 1] = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r, g, b, a }; };
+  const lum = ({ r, g, b }) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+  const bgOf = (e) => { let stack = []; for (let x = e; x; x = x.parentElement) { const c = parse(getComputedStyle(x).backgroundColor); if (c && c.a > 0) { stack.push(c); if (c.a >= 1) break; } } let base = { r: 255, g: 255, b: 255 }; for (const c of stack.reverse()) base = { r: c.r * c.a + base.r * (1 - c.a), g: c.g * c.a + base.g * (1 - c.a), b: c.b * c.a + base.b * (1 - c.a) }; return base; };
+  const out = [];
+  for (const e of document.querySelectorAll("body *")) {
+    if (![...e.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
+    const st = getComputedStyle(e); if (st.visibility === "hidden" || st.display === "none" || +st.opacity < 1) continue;
+    if (e.closest("[aria-disabled=true],:disabled,svg")) continue;
+    const r = e.getBoundingClientRect(); if (!r.width || !r.height) continue;
+    const fg = parse(st.color); if (!fg) continue;
+    const bg = bgOf(e), L1 = lum(fg), L2 = lum(bg), ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+    const size = parseFloat(st.fontSize), bold = +st.fontWeight >= 700, large = size >= 24 || (bold && size >= 18.66);
+    if (ratio < (large ? 3 : 4.5)) out.push(`${ratio.toFixed(2)} ${e.tagName.toLowerCase()}.${String(e.className).split(" ")[0]} "${e.textContent.trim().slice(0, 25)}" ${st.color} on rgb(${bg.r|0},${bg.g|0},${bg.b|0})`);
+  }
+  return [...new Set(out)];
+};
+const contrast = (p) => p.evaluate(contrastFn);
 /** Text squeezed into a sliver (a layout bug): long text in a very narrow, tall box. */
 const squashed = (p) => p.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => {
   if (e.children.length || !e.textContent || e.textContent.trim().length < 24) return false;
@@ -70,6 +89,7 @@ const scenarios = {
       for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "labs", "live", "account"]) {
         await go(p, r);
         ok(`${tag}: ${r} renders`, (await p.locator(".page, .content, .auth, main").count()) > 0);
+        { const cx = await contrast(p); ok(`${tag}: ${r} text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
         if (!opts.dark) { const ax = await a11y(p); ok(`${tag}: ${r} controls all have names`, !ax.length, ax.join(" | ")); }
         if (opts.phone) { const sq = await squashed(p); ok(`${tag}: ${r} has no squeezed text`, !sq.length, sq.join(" | ")); }
         if (opts.phone || opts.tablet) ok(`${tag}: ${r} has no sideways scroll`, (await overflow(p)) <= 1, `${await overflow(p)}px`);
@@ -277,6 +297,7 @@ const scenarios = {
       const r = await p.goto(U + "legal/" + f + ".html"); const body = await p.content();
       ok(`${f} page is published`, r.status() === 200 && !body.includes("%LEGAL"), String(r.status()));
       ok(`${f} page fits a phone`, (await overflow(p)) <= 1);
+      { const cx = await contrast(p); ok(`${f} page text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
     }
     await go(p, "track"); await p.getByRole("button", { name: "Create an account" }).click();
     await p.getByLabel("Email").fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123");
@@ -361,11 +382,13 @@ const scenarios = {
     ok("parent gamecast shows 1–0", /1\s*–\s*0/.test(await P.locator(".gc-score").innerText()));
     ok("parent gamecast fits a phone", (await overflow(P)) <= 1);
     { const ax = await a11y(P); ok("gamecast controls all have names", !ax.length, ax.join(" | ")); }
+    { const cx = await contrast(P); ok("gamecast text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     // season page + recruiting link
     await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
     { const ax = await a11y(P); ok("season page controls all have names", !ax.length, ax.join(" | ")); }
+    { const cx = await contrast(P); ok("season page text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
     { const ax = await a11y(A); ok("player page controls all have names", !ax.length, ax.join(" | ")); }
     ok("recruiting link needs family consent first", await A.getByRole("button", { name: "Share profile link" }).isDisabled());
