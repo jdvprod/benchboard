@@ -592,3 +592,4 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
   .roster-tbl td:last-child{grid-column:1/-1}
   .roster-tbl td:last-child .row{justify-content:flex-end}
 }
+.empty-roster{display:grid;gap:10px;padding:14px;border:1px dashed var(--line);border-radius:10px}

@@ -63,7 +63,7 @@ function Roster() {
   const add = () => { const p: Player = { id: uid("p"), teamId: t.id, num: "", first: "", last: "", pos: "OH", grad: null, height: "", active: true, goals: [], notes: "" }; save("players", p); setTimeout(() => document.getElementById("num-" + p.id)?.focus(), 30); };
   const upd = (id: string, k: keyof Player, v: any) => patch("players", id, { [k]: v } as any);
   const shown = ps.filter((p) => showInactive || p.active);
-  return <Card title={`Roster · ${ps.filter((p) => p.active).length} players`} actions={<><label className="btn sm" style={{ cursor: "pointer" }}>Import CSV<input type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then((txt) => toast(importRosterCsv(txt))); e.target.value = ""; }} /></label><button className="btn sm" disabled={!ps.length} onClick={() => download(`${t.name} roster.csv`, rosterCsv(), "text/csv")}>Export CSV</button><button className="btn sm" onClick={() => setPaste(paste == null ? "" : null)}>Paste list</button><button className="btn sm primary" onClick={add}>Add player</button></>}>
+  return <Card title={`Roster · ${ps.filter((p) => p.active).length} players`} actions={<><label className="btn sm" style={{ cursor: "pointer" }}>Import CSV<input type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then((txt) => toast(importRosterCsv(txt))); e.target.value = ""; }} /></label><button className="btn sm" disabled={!ps.length} onClick={() => download(`${t.name} roster.csv`, rosterCsv(), "text/csv")}>Export CSV</button><button className="btn sm" onClick={() => setPaste(paste == null ? "" : null)}>Paste list</button><button className={"btn sm" + (ps.length ? " primary" : "")} onClick={add}>Add player</button></>}>
     {!t.sample && ps.length > 0 && !t.rosterConsent && <div className="banner accent" style={{ marginBottom: 12 }}>
       <p><b>Permission to record players.</b> Before tracking, make sure your school or club allows it and families have agreed, especially for players under 18. Our <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">parent and guardian form</a> covers stats, team pages and recruiting profiles.</p>
       <button className="btn sm primary" onClick={() => { setTeamPatch({ rosterConsent: { at: Date.now(), by: currentUser()?.email || "this device", version: LEGAL_VERSION } }); toast("Thanks. You can find the parent form any time in Settings."); }}>I have permission</button>
@@ -73,7 +73,10 @@ function Roster() {
         <textarea rows={6} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"7 Maya Chen OH 2027\n12 Sofia Nguyen MB\n#1 Ava Ramirez setter"} autoFocus /></label>
       <div className="row"><button className="btn sm primary" disabled={!paste.trim()} onClick={() => { toast(addPasted(paste)); setPaste(null); }}>Add players</button><button className="btn sm" onClick={() => setPaste(null)}>Cancel</button></div>
     </div>}
-    {!ps.length && <p className="empty">No players yet. Add your roster to start tracking.</p>}
+    {!ps.length && paste == null && <div className="empty-roster">
+      <p style={{ margin: 0 }}><b>Add your roster to start tracking.</b> The fastest way: copy it from a spreadsheet, email or MaxPreps and paste it in, one player per line.</p>
+      <div className="row"><button className="btn sm primary" onClick={() => setPaste("")}>Paste a roster</button><button className="btn sm" onClick={add}>Add one player</button></div>
+    </div>}
     {shown.length > 0 && <div className="tbl roster-tbl"><table>
       <thead><tr><th className="l">#</th><th className="l">First</th><th className="l">Last</th><th className="l">Pos</th><th className="l">Grad</th><th className="l">Height</th><th /></tr></thead>
       <tbody>{shown.map((p) => <tr key={[p.id, p.num, p.first, p.last, p.grad, p.height].join("|")} style={p.active ? undefined : { opacity: 0.55 }}>
