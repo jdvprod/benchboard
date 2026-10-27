@@ -155,6 +155,7 @@ function HelpCard() {
   return <Card title="Help and feedback">
     <div className="row">
       <a className="btn sm" href="about.html" target="_blank" rel="noopener">Everything Benchboard does</a>
+      <a className="btn sm" href={LEGAL.accessibility} target="_blank" rel="noopener">Accessibility</a>
       <button className="btn sm" onClick={report}>{LEGAL_EMAIL ? "Report a problem" : "Copy problem details"}</button>
       {LEGAL_EMAIL && <a className="btn sm" href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Benchboard idea")}`}>Suggest a feature</a>}
     </div>
