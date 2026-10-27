@@ -427,8 +427,11 @@ const scenarios = {
     await A.getByRole("button", { name: "Stop sharing" }).click(); await A.getByRole("button", { name: "Take it down?" }).click(); await A.waitForTimeout(600);
     await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't active").count()) === 1);
     // AI through the server function, and the setup check
+    const sent = []; A.on("request", (r) => { if (r.url().includes("/functions/v1/ai")) sent.push(r.postData() || ""); });
     await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
     ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
+    { const lasts = fs.readFileSync(path.join(__dirname, "roster.csv"), "utf8").split("\n").slice(1).map((l) => l.split(",")[2]).filter(Boolean);
+      ok("AI requests carry first names only, never last names", sent.length > 0 && sent.join("").includes("Nia") && !lasts.some((n) => sent.join("").includes(n)), lasts.filter((n) => sent.join("").includes(n)).join(", ")); }
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
     ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact"].includes(x)), notOk.join(", "));
