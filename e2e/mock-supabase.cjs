@@ -8,7 +8,7 @@ const now = () => new Date(++clock).toISOString();
 const uid = () => "u" + Math.random().toString(36).slice(2, 10);
 const isMember = (t, u) => members.some((m) => m.team_id === t && m.user_id === u);
 const canEdit = (t, u) => members.some((m) => m.team_id === t && m.user_id === u && m.role !== "viewer");
-function session(u) { const at = "at_" + uid(), rt = "rt_" + uid(); tokens.set(at, u.id); tokens.set(rt, u.id); return { access_token: at, refresh_token: rt, expires_in: 3600, user: { id: u.id, email: u.email } }; }
+function session(u) { const at = "at_" + uid(), rt = "rt_" + uid(); tokens.set(at, u.id); tokens.set(rt, u.id); return { access_token: at, refresh_token: rt, expires_in: 3600, user: { id: u.id, email: u.email, user_metadata: u.meta || {} } }; }
 function send(res, code, body) { res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" }); res.end(body === undefined ? "" : JSON.stringify(body)); }
 function q(url) { const out = {}; for (const [k, v] of url.searchParams) out[k] = v; return out; }
 const val = (s) => s.replace(/^(eq|gte|gt|in)\./, "");
@@ -18,6 +18,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
   let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => {
     const url = new URL(req.url, "http://x"), p = url.pathname, b = body ? JSON.parse(body) : null;
     const tok = (req.headers.authorization || "").replace("Bearer ", ""), me = tokens.get(tok) || null;
+    if (p === "/__mock/strip-terms") { for (const u of users.values()) if (u.meta) delete u.meta.terms_version; return send(res, 204); } // simulate accounts made before the terms existed
     if (p === "/__mock/users") return send(res, 200, [...users.values()].map((u) => ({ email: u.email, meta: u.meta }))); // test inspection only
     if (!req.headers.apikey) return send(res, 401, { message: "no apikey" });
     // auth
@@ -25,6 +26,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/auth/v1/token" && url.searchParams.get("grant_type") === "password") { const u = [...users.values()].find((x) => x.email === b.email && x.pw === b.password); return u ? send(res, 200, session(u)) : send(res, 400, { error_description: "Invalid login credentials" }); }
     if (p === "/auth/v1/token") { const id = tokens.get(b.refresh_token); return id ? send(res, 200, session(users.get(id))) : send(res, 400, { error: "invalid" }); }
     if (p === "/auth/v1/logout" || p === "/auth/v1/recover") return send(res, 204);
+    if (p === "/auth/v1/user" && req.method === "PUT") { const u = users.get(me); if (!u) return send(res, 401, { message: "JWT required" }); if (b.data) u.meta = { ...(u.meta || {}), ...b.data }; if (b.password) u.pw = b.password; return send(res, 200, { id: u.id, email: u.email, user_metadata: u.meta }); }
     // rpc
     if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!isMember(inv.team_id, me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now() }); return send(res, 200, inv.team_id); }
     if (p === "/rest/v1/rpc/watch") {

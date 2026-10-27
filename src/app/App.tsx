@@ -22,11 +22,12 @@ import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { WatchPage } from "../cloud/WatchPage";
 import { SeasonPage } from "../cloud/SeasonPage";
+import { TermsGate } from "../cloud/AuthPage";
 import { RecruitPage } from "../cloud/RecruitPage";
 import { ClubPage } from "../features/club/ClubPage";
 import { JoinPage } from "../cloud/CloudCard";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
-import { currentUser } from "../cloud/client";
+import { needsTermsAgreement, currentUser } from "../cloud/client";
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
 const NAV: [string, string, string?][] = [["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
@@ -55,6 +56,7 @@ export function App() {
     return <><AuthPage key={route.id || "a"} initial={route.id === "signup" || route.page === "join" ? "signup" : "signin"} onSkip={() => { skipAccounts(); location.hash = "#/track"; }} /><Toast /></>;
   }
   if (route.page === "account" && route.id === "new-password") return <><AuthPage initial="newpw" /><Toast /></>;
+  if (user && needsTermsAgreement()) return <><TermsGate /><Toast /></>;
   if (!t) {
     if (route.page === "join" && route.id && user) return <><div className="content"><JoinPage code={route.id} /></div><Toast /></>;
     return <>{wantsAuthGate() ? <AuthPage onSkip={skipAccounts} /> : <Welcome />}<Toast /></>;

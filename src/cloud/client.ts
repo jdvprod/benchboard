@@ -7,7 +7,7 @@ import { LEGAL_VERSION } from "../app/legal";
 
 const SESSION_KEY = "bs-session", CONFIG_KEY = "bs-cloud-config";
 
-export interface Session { access_token: string; refresh_token: string; expires_at: number; user: { id: string; email: string } }
+export interface Session { access_token: string; refresh_token: string; expires_at: number; user: { id: string; email: string; terms?: string } }
 export class CloudError extends Error { constructor(public status: number, message: string) { super(message); } }
 
 const read = <T,>(k: string): T | null => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : null; } catch { return null; } };
@@ -51,7 +51,7 @@ async function call(path: string, init: RequestInit & { auth?: boolean } = {}): 
 }
 
 function fromAuth(b: any): Session {
-  return { access_token: b.access_token, refresh_token: b.refresh_token, expires_at: b.expires_at || Math.floor(Date.now() / 1000) + (b.expires_in || 3600), user: { id: b.user.id, email: b.user.email } };
+  return { access_token: b.access_token, refresh_token: b.refresh_token, expires_at: b.expires_at || Math.floor(Date.now() / 1000) + (b.expires_in || 3600), user: { id: b.user.id, email: b.user.email, terms: b.user.user_metadata?.terms_version } };
 }
 export async function signUp(email: string, password: string): Promise<"signed-in" | "confirm-email"> {
   // the agreement is recorded with the account: which version of the terms, and when
@@ -86,6 +86,14 @@ export async function updatePassword(password: string) {
  * Email links (confirm account, reset password) come back as #access_token=...&type=...
  * Turn that into a session before the app's router reads the hash. Returns the link type.
  */
+/** Record that the signed-in user agreed to the current Terms and Privacy Policy. */
+export async function acceptTerms() {
+  await call("/auth/v1/user", { method: "PUT", body: JSON.stringify({ data: { terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() } }) });
+  if (session) setSession({ ...session, user: { ...session.user, terms: LEGAL_VERSION } });
+}
+/** Signed in but hasn't agreed to the current version of the terms (older accounts, or after the terms change). */
+export const needsTermsAgreement = () => !!session && session.user.terms !== LEGAL_VERSION;
+
 export async function consumeAuthRedirect(): Promise<string | null> {
   const h = location.hash.replace(/^#/, "");
   if (!/(^|&)(access_token|error_description)=/.test(h)) return null;
@@ -97,7 +105,7 @@ export async function consumeAuthRedirect(): Promise<string | null> {
     const c = config(); if (!c) return null;
     const res = await fetch(c.url + "/auth/v1/user", { headers: { apikey: c.key, authorization: "Bearer " + access } });
     const u = await res.json();
-    setSession({ access_token: access, refresh_token: p.get("refresh_token") || "", expires_at: +(p.get("expires_at") || 0) || Math.floor(Date.now() / 1000) + +(p.get("expires_in") || 3600), user: { id: u.id, email: u.email } });
+    setSession({ access_token: access, refresh_token: p.get("refresh_token") || "", expires_at: +(p.get("expires_at") || 0) || Math.floor(Date.now() / 1000) + +(p.get("expires_in") || 3600), user: { id: u.id, email: u.email, terms: u.user_metadata?.terms_version } });
   } catch { return null; }
   location.hash = type === "recovery" ? "#/account/new-password" : "#/account";
   return type;

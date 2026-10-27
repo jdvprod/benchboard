@@ -40,6 +40,11 @@ const go = async (p, hash) => { await p.goto(U + "#/" + hash); await p.waitForTi
 const score = async (p) => { const t = (await p.locator(".board").first().innerText()).replace(/\s+/g, " "); const n = t.match(/(\d+) SET (\d) .* (\d+) (?:Rotation|Our)/); return t; };
 const download = async (p, click) => { const [d] = await Promise.all([p.waitForEvent("download"), click()]); const f = await d.path(); return { name: d.suggestedFilename(), size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+/** Text squeezed into a sliver (a layout bug): long text in a very narrow, tall box. */
+const squashed = (p) => p.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => {
+  if (e.children.length || !e.textContent || e.textContent.trim().length < 24) return false;
+  const r = e.getBoundingClientRect(); return r.width > 0 && r.width < 90 && r.height > 70;
+}).slice(0, 3).map((e) => e.tagName + ": " + e.textContent.trim().slice(0, 30)));
 const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip" }); if (await s.count()) await s.first().click(); };
 
 /* ---------- scenarios ---------- */
@@ -52,6 +57,7 @@ const scenarios = {
       for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "labs", "live", "account"]) {
         await go(p, r);
         ok(`${tag}: ${r} renders`, (await p.locator(".page, .content, .auth, main").count()) > 0);
+        if (opts.phone) { const sq = await squashed(p); ok(`${tag}: ${r} has no squeezed text`, !sq.length, sq.join(" | ")); }
         if (opts.phone || opts.tablet) ok(`${tag}: ${r} has no sideways scroll`, (await overflow(p)) <= 1, `${await overflow(p)}px`);
       }
       await go(p, "stats");
@@ -271,6 +277,17 @@ const scenarios = {
     ok("roster permission reminder shows once players are added", (await p.locator(".banner", { hasText: "Permission to record players" }).count()) === 1);
     await p.getByRole("button", { name: "I have permission" }).click(); await p.waitForTimeout(200);
     ok("reminder goes away after confirming", (await p.locator(".banner", { hasText: "Permission to record players" }).count()) === 0);
+    await go(p, "track"); { const sq = await squashed(p); ok("home checklist isn't squeezed on a phone", !sq.length, sq.join(" | ")); }
+    // an account from before the terms existed is asked to agree once on its next sign-in
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/strip-terms`);
+    const q = await newPage(browser, { phone: true });
+    await go(q, "account"); await q.getByLabel("Email").fill("legal@e2e.test"); await q.locator("#auth-pw").fill("secret123"); await q.getByRole("button", { name: "Sign in" }).click(); await q.waitForTimeout(1200);
+    ok("older accounts are asked to agree", (await q.getByText("Our Terms and Privacy Policy").count()) === 1);
+    await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(200);
+    ok("…and can't skip the checkbox", (await q.getByText("Check the box to agree.").count()) === 1);
+    await q.locator(".auth-agree input").check(); await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(1200);
+    ok("agreeing opens the app", (await q.getByText("Our Terms and Privacy Policy").count()) === 0 && (await q.locator(".page, .content").count()) > 0);
+    await q.context().close();
     // delete the account, then the same sign-in fails
     await go(p, "settings"); await p.getByRole("button", { name: "Delete account" }).click();
     await p.getByLabel("Type DELETE to confirm").fill("DELETE"); await p.getByRole("button", { name: "Delete my account" }).click(); await p.waitForTimeout(800);
@@ -344,8 +361,8 @@ const scenarios = {
     await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
     ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
-    const notOk = await A.locator(".setup-list li:not(.sc-ok) b").allInnerTexts();
-    ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".setup-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact"].includes(x)), notOk.join(", "));
+    const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
+    ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact"].includes(x)), notOk.join(", "));
     // a view-only parent account can follow along but can't change the team's data
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();
