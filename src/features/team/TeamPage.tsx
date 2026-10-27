@@ -21,9 +21,12 @@ export function TeamPage({ sub }: { sub?: string }) {
   if (sub === "new") return <div className="page"><Card title="Add a team"><NewTeamForm /></Card></div>;
   return <div className="page">
     <div className="pagehead"><h1>{team()!.name}</h1></div>
-    <div className="grid2" style={{ alignItems: "start" }}>
-      <div className="stack"><Roster /><History /></div>
-      <div className="stack"><TeamInfo /><CloudCard /><Opponents /><Backup /></div>
+    <div className="stack">
+      <Roster />
+      <div className="grid2" style={{ alignItems: "start" }}>
+        <div className="stack"><TeamInfo /><History /></div>
+        <div className="stack"><CloudCard /><Opponents /><Backup /></div>
+      </div>
     </div>
   </div>;
 }
@@ -71,14 +74,14 @@ function Roster() {
       <div className="row"><button className="btn sm primary" disabled={!paste.trim()} onClick={() => { toast(addPasted(paste)); setPaste(null); }}>Add players</button><button className="btn sm" onClick={() => setPaste(null)}>Cancel</button></div>
     </div>}
     {!ps.length && <p className="empty">No players yet. Add your roster to start tracking.</p>}
-    {shown.length > 0 && <div className="tbl"><table>
+    {shown.length > 0 && <div className="tbl roster-tbl"><table>
       <thead><tr><th className="l">#</th><th className="l">First</th><th className="l">Last</th><th className="l">Pos</th><th className="l">Grad</th><th className="l">Height</th><th /></tr></thead>
-      <tbody>{shown.map((p) => <tr key={p.id} style={p.active ? undefined : { opacity: 0.55 }}>
+      <tbody>{shown.map((p) => <tr key={[p.id, p.num, p.first, p.last, p.grad, p.height].join("|")} style={p.active ? undefined : { opacity: 0.55 }}>
         <td className="l"><input id={"num-" + p.id} className="input" style={{ width: 56 }} inputMode="numeric" defaultValue={p.num} onBlur={(e) => upd(p.id, "num", e.target.value.trim())} aria-label="Jersey number" /></td>
-        <td className="l"><input className="input" style={{ minWidth: 90 }} defaultValue={p.first} onBlur={(e) => upd(p.id, "first", e.target.value.trim())} aria-label="First name" /></td>
-        <td className="l"><input className="input" style={{ minWidth: 90 }} defaultValue={p.last} onBlur={(e) => upd(p.id, "last", e.target.value.trim())} aria-label="Last name" /></td>
+        <td className="l"><input className="input" style={{ minWidth: 90 }} placeholder="First" defaultValue={p.first} onBlur={(e) => upd(p.id, "first", e.target.value.trim())} aria-label="First name" /></td>
+        <td className="l"><input className="input" style={{ minWidth: 90 }} placeholder="Last" defaultValue={p.last} onBlur={(e) => upd(p.id, "last", e.target.value.trim())} aria-label="Last name" /></td>
         <td className="l"><select className="input" style={{ width: 78 }} value={p.pos} onChange={(e) => upd(p.id, "pos", e.target.value)} aria-label="Position">{POSITIONS.map((x) => <option key={x}>{x}</option>)}</select></td>
-        <td className="l"><input className="input" style={{ width: 72 }} inputMode="numeric" defaultValue={p.grad ?? ""} onBlur={(e) => upd(p.id, "grad", e.target.value ? +e.target.value : null)} aria-label="Graduation year" /></td>
+        <td className="l"><input className="input" style={{ width: 72 }} inputMode="numeric" defaultValue={p.grad ?? ""} onBlur={(e) => upd(p.id, "grad", e.target.value ? +e.target.value : null)} aria-label="Graduation year" placeholder="Grad" /></td>
         <td className="l"><input className="input" style={{ width: 66 }} defaultValue={p.height} onBlur={(e) => upd(p.id, "height", e.target.value.trim())} aria-label="Height" placeholder={`5'9"`} /></td>
         <td><div className="row" style={{ flexWrap: "nowrap" }}><button className="btn sm" onClick={() => go("player", p.id)}>View</button>{p.active ? <button className="btn sm ghost" onClick={() => upd(p.id, "active", false)} title="Hide from the roster; stats are kept">Remove</button> : <button className="btn sm" onClick={() => upd(p.id, "active", true)}>Restore</button>}</div></td>
       </tr>)}</tbody></table></div>}

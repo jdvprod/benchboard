@@ -105,7 +105,7 @@ const scenarios = {
         { const cx = await contrast(p); ok(`${tag}: ${r} text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
         if (!opts.dark) { const ax = await a11y(p); ok(`${tag}: ${r} controls all have names`, !ax.length, ax.join(" | ")); }
         if (opts.phone) { const sq = await squashed(p); ok(`${tag}: ${r} has no squeezed text`, !sq.length, sq.join(" | ")); }
-        if (opts.phone || opts.tablet) ok(`${tag}: ${r} has no sideways scroll`, (await overflow(p)) <= 1, `${await overflow(p)}px`);
+        if (opts.phone || opts.tablet) ok(`${tag}: ${r} has no sideways scroll`, (await overflow(p)) <= 1, `${await overflow(p)}px`);        if (r === "team") { const w = await p.locator(".roster-tbl").evaluate((e) => e.scrollWidth - e.clientWidth); ok(`${tag}: roster fits without scrolling sideways`, w <= 1, `${w}px`); }
       }
       await go(p, "stats");
       for (const sc of [/^Season \(/, /^Event$/, /^One match$/]) {

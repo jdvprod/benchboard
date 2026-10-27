@@ -580,3 +580,15 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .auth-agree.bad label{color:var(--ink)}
 .auth-legal{font-size:12.5px;color:var(--muted);margin:0}.auth-legal a{color:inherit}
 .consent-check{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:14px;color:var(--muted);margin-top:10px;cursor:pointer}.consent-check input{width:18px;height:18px;margin-top:2px;accent-color:var(--accent)}
+
+/* Roster on phones: each player is a small block (number, names / position, grad, height / buttons) instead of a sideways-scrolling table. */
+@media (max-width:640px){
+  .roster-tbl{overflow:visible}
+  .roster-tbl thead{display:none}
+  .roster-tbl table,.roster-tbl tbody{display:block}
+  .roster-tbl tr{display:grid;grid-template-columns:64px minmax(0,1fr) minmax(0,1fr);gap:6px;padding:10px 0;border-bottom:1px solid var(--line)}
+  .roster-tbl td,.roster-tbl td.l{display:block;padding:0;border:0;min-width:0}
+  .roster-tbl td .input{width:100% !important;min-width:0 !important}
+  .roster-tbl td:last-child{grid-column:1/-1}
+  .roster-tbl td:last-child .row{justify-content:flex-end}
+}
