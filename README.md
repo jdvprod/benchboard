@@ -32,16 +32,24 @@ npm test         # engine tests
 
 ## Put it online (free)
 
-**GitHub Pages** (recommended, no deploy limits for a public repo): in the repo's **Settings → Pages**, set **Source** to **GitHub Actions**. Every push to the `live` branch then builds, tests and publishes the app to `https://jdvprod.github.io/benchboard/` (`.github/workflows/pages.yml`). Day-to-day work goes to `main`; release with `git push origin main:live`.
+**Cloudflare Workers** (recommended; the free plan doesn't charge per deploy). `wrangler.jsonc` serves the built `dist/` folder as static assets, and `public/_headers` adds the security headers and content security policy.
 
-Netlify also works (`netlify.toml`), but its free plan has 300 credits a month and each production deploy costs 15, and the site goes offline when they run out. If you use it, set the production branch to `live`.
+1. In Cloudflare, go to **Workers & Pages → Create → Import a repository** and pick `jdvprod/benchboard`.
+2. **Project name:** `benchboard` (must match `name` in `wrangler.jsonc`).
+3. **Build command:** `npm run build`. **Deploy command:** `npx wrangler deploy`.
+4. Optional: under **Variables**, add `NODE_VERSION` = `22`.
+5. Under the project's **Settings → Build → Branch control**, set the production branch to `live`, so only releases deploy. Day-to-day work goes to `main`; release with `git push origin main:live`.
+
+The app is then at `https://benchboard.<your-subdomain>.workers.dev` (or a custom domain added under **Settings → Domains & Routes**).
+
+GitHub Pages also works (`.github/workflows/pages.yml`, run by hand) but ignores `_headers`. Netlify works too (`netlify.toml`), but its free plan charges 15 of 300 monthly credits per production deploy and takes the site offline when they run out.
 
 ## Accounts, sync and live links (Supabase, free tier)
 
 1. Create a project at supabase.com.
 2. In **SQL Editor → New query**, paste all of `supabase/schema.sql` and click **Run**.
 3. In **Project Settings → API**, copy the **Project URL** and the **anon public** key into `src/cloud/config.ts` (both are safe to publish; Row Level Security protects the data).
-4. In **Authentication → URL Configuration**, set **Site URL** to your Netlify address (e.g. `https://benchboard.netlify.app`) and add the same address to **Redirect URLs**. Without this, sign-up and password-reset emails link to localhost.
+4. In **Authentication → URL Configuration**, set **Site URL** to your app's address (e.g. `https://benchboard.<your-subdomain>.workers.dev`) and add the same address followed by `/**` to **Redirect URLs**. Without this, sign-up and password-reset emails link to localhost.
 5. Optional: in **Authentication → Providers → Email**, turn off "Confirm email" for the smoothest sign-up while testing.
 6. Open the app → **Settings → Setup check → Run check**. It confirms the database version, your account, team sync and AI, and says what's left.
 
@@ -51,7 +59,7 @@ Then coaches sign in on the Team tab, tap **Sync this team**, and invite assista
 
 Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/functions/ai/index.ts`), which holds your Anthropic key and limits each coach to 40 requests a day (`AI_DAILY_LIMIT` to change it). To turn it on:
 
-1. Run the latest `supabase/schema.sql` (adds the `ai_usage` counter).
+1. Run the latest `supabase/schema.sql` (version 8; adds the `ai_usage` counter).
 2. In Supabase → Edge Functions, create a function named `ai` and paste in `supabase/functions/ai/index.ts` (or `supabase functions deploy ai`).
 3. In Edge Functions → Secrets, add `ANTHROPIC_API_KEY`.
 
