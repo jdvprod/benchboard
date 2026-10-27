@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Parent and Guardian Permission · Benchboard</title>
+<meta name="description" content="A permission form coaches can send to families before tracking player statistics and sharing them.">
+<link rel="icon" href="../favicon.png">
+<link rel="stylesheet" href="legal.css">
+<style>
+.form{border:2px solid var(--ink);border-radius:10px;padding:18px 20px;margin:18px 0}
+.blank{display:inline-block;min-width:260px;border-bottom:1px solid var(--ink);height:1.3em;vertical-align:bottom}
+.blank.fill{min-width:0;border-bottom-style:dotted;padding:0 4px;font-weight:700}
+.opt{display:grid;grid-template-columns:28px 1fr;gap:8px;margin:12px 0;align-items:start}
+.box{width:20px;height:20px;border:2px solid var(--ink);border-radius:3px;margin-top:3px}
+.sig{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px 26px;margin-top:22px}
+.sig div{border-top:1px solid var(--ink);padding-top:4px;font-size:14px;color:var(--muted)}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0 0}
+.bar button{font:700 15px var(--body);background:var(--blue);color:#fff;border:0;border-radius:8px;padding:10px 16px;cursor:pointer}
+.bar input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;min-width:240px;background:var(--bg);color:var(--ink)}
+@media print{.bar,.howto{display:none}.form{border-color:#000}main{padding-top:0}}
+</style>
+</head>
+<body>
+<header><div class="in"><a href="../">Benchboard</a><nav><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="consent-form.html" aria-current="page">Parent form</a></nav></div></header>
+<main>
+<div class="howto">
+<h1>Parent and guardian permission</h1>
+<p class="meta">For coaches: fill in your team name, print or save as PDF, and send one to each family at the start of the season. Keep signed copies with your team records.</p>
+<div class="bar"><input id="team" placeholder="Your team name (e.g. Clovis North Varsity)" aria-label="Team name"><button onclick="print()">Print or save as PDF</button></div>
+</div>
+
+<div class="form">
+<h2 style="margin-top:0">Player statistics and sharing permission</h2>
+<p>Team: <span class="blank fill" id="teamOut"></span> &nbsp; Season: <span class="blank" style="min-width:140px"></span></p>
+<p>Our coaching staff uses <b>Benchboard</b> to record volleyball statistics during matches and practices, plan lineups and practices, and give players feedback. The app stores your player's name, jersey number, position, graduation year and statistics. Benchboard doesn't sell this information or show ads. Its privacy policy is at <b id="privacyUrl">the Privacy Policy link on the Benchboard website</b>.</p>
+<p>Please check each item you agree to:</p>
+<div class="opt"><span class="box"></span><span><b>Statistics.</b> The coaching staff may record my player's statistics and keep them in Benchboard for coaching, practice planning and end-of-season reports.</span></div>
+<div class="opt"><span class="box"></span><span><b>Team pages.</b> My player may appear on the team's live gamecast and season page, which show <i>first name, last initial, jersey number, position and statistics</i> to people who have the link (for example, other families).</span></div>
+<div class="opt"><span class="box"></span><span><b>Recruiting profile (optional).</b> The coach may publish a recruiting profile with my player's <i>full name</i>, statistics and the details we provide (for example, club team, measurables, highlight video, contact email) for college coaches. It can be taken down at any time on request.</span></div>
+<p class="note">You can change your mind at any time by telling the coach. Ask the coach for a copy of your player's information or to correct or delete it.</p>
+<p>Player name: <span class="blank"></span> &nbsp; Grad year: <span class="blank" style="min-width:80px"></span></p>
+<div class="sig">
+<div>Parent or guardian signature</div><div>Printed name</div><div>Date</div>
+<div>Player signature (if 13 or older)</div><div>Parent or guardian email or phone</div><div>Relationship to player</div>
+</div>
+</div>
+</main>
+<footer><div class="in"><a href="privacy.html">Privacy Policy</a><a href="terms.html">Terms of Service</a><a href="../">Open Benchboard</a></div></footer>
+<script>
+  const t = document.getElementById("team"), out = document.getElementById("teamOut");
+  const fromHash = decodeURIComponent((location.hash.match(/team=([^&]+)/) || [])[1] || "");
+  const set = (v) => { out.textContent = v || " ".repeat(40); };
+  t.value = fromHash; set(fromHash); t.addEventListener("input", () => set(t.value));
+  if (location.protocol.startsWith("http")) document.getElementById("privacyUrl").textContent = new URL("privacy.html", location.href).href.replace(/^https?:\/\//, "");
+</script>
+</body>
+</html>

@@ -29,13 +29,29 @@ rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 cpSync(path.join(root, "public"), dist, { recursive: true });
 
+const legal = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).legal || {};
 const options = {
   entryPoints: { app: path.join(root, "src/main.tsx") },
   bundle: true, format: "esm", target: "es2020", outdir: dist, jsx: "automatic", splitting: true, chunkNames: "chunks/[name]-[hash]",
   minify: !args.has("--watch"), sourcemap: args.has("--watch") ? "inline" : false,
-  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version) },
+  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || "") },
   loader: { ".css": "css" }, nodePaths, logLevel: "info",
 };
+
+// Legal pages: owner, contact email, state and dates come from package.json "legal".
+const legalTokens = {
+  "%LEGAL_OWNER%": legal.owner || "the Benchboard team",
+  "%LEGAL_EMAIL%": legal.email || "[add a contact email in package.json]",
+  "%LEGAL_STATE%": legal.state || "California",
+  "%LEGAL_EFFECTIVE%": legal.effective || "",
+  "%LEGAL_VERSION%": legal.version || "1",
+};
+for (const f of readdirSync(path.join(dist, "legal"))) {
+  if (!f.endsWith(".html")) continue;
+  let t = readFileSync(path.join(dist, "legal", f), "utf8");
+  for (const [k, v] of Object.entries(legalTokens)) t = t.replaceAll(k, v);
+  writeFileSync(path.join(dist, "legal", f), t);
+}
 
 const html = readFileSync(path.join(root, "index.html"), "utf8").replaceAll("%VERSION%", version);
 writeFileSync(path.join(dist, "index.html"), html);
