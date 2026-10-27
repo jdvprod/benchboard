@@ -71,5 +71,10 @@ if (args.has("--watch")) {
   const chunks = existsSync(chunkDir) ? readdirSync(chunkDir).map((f) => "./chunks/" + f) : [];
   const swPath = path.join(dist, "sw.js");
   writeFileSync(swPath, readFileSync(swPath, "utf8").replace('"./favicon.png"]', '"./favicon.png"' + chunks.map((c) => ", " + JSON.stringify(c)).join("") + "]"));
+  // preload the chunks app.js needs at startup, so the browser fetches them in parallel instead of after app.js arrives
+  const startup = new Set(), walk = (f) => { for (const m of readFileSync(path.join(dist, f), "utf8").matchAll(/(?:from|import)\s*"\.\/(?:chunks\/)?([^"]+\.js)"/g)) { const c = "chunks/" + m[1].replace(/^chunks\//, ""); if (!startup.has(c) && existsSync(path.join(dist, c))) { startup.add(c); walk(c); } } };
+  walk("app.js");
+  const idx = path.join(dist, "index.html");
+  writeFileSync(idx, readFileSync(idx, "utf8").replace("</head>", [...startup].map((c) => `<link rel="modulepreload" href="${c}">`).join("") + "</head>"));
   console.log("Built to dist/");
 }

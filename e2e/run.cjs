@@ -27,9 +27,13 @@ function headersFor(urlPath) {
   return out;
 }
 
+/** While true the app server drops every request, like a gym with no Wi-Fi. (Playwright's offline mode doesn't cover service worker fetches.) */
+let NO_WIFI = false; const HANGING = [];
 function serveDist() {
   return new Promise((done) => {
     const srv = http.createServer((req, res) => {
+      if (NO_WIFI === "slow") { HANGING.push(req.socket); return; } // the request just hangs, like weak gym Wi-Fi
+      if (NO_WIFI) return req.socket.destroy();
       let f = decodeURIComponent(new URL(req.url, U).pathname); if (f.endsWith("/")) f += "index.html";
       const file = path.join(DIST, f);
       if (!file.startsWith(DIST) || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
@@ -222,13 +226,22 @@ const scenarios = {
     await A.getByLabel("Team name").fill("No Wifi High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.goto(SW + "track"); await A.waitForTimeout(400); await A.reload(); await A.waitForTimeout(1500); // let the service worker install and cache the app
-    await A.context().setOffline(true);
-    await A.reload(); await A.waitForTimeout(800);
+    NO_WIFI = "slow"; { const t0 = Date.now(); await A.reload({ waitUntil: "domcontentloaded" }).catch(() => {}); await A.locator(".page").first().waitFor({ timeout: 9000 }).catch(() => {});
+      ok("weak Wi-Fi: the app still opens from the cache within a few seconds", (await A.locator(".page").count()) > 0 && Date.now() - t0 < 7000, `${Date.now() - t0}ms`); }
+    await A.context().setOffline(true); NO_WIFI = true; HANGING.splice(0).forEach((sk) => sk.destroy());
+    { const t0 = Date.now(); await A.reload(); await A.locator(".page").first().waitFor({ timeout: 5000 }).catch(() => {}); ok("no Wi-Fi: the app opens right away", Date.now() - t0 < 2500, `${Date.now() - t0}ms`); }
+    await A.waitForTimeout(300);
     ok("app opens with no connection", (await A.locator(".page, .content").count()) > 0);
     await A.getByPlaceholder("e.g. Buchanan").fill("Away Gym"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(200);
     for (let i = 0; i < 3; i++) { await A.locator(".pl", { hasText: "Nia" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).click(); await skipIfAsked(A); }
     ok("tracking works offline", /NO WIFI HIGH 3/.test(await score(A)), await score(A));
-    await A.context().setOffline(false); await A.waitForTimeout(500);
+    // pages load on first visit; the service worker must already have them, even ones never opened online
+    for (const r of ["stats", "practice", "lineup", "court", "matchup", "settings", "labs", "live"]) {
+      await A.goto(SW + r); await A.waitForTimeout(400);
+      ok(`offline: ${r} opens without a connection`, (await A.locator(".page").count()) > 0 && !(await A.getByText("isn't on this device yet").count()) && !(await A.getByText("hit a problem").count()));
+    }
+    await A.goto(SW + "track"); await A.waitForTimeout(300);
+    await A.context().setOffline(false); NO_WIFI = false; await A.waitForTimeout(500);
     await A.goto(SW + "team"); await A.waitForTimeout(300); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
     const N = await newPage(browser, { phone: true });
     await go(N, "account"); await N.getByLabel("Email").fill("gym@e2e.test"); await N.locator("#auth-pw").fill("secret123"); await N.getByRole("button", { name: "Sign in" }).click(); await N.waitForTimeout(2500);

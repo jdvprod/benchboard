@@ -8,10 +8,16 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== "GET" || url.hostname === "api.anthropic.com") return;
-  // Network first for the app itself so updates arrive; cached copy when offline.
   if (req.mode === "navigate" || url.origin === location.origin) {
-    e.respondWith(fetch(req).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req.mode === "navigate" ? "./index.html" : req, copy)); } return r; })
-      .catch(() => caches.match(req.mode === "navigate" ? "./index.html" : req, { ignoreSearch: true })));
+    const key = req.mode === "navigate" ? "./index.html" : req;
+    // Chunks have the content hash in their names and never change: cached copy first.
+    if (url.pathname.includes("/chunks/")) { e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return r; }))); return; }
+    // The app itself: network first so updates arrive, but on weak gym Wi-Fi use the cached copy after 3 seconds.
+    const net = fetch(req).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(key, copy)); } return r; });
+    const cached = () => caches.match(key, { ignoreSearch: true });
+    const slow = new Promise((res) => setTimeout(res, 3000)).then(cached).then((hit) => hit || net);
+    // no connection at all: the cached copy right away; a hanging connection: the cached copy after 3 seconds
+    e.respondWith(Promise.race([net.catch(() => cached().then((hit) => hit || Promise.reject(new Error("offline")))), slow]));
     return;
   }
   // Fonts: cached copy first. Everything else (cloud sync, AI) always goes to the network.

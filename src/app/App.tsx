@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { all, currentMatch, setPrefs, state, team, useVersion } from "../data/store";
 import { useRoute } from "./router";
 import { applyTheme } from "./theme";
@@ -6,28 +6,31 @@ import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
 import { Toast } from "../ui/kit";
 import { TrackPage } from "../features/track/TrackPage";
-import { LineupPage } from "../features/lineup/LineupPage";
-import { FormationsPage } from "../features/formations/FormationsPage";
-import { LabsPage } from "../features/labs/LabsPage";
-import { MatchupPage } from "../features/matchup/MatchupPage";
-import { PracticePage } from "../features/practice/PracticePage";
-import { StatsPage } from "../features/stats/StatsPage";
-import { CourtPage } from "../features/court/CourtPage";
 import { TeamPage } from "../features/team/TeamPage";
-import { SettingsPage } from "../features/settings/SettingsPage";
-import { PlayerPage } from "../features/player/PlayerPage";
-import { LivePage } from "../features/live/LivePage";
 import { Welcome } from "../features/team/Welcome";
 import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
-import { WatchPage } from "../cloud/WatchPage";
-import { SeasonPage } from "../cloud/SeasonPage";
 import { TermsGate } from "../cloud/AuthPage";
-import { RecruitPage } from "../cloud/RecruitPage";
-import { ClubPage } from "../features/club/ClubPage";
 import { JoinPage } from "../cloud/CloudCard";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
 import { needsTermsAgreement, currentUser } from "../cloud/client";
+
+// Pages other than Track and Team load on first visit (then stay cached for offline use), so the app opens fast on gym wifi.
+const LineupPage = lazy(() => import("../features/lineup/LineupPage").then((m) => ({ default: m.LineupPage })));
+const FormationsPage = lazy(() => import("../features/formations/FormationsPage").then((m) => ({ default: m.FormationsPage })));
+const LabsPage = lazy(() => import("../features/labs/LabsPage").then((m) => ({ default: m.LabsPage })));
+const MatchupPage = lazy(() => import("../features/matchup/MatchupPage").then((m) => ({ default: m.MatchupPage })));
+const PracticePage = lazy(() => import("../features/practice/PracticePage").then((m) => ({ default: m.PracticePage })));
+const StatsPage = lazy(() => import("../features/stats/StatsPage").then((m) => ({ default: m.StatsPage })));
+const CourtPage = lazy(() => import("../features/court/CourtPage").then((m) => ({ default: m.CourtPage })));
+const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const PlayerPage = lazy(() => import("../features/player/PlayerPage").then((m) => ({ default: m.PlayerPage })));
+const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ default: m.LivePage })));
+const WatchPage = lazy(() => import("../cloud/WatchPage").then((m) => ({ default: m.WatchPage })));
+const SeasonPage = lazy(() => import("../cloud/SeasonPage").then((m) => ({ default: m.SeasonPage })));
+const RecruitPage = lazy(() => import("../cloud/RecruitPage").then((m) => ({ default: m.RecruitPage })));
+const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
+const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
 const NAV: [string, string, string?][] = [["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
@@ -36,9 +39,9 @@ export function App() {
   useVersion();
   const route = useRoute(), t = team();
   useEffect(() => { applyTheme(t?.color || "#2A78AE", state.prefs.theme, state.prefs.size, HOST_THEME); }, [t?.color, state.prefs.theme, state.prefs.size]);
-  if (route.page === "watch" && route.id) return <><WatchPage code={route.id} /><Toast /></>;
-  if (route.page === "season" && route.id) return <><SeasonPage code={route.id} /><Toast /></>;
-  if (route.page === "recruit" && route.id) return <RecruitPage code={route.id} />;
+  if (route.page === "watch" && route.id) return <><Suspense fallback={<Wait />}><WatchPage code={route.id} /></Suspense><Toast /></>;
+  if (route.page === "season" && route.id) return <><Suspense fallback={<Wait />}><SeasonPage code={route.id} /></Suspense><Toast /></>;
+  if (route.page === "recruit" && route.id) return <Suspense fallback={<Wait />}><RecruitPage code={route.id} /></Suspense>;
   if (!state.ready) return <div className="content"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
   const user = currentUser();
   if (route.page === "sample") {
@@ -102,7 +105,7 @@ export function App() {
       <div className="mobilebar"><b>Benchboard</b>{switcher("")}{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
       {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Benchboard save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
-      <ErrorBoundary resetKey={page + (route.id || "")}>{body}</ErrorBoundary>
+      <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{body}</Suspense></ErrorBoundary>
     </div>
     <Toast />
   </>;
