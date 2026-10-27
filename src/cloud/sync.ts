@@ -240,3 +240,9 @@ export function startSync() {
   window.addEventListener("offline", () => emit());
   setTimeout(tick, 500);
 }
+
+/** Delete this account in the cloud: the user, the cloud teams they own and their memberships. Local data stays unless erased too. */
+export async function deleteAccount() {
+  await rpc("delete_my_account", {});
+  S.teams = []; S.since = {}; S.dirty = {}; S.roles = {}; persist();
+}

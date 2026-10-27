@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LEGAL } from "../../app/legal";
 import { createTeam, toast } from "../../data/store";
 import { addStarterDrills, createSampleTeam } from "../../data/seed";
 import { importBackup } from "../../data/backup";
@@ -37,5 +38,6 @@ export function Welcome() {
       {cloudAvailable() && !user && <button className="auth-alt-btn" onClick={() => go("account")}><b>Sign in</b><span>Already have an account? Your teams come with you.</span></button>}
     </div>
     {msg && <p className="auth-err box" role="alert">{msg}</p>}
+    <p className="auth-legal" style={{ marginTop: 18 }}>By using Benchboard you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. Only add players you have permission to track.</p>
   </AuthShell>;
 }

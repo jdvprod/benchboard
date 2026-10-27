@@ -24,6 +24,8 @@ export interface Team {
   currentMatchId: string | null;
   settings: TeamSettings;
   defLineup: Lineup | null;
+  /** The coach confirmed they have permission (school, club, families) to record these players. */
+  rosterConsent?: { at: number; by: string; version: string } | null;
   scrimSplit?: { aName: string; bName: string; a: string[]; b: string[]; out: string[]; to: number; games: number } | null;
   luAdvice?: { lineup: string[]; libero: string | null; summary: string; reasons: string[]; serveReceive: string[]; at: number } | null;
   sample?: boolean;
@@ -56,7 +58,7 @@ export interface Player {
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }
-export interface RecruitProfile { club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
+export interface RecruitProfile { consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
 
 export type MatchKind = "match" | "scrimmage" | "drills";
 export interface ScrimSetup { a: { name: string; ids: string[] }; b: { name: string; ids: string[] }; to: number }

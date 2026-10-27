@@ -1,6 +1,8 @@
 import { recordOf } from "../../sports/volleyball/engine";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
+import { LEGAL, LEGAL_VERSION } from "../../app/legal";
+import { currentUser } from "../../cloud/client";
 import { all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
 import { Player } from "../../data/model";
 import { POSITIONS } from "../../sports/volleyball/actions";
@@ -59,6 +61,10 @@ function Roster() {
   const upd = (id: string, k: keyof Player, v: any) => patch("players", id, { [k]: v } as any);
   const shown = ps.filter((p) => showInactive || p.active);
   return <Card title={`Roster · ${ps.filter((p) => p.active).length} players`} actions={<><label className="btn sm" style={{ cursor: "pointer" }}>Import CSV<input type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then((txt) => toast(importRosterCsv(txt))); e.target.value = ""; }} /></label><button className="btn sm" disabled={!ps.length} onClick={() => download(`${t.name} roster.csv`, rosterCsv(), "text/csv")}>Export CSV</button><button className="btn sm" onClick={() => setPaste(paste == null ? "" : null)}>Paste list</button><button className="btn sm primary" onClick={add}>Add player</button></>}>
+    {!t.sample && ps.length > 0 && !t.rosterConsent && <div className="banner accent" style={{ marginBottom: 12 }}>
+      <p><b>Permission to record players.</b> Before tracking, make sure your school or club allows it and families have agreed, especially for players under 18. Our <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">parent and guardian form</a> covers stats, team pages and recruiting profiles.</p>
+      <button className="btn sm primary" onClick={() => { setTeamPatch({ rosterConsent: { at: Date.now(), by: currentUser()?.email || "this device", version: LEGAL_VERSION } }); toast("Thanks. You can find the parent form any time in Settings."); }}>I have permission</button>
+    </div>}
     {paste != null && <div className="stack" style={{ marginBottom: 12 }}>
       <label className="field"><span className="label">One player per line: number, name, position, grad year (any order after the number)</span>
         <textarea rows={6} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"7 Maya Chen OH 2027\n12 Sofia Nguyen MB\n#1 Ava Ramirez setter"} autoFocus /></label>

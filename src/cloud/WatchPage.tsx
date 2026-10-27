@@ -1,6 +1,7 @@
 /** #/watch/CODE: the public gamecast parents open. No account needed; refreshes every few seconds. */
 import { useEffect, useState } from "react";
 import { rpc, cloudAvailable } from "./client";
+import { LEGAL } from "../app/legal";
 import { aggregate, LogEntry, mergeLogs, momentum, replay, runOf, serverOf, Stat } from "../sports/volleyball/engine";
 import { ACTIONS } from "../sports/volleyball/actions";
 import { blocks, fmtHit, hitting } from "../sports/volleyball/metrics";
@@ -95,6 +96,6 @@ export function WatchPage({ code }: { code: string }) {
     <section className="card"><div className="row between" style={{ marginBottom: 6 }}><span className="label">Play by play</span>{fp && <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={onlyMine} onChange={(e) => setOnlyMine(e.target.checked)} /> Only #{fp.num}</label>}</div>
       <ul className="pbp">{plays.map((l) => <li key={l.id} className={follow && mine(l) ? "mine" : undefined}><span className={"sc " + (l.kind === "stat" && l.w ? "pt-" + l.w : "")}>{l.kind === "stat" && l.w ? `${l.us}–${l.them}` : ""}</span><span className={l.kind !== "stat" ? "small muted" : ""}>{text(l)}</span></li>)}</ul>
     </section>
-    <p className="small muted" style={{ textAlign: "center" }}>{d.team?.name}{d.team?.level ? " · " + d.team.level : ""} · Live stats by Benchboard</p>
+    <p className="small muted" style={{ textAlign: "center" }}>{d.team?.name}{d.team?.level ? " · " + d.team.level : ""} · Live stats by Benchboard · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a></p>
   </div></div>;
 }

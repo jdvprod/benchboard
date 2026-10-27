@@ -239,9 +239,23 @@ $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
-create or replace function public.schema_version() returns int language sql immutable as $$ select 6 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 7 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
 create or replace function public.server_time() returns bigint language sql stable as $$ select (extract(epoch from clock_timestamp()) * 1000)::bigint $$;
 grant execute on function public.server_time() to anon, authenticated;
+
+-- ---------- delete my account: removes the account, every cloud team it owns (with all their data), and its memberships ----------
+create or replace function public.delete_my_account() returns void
+language plpgsql security definer set search_path = public, auth as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Sign in first'; end if;
+  delete from public.teams_cloud where owner = me;   -- cascades to members, records, invites and share links
+  delete from public.members where user_id = me;
+  delete from public.ai_usage where user_id = me;
+  delete from auth.users where id = me;
+end $$;
+revoke execute on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

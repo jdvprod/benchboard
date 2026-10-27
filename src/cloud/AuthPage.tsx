@@ -1,4 +1,5 @@
 /** Sign in, create account, password reset, and the account screen. Shares a split "scoreboard" shell with first-run setup. */
+import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { setPrefs, state, team, toast } from "../data/store";
 import { CloudError, cloudAvailable, currentUser, resendConfirmation, sendPasswordReset, signIn, signOut, signUp, updatePassword } from "./client";
@@ -61,7 +62,8 @@ type Mode = "signin" | "signup" | "check" | "forgot" | "sent" | "newpw";
 export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSkip?: () => void }) {
   const [mode, setMode] = useState<Mode>(initial);
   const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree"; text: string } | null>(null);
+  const [agree, setAgree] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setErr(null); if (mode !== "newpw") emailRef.current?.focus(); }, [mode]);
 
@@ -76,6 +78,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     e.preventDefault(); setErr(null);
     if (mode !== "newpw" && !/^\S+@\S+\.\S+$/.test(email.trim())) return setErr({ field: "email", text: "Enter your email address." });
     if ((mode === "signin" || mode === "signup" || mode === "newpw") && pw.length < (mode === "signin" ? 1 : 8)) return setErr({ field: "pw", text: mode === "signin" ? "Enter your password." : "Use at least 8 characters." });
+    if (mode === "signup" && !agree) return setErr({ field: "agree", text: "Please confirm you're 13 or older and agree to the Terms and Privacy Policy." });
     setBusy(true);
     try {
       if (mode === "signin") { await signIn(email.trim(), pw); await afterSignIn(); }
@@ -123,6 +126,11 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
         </div>
         {err?.field === "pw" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
+      {mode === "signup" && <div className={"auth-agree" + (err?.field === "agree" ? " bad" : "")}>
+        <label><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
+          <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label>
+        {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
+      </div>}
       {err && !err.field && <p className="auth-err box" role="alert">{err.text}</p>}
       <button className="auth-btn" type="submit" disabled={busy} aria-busy={busy}>{busy ? <span className="auth-spin" aria-label="Working" /> : cta}</button>
     </form>
@@ -131,6 +139,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
       {mode === "signup" && <p>Already have an account? <button className="auth-link" onClick={() => setMode("signin")}>Sign in</button></p>}
       {mode === "forgot" && <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>}
       {onSkip && (mode === "signin" || mode === "signup") && <p className="auth-skip"><button className="auth-link quiet" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></p>}
+      <p className="auth-legal">By using Benchboard you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
   </AuthShell>;
 }

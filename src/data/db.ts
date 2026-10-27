@@ -68,3 +68,11 @@ if (typeof window !== "undefined") {
 
 /** Ask the browser not to clear our data when space runs low. */
 export async function requestPersistence() { try { if (navigator.storage?.persist) await navigator.storage.persist(); } catch { /* optional */ } }
+
+/** Erase everything Benchboard keeps on this device (all stores, settings, sign-in and sync queue). */
+export async function eraseDevice() {
+  const db = await open(); db?.close(); dbp = null;
+  await new Promise<void>((done) => { try { const r = indexedDB.deleteDatabase(DB_NAME); r.onsuccess = r.onerror = r.onblocked = () => done(); } catch { done(); } });
+  try { for (const k of Object.keys(localStorage)) if (k.startsWith("bs-") || k.startsWith("bench")) localStorage.removeItem(k); } catch { /* storage blocked */ }
+  try { sessionStorage.clear(); } catch { /* storage blocked */ }
+}

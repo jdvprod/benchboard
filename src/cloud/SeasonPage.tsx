@@ -1,6 +1,7 @@
 /** #/season/CODE: the public season hub for players and parents. Results, schedule, leaders and every player's line. No account needed. */
 import { useEffect, useMemo, useState } from "react";
 import { rpc, cloudAvailable } from "./client";
+import { LEGAL } from "../app/legal";
 import { aggregate, mergeLogs, recordOf, replay, Replay, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics, serveAttempts } from "../sports/volleyball/metrics";
 
@@ -59,7 +60,7 @@ export function SeasonPage({ code }: { code: string }) {
         <thead><tr><th className="l">Date</th><th className="l">Opponent</th><th>K</th><th>Hit %</th><th>Ace</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th></tr></thead>
         <tbody>{rows.map(({ g, s }) => <tr key={g.m.id}><td className="l">{fmtD(g.m.date)}</td><td className="l">{g.m.opp}</td><td>{s!.K}</td><td>{s!.TA ? fmtHit(hitting(s!)) : "—"}</td><td>{s!.SA}</td><td>{s!.R ? fmtAvg(passAvg(s!)) : "—"}</td><td>{s!.D}</td><td>{fmtNum(blocks(s!))}</td><td>{s!.AST}</td></tr>)}</tbody>
       </table></div></section>
-      <p className="small muted" style={{ textAlign: "center" }}>Stats by Benchboard</p>
+      <p className="small muted" style={{ textAlign: "center" }}>Stats by Benchboard · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a></p>
     </div></div>;
   }
 
@@ -86,6 +87,6 @@ export function SeasonPage({ code }: { code: string }) {
     {roster.length > 0 && <section className="card"><div className="label" style={{ marginBottom: 8 }}>Players</div><div className="sh-roster">
       {roster.map((p) => <button key={p.id} className="pl" onClick={() => setSel(p.id)}><span className="n">{p.num}</span><span className="nm">{p.first}</span><span className="ps">{p.pos}</span></button>)}
     </div></section>}
-    <p className="small muted" style={{ textAlign: "center" }}>{d.team?.name} · Stats by Benchboard</p>
+    <p className="small muted" style={{ textAlign: "center" }}>{d.team?.name} · Stats by Benchboard · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a></p>
   </div></div>;
 }

@@ -152,7 +152,7 @@ const scenarios = {
   async offline(browser) {
     const A = await newPage(browser), SW = `http://127.0.0.1:${APP_PORT}/#/`; // the service worker is skipped on "localhost" (dev)
     await A.goto(SW + "track"); await A.waitForTimeout(300); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("gym@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Email").fill("gym@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("No Wifi High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.goto(SW + "track"); await A.waitForTimeout(400); await A.reload(); await A.waitForTimeout(1500); // let the service worker install and cache the app
@@ -229,7 +229,7 @@ const scenarios = {
     // The assistant's phone clock is 90 seconds fast. Plays must still merge in the order they happened.
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("clock@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Email").fill("clock@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clock High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
@@ -238,7 +238,7 @@ const scenarios = {
     await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true, skew: 90000 });
-    await go(B, "join/" + code); await B.getByLabel("Email").fill("fast@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
+    await go(B, "join/" + code); await B.getByLabel("Email").fill("fast@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator(".auth-agree input").check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1500);
     await go(B, "track"); await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
     await B.locator(".pl", { hasText: "Nia" }).first().click(); await B.locator(".actsheet button", { hasText: /^3$/ }).click(); await skipIfAsked(B); await B.waitForTimeout(2200);
@@ -249,6 +249,38 @@ const scenarios = {
     ok("a fast phone's pass still lands before the point it led to", order.length >= 2 && /Pass 3/.test(order[0]) && /Point/.test(order[1]), order.join(" | "));
     for (const [n, pg] of [["scorer", A], ["fast phone", B]]) ok(`clock skew: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, B]) await pg.context().close();
+  },
+
+  async legal(browser) {
+    const p = await newPage(browser, { phone: true });
+    for (const f of ["privacy", "terms", "consent-form"]) {
+      const r = await p.goto(U + "legal/" + f + ".html"); const body = await p.content();
+      ok(`${f} page is published`, r.status() === 200 && !body.includes("%LEGAL"), String(r.status()));
+      ok(`${f} page fits a phone`, (await overflow(p)) <= 1);
+    }
+    await go(p, "track"); await p.getByRole("button", { name: "Create an account" }).click();
+    await p.getByLabel("Email").fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123");
+    await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(300);
+    ok("sign-up asks for agreement first", (await p.getByText("Please confirm you're 13 or older").count()) === 1);
+    await p.locator(".auth-agree input").check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
+    const users = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json();
+    const me = users.find((u) => u.email === "legal@e2e.test");
+    ok("the agreement is recorded with the account", me && me.meta && me.meta.terms_version === "1" && !!me.meta.terms_accepted_at, JSON.stringify(me && me.meta));
+    await p.getByLabel("Team name").fill("Legal Eagles"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(900);
+    await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill("5 Ana OH\n6 Bea MB"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
+    ok("roster permission reminder shows once players are added", (await p.locator(".banner", { hasText: "Permission to record players" }).count()) === 1);
+    await p.getByRole("button", { name: "I have permission" }).click(); await p.waitForTimeout(200);
+    ok("reminder goes away after confirming", (await p.locator(".banner", { hasText: "Permission to record players" }).count()) === 0);
+    // delete the account, then the same sign-in fails
+    await go(p, "settings"); await p.getByRole("button", { name: "Delete account" }).click();
+    await p.getByLabel("Type DELETE to confirm").fill("DELETE"); await p.getByRole("button", { name: "Delete my account" }).click(); await p.waitForTimeout(800);
+    ok("account deleted", (await p.getByText("Your account is deleted").count()) === 1);
+    const after = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json();
+    ok("the account is gone from the server", !after.some((u) => u.email === "legal@e2e.test"));
+    await p.getByRole("button", { name: "Erase this device" }).click(); await p.getByRole("button", { name: "Erase everything here?" }).click(); await p.waitForTimeout(1500);
+    ok("erasing the device starts fresh", (await p.getByRole("button", { name: "Use without an account" }).count()) === 1);
+    ok("legal: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
   },
 
   async planning(browser) {
@@ -272,7 +304,7 @@ const scenarios = {
   async cloud(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Cloud Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
@@ -281,7 +313,7 @@ const scenarios = {
     await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true });
-    await go(B, "join/" + code); await B.getByLabel("Email").fill("assistant@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
+    await go(B, "join/" + code); await B.getByLabel("Email").fill("assistant@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator(".auth-agree input").check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1200);
     await go(B, "track"); ok("assistant sees the live match", /CLOUD CLUB 0/.test(await score(B)));
     await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
@@ -301,9 +333,13 @@ const scenarios = {
     const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    ok("recruiting link needs family consent first", await A.getByRole("button", { name: "Share profile link" }).isDisabled());
+    await A.locator(".consent-check input").check();
     await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
     const rec = await A.locator("a", { hasText: "#/recruit/" }).first().getAttribute("href");
     await P.goto(rec); await P.waitForTimeout(1000); ok("recruiting page shows full name", (await P.frameLocator("iframe.recruit-frame").locator("h1").innerText()) === "Nia Lopez");
+    await A.getByRole("button", { name: "Stop sharing" }).click(); await A.getByRole("button", { name: "Take it down?" }).click(); await A.waitForTimeout(600);
+    await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't active").count()) === 1);
     // AI through the server function, and the setup check
     await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
     ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
@@ -313,7 +349,7 @@ const scenarios = {
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();
     const V = await newPage(browser, { phone: true });
-    await go(V, "join/" + vcode); await V.getByLabel("Email").fill("parent@e2e.test"); await V.locator("#auth-pw").fill("secret123"); await V.getByRole("button", { name: "Create account" }).click(); await V.waitForTimeout(500);
+    await go(V, "join/" + vcode); await V.getByLabel("Email").fill("parent@e2e.test"); await V.locator("#auth-pw").fill("secret123"); await V.locator(".auth-agree input").check(); await V.getByRole("button", { name: "Create account" }).click(); await V.waitForTimeout(500);
     await V.getByRole("button", { name: "Join team" }).click(); await V.waitForTimeout(1500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     await go(V, "track"); ok("viewer sees the view-only note", (await V.locator(".banner", { hasText: "View-only." }).count()) === 1);

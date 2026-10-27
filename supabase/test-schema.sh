@@ -36,7 +36,7 @@ check "select jsonb_array_length(season_view('s1s1s1')->'matches');" "1" "season
 check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the match"
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "6" "schema version is reported"
+check "select schema_version();" "7" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -55,4 +55,13 @@ as $B "update records set data = '{}' where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "view-only members can't change data"
 as $A "update records set data = '{\"first\":\"Old\"}', u = 3 where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "an older edit never overwrites a newer one"
+# deleting an account removes the user, the teams they own (and everything in them) and their memberships
+q -c "insert into teams_cloud (id, name, owner) values ('t3', 'Theirs', '$B');" >/dev/null
+q -c "insert into members (team_id, user_id, role) values ('t3', '$A', 'coach') on conflict do nothing;" >/dev/null
+as $A "select delete_my_account();" >/dev/null
+expect "$(q -c "select count(*) from auth.users where id = '$A';")" "0" "account deleted"
+expect "$(q -c "select count(*) from records where team_id = 't2';")" "0" "teams they owned are deleted with their data"
+expect "$(q -c "select count(*) from members where user_id = '$A';")" "0" "memberships on other teams are removed"
+expect "$(q -c "select count(*) from teams_cloud where id = 't3';")" "1" "other people's teams stay"
+expect "$(q -c "set role anon; select delete_my_account();" 2>&1 | grep -c 'permission denied')" "1" "signed-out visitors can't call it"
 echo "schema OK"

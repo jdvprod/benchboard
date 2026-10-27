@@ -2,10 +2,12 @@ import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
-import { Card, Seg, SetRow, Switch } from "../../ui/kit";
+import { Card, ConfirmButton, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
 import { cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
-import { isLinked } from "../../cloud/sync";
+import { deleteAccount, isLinked } from "../../cloud/sync";
+import { LEGAL } from "../../app/legal";
+import { eraseDevice } from "../../data/db";
 import { go } from "../../app/router";
 
 export function SettingsPage() {
@@ -58,7 +60,8 @@ export function SettingsPage() {
       <p className="small muted" style={{ marginTop: 6 }}>{state.persistent ? "Your browser has agreed to keep this data." : "Your browser may clear this data if space runs low."} Save a backup from Team → Backup to move data to another device or keep a copy.</p>
       <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => go("team")}>Backup & restore</button><button className="btn sm" onClick={() => { location.reload(); toast("Reloaded"); }}>Reload app</button></div>
     </Card>
-    <p className="small muted" style={{ textAlign: "center" }}>Benchboard 2.0</p>
+    <PrivacyCard />
+    <p className="small muted" style={{ textAlign: "center" }}>Benchboard 2.0 · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
   </div>;
 }
 
@@ -94,7 +97,7 @@ function InstallCard() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);
@@ -129,5 +132,33 @@ function SetupCheck() {
   return <Card title="Setup check" actions={<button className="btn sm" disabled={busy} onClick={run}>{busy ? "Checking…" : checks ? "Check again" : "Run check"}</button>}>
     {!checks ? <p className="small muted">Checks the database, your account, team sync and AI, and tells you exactly what's left to set up.</p>
       : <ul className="setup-list">{checks.map((c) => <li key={c.label} className={"sc-" + c.state}><span className="sc-dot" aria-hidden="true">{c.state === "ok" ? "✓" : c.state === "todo" ? "!" : "·"}</span><div><b>{c.label}</b><p className="small" style={{ margin: 0 }}>{c.detail}</p></div></li>)}</ul>}
+  </Card>;
+}
+
+/** Privacy, legal documents and deleting data. */
+function PrivacyCard() {
+  const user = currentUser(), t = team();
+  const [step, setStep] = useState<"idle" | "confirm" | "busy" | "deleted">("idle"), [typed, setTyped] = useState(""), [err, setErr] = useState("");
+  const erase = async () => { await eraseDevice(); location.replace(location.pathname); };
+  return <Card title="Privacy and your data">
+    <div className="stack">
+      <div className="row"><a className="btn sm" href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a><a className="btn sm" href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a>
+        <a className="btn sm" href={LEGAL.consent + (t ? "#team=" + encodeURIComponent(t.name) : "")} target="_blank" rel="noopener">Parent and guardian form</a></div>
+      <p className="small muted" style={{ margin: 0 }}>Benchboard doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
+      {user ? <>
+        {step === "idle" && <SetRow title="Delete your account" sub="Removes your account and every cloud team you own (for everyone on it), and takes you off other teams. Data on this device stays unless you erase it too."><button className="btn sm" onClick={() => setStep("confirm")}>Delete account</button></SetRow>}
+        {step === "confirm" && <div className="banner warn" style={{ display: "block" }}>
+          <p><b>This can't be undone.</b> Cloud teams you own are deleted for every coach and viewer on them, along with their share links. Save a backup first if you might want the data. Type <b>DELETE</b> to confirm.</p>
+          <div className="row" style={{ marginTop: 8 }}><input className="input" style={{ width: 140 }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Type DELETE to confirm" />
+            <button className="btn sm danger" disabled={typed.trim() !== "DELETE"} onClick={async () => { setStep("busy"); setErr(""); try { await deleteAccount(); signOut(); setStep("deleted"); toast("Account deleted"); } catch (e: any) { setErr(e?.message || "Couldn't delete the account. Check your connection and try again."); setStep("confirm"); } }}>Delete my account</button>
+            <button className="btn sm" onClick={() => { setStep("idle"); setTyped(""); }}>Cancel</button></div>
+          {err && <p className="hint warn">{err}</p>}
+        </div>}
+        {step === "busy" && <p className="small">Deleting…</p>}
+      </> : step === "deleted" ? null : <p className="small muted" style={{ margin: 0 }}>You're not signed in, so everything is stored only on this device.</p>}
+      {step === "deleted" && <p className="hint">Your account is deleted. Your teams are still saved on this device; erase them below if you want them gone here too.</p>}
+      <SetRow title="Erase this device" sub="Deletes every team, match and setting Benchboard stored in this browser. Synced teams stay in the cloud for their other coaches.">
+        <ConfirmButton className="btn sm" confirmText="Erase everything here?" onConfirm={erase}>Erase this device</ConfirmButton></SetRow>
+    </div>
   </Card>;
 }

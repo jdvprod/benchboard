@@ -3,6 +3,7 @@
  * The project URL and public "anon" key are safe to ship in the app; Row Level Security protects the data.
  */
 import { CLOUD_CONFIG } from "./config";
+import { LEGAL_VERSION } from "../app/legal";
 
 const SESSION_KEY = "bs-session", CONFIG_KEY = "bs-cloud-config";
 
@@ -53,7 +54,8 @@ function fromAuth(b: any): Session {
   return { access_token: b.access_token, refresh_token: b.refresh_token, expires_at: b.expires_at || Math.floor(Date.now() / 1000) + (b.expires_in || 3600), user: { id: b.user.id, email: b.user.email } };
 }
 export async function signUp(email: string, password: string): Promise<"signed-in" | "confirm-email"> {
-  const b = await call("/auth/v1/signup?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ email, password }) });
+  // the agreement is recorded with the account: which version of the terms, and when
+  const b = await call("/auth/v1/signup?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ email, password, data: { terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() } }) });
   if (b && b.access_token) { setSession(fromAuth(b)); return "signed-in"; }
   return "confirm-email";
 }

@@ -18,9 +18,10 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
   let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => {
     const url = new URL(req.url, "http://x"), p = url.pathname, b = body ? JSON.parse(body) : null;
     const tok = (req.headers.authorization || "").replace("Bearer ", ""), me = tokens.get(tok) || null;
+    if (p === "/__mock/users") return send(res, 200, [...users.values()].map((u) => ({ email: u.email, meta: u.meta }))); // test inspection only
     if (!req.headers.apikey) return send(res, 401, { message: "no apikey" });
     // auth
-    if (p === "/auth/v1/signup") { if ([...users.values()].some((u) => u.email === b.email)) return send(res, 400, { msg: "User already registered" }); const u = { id: uid(), email: b.email, pw: b.password }; users.set(u.id, u); return send(res, 200, session(u)); }
+    if (p === "/auth/v1/signup") { if ([...users.values()].some((u) => u.email === b.email)) return send(res, 400, { msg: "User already registered" }); const u = { id: uid(), email: b.email, pw: b.password, meta: b.data || {} }; users.set(u.id, u); return send(res, 200, session(u)); }
     if (p === "/auth/v1/token" && url.searchParams.get("grant_type") === "password") { const u = [...users.values()].find((x) => x.email === b.email && x.pw === b.password); return u ? send(res, 200, session(u)) : send(res, 400, { error_description: "Invalid login credentials" }); }
     if (p === "/auth/v1/token") { const id = tokens.get(b.refresh_token); return id ? send(res, 200, session(users.get(id))) : send(res, 400, { error: "invalid" }); }
     if (p === "/auth/v1/logout" || p === "/auth/v1/recover") return send(res, 204);
@@ -33,7 +34,13 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       return send(res, 200, { team: tr && { name: tr.data.name, color: tr.data.color, level: tr.data.level }, match: (R.find((r) => r.store === "matches" && r.id === s.match_id) || {}).data || null,
         logs: R.filter((r) => r.store === "logs" && r.data.matchId === s.match_id).map((r) => r.data.events), players: R.filter((r) => r.store === "players").map((r) => ({ id: r.data.id, num: r.data.num, first: r.data.first, last: (r.data.last || "").slice(0, 1), pos: r.data.pos })), at: new Date().toISOString() });
     }
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 6);
+    if (p === "/rest/v1/rpc/delete_my_account") {
+      if (!me) return send(res, 401, { message: "JWT required" });
+      for (const [id, t] of teams) if (t.owner === me) { teams.delete(id); for (const [k, r] of records) if (r.team_id === id) records.delete(k); for (let i = members.length - 1; i >= 0; i--) if (members[i].team_id === id) members.splice(i, 1); }
+      for (let i = members.length - 1; i >= 0; i--) if (members[i].user_id === me) members.splice(i, 1);
+      users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
+    }
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 7);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/season_view") {
@@ -64,6 +71,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/members" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, isMember(t, me) ? members.filter((m) => m.team_id === t) : []); }
     if (p === "/rest/v1/recruit_shares" && req.method === "GET") { const t = val(P.team_id), pl = val(P.player_id); return send(res, 200, [...recruits.values()].filter((r) => r.team_id === t && r.player_id === pl && isMember(t, me))); }
     if (p === "/rest/v1/recruit_shares" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); recruits.set(b.code, { ...b, updated_at: now() }); return send(res, 201); }
+    if (p === "/rest/v1/recruit_shares" && req.method === "DELETE") { const t = val(P.team_id), pl = val(P.player_id); if (!canEdit(t, me)) return send(res, 403, { message: "rls" }); for (const [k, r] of recruits) if (r.team_id === t && r.player_id === pl) recruits.delete(k); return send(res, 204); }
     if (p === "/rest/v1/recruit_shares" && req.method === "PATCH") { const r = recruits.get(val(P.code)); if (!r || !canEdit(r.team_id, me)) return send(res, 403, { message: "rls" }); Object.assign(r, b); return send(res, 204); }
     if (p === "/rest/v1/season_shares" && req.method === "GET") { const t = val(P.team_id), se = val(P.season_id); return send(res, 200, [...seasonShares.values()].filter((s) => s.team_id === t && s.season_id === se && isMember(t, me))); }
     if (p === "/rest/v1/season_shares" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); seasonShares.set(b.code, b); return send(res, 201); }
