@@ -1,6 +1,7 @@
 import { recordOf } from "../../sports/volleyball/engine";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
+import { parseRosterLine } from "./parseRoster";
 import { LEGAL, LEGAL_VERSION } from "../../app/legal";
 import { currentUser } from "../../cloud/client";
 import { all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
@@ -69,8 +70,8 @@ function Roster() {
       <button className="btn sm primary" onClick={() => { setTeamPatch({ rosterConsent: { at: Date.now(), by: currentUser()?.email || "this device", version: LEGAL_VERSION } }); toast("Thanks. You can find the parent form any time in Settings."); }}>I have permission</button>
     </div>}
     {paste != null && <div className="stack" style={{ marginBottom: 12 }}>
-      <label className="field"><span className="label">One player per line: number, name, position, grad year (any order after the number)</span>
-        <textarea rows={6} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"7 Maya Chen OH 2027\n12 Sofia Nguyen MB\n#1 Ava Ramirez setter"} autoFocus /></label>
+      <label className="field"><span className="label">One player per line: number, name, position, then grad year or class (Fr, So, Jr, Sr) and height if you have them</span>
+        <textarea rows={6} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"7 Maya Chen OH 2027\n12 Sofia Nguyen MB 5'11\" Jr.\n#1 Ava Ramirez setter"} autoFocus /></label>
       <div className="row"><button className="btn sm primary" disabled={!paste.trim()} onClick={() => { toast(addPasted(paste)); setPaste(null); }}>Add players</button><button className="btn sm" onClick={() => setPaste(null)}>Cancel</button></div>
     </div>}
     {!ps.length && paste == null && <div className="empty-roster">
@@ -204,23 +205,11 @@ function importRosterCsv(text: string): string {
 /** "7 Maya Chen OH 2027" per line. Updates players with the same number. */
 function addPasted(text: string): string {
   const t = team()!, existing = teamPlayers(); let added = 0, updated = 0;
-  const POS: Record<string, string> = { OH: "OH", OUTSIDE: "OH", MB: "MB", MIDDLE: "MB", OPP: "OPP", OPPOSITE: "OPP", RS: "OPP", RIGHT: "OPP", S: "S", SETTER: "S", L: "L", LIBERO: "L", DS: "DS" };
   for (const line of text.split(/\r?\n/)) {
-    const tok = line.replace(/[,\t|]/g, " ").split(/\s+/).filter(Boolean); if (!tok.length) continue;
-    let num = "", pos = "", grad: number | null = null; const names: string[] = [];
-    for (const w of tok) {
-      if (!num && /^#?\d{1,3}$/.test(w)) num = w.replace("#", "");
-      else if (/^(19|20)\d\d$/.test(w)) grad = +w;
-      else names.push(w);
-    }
-    // the position is the last position word after the first name ("Ava Setter S" is Ava Setter, a setter)
-    const key = (w: string) => w.toUpperCase().replace(/[.()]/g, "");
-    for (let i = names.length - 1; i > 0; i--) if (POS[key(names[i])]) { pos = POS[key(names[i])]; names.splice(i, 1); break; }
-    if (!num && !names.length) continue;
-    const first = names[0] || "", last = names.slice(1).join(" ");
-    const match = existing.find((p) => num && p.num === num);
-    if (match) { patch("players", match.id, { first: first || match.first, last: last || match.last, pos: pos || match.pos, grad: grad ?? match.grad, active: true }); updated++; }
-    else { save("players", { id: uid("p"), teamId: t.id, num, first, last, pos: pos || "OH", grad, height: "", active: true, goals: [], notes: "" } as Player); added++; }
+    const r = parseRosterLine(line); if (!r) continue;
+    const match = existing.find((p) => r.num && p.num === r.num);
+    if (match) { patch("players", match.id, { first: r.first || match.first, last: r.last || match.last, pos: r.pos || match.pos, grad: r.grad ?? match.grad, height: r.height || match.height, active: true }); updated++; }
+    else { save("players", { id: uid("p"), teamId: t.id, num: r.num, first: r.first, last: r.last, pos: r.pos || "OH", grad: r.grad, height: r.height, active: true, goals: [], notes: "" } as Player); added++; }
   }
   return `${added} added${updated ? `, ${updated} updated` : ""}.`;
 }

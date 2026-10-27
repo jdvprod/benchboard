@@ -214,3 +214,25 @@ test("match formats: sets to 21, caps, sets ended early, two-set pool play", () 
   R = replay([ev("NS", { serve: "us" }), ...pts(25), ev("NS", { serve: "us" }), ...pts(25, "TP")], { bestOf: 2 });
   assert.equal(R.sets[1].target, 25, "no deciding set in pool play"); assert.equal(R.matchOver, true); assert.deepEqual([R.wonUs, R.wonThem], [1, 1]);
 });
+
+import { parseRosterLine, schoolYearEnd } from "../src/features/team/parseRoster";
+test("roster paste: names, positions, classes and heights from copied rosters", () => {
+  const fall = new Date(2026, 9, 1), spring = new Date(2027, 2, 1);
+  assert.equal(schoolYearEnd(fall), 2027); assert.equal(schoolYearEnd(spring), 2027);
+  const r = (l: string) => parseRosterLine(l, fall);
+  assert.deepEqual(r("7 Maya Chen OH 2027"), { num: "7", first: "Maya", last: "Chen", pos: "OH", grad: 2027, height: "" });
+  assert.deepEqual(r(`#12 Sofia Nguyen MB 5'11" Jr.`), { num: "12", first: "Sofia", last: "Nguyen", pos: "MB", grad: 2028, height: `5'11"` });
+  assert.deepEqual(r("1\tAva Ramirez\tS\tSr\t5' 6\""), { num: "1", first: "Ava", last: "Ramirez", pos: "S", grad: 2027, height: `5'6"` });
+  assert.deepEqual(r("Ava Setter S 1"), { num: "1", first: "Ava", last: "Setter", pos: "S", grad: null, height: "" });
+  assert.equal(r("4 Jordan Lee OH/RS Fr. 5-9")!.pos, "OH");
+  assert.equal(r("4 Jordan Lee OH/RS Fr. 5-9")!.grad, 2030);
+  assert.equal(r("4 Jordan Lee OH/RS Fr. 5-9")!.height, `5'9"`);
+  assert.equal(r("9 Riley Brooks Defensive Specialist '28")!.pos, "DS");
+  assert.equal(r("9 Riley Brooks Defensive Specialist '28")!.grad, 2028);
+  assert.equal(r("3 Lily Torres Libero")!.pos, "L");
+  assert.equal(r("   "), null);
+  assert.equal(r("10 Emma Diaz DS 2028")!.last, "Diaz");
+  // a first name that happens to be a class or position word stays a name
+  assert.equal(r("5 Sr Mendez")!.first, "Sr");
+  assert.equal(r("6 Libero")!.first, "Libero");
+});
