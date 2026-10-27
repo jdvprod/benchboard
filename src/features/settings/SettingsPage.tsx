@@ -6,7 +6,7 @@ import { Card, ConfirmButton, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
 import { cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
 import { deleteAccount, isLinked } from "../../cloud/sync";
-import { LEGAL } from "../../app/legal";
+import { LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
 import { go } from "../../app/router";
 
@@ -126,6 +126,7 @@ function SetupCheck() {
           : { label: "AI features", state: "warn", detail: "The ai function didn't answer: " + (e?.message || "unknown error") + "." });
       }
     }
+    out.push(LEGAL_EMAIL ? { label: "Privacy contact", state: "ok", detail: "Your Privacy Policy and Terms list " + LEGAL_EMAIL + " for questions." } : { label: "Privacy contact", state: "todo", detail: "Your Privacy Policy needs a contact email for privacy requests. Add it as legal.email in package.json (or ask your developer)." });
     out.push(installed() ? { label: "Installed on this device", state: "ok", detail: "Opened from the home screen." } : { label: "Installed on this device", state: "warn", detail: "Optional: add it to your home screen (see Install the app above) so it opens full screen and works offline." });
     setChecks(out); setBusy(false);
   };

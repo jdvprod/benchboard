@@ -344,7 +344,8 @@ const scenarios = {
     await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
     ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
-    ok("setup check: everything but install is ✓", (await A.locator(".setup-list li.sc-ok").count()) === 5, await A.locator(".setup-list").innerText());
+    const notOk = await A.locator(".setup-list li:not(.sc-ok) b").allInnerTexts();
+    ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".setup-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact"].includes(x)), notOk.join(", "));
     // a view-only parent account can follow along but can't change the team's data
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();

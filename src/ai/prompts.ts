@@ -1,4 +1,5 @@
-/** Turns stats into text Claude can reason over. Numbers only come from the data, never invented. */
+/** Turns stats into text Claude can reason over. Numbers only come from the data, never invented.
+ * Privacy: players appear only as jersey number and first name (no last names, contact details or notes). */
 import { activePlayers, matchesOf, oppKey, opponentsOf, player, playerName, replayOf, team, teamPlayers } from "../data/store";
 import { Match } from "../data/model";
 import { aggregate, Agg, runOf, serverOf, Stat, zoneOf } from "../sports/volleyball/engine";
@@ -27,7 +28,7 @@ export function snapshot(m: Match): string {
     L.push("GAMES: " + R.sets.map((s) => `G${s.n} ${s.us}–${s.them}${s.over ? "" : " (in progress)"}`).join(", "));
     for (const k of ["a", "b"] as const) {
       L.push(`${S[k].name.toUpperCase()}: ${statLine(mA.side[k])}`);
-      for (const id of Object.keys(mA.ps).filter((id) => mA.pside[id] === k)) L.push(`- ${playerName(id, "full")} (${player(id)?.pos}): ${statLine(mA.ps[id])}`);
+      for (const id of Object.keys(mA.ps).filter((id) => mA.pside[id] === k)) L.push(`- ${playerName(id)} (${player(id)?.pos}): ${statLine(mA.ps[id])}`);
     }
     if (m.notes) L.push("COACH NOTES: " + m.notes);
     return L.join("\n");
@@ -37,15 +38,15 @@ export function snapshot(m: Match): string {
   L.push("Set scores: " + R.sets.map((s) => `S${s.n} ${s.us}–${s.them}${s.over ? "" : " (in progress)"}`).join(", ") + `. Sets to ${c.target}, win by 2.`);
   L.push(`CURRENT: Set ${c.n}, us ${c.us} – them ${c.them}. Serving: ${c.serve === "us" ? t.name : opp}. Rotation ${c.rot}. Timeouts left: us ${2 - c.to.us}, them ${2 - c.to.them}. Subs used: ${c.subs}${t.settings.subLimit ? " of " + t.settings.subLimit : ""}. Run: ${run.n ? (run.side === "us" ? t.name : opp) + " " + run.n + "–0" : "none"}.`);
   if (c.lu) {
-    L.push("ON COURT (position: player): " + c.lu.map((id, i) => `P${i + 1}${i === 0 ? "(server spot)" : ""} ${playerName(id, "full")} ${player(id)?.pos || ""}`).join("; ") + ". Front row is P2, P3, P4." + (c.lib ? " Libero: " + playerName(c.lib, "full") + "." : ""));
+    L.push("ON COURT (position: player): " + c.lu.map((id, i) => `P${i + 1}${i === 0 ? "(server spot)" : ""} ${playerName(id)} ${player(id)?.pos || ""}`).join("; ") + ". Front row is P2, P3, P4." + (c.lib ? " Libero: " + playerName(c.lib) + "." : ""));
     const bench = activePlayers().filter((p) => !c.lu!.includes(p.id) && p.id !== c.lib).map((p) => `#${p.num} ${p.first} (${p.pos})`);
     if (bench.length) L.push("BENCH: " + bench.join(", "));
-    const s = serverOf(c); if (s) L.push("SERVING NOW: " + playerName(s, "full"));
+    const s = serverOf(c); if (s) L.push("SERVING NOW: " + playerName(s));
   }
   L.push("TEAM THIS SET: " + teamLine(sA));
   L.push("TEAM MATCH: " + teamLine(mA));
   L.push("PLAYERS (match):");
-  for (const p of teamPlayers()) { const s = mA.ps[p.id]; if (!s) continue; const pm = playerMetrics(mA, p.id); L.push(`- #${p.num} ${p.first} ${p.last} (${p.pos}): ${statLine(s)}; +/- ${pm.plusMinus ?? "n/a"}`); }
+  for (const p of teamPlayers()) { const s = mA.ps[p.id]; if (!s) continue; const pm = playerMetrics(mA, p.id); L.push(`- #${p.num} ${p.first} (${p.pos}): ${statLine(s)}; +/- ${pm.plusMinus ?? "n/a"}`); }
   L.push("ATTACK BY FIRST CONTACT: " + (Object.keys(CONTEXT_LABEL) as AttackContext[]).filter((k) => mA.ctx[k]).map((k) => { const C = mA.ctx[k]!; return `${CONTEXT_LABEL[k]}: hit ${fmtHit(hitting({ K: C.team.K, AE: C.team.E, TA: C.team.TA }))} on ${C.team.TA} (sets to ${Object.entries(C.p).filter((x) => x[0] !== "_").sort((a, b) => b[1].TA - a[1].TA).slice(0, 3).map(([id, v]) => playerName(id) + " " + v.TA).join(", ")})`; }).join("; "));
   L.push("ROTATIONS (match): " + [1, 2, 3, 4, 5, 6].map((r) => { const x = mA.rot[r]; return `R${r} ${x.w}-${x.l} (side-out ${x.rw}/${x.rn}, on serve ${x.sw}/${x.sn})`; }).join("; "));
   const opps = Object.entries(mA.opp).sort((a, b) => b[1].K - a[1].K);
@@ -109,7 +110,7 @@ export function seasonPrompt(items: { m: Match; R: import("../sports/volleyball/
 export function reportCardPrompt(playerId: string) {
   const p = player(playerId); if (!p) return "";
   const games = matchesOf().filter((m) => m.kind === "match").slice().reverse();
-  const L = [`PLAYER: #${p.num} ${p.first} ${p.last} (${p.pos})${p.grad ? ", class of " + p.grad : ""}, team ${team()!.name}.`, "MATCH BY MATCH (oldest first):"];
+  const L = [`PLAYER: #${p.num} ${p.first} (${p.pos})${p.grad ? ", class of " + p.grad : ""}, team ${team()!.name}.`, "MATCH BY MATCH (oldest first):"];
   const all: any[] = [];
   for (const m of games) { const R = replayOf(m); if (!R) continue; const A = aggregate(R.sets); if (!A.ps[p.id]) continue; all.push(...R.sets); L.push(`- ${m.date} vs ${m.opp}: ${statLine(A.ps[p.id])}`); }
   if (all.length) { const A = aggregate(all), pm = playerMetrics(A, p.id); L.push(`SEASON: ${statLine(A.ps[p.id])}; ${pm.sets} sets; kills/set ${pm.kps?.toFixed(2)}, digs/set ${pm.dps?.toFixed(2)}, +/- ${pm.plusMinus ?? "n/a"}, net points ${pm.netPoints}`); }
