@@ -50,7 +50,7 @@ export function SeasonPage({ code }: { code: string }) {
       <button className="btn sm" onClick={() => setSel(null)}>← {d.team?.name}</button>
       <section className="card sh-player">
         <div className="sh-num">{p.num}</div>
-        <div><h1 style={{ margin: 0 }}>{p.first} {p.last ? p.last + "." : ""}</h1><p className="muted" style={{ margin: 0 }}>{p.pos} · {d.team?.name} · {d.season || "This season"}</p></div>
+        <div><h1 style={{ margin: 0 }}>{p.first ? `${p.first} ${p.last ? p.last + "." : ""}` : `Player #${p.num}`}</h1><p className="muted" style={{ margin: 0 }}>{p.pos} · {d.team?.name} · {d.season || "This season"}</p></div>
       </section>
       <section className="card"><div className="sh-k">
         {[["Kills", s?.K ?? 0, pm.kps != null ? fmtNum(pm.kps, 2) + " per set" : ""], ["Hitting", s && s.TA ? fmtHit(hitting(s)) : "—", s ? `${s.TA} swings` : ""], ["Aces", s?.SA ?? 0, s && serveAttempts(s) ? fmtPct(pm.serveIn) + " in" : ""], ["Passing", s && s.R ? fmtAvg(passAvg(s)) : "—", s?.R ? s.R + " passes" : ""], ["Digs", s?.D ?? 0, pm.dps != null ? fmtNum(pm.dps, 2) + " per set" : ""], ["Blocks", s ? fmtNum(blocks(s)) : 0, ""], ["Assists", s?.AST ?? 0, ""], ["Sets played", pm.sets, ""]].map(([l, v, sub]) =>
@@ -85,7 +85,7 @@ export function SeasonPage({ code }: { code: string }) {
       {leader((s) => s.K, "Kills")}{leader((s) => s.SA, "Aces")}{leader((s) => s.D, "Digs")}{leader((s) => blocks(s), "Blocks")}{leader((s) => s.AST, "Assists")}
     </div></section>}
     {roster.length > 0 && <section className="card"><div className="label" style={{ marginBottom: 8 }}>Players</div><div className="sh-roster">
-      {roster.map((p) => <button key={p.id} className="pl" onClick={() => setSel(p.id)}><span className="n">{p.num}</span><span className="nm">{p.first}</span><span className="ps">{p.pos}</span></button>)}
+      {roster.map((p) => <button key={p.id} className="pl" onClick={() => setSel(p.id)}><span className="n">{p.num}</span><span className="nm">{p.first || "Player"}</span><span className="ps">{p.pos}</span></button>)}
     </div></section>}
     <p className="small muted" style={{ textAlign: "center" }}>{d.team?.name} · Stats by Benchboard · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a></p>
   </div></div>;

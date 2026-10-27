@@ -139,6 +139,20 @@ end $$;
 grant execute on function public.join_team(text) to authenticated;
 
 -- public live view for parents: one match, the roster's names and numbers, nothing else
+-- ---------- what public pages may show ----------
+-- Plays only: film tags (TAG events) carry coaches' private notes, so they never leave the team.
+create or replace function public.public_events(ev jsonb) returns jsonb
+language sql immutable as $$
+  select coalesce(jsonb_agg(e), '[]'::jsonb) from jsonb_array_elements(coalesce(ev, '[]'::jsonb)) e where e->>'t' is distinct from 'TAG'
+$$;
+-- A player on a public page: first name and last initial, or only the number when the family asked to keep them off public pages.
+create or replace function public.public_player(d jsonb) returns jsonb
+language sql immutable as $$
+  select jsonb_build_object('id', d->>'id', 'num', d->>'num', 'pos', d->>'pos',
+    'first', case when coalesce((d->>'hidePublic')::boolean, false) then '' else coalesce(d->>'first', '') end,
+    'last', case when coalesce((d->>'hidePublic')::boolean, false) then '' else left(coalesce(d->>'last', ''), 1) end)
+$$;
+
 create or replace function public.watch(share text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare s live_shares; out jsonb;
@@ -147,10 +161,12 @@ begin
   if s.code is null then return null; end if;
   select jsonb_build_object(
     'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'level', data->>'level') from records where store = 'teams' and id = s.team_id and not deleted),
-    'match', (select data from records where store = 'matches' and id = s.match_id and not deleted),
-    'logs', coalesce((select jsonb_agg(data->'events') from records where store = 'logs' and team_id = s.team_id and data->>'matchId' = s.match_id and not deleted), '[]'::jsonb),
-    'players', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'num', data->>'num', 'first', data->>'first', 'last', left(coalesce(data->>'last', ''), 1), 'pos', data->>'pos'))
-                         from records where store = 'players' and team_id = s.team_id and not deleted), '[]'::jsonb),
+    -- only what the gamecast shows: never the coach's match notes, film link or scouting
+    'match', (select jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'event', data->>'event', 'status', data->>'status', 'kind', data->>'kind',
+                                        'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'scrim', data->'scrim')
+              from records where store = 'matches' and id = s.match_id and not deleted),
+    'logs', coalesce((select jsonb_agg(public_events(data->'events')) from records where store = 'logs' and team_id = s.team_id and data->>'matchId' = s.match_id and not deleted), '[]'::jsonb),
+    'players', coalesce((select jsonb_agg(public_player(data)) from records where store = 'players' and team_id = s.team_id and not deleted), '[]'::jsonb),
     'at', now()
   ) into out;
   return out;
@@ -184,10 +200,10 @@ begin
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
     'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site'))
                          from records where store = 'matches' and team_id = s.team_id and data->>'seasonId' = s.season_id and data->>'kind' = 'match' and not deleted), '[]'::jsonb),
-    'logs', coalesce((select jsonb_agg(jsonb_build_object('matchId', l.data->>'matchId', 'events', l.data->'events'))
+    'logs', coalesce((select jsonb_agg(jsonb_build_object('matchId', l.data->>'matchId', 'events', public_events(l.data->'events')))
                       from records l where l.store = 'logs' and l.team_id = s.team_id and not l.deleted
                       and exists (select 1 from records m where m.store = 'matches' and m.id = l.data->>'matchId' and m.data->>'seasonId' = s.season_id and m.data->>'kind' = 'match' and not m.deleted)), '[]'::jsonb),
-    'players', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'num', data->>'num', 'first', data->>'first', 'last', left(coalesce(data->>'last', ''), 1), 'pos', data->>'pos'))
+    'players', coalesce((select jsonb_agg(public_player(data))
                          from records where store = 'players' and team_id = s.team_id and not deleted and coalesce((data->>'active')::boolean, true)), '[]'::jsonb),
     'at', now()
   ) into out;
@@ -239,7 +255,7 @@ $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
-create or replace function public.schema_version() returns int language sql immutable as $$ select 7 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 8 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

@@ -39,8 +39,8 @@ export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
     text("SET " + s.n, x, 610, 22, GREY, { align: "center", spacing: 3 });
     text(`${s.us}–${s.them}`, x, 680, 48, s.winner === "us" ? BLUE : "#fff", { align: "center" });
   });
-  // leaders
-  const lead = (f: (s: Stat) => number, label: string) => { const e = Object.entries(A.ps).filter(([id]) => player(id)).map(([id, s]) => [id, f(s)] as [string, number]).sort((a, b) => b[1] - a[1])[0]; return e && e[1] > 0 ? { id: e[0], v: e[1], label } : null; };
+  // leaders (players whose families asked to stay off public pages are left out of this image)
+  const lead = (f: (s: Stat) => number, label: string) => { const e = Object.entries(A.ps).filter(([id]) => player(id) && !player(id)!.hidePublic).map(([id, s]) => [id, f(s)] as [string, number]).sort((a, b) => b[1] - a[1])[0]; return e && e[1] > 0 ? { id: e[0], v: e[1], label } : null; };
   const L = [lead((s) => s.K, "KILLS"), lead((s) => s.SA, "ACES"), lead((s) => s.D, "DIGS"), lead((s) => blocks(s), "BLOCKS"), lead((s) => s.AST, "ASSISTS")].filter(Boolean).slice(0, 4) as { id: string; v: number; label: string }[];
   text("TOP PERFORMERS", 80, 810, 28, BLUE, { spacing: 5 });
   L.forEach((l, i) => {

@@ -55,6 +55,8 @@ export interface Player {
   active: boolean;
   goals: Goal[];
   notes: string;
+  /** The family asked to keep this player off public pages: gamecasts and the season page show only the jersey number, and share graphics leave them out. */
+  hidePublic?: boolean;
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }

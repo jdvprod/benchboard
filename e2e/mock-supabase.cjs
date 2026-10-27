@@ -29,12 +29,15 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/auth/v1/user" && req.method === "PUT") { const u = users.get(me); if (!u) return send(res, 401, { message: "JWT required" }); if (b.data) u.meta = { ...(u.meta || {}), ...b.data }; if (b.password) u.pw = b.password; return send(res, 200, { id: u.id, email: u.email, user_metadata: u.meta }); }
     // rpc
     if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!isMember(inv.team_id, me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now() }); return send(res, 200, inv.team_id); }
+    const pubEvents = (ev) => (ev || []).filter((e) => e.t !== "TAG");
+    const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1) });
+    const pubMatch = (m) => m && ({ id: m.id, opp: m.opp, date: m.date, event: m.event, status: m.status, kind: m.kind, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, scrim: m.scrim });
     if (p === "/rest/v1/rpc/watch") {
       const s = shares.get(String(b.share).toUpperCase()); if (!s) return send(res, 200, null);
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
       const tr = R.find((r) => r.store === "teams" && r.id === s.team_id);
-      return send(res, 200, { team: tr && { name: tr.data.name, color: tr.data.color, level: tr.data.level }, match: (R.find((r) => r.store === "matches" && r.id === s.match_id) || {}).data || null,
-        logs: R.filter((r) => r.store === "logs" && r.data.matchId === s.match_id).map((r) => r.data.events), players: R.filter((r) => r.store === "players").map((r) => ({ id: r.data.id, num: r.data.num, first: r.data.first, last: (r.data.last || "").slice(0, 1), pos: r.data.pos })), at: new Date().toISOString() });
+      return send(res, 200, { team: tr && { name: tr.data.name, color: tr.data.color, level: tr.data.level }, match: pubMatch((R.find((r) => r.store === "matches" && r.id === s.match_id) || {}).data) || null,
+        logs: R.filter((r) => r.store === "logs" && r.data.matchId === s.match_id).map((r) => pubEvents(r.data.events)), players: R.filter((r) => r.store === "players").map((r) => pubPlayer(r.data)), at: new Date().toISOString() });
     }
     if (p === "/rest/v1/rpc/delete_my_account") {
       if (!me) return send(res, 401, { message: "JWT required" });
@@ -42,7 +45,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       for (let i = members.length - 1; i >= 0; i--) if (members[i].user_id === me) members.splice(i, 1);
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 7);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 8);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/season_view") {
@@ -52,8 +55,8 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       const ms = R.filter((r) => r.store === "matches" && r.data.seasonId === s.season_id && r.data.kind === "match").map((r) => r.data), ids = new Set(ms.map((m) => m.id));
       return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level, schedule: tr.data.schedule || [] }, season: se && se.data.name,
         matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, status: m.status, event: m.event, site: m.site })),
-        logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: r.data.events })),
-        players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => ({ id: r.data.id, num: r.data.num, first: r.data.first, last: (r.data.last || "").slice(0, 1), pos: r.data.pos })), at: new Date().toISOString() });
+        logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: pubEvents(r.data.events) })),
+        players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), at: new Date().toISOString() });
     }
     if (p === "/functions/v1/ai") { if (!me) return send(res, 401, { message: "JWT required" }); return send(res, 200, { content: [{ type: "text", text: "Strengths:\n- Mock report from the server function (" + b.model + ")" }], stop_reason: "end_turn" }); }
     if (!me) return send(res, 401, { message: "JWT required" });

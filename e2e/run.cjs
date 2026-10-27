@@ -415,6 +415,13 @@ const scenarios = {
     await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
+    ok("season page shows first names", (await P.locator("body").innerText()).includes("Nia"));
+    // a family that said no to team pages: Nia shows only as her number
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    await A.getByLabel("Keep off public pages").check(); await A.waitForTimeout(2500);
+    await P.reload(); await P.waitForTimeout(1500);
+    { const body = await P.locator("body").innerText(); ok("player kept off public pages shows only her number", !body.includes("Nia") && /22\s+Player/.test(body), body.slice(0, 400).replace(/\s+/g, " ")); }
+    await A.getByLabel("Keep off public pages").uncheck(); await A.waitForTimeout(300);
     { const ax = await a11y(P); ok("season page controls all have names", !ax.length, ax.join(" | ")); }
     { const cx = await contrast(P); ok("season page text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);

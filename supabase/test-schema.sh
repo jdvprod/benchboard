@@ -24,19 +24,25 @@ insert into teams_cloud (id, name, owner) values ('t1', 'Test', '11111111-1111-1
 insert into records (store, id, team_id, data) values
   ('teams', 't1', 't1', '{"name":"Test"}'), ('seasons', 's1', 't1', '{"name":"Fall"}'),
   ('matches', 'm1', 't1', '{"id":"m1","seasonId":"s1","kind":"match","opp":"Them","date":"2026-10-01","bestOf":5,"status":"done"}'),
-  ('logs', 'l1', 't1', '{"matchId":"m1","events":[]}'),
-  ('players', 'p1', 't1', '{"id":"p1","num":"7","first":"Maya","last":"Chen","pos":"OH"}');
+  ('logs', 'l1', 't1', '{"matchId":"m1","events":[{"id":"e1","t":"K","p":"p1","ts":1},{"id":"e2","t":"TAG","note":"private film note","ts":2}]}'),
+  ('players', 'p1', 't1', '{"id":"p1","num":"7","first":"Maya","last":"Chen","pos":"OH"}'),
+  ('players', 'p2', 't1', '{"id":"p2","num":"9","first":"Riley","last":"Brooks","pos":"MB","hidePublic":true}');
+update records set data = data || '{"notes":"private match notes","video":"https://youtu.be/x"}' where id = 'm1';
 insert into season_shares values ('S1S1S1', 't1', 's1');
 insert into live_shares (code, team_id, match_id) values ('L1L1L1', 't1', 'm1');
 insert into recruit_shares (code, team_id, player_id, html) values ('R1R1R1', 't1', 'p1', '<p>profile</p>');
 SQL
 check() { [ "$(q -c "set role anon; $1" | tail -1)" = "$2" ] && echo "ok   $3" || { echo "FAIL $3"; exit 1; }; }
 check "select season_view('s1s1s1')->'players'->0->>'last';" "C" "season page shows last initial only"
+check "select count(*) from jsonb_array_elements(season_view('s1s1s1')->'players') p where p->>'num' = '9' and p->>'first' = '' and p->>'last' = '';" "1" "players kept off public pages show only their number"
+check "select watch('l1l1l1')::text like '%private%';" "f" "live link never includes match notes or film tags"
+check "select season_view('s1s1s1')::text like '%private%';" "f" "season page never includes film tags"
+check "select jsonb_array_length(watch('l1l1l1')->'logs'->0);" "1" "live link keeps the plays"
 check "select jsonb_array_length(season_view('s1s1s1')->'matches');" "1" "season page lists matches"
 check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the match"
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "7" "schema version is reported"
+check "select schema_version();" "8" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

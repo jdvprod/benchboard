@@ -4,7 +4,7 @@ import { matchesOf, patch, plansOf, player, replayOf, teamPlayers, team, toast, 
 import { Goal, GoalMetric, Match, RecruitProfile } from "../../data/model";
 import { aggregate, Agg, SetState, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, passAvg, playerMetrics, PlayerMetrics, serveAttempts, serveErrors } from "../../sports/volleyball/metrics";
-import { Card, ConfirmButton, download, fmtDate, Kpi, Seg } from "../../ui/kit";
+import { Card, ConfirmButton, download, fmtDate, Kpi, Seg, SetRow, Switch } from "../../ui/kit";
 import { LineChart } from "../../ui/charts";
 import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
@@ -205,8 +205,11 @@ function PlayerData({ id }: { id: string }) {
     setAsk(false); setTyped("");
     toast("Personal information erased. Team totals still count their plays, without a name.");
   };
-  return <Card title="This player's information">
-    <p className="small muted" style={{ marginTop: 0 }}>For family requests: give them a copy of everything stored about {p.first || "this player"}, or erase their personal information when they ask.</p>
+  return <Card title="Privacy and family requests">
+    <SetRow title="Keep off public pages" sub={`Live gamecasts and the season page show only #${p.num || "?"}, without a name, and share graphics leave ${p.first || "them"} out. Use this when a family agrees to stats but not to team pages.`}>
+      <Switch checked={!!p.hidePublic} onChange={(v) => { patch("players", id, { hidePublic: v || undefined }); toast(v ? `${p.first || "Player"} will show only as #${p.num || "?"} on public pages.` : `${p.first || "Player"} shows by first name and last initial on public pages again.`); }} label="Keep off public pages" />
+    </SetRow>
+    <p className="small muted">For family requests: give them a copy of everything stored about {p.first || "this player"}, or erase their personal information when they ask.</p>
     <div className="row">
       <button className="btn sm" onClick={() => { download(`${name || "player"} - ${t.name} data.json`, JSON.stringify(playerExport(id), null, 2), "application/json"); toast("Saved. Send the file to the family."); }}>Download their information</button>
       {!ask ? <button className="btn sm ghost" onClick={() => setAsk(true)}>Erase personal information</button> : null}

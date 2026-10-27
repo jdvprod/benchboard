@@ -33,7 +33,7 @@ export function WatchPage({ code }: { code: string }) {
   const m = d.match, R = replay(mergeLogs(d.logs || []), { id: m.id, bestOf: m.bestOf, scrim: m.scrim, setTo: m.setTo, cap: m.cap });
   const c = R.cur, A = aggregate(R.sets), us = d.team?.name || "Us", them = m.opp || "Opponent";
   const P = new Map(d.players.map((p) => [p.id, p]));
-  const nm = (id?: string | null) => { const p = id ? P.get(id) : null; return p ? `#${p.num} ${p.first}` : ""; };
+  const nm = (id?: string | null) => { const p = id ? P.get(id) : null; return p ? `#${p.num} ${p.first}`.trim() : ""; };
   const live = m.status === "live" && !R.matchOver;
   const run = runOf(c), srv = c ? serverOf(c) : null;
   const text = (l: LogEntry) => {
