@@ -33,6 +33,9 @@ function msg(body: any, fallback: string) {
   if (/email not confirmed/i.test(m)) return "Confirm your email first. Check your inbox for the link, then sign in.";
   if (/already registered/i.test(m)) return "That email already has an account. Sign in instead.";
   if (/password should be/i.test(m)) return "Use a password with at least 6 characters.";
+  // Supabase's built-in email only reaches the project's own team and a couple of emails an hour; real use needs custom SMTP (see README)
+  if (/email address not authorized|error sending (confirmation|recovery|magic link)? ?(email|mail)|smtp/i.test(m)) return "We couldn't send the email. The app's email service isn't fully set up yet; tell the person who runs your Benchboard.";
+  if (/rate limit|too many|over_email_send_rate|for security purposes, you can only request/i.test(m)) return "Too many emails were requested. Wait a few minutes and try again.";
   return String(m);
 }
 

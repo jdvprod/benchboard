@@ -50,10 +50,21 @@ GitHub Pages also works (`.github/workflows/pages.yml`, run by hand) but ignores
 2. In **SQL Editor → New query**, paste all of `supabase/schema.sql` and click **Run**.
 3. In **Project Settings → API**, copy the **Project URL** and the **anon public** key into `src/cloud/config.ts` (both are safe to publish; Row Level Security protects the data).
 4. In **Authentication → URL Configuration**, set **Site URL** to your app's address (e.g. `https://benchboard.<your-subdomain>.workers.dev`) and add the same address followed by `/**` to **Redirect URLs**. Without this, sign-up and password-reset emails link to localhost.
-5. Optional: in **Authentication → Providers → Email**, turn off "Confirm email" for the smoothest sign-up while testing.
+5. Until you connect an email provider (see **Sign-up and password emails** below), turn off **Confirm email** in **Authentication → Sign In / Providers → Email**. Supabase's built-in email can't reach your coaches.
 6. Open the app → **Settings → Setup check → Run check**. It confirms the database version, your account, team sync and AI, and says what's left.
 
 Then coaches sign in on the Team tab, tap **Sync this team**, and invite assistants with a code. Every match is an event log per device, so several coaches can track the same match and their entries merge. Each device picks a job under **My job** on the Track screen: everything, score only, or stats only (chosen stat groups that count for players but never change the score). **Share live link** on the Live screen gives parents a public gamecast (`#/watch/CODE`) that shows only that match, player numbers, first names and last initials; parents can follow one player. **Share season page** on the Team tab gives players and parents a read-only season hub (`#/season/CODE`) with results, schedule, leaders, box scores and every player's line.
+
+## Sign-up and password emails
+
+Supabase's built-in email only sends to members of your Supabase organization, about 2 emails an hour, so real coaches can't get confirmation or password-reset emails until you connect an email provider:
+
+1. Sign up with an email provider that has a free plan (Resend, Brevo, SendGrid and others work) and verify a domain you own.
+2. In Supabase, go to **Authentication → Emails → SMTP Settings**, turn on **Custom SMTP** and paste the provider's host, port, user and password. Use a sender like `Benchboard <no-reply@yourdomain.com>`.
+3. In **Authentication → Rate Limits**, raise the email limit if you expect many sign-ups at once (it starts at 30 an hour).
+4. In **Authentication → Emails → Templates**, paste the branded templates from `supabase/email-templates/` (subjects: "Confirm your Benchboard email", "Reset your Benchboard password", "Your Benchboard sign-in link", "Confirm your new Benchboard email").
+
+Until then, keep **Confirm email** off (Authentication → Sign In / Providers → Email) so coaches can sign up without an email; only password resets need the provider.
 
 ## AI features
 
