@@ -40,6 +40,19 @@ const go = async (p, hash) => { await p.goto(U + "#/" + hash); await p.waitForTi
 const score = async (p) => { const t = (await p.locator(".board").first().innerText()).replace(/\s+/g, " "); const n = t.match(/(\d+) SET (\d) .* (\d+) (?:Rotation|Our)/); return t; };
 const download = async (p, click) => { const [d] = await Promise.all([p.waitForEvent("download"), click()]); const f = await d.path(); return { name: d.suggestedFilename(), size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+/** Basic accessibility: every control has a name screen readers can announce, images have alt text, ids are unique. */
+const a11y = (p) => p.evaluate(() => {
+  const out = [];
+  const name = (e) => (e.getAttribute("aria-label") || (e.getAttribute("aria-labelledby") && document.getElementById(e.getAttribute("aria-labelledby"))?.textContent) || (e.id && document.querySelector(`label[for="${e.id}"]`)?.textContent) || e.closest("label")?.textContent || e.textContent || e.getAttribute("title") || (e.tagName === "INPUT" && ["submit", "button"].includes(e.type) && e.value) || "").trim();
+  for (const e of document.querySelectorAll("button, a[href], input:not([type=hidden]), select, textarea, [role=button]")) {
+    const st = getComputedStyle(e); if (st.display === "none" || st.visibility === "hidden" || e.closest("[hidden],[aria-hidden=true]")) continue;
+    if (!name(e) && !(e.tagName === "INPUT" && e.placeholder && e.type !== "checkbox")) out.push(`${e.tagName.toLowerCase()}${e.className ? "." + String(e.className).split(" ")[0] : ""} has no label`);
+  }
+  for (const i of document.querySelectorAll("img")) if (!i.hasAttribute("alt")) out.push("img without alt: " + i.src.slice(-30));
+  const ids = {}; for (const e of document.querySelectorAll("[id]")) ids[e.id] = (ids[e.id] || 0) + 1;
+  for (const [k, n] of Object.entries(ids)) if (n > 1) out.push(`duplicate id "${k}"`);
+  return [...new Set(out)].slice(0, 5);
+});
 /** Text squeezed into a sliver (a layout bug): long text in a very narrow, tall box. */
 const squashed = (p) => p.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => {
   if (e.children.length || !e.textContent || e.textContent.trim().length < 24) return false;
@@ -57,6 +70,7 @@ const scenarios = {
       for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "labs", "live", "account"]) {
         await go(p, r);
         ok(`${tag}: ${r} renders`, (await p.locator(".page, .content, .auth, main").count()) > 0);
+        if (!opts.dark) { const ax = await a11y(p); ok(`${tag}: ${r} controls all have names`, !ax.length, ax.join(" | ")); }
         if (opts.phone) { const sq = await squashed(p); ok(`${tag}: ${r} has no squeezed text`, !sq.length, sq.join(" | ")); }
         if (opts.phone || opts.tablet) ok(`${tag}: ${r} has no sideways scroll`, (await overflow(p)) <= 1, `${await overflow(p)}px`);
       }
@@ -266,6 +280,7 @@ const scenarios = {
     }
     await go(p, "track"); await p.getByRole("button", { name: "Create an account" }).click();
     await p.getByLabel("Email").fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123");
+    { const ax = await a11y(p); ok("sign-up form controls all have names", !ax.length, ax.join(" | ")); }
     await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(300);
     ok("sign-up asks for agreement first", (await p.getByText("Please confirm you're 13 or older").count()) === 1);
     await p.locator(".auth-agree input").check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
@@ -345,11 +360,14 @@ const scenarios = {
     const P = await newPage(browser, { phone: true }); await P.goto(live); await P.waitForTimeout(1200);
     ok("parent gamecast shows 1–0", /1\s*–\s*0/.test(await P.locator(".gc-score").innerText()));
     ok("parent gamecast fits a phone", (await overflow(P)) <= 1);
+    { const ax = await a11y(P); ok("gamecast controls all have names", !ax.length, ax.join(" | ")); }
     // season page + recruiting link
     await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
+    { const ax = await a11y(P); ok("season page controls all have names", !ax.length, ax.join(" | ")); }
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    { const ax = await a11y(A); ok("player page controls all have names", !ax.length, ax.join(" | ")); }
     ok("recruiting link needs family consent first", await A.getByRole("button", { name: "Share profile link" }).isDisabled());
     await A.locator(".consent-check input").check();
     await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);

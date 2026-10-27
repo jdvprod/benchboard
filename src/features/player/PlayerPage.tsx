@@ -95,7 +95,7 @@ export function PlayerPage({ id }: { id: string }) {
       <AiCard key={id} title="Report card" desc="Strengths, growth areas and one measurable goal, written for the player from their numbers." button="Write report card" prompt={() => reportCardPrompt(id)} filename={`${p.first} ${p.last} report card`} />
     </>}
     <Recruiting id={id} rows={rows} A={A} />
-    <Card title="Coach notes"><textarea className="input" rows={3} value={p.notes} onChange={(e) => patch("players", id, { notes: e.target.value })} placeholder="Private notes: what they're working on, recruiting contacts, injuries…" /></Card>
+    <Card title="Coach notes"><textarea className="input" aria-label="Coach notes" rows={3} value={p.notes} onChange={(e) => patch("players", id, { notes: e.target.value })} placeholder="Private notes: what they're working on, recruiting contacts, injuries…" /></Card>
   </div>;
 }
 

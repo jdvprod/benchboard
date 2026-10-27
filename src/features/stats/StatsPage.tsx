@@ -85,7 +85,7 @@ function Overview({ S, A }: { S: Scope; A: Agg }) {
   const fl = single && !single.setN ? flags(single.R, { us: t.name, them: single.m.opp, subLimit: t.settings.subLimit, playerIds: teamPlayers().map((p) => p.id), short: (id) => playerName(id) }) : [];
   return <div className="stack">
     {single && <AiCard key={single.m.id} title={single.m.kind === "match" ? "Match report" : "Practice report"} desc="What decided it, standouts, concerns and practice priorities, written from the stats. Saved with the match." button="Write the report" prompt={() => reportPrompt(single.m)} saved={single.m.report} savedAt={single.m.reportAt} onSave={(text) => patch("matches", single.m.id, { report: text, reportAt: Date.now() })} filename={`${t.name} vs ${single.m.opp} report`} />}
-    {single && <Card title="Match notes"><textarea className="input" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, injuries, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
+    {single && <Card title="Match notes"><textarea className="input" aria-label="Match notes" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, injuries, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
     <div className="kpis">
       <Kpi label="Hitting %" value={fmtHit(M.hitting)} delta={dv(M.hitting, B?.hitting, fmtHit, true)} sub={`${T.K} kills · ${T.AE} errors · ${T.TA} att`} />
       <Kpi label="Side-out" value={fmtPct(M.sideOut)} delta={dv(M.sideOut, B?.sideOut, fmtPct, true)} sub={`${A.so.w} of ${A.so.n} on their serve`} />

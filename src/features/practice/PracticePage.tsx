@@ -142,7 +142,7 @@ function PlanEditor({ plan, onDelete }: { plan: PracticePlan; onDelete: () => vo
               <button className="btn sm ghost" aria-label="Remove" onClick={() => set({ blocks: plan.blocks.filter((_, j) => j !== i) })}>✕</button>
             </span></div>
           <input className="input" value={b.title} onChange={(e) => setB(i, { title: e.target.value })} aria-label="Block title" />
-          <textarea className="input" rows={b.notes ? 2 : 1} value={b.notes} placeholder="Notes, what to watch for" onChange={(e) => setB(i, { notes: e.target.value })} />
+          <textarea className="input" aria-label="Block notes" rows={b.notes ? 2 : 1} value={b.notes} placeholder="Notes, what to watch for" onChange={(e) => setB(i, { notes: e.target.value })} />
         </div>
       </div>; })}
       <div className="row">
