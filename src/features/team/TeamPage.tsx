@@ -1,7 +1,7 @@
 import { recordOf } from "../../sports/volleyball/engine";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
-import { parseRosterLine } from "./parseRoster";
+import { gradCell, heightCell, parseRosterLine, positionCell } from "./parseRoster";
 import { LEGAL, LEGAL_VERSION } from "../../app/legal";
 import { currentUser } from "../../cloud/client";
 import { all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
@@ -184,8 +184,9 @@ function parseCsv(text: string): string[][] {
 function importRosterCsv(text: string): string {
   const rows = parseCsv(text.replace(/^\uFEFF/, "")); if (rows.length < 2) return "That file has no players.";
   const h = rows[0].map((x) => x.trim().toLowerCase());
-  const col = (...names: string[]) => h.findIndex((x) => names.some((n) => x === n || x.includes(n)));
-  const cNum = col("number", "#", "jersey", "no"), cFirst = col("first"), cLast = col("last"), cName = col("name", "player"), cPos = col("position", "pos"), cGrad = col("grad", "class", "year"), cH = col("height", "ht");
+  // long names match inside a header ("jersey number"); short ones only exactly, so "notes" isn't a number column
+  const col = (...names: string[]) => h.findIndex((x) => names.some((n) => x === n || (n.length > 3 && x.includes(n))));
+  const cNum = col("number", "#", "jersey", "no", "no.", "num"), cFirst = col("first"), cLast = col("last"), cName = col("name", "player"), cPos = col("position", "pos"), cGrad = col("grad", "class", "year"), cH = col("height", "ht");
   if (cNum < 0 && cName < 0 && cFirst < 0) return "Couldn't find number or name columns. Use headers like number, first, last, position.";
   const t = team()!, existing = teamPlayers(); let added = 0, updated = 0;
   for (const r of rows.slice(1)) {
@@ -193,11 +194,10 @@ function importRosterCsv(text: string): string {
     let first = g(cFirst), last = g(cLast);
     if (!first && !last && cName >= 0) { const parts = g(cName).split(/\s+/); first = parts.shift() || ""; last = parts.join(" "); }
     const num = g(cNum).replace(/^#/, ""); if (!num && !first && !last) continue;
-    const posRaw = g(cPos).toUpperCase(), pos = (POSITIONS as readonly string[]).includes(posRaw) ? posRaw : posRaw.startsWith("LIB") ? "L" : posRaw.startsWith("SET") ? "S" : posRaw.startsWith("MID") ? "MB" : posRaw.startsWith("OUT") ? "OH" : posRaw.startsWith("RIGHT") || posRaw.startsWith("OPP") ? "OPP" : posRaw ? "DS" : "OH";
-    const gradN = parseInt(g(cGrad)), grad = isFinite(gradN) && gradN > 1990 ? gradN : null;
+    const pos = positionCell(g(cPos)) || "OH", grad = gradCell(g(cGrad)), height = heightCell(g(cH));
     const match = existing.find((p) => (num && p.num === num) || (!num && p.first === first && p.last === last));
-    if (match) { patch("players", match.id, { first: first || match.first, last: last || match.last, pos: g(cPos) ? pos : match.pos, grad: grad ?? match.grad, height: g(cH) || match.height, active: true }); updated++; }
-    else { save("players", { id: uid("p"), teamId: t.id, num, first, last, pos, grad, height: g(cH), active: true, goals: [], notes: "" } as Player); added++; }
+    if (match) { patch("players", match.id, { first: first || match.first, last: last || match.last, pos: g(cPos) ? pos : match.pos, grad: grad ?? match.grad, height: height || match.height, active: true }); updated++; }
+    else { save("players", { id: uid("p"), teamId: t.id, num, first, last, pos, grad, height, active: true, goals: [], notes: "" } as Player); added++; }
   }
   return `Roster imported: ${added} added, ${updated} updated.`;
 }

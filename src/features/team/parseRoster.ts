@@ -37,3 +37,28 @@ export function parseRosterLine(line: string, now = new Date()): RosterLine | nu
   if (!num && !names.length) return null;
   return { num, first: names[0] || "", last: names.slice(1).join(" "), pos, grad, height: heights[0] || "" };
 }
+
+/* ---------- single cells, for spreadsheet imports ---------- */
+/** A position cell: "OH", "Outside", "OH/RS", "Defensive Specialist". Empty when it isn't a position. */
+export function positionCell(raw: string): string {
+  const v = raw.trim(); if (!v) return "";
+  if (/defensive\s+spec/i.test(v)) return "DS";
+  for (const w of v.split(/\s+/)) { const p = posOf(w); if (p) return p; }
+  return "";
+}
+/** A grad-year or class cell: "2028", "'28", "Jr.", "Junior", "11" (grade). */
+export function gradCell(raw: string, now = new Date()): number | null {
+  const v = raw.trim(); if (!v) return null;
+  const y = v.match(/^(?:'|’)?((?:19|20)\d\d)$/); if (y) return +y[1];
+  const s = v.match(/^(?:'|’)(\d\d)$/); if (s) return 2000 + +s[1];
+  if (CLASS[key(v)] !== undefined) return schoolYearEnd(now) + CLASS[key(v)];
+  const g = v.match(/^(9|10|11|12)(?:th)?$/i); if (g) return schoolYearEnd(now) + (12 - +g[1]);
+  return null;
+}
+/** A height cell: 5'10", 5-10, 5 10, 70 (inches). */
+export function heightCell(raw: string): string {
+  const v = raw.trim(); if (!v) return "";
+  const m = v.match(/^([4-7])\s*(?:['’′]|-|\s)\s*(\d{1,2})\s*(?:"|”|″|'')?$/); if (m && +m[2] <= 11) return `${m[1]}'${+m[2]}"`;
+  const inches = v.match(/^(\d{2})\s*(?:in|")?$/); if (inches && +inches[1] >= 48 && +inches[1] <= 84) return `${Math.floor(+inches[1] / 12)}'${+inches[1] % 12}"`;
+  return v;
+}

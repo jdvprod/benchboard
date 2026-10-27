@@ -236,3 +236,11 @@ test("roster paste: names, positions, classes and heights from copied rosters", 
   assert.equal(r("5 Sr Mendez")!.first, "Sr");
   assert.equal(r("6 Libero")!.first, "Libero");
 });
+
+import { gradCell, heightCell, positionCell } from "../src/features/team/parseRoster";
+test("roster spreadsheet cells: positions, classes, grades and heights", () => {
+  const fall = new Date(2026, 9, 1);
+  for (const [raw, want] of [["OH", "OH"], ["Outside Hitter", "OH"], ["MH", "MB"], ["RS", "OPP"], ["OH/RS", "OH"], ["Setter", "S"], ["Libero", "L"], ["Defensive Specialist", "DS"], ["", ""], ["Manager", ""]]) assert.equal(positionCell(raw), want, raw);
+  for (const [raw, want] of [["2028", 2028], ["'29", 2029], ["Jr.", 2028], ["Senior", 2027], ["9", 2030], ["12th", 2027], ["", null], ["n/a", null]] as [string, number | null][]) assert.equal(gradCell(raw, fall), want, raw);
+  for (const [raw, want] of [[`5'10"`, `5'10"`], ["5-9", `5'9"`], ["6 1", `6'1"`], ["70", `5'10"`], ["", ""], ["tall", "tall"]]) assert.equal(heightCell(raw), want, raw);
+});
