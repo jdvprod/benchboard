@@ -112,8 +112,9 @@ export function playerName(id: string | null | undefined, style: "short" | "full
   const p = player(id);
   if (!p) return "Removed player";
   if (style === "first") return p.first || p.last;
-  if (style === "full") return `#${p.num} ${p.first} ${p.last}`.trim();
-  return `#${p.num} ${p.first || p.last}`.trim();
+  const n = p.num ? `#${p.num} ` : "";
+  if (style === "full") return `${n}${p.first} ${p.last}`.trim();
+  return `${n}${p.first || p.last}`.trim();
 }
 
 /* ---------- events and replay ---------- */

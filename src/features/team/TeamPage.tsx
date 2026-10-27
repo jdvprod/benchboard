@@ -203,12 +203,13 @@ function addPasted(text: string): string {
     const tok = line.replace(/[,\t|]/g, " ").split(/\s+/).filter(Boolean); if (!tok.length) continue;
     let num = "", pos = "", grad: number | null = null; const names: string[] = [];
     for (const w of tok) {
-      const u = w.toUpperCase().replace(/[.()]/g, "");
       if (!num && /^#?\d{1,3}$/.test(w)) num = w.replace("#", "");
       else if (/^(19|20)\d\d$/.test(w)) grad = +w;
-      else if (POS[u] && !pos) pos = POS[u];
       else names.push(w);
     }
+    // the position is the last position word after the first name ("Ava Setter S" is Ava Setter, a setter)
+    const key = (w: string) => w.toUpperCase().replace(/[.()]/g, "");
+    for (let i = names.length - 1; i > 0; i--) if (POS[key(names[i])]) { pos = POS[key(names[i])]; names.splice(i, 1); break; }
     if (!num && !names.length) continue;
     const first = names[0] || "", last = names.slice(1).join(" ");
     const match = existing.find((p) => num && p.num === num);

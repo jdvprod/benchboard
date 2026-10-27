@@ -131,6 +131,8 @@ const scenarios = {
     await p.locator("textarea").first().fill("1 Ava Setter S 2027\n2 Bea Outside OH 2027\n3 Cam Middle MB 2028\n4 Dee Oppo OPP 2028\n5 Eve Outside OH 2029\n6 Fay Middle MB 2029\n7 Gia Libero L 2027\n8 Hal Defense DS 2028");
     await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(200);
     ok("roster: 8 players added", (await p.locator(".card", { hasText: "Roster" }).locator("tbody tr").count()) === 8);
+    { const r2 = p.locator(".card", { hasText: "Roster" }).locator("tbody tr").nth(1).locator("input, select");
+      ok("pasted line splits name and position", (await r2.nth(1).inputValue()) === "Bea" && (await r2.nth(2).inputValue()) === "Outside" && (await r2.nth(3).inputValue()) === "OH", await r2.nth(2).inputValue()); }
     await go(p, "track"); await p.getByPlaceholder("e.g. Buchanan").fill("Rival Prep"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300);
     ok("match starts at 0–0", /E2E HIGH 0 SET 1/.test(await score(p)), await score(p));
     // keyboard: #2 kills x 25 → set 1
@@ -179,6 +181,17 @@ const scenarios = {
     const gfx = await download(p, () => p.getByRole("button", { name: "Share graphic" }).click()); ok("share graphic is a PNG", gfx.name.endsWith(".png") && gfx.size > 20000, gfx.size + " bytes");
     await p.getByRole("button", { name: /^Season \(/ }).click();
     const sr = await download(p, () => p.getByRole("button", { name: "Season report" }).click()); ok("season report has awards and situations", sr.text().includes("Situations") && sr.text().includes("1–0"));
+    // family requests: copy of a player's data, then erase her name but keep the team's totals
+    await go(p, "team"); await p.locator(".card", { hasText: "Roster" }).locator("tbody tr").nth(1).getByRole("button", { name: "View" }).click(); await p.waitForTimeout(200);
+    const pd = await download(p, () => p.getByRole("button", { name: "Download their information" }).click());
+    { const j = JSON.parse(pd.text()); ok("player data export has her profile and every match", j.player.first === "Bea" && j.matches.length === 1 && j.matches[0].stats.KT === 1, pd.name); }
+    await p.getByRole("button", { name: "Erase personal information" }).click();
+    ok("erase waits for typed confirmation", await p.getByRole("button", { name: "Erase Bea Outside" }).isDisabled());
+    await p.getByLabel("Type ERASE to confirm").fill("erase"); await p.getByRole("button", { name: "Erase Bea Outside" }).click(); await p.waitForTimeout(200);
+    ok("erased player shows as a former player", (await p.locator("h1", { hasText: "Former player 1" }).count()) === 1);
+    await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.waitForTimeout(150);
+    const stx = await p.locator(".page").first().innerText();
+    ok("her name is gone from stats, her plays still count", !stx.includes("Bea") && stx.includes("Former"), "");
     ok("match: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
