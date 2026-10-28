@@ -543,6 +543,43 @@ const scenarios = {
     for (const [nm, pg] of [["coach", A], ["parent", P], ["phone", Ph]]) if (pg.errors.length) console.log(`    ${nm} errors: ${pg.errors.slice(0, 5).join(" | ")}`);
     console.log("    screenshots: " + OUT);
   },
+  /** Phone coach, taps only: lineup, subs, timeout, tags, a full match, player page, practice. (node e2e/run.cjs _explore2) */
+  async _explore2(browser) {
+    const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore2"); fs.mkdirSync(OUT, { recursive: true });
+    let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(250); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
+    const step = async (name, fn) => { try { await fn(); } catch (e) { console.log(`    step "${name}" failed: ${String(e.message || e).split("\n")[0]}`); await shot(p, "FAIL-" + name.replace(/\W+/g, "-")); } };
+    const p = await newPage(browser, { phone: true, cloud: false });
+    await step("setup", async () => {
+      await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Clovis North Broncos"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(500);
+      await go(p, "team"); await p.getByRole("button", { name: "Paste a roster" }).click();
+      await p.locator("textarea").first().fill(["1 Ava Ramirez S Sr", "3 Lily Torres L Jr", "4 Jordan Lee OH So", "7 Maya Chen OH Sr", "8 Zoe Grant MB Jr", "9 Riley Brooks MB So", "10 Emma Diaz DS Fr", "12 Sofia Nguyen OPP Jr", "14 Kenzie Park OH Sr"].join("\n"));
+      await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
+    });
+    await step("lineup", async () => { await go(p, "lineup"); await shot(p, "lineup-default"); await p.getByRole("button", { name: "Save as starting lineup" }).click(); });
+    await step("start", async () => { await go(p, "track"); await shot(p, "track-prematch"); await p.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300); await shot(p, "track-start", false); });
+    await step("kill with follow-up", async () => { await p.locator(".pl", { hasText: "Maya" }).first().click(); await shot(p, "action-sheet", false); await p.locator(".actsheet").getByRole("button", { name: "Kill", exact: true }).click(); await p.waitForTimeout(200); await shot(p, "after-kill", false); await skipIfAsked(p); });
+    await step("pass then attack error", async () => { await p.locator(".pl", { hasText: "Lily" }).first().click(); await p.locator(".actsheet button", { hasText: /^2$/ }).first().click(); await skipIfAsked(p); await p.locator(".pl", { hasText: "Jordan" }).first().click(); await p.locator(".actsheet").getByRole("button", { name: "Error", exact: true }).first().click(); await skipIfAsked(p); await shot(p, "after-error", false); });
+    await step("timeout", async () => { await p.getByRole("button", { name: /^Timeout · Clovis/ }).click(); await p.waitForTimeout(900); await shot(p, "timeout-panel", false); await p.keyboard.press("Escape"); });
+    await step("sub", async () => { await go(p, "track"); await p.locator("button.ctrl", { hasText: /^Sub/ }).click(); await p.waitForTimeout(200); await shot(p, "sub-panel"); });
+    await step("film tag", async () => { await go(p, "track"); await p.locator("button.ctrl", { hasText: /^Film tag/ }).click(); await p.waitForTimeout(200); await shot(p, "tag-panel"); });
+    await step("play the match", async () => {
+      await go(p, "track");
+      for (let set = 0; set < 3; set++) {
+        for (let i = 0; i < 60; i++) { if (await p.locator(".banner", { hasText: /to Clovis|Match over/ }).count()) break; await p.getByRole("button", { name: i % 3 ? "Their error" : "Their kill", exact: true }).click(); await skipIfAsked(p); }
+        if (set === 0) { await p.waitForTimeout(900); await shot(p, "set-over", false); }
+        if (await p.locator(".banner", { hasText: "Match over" }).count()) break;
+        await p.getByRole("button", { name: /Clovis North Broncos serve|Clovis North serve/ }).first().click();
+      }
+      await shot(p, "match-over");
+      await p.getByRole("button", { name: "Finish" }).click(); await p.waitForTimeout(300); await shot(p, "after-finish");
+    });
+    await step("player page", async () => { await go(p, "stats"); await shot(p, "stats-after"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300); await shot(p, "player-page"); });
+    await step("practice plan", async () => { await go(p, "practice"); await shot(p, "practice"); await p.getByRole("button", { name: "Build plan" }).click(); await p.waitForTimeout(300); await shot(p, "plan-built"); await p.getByRole("button", { name: "Run practice" }).click(); await p.waitForTimeout(300); await shot(p, "run-practice", false); });
+    await step("scrimmage", async () => { await go(p, "practice"); await p.getByRole("button", { name: "Scrimmage", exact: true }).click(); await shot(p, "scrimmage"); });
+    await step("other tabs", async () => { for (const r of ["matchup", "court", "labs", "settings"]) { await go(p, r); await shot(p, r); } });
+    if (p.errors.length) console.log(`    errors: ${p.errors.slice(0, 5).join(" | ")}`);
+    console.log("    screenshots: " + OUT);
+  }
 };
 
 (async () => {

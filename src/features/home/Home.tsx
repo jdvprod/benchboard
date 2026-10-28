@@ -5,7 +5,7 @@ import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/metrics";
-import { Card, fmtDate } from "../../ui/kit";
+import { Card, fmtDate, plural } from "../../ui/kit";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
 import { StartMatch } from "../track/TrackPage";
@@ -108,7 +108,7 @@ function Setup() {
   if (t.sample || t.setupDone) return null;
   const players = teamPlayers().filter((p) => p.active).length;
   const steps: [string, string, boolean, () => void][] = [
-    ["Add your roster", players ? `${players} players so far` : "Type them in, paste a list, or import a CSV", players >= 6, () => go("team")],
+    ["Add your roster", players ? `${plural(players, "player")} so far` : "Type them in, paste a list, or import a CSV", players >= 6, () => go("team")],
     ["Set your starting lineup", "So the app tracks rotations and who's serving", !!t.defLineup, () => go("lineup")],
     ["Add your schedule", "Get a scouting page before every game", !!(t.schedule && t.schedule.length), () => go("matchup")],
     ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match"), () => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth" })],

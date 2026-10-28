@@ -259,3 +259,13 @@ test("recording after a set is over doesn't happen: a following point needs the 
   const evs = [ev("NS", { serve: "us" })]; for (let i = 0; i < 25; i++) evs.push(ev("UP"));
   const R = replay(evs); assert.equal(R.cur!.over, true); assert.equal(R.cur!.us, 25);
 });
+
+import { autoLineup } from "../src/sports/volleyball/autoLineup";
+test("first lineup: setter 1, opposite 4, outsides 2 & 5, middles 3 & 6, libero off the court", () => {
+  const P = (id: string, pos: string) => ({ id, pos });
+  const r = autoLineup([P("s", "S"), P("l", "L"), P("oh1", "OH"), P("oh2", "OH"), P("mb1", "MB"), P("mb2", "MB"), P("opp", "OPP"), P("ds", "DS")]);
+  assert.deepEqual(r, { lu: ["s", "oh1", "mb1", "opp", "oh2", "mb2"], lib: "l" });
+  // 6-2: second setter across from the first; short roster fills with whoever's there
+  assert.deepEqual(autoLineup([P("s1", "S"), P("s2", "S"), P("oh1", "OH"), P("oh2", "OH"), P("mb1", "MB"), P("mb2", "MB")]).lu, ["s1", "oh1", "mb1", "s2", "oh2", "mb2"]);
+  assert.equal(autoLineup([P("a", "OH"), P("b", "OH"), P("c", "DS"), P("d", "MB")]).lu.length, 4);
+});

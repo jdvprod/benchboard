@@ -1,5 +1,7 @@
 /** Live stat tracking for a match, drill session or scrimmage. */
-import { useCallback, useState } from "react";
+import { useWakeLock } from "../../ui/wakeLock";
+import { autoLineup } from "../../sports/volleyball/autoLineup";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { roleOn } from "../../cloud/sync";
 import { setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers, appendEvents, deleteEvent, eventsOf, isMine, patch, patchEvent, player, playerName, replayOf, save, team, toast, undoLast } from "../../data/store";
 import { Match } from "../../data/model";
@@ -36,6 +38,7 @@ const TAGS = ["Great play", "Review this", "Serve receive", "Rotation breakdown"
 
 export function Tracker({ m }: { m: Match }) {
   const t = team()!, R = replayOf(m)!, c = R.cur;
+  useWakeLock(m.status === "live" && !R.matchOver); // a phone on the bench shouldn't dim and lock mid-rally
   const names = sideNames(m, t.name);
   const scr = m.scrim;
 
@@ -144,6 +147,11 @@ export function Tracker({ m }: { m: Match }) {
 /* ---------- banners ---------- */
 function Banners({ m, R }: { m: Match; R: Replay }) {
   const t = team()!, c = R.cur!, names = sideNames(m, t.name), unit = m.scrim ? "Game" : "Set";
+  // on a phone the coach is usually scrolled down to the buttons: bring the end-of-set question and timeout card into view
+  const endRef = useRef<HTMLDivElement>(null), toRef = useRef<HTMLDivElement>(null);
+  const ended = R.matchOver ? "match" : c.over ? "set" + c.n : "";
+  useEffect(() => { if (ended) endRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [ended]);
+  useEffect(() => { if (ui.panel === "timeout") toRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [ui.panel]);
   const startNext = (serve: "us" | "them") => {
     const ev: any = { t: "NS", serve };
     if (m.nextLu && m.nextLu.lu.length === 6) { Object.assign(ev, { lu: m.nextLu.lu, lib: m.nextLu.lib, libSrv: m.nextLu.libSrv }); patch("matches", m.id, { nextLu: null }); }
@@ -151,10 +159,10 @@ function Banners({ m, R }: { m: Match; R: Replay }) {
   };
   return <>
     {m.sample && <div className="banner"><p><b>Sample team.</b> Everything here is example data so you can explore. Create your own team from the Team tab.</p><button className="btn sm" onClick={() => go("team")}>Go to Team</button></div>}
-    {ui.panel === "timeout" && !m.scrim && <AiCard title="Timeout card" desc="Three talking points from the live stats." button="Get talking points" tier="quick" prompt={() => timeoutPrompt(m)} />}
-    {R.matchOver ? <div className="banner accent"><p><b>{m.scrim ? "Scrimmage" : "Match"} over.</b> {R.wonUs === R.wonThem ? `Split ${R.wonUs}–${R.wonThem}.` : `${R.wonUs > R.wonThem ? names.us : names.them} win ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.`}</p>
+    {ui.panel === "timeout" && !m.scrim && <div ref={toRef}><AiCard title="Timeout card" desc="Three talking points from the live stats." button="Get talking points" tier="quick" prompt={() => timeoutPrompt(m)} /></div>}
+    {R.matchOver ? <div className="banner accent" ref={endRef}><p><b>{m.scrim ? "Scrimmage" : "Match"} over.</b> {R.wonUs === R.wonThem ? `Split ${R.wonUs}–${R.wonThem}.` : `${R.wonUs > R.wonThem ? names.us : names.them} win ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.`}</p>
       <div className="row"><button className="btn" onClick={() => { setUi({ statsScope: "match" }); go("stats"); }}>See stats and report</button><button className="btn primary" onClick={() => { patch("matches", m.id, { status: "done" }); save("teams", { ...t, currentMatchId: null }); }}>Finish</button></div></div>
-      : c.over && <div className="banner accent"><p><b>{unit} {c.n} to {c.winner === "us" ? names.us : names.them}, {c.us}–{c.them}.</b> Who serves first in {unit.toLowerCase()} {c.n + 1}?{!m.scrim && (m.nextLu ? " Your queued lineup starts it." : c.startLu ? " The starting lineup carries over." : "")}</p>
+      : c.over && <div className="banner accent" ref={endRef}><p><b>{unit} {c.n} to {c.winner === "us" ? names.us : names.them}, {c.us}–{c.them}.</b> Who serves first in {unit.toLowerCase()} {c.n + 1}?{!m.scrim && (m.nextLu ? " Your queued lineup starts it." : c.startLu ? " The starting lineup carries over." : "")}</p>
         <div className="row"><button className="btn primary" onClick={() => startNext("us")}>{names.us} serve</button><button className="btn" onClick={() => startNext("them")}>{names.them} serve</button></div></div>}
   </>;
 }
@@ -266,7 +274,7 @@ function FixScore({ m, c }: { m: Match; c: SetState }) {
 
 function LineupFix({ m, c }: { m: Match; c: SetState }) {
   const t = team()!, ps = activePlayers();
-  const base = c.lu || c.startLu || t.defLineup?.lu || ps.filter((p) => p.pos !== "L").slice(0, 6).map((p) => p.id);
+  const base = c.lu || c.startLu || t.defLineup?.lu || autoLineup(ps).lu;
   const [lu, setLu] = useState<string[]>([0, 1, 2, 3, 4, 5].map((i) => base[i] || ""));
   const [lib, setLib] = useState<string>(c.lib || t.defLineup?.lib || ps.find((p) => p.pos === "L")?.id || "");
   const [ls, setLs] = useState<string>(c.libSrv || "");

@@ -4,7 +4,7 @@ import { matchesOf, patch, plansOf, player, replayOf, teamPlayers, team, toast, 
 import { Goal, GoalMetric, Match, RecruitProfile } from "../../data/model";
 import { aggregate, Agg, SetState, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, passAvg, playerMetrics, PlayerMetrics, serveAttempts, serveErrors } from "../../sports/volleyball/metrics";
-import { Card, ConfirmButton, download, fmtDate, Kpi, Seg, SetRow, Switch } from "../../ui/kit";
+import { Card, ConfirmButton, download, fmtDate, Kpi, plural, Seg, SetRow, Switch } from "../../ui/kit";
 import { LineChart } from "../../ui/charts";
 import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
@@ -67,7 +67,7 @@ export function PlayerPage({ id }: { id: string }) {
       <div className="jersey">{p.num}</div>
       <div className="grow"><h1 style={{ margin: 0 }}>{p.first} {p.last}</h1>
         <p className="muted">{[p.pos, p.height, p.grad ? "Class of " + p.grad : "", t.name].filter(Boolean).join(" · ")}</p>
-        <p className="small muted">{rows.length} {src === "practice" ? "practices" : src === "all" ? "matches and practices" : "matches"} · {pm.sets} sets this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
+        <p className="small muted">{src === "practice" ? plural(rows.length, "practice") : src === "all" ? plural(rows.length, "match or practice", "matches and practices") : plural(rows.length, "match", "matches")} · {plural(pm.sets, "set")} this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
       <div className="stack" style={{ alignItems: "flex-end" }}><Seg value={src} onChange={setSrc} options={[["games", "Matches"], ["practice", "Practice"], ["all", "All"]]} label="Which stats" />
         <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button></div>
     </div></section>

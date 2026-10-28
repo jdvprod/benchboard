@@ -88,3 +88,6 @@ export function download(filename: string, data: BlobPart, type = "application/o
 export function copyText(text: string): Promise<boolean> {
   try { return navigator.clipboard.writeText(text).then(() => true, () => false); } catch { return Promise.resolve(false); }
 }
+
+/** "1 match", "3 matches" */
+export const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;

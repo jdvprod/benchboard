@@ -1,4 +1,5 @@
 /** Lineup builder: six starters, libero, all six rotations, rotation results, AI suggestion. */
+import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { useState } from "react";
 import { activePlayers, appendEvents, currentMatch, matchesOf, patch, player, playerName, replayOf, setTeamPatch, team, toast, todayISO, uid } from "../../data/store";
 import { Lineup } from "../../data/model";
@@ -26,7 +27,7 @@ export function liberoFor(lu: string[], lib: string | null, libSrv: string | nul
 export function LineupPage() {
   const t = team()!, ps = activePlayers(), m = currentMatch();
   const live = m && m.kind === "match" ? replayOf(m)?.cur : null;
-  const seed: Lineup = t.defLineup || { lu: ps.filter((p) => p.pos !== "L").slice(0, 6).map((p) => p.id), lib: ps.find((p) => p.pos === "L")?.id || null, libSrv: null };
+  const seed: Lineup = t.defLineup || { ...autoLineup(ps), libSrv: null };
   const [lu, setLu] = useState<string[]>([0, 1, 2, 3, 4, 5].map((i) => seed.lu[i] || ""));
   const [lib, setLib] = useState<string | null>(seed.lib);
   const [libSrv, setLibSrv] = useState<string | null>(seed.libSrv);

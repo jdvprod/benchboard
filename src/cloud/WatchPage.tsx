@@ -8,6 +8,7 @@ import { blocks, fmtHit, hitting } from "../sports/volleyball/metrics";
 import { MomentumChart } from "../ui/charts";
 import { applyTheme } from "../app/theme";
 import { GameScore, niceDate } from "../ui/GameScore";
+import { useWakeLock } from "../ui/wakeLock";
 
 interface WatchData { team: { name: string; color: string; level: string } | null; match: any; logs: any[][]; players: { id: string; num: string; first: string; last: string; pos: string }[]; at: string }
 
@@ -28,6 +29,7 @@ export function WatchPage({ code }: { code: string }) {
     const t = setInterval(() => setTick((x) => x + 1), 1000);
     return () => { stop = true; clearTimeout(timer); clearInterval(t); };
   }, [code]);
+  useWakeLock(d?.match?.status === "live");
   useEffect(() => { if (d?.team?.color) applyTheme(d.team.color, "system", "normal", null); }, [d?.team?.color]);
 
   if (!d) return <div className="watch"><div className="page" style={{ maxWidth: 760, margin: "0 auto" }}><p className="empty" style={{ padding: 30 }}>{err || "Loading the game…"}</p></div></div>;
