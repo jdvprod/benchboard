@@ -37,12 +37,13 @@ check "select season_view('s1s1s1')->'players'->0->>'last';" "C" "season page sh
 check "select count(*) from jsonb_array_elements(season_view('s1s1s1')->'players') p where p->>'num' = '9' and p->>'first' = '' and p->>'last' = '';" "1" "players kept off public pages show only their number"
 check "select watch('l1l1l1')::text like '%private%';" "f" "live link never includes match notes or film tags"
 check "select season_view('s1s1s1')::text like '%private%';" "f" "season page never includes film tags"
+check "select season_view('s1s1s1')->'live'->0->>'code';" "L1L1L1" "season page links to the live gamecast"
 check "select jsonb_array_length(watch('l1l1l1')->'logs'->0);" "1" "live link keeps the plays"
 check "select jsonb_array_length(season_view('s1s1s1')->'matches');" "1" "season page lists matches"
 check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the match"
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "8" "schema version is reported"
+check "select schema_version();" "9" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

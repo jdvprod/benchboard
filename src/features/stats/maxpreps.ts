@@ -2,7 +2,7 @@
 import { player, team } from "../../data/store";
 import { Match } from "../../data/model";
 import { aggregate, Replay } from "../../sports/volleyball/engine";
-import { serveAttempts, serveErrors } from "../../sports/volleyball/metrics";
+import { serveErrors, serves } from "../../sports/volleyball/metrics";
 
 /** MaxPreps groups, each with its column codes (as MaxPreps labels them) and how to compute them. */
 export const MP_GROUPS: [string, [string, string][]][] = [
@@ -24,7 +24,7 @@ export function maxprepsRows(R: Replay): MpRow[] {
     const s = A.ps[id], p = player(id)!;
     const v: Record<string, number> = {
       SP: A.setsPlayed[id] || 0,
-      SA: serveAttempts(s), A: s.SA, SE: serveErrors(s), PTS: A.srv[id]?.w || 0,
+      SA: serves(s, A.srv[id]?.n), A: s.SA, SE: serveErrors(s), PTS: A.srv[id]?.w || 0,
       ATT: s.TA, K: s.K, E: s.AE,
       R: s.R - s.P0, RE: s.P0,
       BS: s.BS, BA: s.BA, BE: s.BE,

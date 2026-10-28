@@ -5,7 +5,7 @@ import { setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers,
 import { Match } from "../../data/model";
 import { ACTIONS, ActionCode, GROUPS, LOCATION_HALF, OPP_NUMBER } from "../../sports/volleyball/actions";
 import { aggregate, LogEntry, Replay, serverOf, SetState, zoneOf } from "../../sports/volleyball/engine";
-import { fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveAttempts, serveErrors, blocks } from "../../sports/volleyball/metrics";
+import { fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveAttempts, serveErrors, serves, blocks } from "../../sports/volleyball/metrics";
 import { flags } from "../../sports/volleyball/flags";
 import { setUi, ui } from "../../app/ui";
 import { sideNames } from "../../app/Scoreboard";
@@ -76,6 +76,11 @@ export function Tracker({ m }: { m: Match }) {
       else if (ui.sel && !o.quiet) p = ui.sel;
       else if (!scr && a.serve && srv) p = srv;
       else if (scr || !a.optionalPlayer) { toast("Pick a player first."); return false; }
+    }
+    // a finished set (or match) takes no more plays until the next set starts; stats-only entries never touch the score
+    if (c.over && jobOf(m) !== "stats") {
+      toast(R.matchOver ? "The match is over. Fix the score if a point was missed, or finish the match." : `${m.scrim ? "Game" : "Set"} ${c.n} is over. Pick who serves first in ${m.scrim ? "game" : "set"} ${c.n + 1} to keep going.`);
+      return false;
     }
     const ev: any = { t: code };
     if (p) ev.p = p;
@@ -396,7 +401,7 @@ function Pad({ m, c, setA, mA, record }: { m: Match; c: SetState; setA: ReturnTy
   const selSide = scr && sel ? (scr.b.ids.includes(sel) ? "b" : "a") : null;
   const job = jobOf(m);
   const groups: [string, ActionCode[]][] = scr ? GROUPS.filter((g) => g[0] !== "Opponent").map(([g, ks]) => [g, ks.filter((k) => k !== "REF")] as [string, ActionCode[]]).concat([["Points", ["UP", "TP"]]]) : jobGroups(m);
-  const srvSrc = sel ? mA.ps[sel] : setA.T;
+  const srvSrc = sel ? mA.ps[sel] : setA.T, srvN = sel ? mA.srv[sel]?.n || 0 : setA.psc.n;
   return <div className="pad">{groups.map(([g, ks]) => <div className="grp" key={g}><div className="label">{g}</div><div className="acts">
     {ks.map((k) => {
       const a: any = ACTIONS[k];
@@ -408,7 +413,7 @@ function Pad({ m, c, setA, mA, record }: { m: Match; c: SetState; setA: ReturnTy
       const on = !!sel || a.team || (!scr && (a.optionalPlayer || (a.serve && srv)));
       return <button key={k} className={"act " + cls} aria-disabled={!on} onClick={() => record(k)} aria-label={label}>{a.short ? <><span className="lbl-long">{label}</span><span className="lbl-short">{a.short}</span></> : label}</button>;
     })}
-    {g === "Serve" && <span className="auto" title="Counted from ace, in and errors">Attempts {srvSrc ? serveAttempts(srvSrc) : 0}<br /><small>{sel ? "this player, match" : "team, this set"}</small></span>}
+    {g === "Serve" && <span className="auto" title="Every serve counts, even ones nobody tapped: a rally on our serve that wasn't an ace or an error was a serve in">Serves {srvSrc ? serves(srvSrc, srvN) : srvN}<br /><small>{sel ? "this player, match" : "team, this set"}</small></span>}
   </div></div>)}</div>;
 }
 

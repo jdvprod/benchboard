@@ -205,6 +205,8 @@ begin
                       and exists (select 1 from records m where m.store = 'matches' and m.id = l.data->>'matchId' and m.data->>'seasonId' = s.season_id and m.data->>'kind' = 'match' and not m.deleted)), '[]'::jsonb),
     'players', coalesce((select jsonb_agg(public_player(data))
                          from records where store = 'players' and team_id = s.team_id and not deleted and coalesce((data->>'active')::boolean, true)), '[]'::jsonb),
+    -- gamecast links the coach shared for this team's matches, so the season page can send families to the live game
+    'live', coalesce((select jsonb_agg(jsonb_build_object('matchId', match_id, 'code', code)) from live_shares where team_id = s.team_id), '[]'::jsonb),
     'at', now()
   ) into out;
   return out;
@@ -255,7 +257,7 @@ $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
-create or replace function public.schema_version() returns int language sql immutable as $$ select 8 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 9 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

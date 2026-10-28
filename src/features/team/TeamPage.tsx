@@ -4,7 +4,7 @@ import { useState } from "react";
 import { gradCell, heightCell, parseRosterLine, positionCell } from "./parseRoster";
 import { LEGAL, LEGAL_VERSION } from "../../app/legal";
 import { currentUser } from "../../cloud/client";
-import { all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
+import { todayISO, all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
 import { Player } from "../../data/model";
 import { POSITIONS } from "../../sports/volleyball/actions";
 import { Card, ConfirmButton, download, fmtDate } from "../../ui/kit";
@@ -150,8 +150,8 @@ function Backup() {
     <div className="stack">
       <p className="small">Everything is saved on this device. Save a backup to move it to another device or keep a copy. Restoring skips anything you already have. Backups from the first version of Benchboard import as a new team.</p>
       <div className="row">
-        <button className="btn sm" onClick={() => { download(`Benchboard ${t.name} ${new Date().toISOString().slice(0, 10)}.json`, exportAll(t.id), "application/json"); toast("Backup saved"); }}>Save this team</button>
-        <button className="btn sm" onClick={() => { download(`Benchboard all teams ${new Date().toISOString().slice(0, 10)}.json`, exportAll(), "application/json"); toast("Backup saved"); }}>Save all teams</button>
+        <button className="btn sm" onClick={() => { download(`Benchboard ${t.name} ${todayISO()}.json`, exportAll(t.id), "application/json"); toast("Backup saved"); }}>Save this team</button>
+        <button className="btn sm" onClick={() => { download(`Benchboard all teams ${todayISO()}.json`, exportAll(), "application/json"); toast("Backup saved"); }}>Save all teams</button>
         <label className="btn sm" style={{ cursor: "pointer" }}>Restore a backup<input type="file" accept=".json,application/json" hidden onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = ""; }} /></label>
       </div>
       {msg && <p className="hint">{msg}</p>}

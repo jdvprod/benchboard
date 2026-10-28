@@ -1,25 +1,30 @@
 /** #/season/CODE: the public season hub for players and parents. Results, schedule, leaders and every player's line. No account needed. */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { GameScore } from "../ui/GameScore";
+import { ACTIONS } from "../sports/volleyball/actions";
 import { rpc, cloudAvailable } from "./client";
+import { todayISO } from "../data/store";
 import { LEGAL } from "../app/legal";
 import { aggregate, mergeLogs, recordOf, replay, Replay, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics, serveAttempts } from "../sports/volleyball/metrics";
 
 interface P { id: string; num: string; first: string; last: string; pos: string }
 interface M { id: string; opp: string; date: string; bestOf: number; setTo?: number; cap?: number | null; status: string; event: string; site: string }
-interface Data { team: { name: string; level: string; schedule: { id: string; date: string; time: string; opp: string; site: string; event: string }[] } | null; season: string | null; matches: M[]; logs: { matchId: string; events: any[] }[]; players: P[]; at: string }
+interface Data { team: { name: string; level: string; schedule: { id: string; date: string; time: string; opp: string; site: string; event: string }[] } | null; season: string | null; matches: M[]; logs: { matchId: string; events: any[] }[]; players: P[]; live?: { matchId: string; code: string }[]; at: string }
 
 const fmtD = (d: string) => { const x = new Date(d + "T12:00:00"); return isNaN(+x) ? d : x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); };
 const fmtT = (t: string) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 
 export function SeasonPage({ code }: { code: string }) {
+  const liveRef = useRef(false), [got, setGot] = useState(0);
   const [d, setD] = useState<Data | null>(null), [err, setErr] = useState(""), [sel, setSel] = useState<string | null>(null), [open, setOpen] = useState<string | null>(null);
   useEffect(() => {
     let stop = false, timer: any;
     const load = async () => {
-      try { const r: Data | null = await rpc("season_view", { share: code }, true); if (stop) return; if (!r || !r.team) setErr("This season link isn't active. Ask the coach for a new one."); else { setD(r); setErr(""); } }
+      try { const r: Data | null = await rpc("season_view", { share: code }, true); if (stop) return; if (!r || !r.team) setErr("This season link isn't active. Ask the coach for a new one."); else { liveRef.current = r.matches.some((m) => m.status === "live"); setD(r); setGot(Date.now()); setErr(""); } }
       catch { if (!stop) setErr((e) => e || "Couldn't load the season. Check your connection."); }
-      if (!stop) timer = setTimeout(load, 60000);
+      // every 8 seconds while a match is live, so the live scoreboard keeps up; once a minute otherwise
+      if (!stop) timer = setTimeout(load, liveRef.current ? 8000 : 60000);
     };
     if (cloudAvailable()) load(); else setErr("Season links aren't set up in this version of the app.");
     return () => { stop = true; clearTimeout(timer); };
@@ -28,7 +33,7 @@ export function SeasonPage({ code }: { code: string }) {
   const games = useMemo(() => {
     if (!d) return [] as { m: M; R: Replay }[];
     return d.matches.map((m) => ({ m, R: replay(mergeLogs(d.logs.filter((l) => l.matchId === m.id).map((l) => l.events || [])), { id: m.id, bestOf: m.bestOf || 5, setTo: m.setTo, cap: m.cap }) }))
-      .filter((x) => x.R.sets.some((s) => s.us + s.them > 0)).sort((a, b) => b.m.date.localeCompare(a.m.date));
+      .filter((x) => x.m.status === "live" || x.R.sets.some((s) => s.us + s.them > 0)).sort((a, b) => b.m.date.localeCompare(a.m.date));
   }, [d]);
 
   if (!d) return <div className="watch"><div className="page" style={{ maxWidth: 820, margin: "0 auto" }}><p className="empty" style={{ padding: 30 }}>{err || "Loading the season…"}</p></div></div>;
@@ -37,9 +42,12 @@ export function SeasonPage({ code }: { code: string }) {
   const nm = (id: string) => { const p = P.get(id); return p ? `#${p.num} ${p.first} ${p.last ? p.last + "." : ""}`.trim() : ""; };
   const A = aggregate(games.flatMap((g) => g.R.sets));
   const rec = recordOf(games.map((g) => g.R));
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayISO();
   const upcoming = (d.team?.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 3);
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).filter(([id]) => P.has(id)).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <div key={label} className="sh-lead"><span className="label">{label}</span><b>{+top[1].toFixed(1)}</b><button className="linkish small" onClick={() => setSel(top[0])}>{nm(top[0])}</button></div> : null; };
+  const liveGame = games.find((g) => g.m.status === "live" && !g.R.matchOver);
+  const liveCode = liveGame ? d.live?.find((x) => x.matchId === liveGame.m.id)?.code : undefined;
+  const lastPlays = liveGame ? liveGame.R.log.filter((l) => l.kind === "stat" && l.w).slice(-3).reverse() as any[] : [];
   const roster = d.players.filter((p) => A.ps[p.id] || A.pm[p.id]).sort((a, b) => (+a.num || 0) - (+b.num || 0));
   const box = (R: Replay) => { const a = aggregate(R.sets); return Object.entries(a.ps).filter(([id]) => P.has(id)).sort((x, y) => (+P.get(x[0])!.num || 0) - (+P.get(y[0])!.num || 0)); };
 
@@ -69,6 +77,12 @@ export function SeasonPage({ code }: { code: string }) {
       <div><h1>{d.team?.name}</h1><p>{d.season || "Season"}{d.team?.level ? " · " + d.team.level : ""}</p></div>
       <div className="sh-rec"><b>{rec.text}</b><span>Record</span></div>
     </section>
+    {liveGame && <section className="card sh-live" aria-label="Live now">
+      <div className="row between" style={{ marginBottom: 8 }}><span className="label">Live now · {liveGame.m.site === "away" ? "at " : "vs "}{liveGame.m.opp}</span><span className="small muted">{Date.now() - got < 15000 ? "Updated just now" : ""}</span></div>
+      <GameScore R={liveGame.R} us={d.team?.name || "Us"} them={liveGame.m.opp || "Opponent"} live />
+      {lastPlays.length > 0 && <ul className="pbp" style={{ marginBottom: 10 }}>{lastPlays.map((l) => <li key={l.id}><span className={"sc pt-" + l.w}>{l.us}–{l.them}</span><span>{(l.p ? nm(l.p) + " · " : "") + ((ACTIONS as any)[l.t]?.long || l.t).replace(/^Opponent /, (liveGame.m.opp || "Opponent") + " ")}</span></li>)}</ul>}
+      {liveCode && <a className="btn primary" href={"#/watch/" + liveCode}>Open the full gamecast</a>}
+    </section>}
     {upcoming.length > 0 && <section className="card"><div className="label" style={{ marginBottom: 6 }}>Coming up</div>
       <ul className="sh-list">{upcoming.map((x) => <li key={x.id}><span className="sh-date">{fmtD(x.date)}{x.time ? " · " + fmtT(x.time) : ""}</span><b>{x.site === "away" ? "at " : "vs "}{x.opp}</b><span className="small muted">{x.event}</span></li>)}</ul></section>}
     <section className="card"><div className="label" style={{ marginBottom: 6 }}>Results</div>

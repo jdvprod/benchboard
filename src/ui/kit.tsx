@@ -47,8 +47,10 @@ export function Toast() {
   const t = state.toast;
   useEffect(() => {
     if (t && t.at !== last.current) {
-      last.current = t.at; setShown(t);
-      const h = setTimeout(() => setShown(null), t.action ? 6000 : 1800); return () => clearTimeout(h);
+      // time left is measured from when the toast was raised, so changing pages doesn't bring an old one back
+      last.current = t.at; const left = t.at + (t.action ? 6000 : 1800) - Date.now();
+      if (left <= 0) { setShown(null); return; }
+      setShown(t); const h = setTimeout(() => setShown(null), left); return () => clearTimeout(h);
     }
   }, [t]);
   return shown ? <div className="toast" role="status">{shown.msg}{shown.action && <button className="toast-act" onClick={() => { shown.action!.fn(); setShown(null); }}>{shown.action.label}</button>}</div> : null;

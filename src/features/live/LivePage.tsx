@@ -9,6 +9,7 @@ import { logText } from "../track/Tracker";
 import { sideNames } from "../../app/Scoreboard";
 import { liveUrlFor, ShareLive } from "../../cloud/CloudCard";
 import { qrSvg } from "../../lib/qr";
+import { GameScore } from "../../ui/GameScore";
 
 export function LivePage() {
   const t = team()!, cur = currentMatch();
@@ -44,31 +45,14 @@ export function LivePage() {
   }
   return <div className="page">
     <div className="row between">
-      <div className="row"><span className="tag" style={{ marginLeft: 0, background: live ? "var(--accent)" : "var(--surface-2)", color: live ? "var(--accent-ink)" : "var(--muted)" }}>{live ? "● Live" : "Final"}</span><span className="small muted">{fmtDate(m.date)}{m.event ? " · " + m.event : ""}{m.site ? " · " + m.site : ""}</span></div>
+      <div className="row"><span className="small muted">{fmtDate(m.date)}{m.event ? " · " + m.event : ""}{m.site ? " · " + m.site : ""}</span></div>
       <div className="row"><button className="btn sm" onClick={() => { setTv(true); try { document.documentElement.requestFullscreen?.(); } catch { /* ignore */ } }}>TV mode</button><ShareLive matchId={m.id} />
       <select className="input" style={{ width: "auto", maxWidth: 260 }} value={m.id} onChange={(e) => setPick(e.target.value)} aria-label="Match">{games.slice(0, 40).map((g) => <option key={g.id} value={g.id}>{fmtDate(g.date)} vs {g.opp}</option>)}</select></div>
     </div>
-    <section className="card" style={{ background: "var(--bar)", color: "var(--bar-ink)", borderColor: "transparent" }}>
-      <div className="gc-score">
-        <div><div className="nm" style={{ color: "var(--us-bright)" }}>{names.us}</div><div className="small" style={{ color: "var(--bar-muted)" }}>Sets {R.wonUs}</div></div>
-        <div className="row" style={{ gap: 18, justifyContent: "center" }}><span className="big" style={{ color: "var(--us-bright)" }}>{c?.us ?? 0}</span><span style={{ color: "var(--bar-muted)", fontSize: 28 }}>–</span><span className="big" style={{ color: "var(--them-bright)" }}>{c?.them ?? 0}</span></div>
-        <div><div className="nm" style={{ color: "var(--them-bright)" }}>{names.them}</div><div className="small" style={{ color: "var(--bar-muted)" }}>Sets {R.wonThem}</div></div>
-      </div>
-      <div className="row" style={{ justifyContent: "center", marginTop: 10, gap: 8 }}>
-        {c && <span className="chip"><span className="k">Set</span>{c.n}</span>}
-        {live && c && <span className="chip"><span className="k">Serving</span>{c.serve === "us" ? (srv ? playerName(srv) : names.us) : names.them}</span>}
-        {run.n >= 3 && <span className={"chip run-" + run.side}>{run.n}-0 run {run.side === "us" ? names.us : names.them}</span>}
-      </div>
-    </section>
+    <GameScore R={R} us={names.us} them={names.them} live={m.status === "live"} unit={m.scrim ? "Game" : "Set"} server={c && c.serve === "us" && srv ? playerName(srv) : undefined} />
     <div className="grid2" style={{ alignItems: "start" }}>
       <div className="stack">
-        <Card title="Box score"><div className="tbl"><table>
-          <thead><tr><th className="l">Team</th>{R.sets.map((s) => <th key={s.n}>{s.n}</th>)}<th>Sets</th></tr></thead>
-          <tbody>
-            <tr><td className="l"><b style={{ color: "var(--us)" }}>{names.us}</b></td>{R.sets.map((s) => <td key={s.n} style={{ fontWeight: s.winner === "us" ? 800 : undefined }}>{s.us}</td>)}<td><b>{R.wonUs}</b></td></tr>
-            <tr><td className="l"><b style={{ color: "var(--them)" }}>{names.them}</b></td>{R.sets.map((s) => <td key={s.n} style={{ fontWeight: s.winner === "them" ? 800 : undefined }}>{s.them}</td>)}<td><b>{R.wonThem}</b></td></tr>
-          </tbody></table></div></Card>
-        {c && c.rallies.length > 1 && <Card title={`Momentum · set ${c.n}`}><MomentumChart diffs={momentum(c)} /><p className="keys">Above the line = {names.us} leading.</p></Card>}
+        {c && c.rallies.length > 1 && <Card title={`Momentum · set ${c.n}`}><MomentumChart diffs={momentum(c)} labels={[names.us + " ahead", names.them + " ahead"]} /></Card>}
         <Card title="Leaders"><div className="kpis" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))" }}>
           {leader((s) => s.K, "Kills")}{leader((s) => s.SA, "Aces")}{leader((s) => s.D, "Digs")}{leader((s) => blocks(s), "Blocks")}{leader((s) => s.AST, "Assists")}
         </div></Card>

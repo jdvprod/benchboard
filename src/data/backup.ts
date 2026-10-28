@@ -1,6 +1,6 @@
 /** Backups: save everything to one file, restore it anywhere. Also imports the first version's backups. */
 import { Match, Player, StoreName } from "./model";
-import { all, appendEvents, createTeam, emit, get, save, setPrefs, team, uid } from "./store";
+import { all, appendEvents, createTeam, emit, localISO, get, save, setPrefs, team, uid } from "./store";
 import { addStarterDrills } from "./seed";
 
 const TABLES: StoreName[] = ["teams", "seasons", "players", "matches", "logs", "opponents", "drills", "plans", "boards"];
@@ -54,7 +54,7 @@ function importV1(d: any): ImportResult {
     const kind = mm.scrim ? "scrimmage" : mm.practice ? "drills" : "match";
     const m: Match = {
       id: mm.id || uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind, opp: String(mm.opp || "").replace(/^Scrimmage:\s*/, kind === "scrimmage" ? "Scrimmage: " : ""),
-      date: mm.date || new Date(mm.createdAt || Date.now()).toISOString().slice(0, 10), bestOf: mm.bestOf || 5, status: "done", site: "", event: "",
+      date: mm.date || localISO(new Date(mm.createdAt || Date.now())), bestOf: mm.bestOf || 5, status: "done", site: "", event: "",
       notes: mm.notes || "", oppPlayers: mm.oppPlayers || [], scrim: mm.scrim || null, filmStart: mm.filmStart || null, nextLu: null,
       report: mm.report || "", reportAt: mm.reportAt || null, planId: null, createdAt: mm.createdAt || Date.now(), sample: !!mm.sample,
     };

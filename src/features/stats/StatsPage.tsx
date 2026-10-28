@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { patch, player, playerName, replayOf, seasonsOf, team, teamPlayers, toast } from "../../data/store";
+import { patch, player, playerName, replayOf, seasonsOf, team, teamPlayers, toast, todayISO } from "../../data/store";
 import { aggregate, Agg, recordOf, Stat } from "../../sports/volleyball/engine";
 import { AttackContext, CONTEXT_LABEL } from "../../sports/volleyball/actions";
-import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtRatio, fmtSigned, hitting, passAvg, perfectPassPct, playerMetrics, ratio, serveAttempts, serveEfficiency, serveErrors, serveInPct, teamMetrics, netPoints } from "../../sports/volleyball/metrics";
+import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtRatio, fmtSigned, hitting, passAvg, perfectPassPct, playerMetrics, ratio, serveAttempts, serveEfficiency, serveErrors, serveInPct, serves, teamMetrics, netPoints } from "../../sports/volleyball/metrics";
 import { flags } from "../../sports/volleyball/flags";
 import { Card, copyText, download, fmtDate, Kpi, Seg } from "../../ui/kit";
 import { Diverge, LineChart, StackBar } from "../../ui/charts";
@@ -87,7 +87,7 @@ function Overview({ S, A }: { S: Scope; A: Agg }) {
   const fl = single && !single.setN ? flags(single.R, { us: t.name, them: single.m.opp, subLimit: t.settings.subLimit, playerIds: teamPlayers().map((p) => p.id), short: (id) => playerName(id) }) : [];
   return <div className="stack">
     {single && <AiCard key={single.m.id} title={single.m.kind === "match" ? "Match report" : "Practice report"} desc="What decided it, standouts, concerns and practice priorities, written from the stats. Saved with the match." button="Write the report" prompt={() => reportPrompt(single.m)} saved={single.m.report} savedAt={single.m.reportAt} onSave={(text) => patch("matches", single.m.id, { report: text, reportAt: Date.now() })} filename={`${t.name} vs ${single.m.opp} report`} />}
-    {single && <Card title="Match notes"><textarea className="input" aria-label="Match notes" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, injuries, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
+    {single && <Card title="Match notes"><textarea className="input" aria-label="Match notes" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, their tendencies, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
     <div className="kpis">
       <Kpi label="Hitting %" value={fmtHit(M.hitting)} delta={dv(M.hitting, B?.hitting, fmtHit, true)} sub={`${T.K} kills · ${T.AE} errors · ${T.TA} att`} />
       <Kpi label="Side-out" value={fmtPct(M.sideOut)} delta={dv(M.sideOut, B?.sideOut, fmtPct, true)} sub={`${A.so.w} of ${A.so.n} on their serve`} />
@@ -129,7 +129,7 @@ function Players({ A }: { A: Agg }) {
   const S = useSort(), Z = {} as Stat;
   const ids = S.apply(teamPlayers().filter((p) => A.ps[p.id] || A.pm[p.id]).map((p) => p.id), (id, k) => {
     const s = A.ps[id] || Z, pm = playerMetrics(A, id), n = pm.sets || 1;
-    if (k.startsWith("t")) { const v = TOTAL_GET[+k.slice(1)](s); return v == null || Number.isNaN(v) ? null : v; }
+    if (k.startsWith("t")) { const v = TOTAL_GET[+k.slice(1)](s, A.srv[id]?.n || 0); return v == null || Number.isNaN(v) ? null : v; }
     switch (k) {
       case "num": return -(+player(id)!.num || 0);
       case "sets": return pm.sets; case "kps": return pm.kps; case "aps2": return pm.acesPs; case "bps": return pm.bps; case "dps": return pm.dps; case "asps": return pm.aps;
@@ -145,8 +145,8 @@ function Players({ A }: { A: Agg }) {
       {mode === "totals" && <><thead>
         <tr><th /><th /><th colSpan={6} className="gh">Hitting</th><th colSpan={3} className="gh">Setting</th><th colSpan={5} className="gh">Serve</th><th colSpan={3} className="gh">Receive</th><th colSpan={2} className="gh">Defense</th><th colSpan={3} className="gh">Block</th><th colSpan={3} className="gh">Misc errors</th></tr>
         <tr><th className="l">#</th><th className="l">Player</th>{["K", "TA", "E", "Hit %", "Tool", "Blk'd", "Att", "Ast", "E", "Att", "Ace", "In", "Net", "Out", "Avg", "Rec", "0s", "Dig", "Dig E", "Solo", "Ast", "E", "Comm", "Eff", "Pos"].map((l, i) => S.th(l, "t" + i))}</tr></thead>
-        <tbody>{ids.map((id) => { const s = A.ps[id] || ({} as Stat), c = cls(s), p = player(id)!; return <tr key={id} className="click" onClick={() => go("player", id)}><td className="l">{p.num}</td><td className="l">{p.first} {p.last} <span className="label">{p.pos}</span></td>{totals(s, c.hc, c.pc)}</tr>; })}</tbody>
-        <tfoot><tr><td /><td className="l">Team</td>{totals(A.T, "", "")}</tr></tfoot></>}
+        <tbody>{ids.map((id) => { const s = A.ps[id] || ({} as Stat), c = cls(s), p = player(id)!; return <tr key={id} className="click" onClick={() => go("player", id)}><td className="l">{p.num}</td><td className="l">{p.first} {p.last} <span className="label">{p.pos}</span></td>{totals(s, c.hc, c.pc, A.srv[id]?.n || 0)}</tr>; })}</tbody>
+        <tfoot><tr><td /><td className="l">Team</td>{totals(A.T, "", "", A.psc.n)}</tr></tfoot></>}
       {mode === "perset" && <><thead><tr><th className="l">#</th><th className="l">Player</th>{S.th("Sets", "sets")}{S.th("Kills/S", "kps")}{S.th("Aces/S", "aps2")}{S.th("Blocks/S", "bps")}{S.th("Digs/S", "dps")}{S.th("Assists/S", "asps")}{S.th("Rec/S", "rps")}{S.th("Errors/S", "eps")}{S.th("Net pts/S", "nps")}</tr></thead>
         <tbody>{ids.map((id) => { const s = A.ps[id], pm = playerMetrics(A, id), p = player(id)!, n = pm.sets || 1; return <tr key={id} className="click" onClick={() => go("player", id)}><td className="l">{p.num}</td><td className="l">{p.first} {p.last}</td><td>{pm.sets}</td><td>{fmtNum(pm.kps, 2)}</td><td>{fmtNum(pm.acesPs, 2)}</td><td>{fmtNum(pm.bps, 2)}</td><td>{fmtNum(pm.dps, 2)}</td><td>{fmtNum(pm.aps, 2)}</td><td>{s ? fmtNum(s.R / n, 2) : "—"}</td><td>{s ? fmtNum((s.AE + serveErrors(s) + s.P0 + s.BE + s.BHE + s.DE) / n, 2) : "—"}</td><td><b>{fmtNum(pm.netPerSet, 2)}</b></td></tr>; })}</tbody></>}
       {mode === "advanced" && <><thead><tr><th className="l">#</th><th className="l">Player</th>{S.th("Kill %", "kp")}{S.th("Hit %", "hit")}{S.th("Perfect pass %", "pp")}{S.th("Good pass %", "gp")}{S.th("Serve in %", "si")}{S.th("Serve eff", "se")}{S.th("Ace : error", "ae")}{S.th("+/−", "pmn")}{S.th("Net points", "np")}</tr></thead>
@@ -155,7 +155,9 @@ function Players({ A }: { A: Agg }) {
     <p className="keys" style={{ marginTop: 8 }}>{mode === "totals" ? "Hit % = (kills − errors) ÷ attempts. Pass on a 0–3 scale. Green and red mark standouts once there are enough attempts. Tap a column to sort, or a player for their page." : mode === "perset" ? "Per set uses the sets each player recorded a stat or was on court in. Net points = kills, aces and blocks minus errors." : "+/− counts rallies won minus lost while that player was on court (needs a lineup). Serve eff = (aces − errors) ÷ serves. Ace : error above 1.0 is strong."}</p></>}
   </Card>;
 }
-const TOTAL_GET: ((s: Stat) => number | null)[] = [(s) => s.K, (s) => s.TA, (s) => s.AE, (s) => hitting(s), (s) => s.KT, (s) => s.AB, (s) => s.SATT, (s) => s.AST, (s) => s.BHE, (s) => serveAttempts(s), (s) => s.SA, (s) => s.SI, (s) => s.SEN, (s) => s.SEO + s.SE, (s) => passAvg(s), (s) => s.R, (s) => s.P0, (s) => s.D, (s) => s.DE, (s) => s.BS, (s) => s.BA, (s) => s.BE, (s) => s.CE, (s) => s.EE, (s) => s.PE];
+/** Serves that went in without an ace: tapped "In", or served rallies nobody tapped. */
+const servesIn = (s: Stat, served: number) => Math.max(s.SI || 0, served - (s.SA || 0) - serveErrors(s));
+const TOTAL_GET: ((s: Stat, served: number) => number | null)[] = [(s) => s.K, (s) => s.TA, (s) => s.AE, (s) => hitting(s), (s) => s.KT, (s) => s.AB, (s) => s.SATT, (s) => s.AST, (s) => s.BHE, (s, n) => serves(s, n), (s) => s.SA, (s, n) => servesIn(s, n), (s) => s.SEN, (s) => s.SEO + s.SE, (s) => passAvg(s), (s) => s.R, (s) => s.P0, (s) => s.D, (s) => s.DE, (s) => s.BS, (s) => s.BA, (s) => s.BE, (s) => s.CE, (s) => s.EE, (s) => s.PE];
 /** Click-to-sort for stat tables: first click sorts high to low, second low to high, third clears. */
 function useSort() {
   const [k, setK] = useState<string | null>(null), [d, setD] = useState(-1);
@@ -164,8 +166,8 @@ function useSort() {
   return { th, apply, reset: () => setK(null) };
 }
 
-function totals(s: Stat, hc: string, pc: string) {
-  const v = [s.K, s.TA, s.AE, <b className={hc}>{fmtHit(hitting(s))}</b>, s.KT, s.AB, s.SATT, s.AST, s.BHE, serveAttempts(s), s.SA, s.SI, s.SEN, s.SEO + s.SE, <b className={pc}>{fmtAvg(passAvg(s))}</b>, s.R, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE];
+function totals(s: Stat, hc: string, pc: string, served = 0) {
+  const v = [s.K, s.TA, s.AE, <b className={hc}>{fmtHit(hitting(s))}</b>, s.KT, s.AB, s.SATT, s.AST, s.BHE, serves(s, served), s.SA, servesIn(s, served), s.SEN, s.SEO + s.SE, <b className={pc}>{fmtAvg(passAvg(s))}</b>, s.R, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE];
   return v.map((x, i) => <td key={i}>{x ?? 0}</td>);
 }
 
@@ -212,7 +214,7 @@ function ServePass({ A }: { A: Agg }) {
       </table></div></Card>
       <Card title="Servers"><div className="tbl"><table>
         <thead><tr><th className="l">Server</th><th>Att</th><th>Ace</th><th>Err</th><th>In %</th><th>Eff</th><th>Rallies won</th><th>Best run</th></tr></thead>
-        <tbody>{servers.map((p) => { const s = A.ps[p.id] || ({ SA: 0, SI: 0, SE: 0, SEN: 0, SEO: 0 } as Stat), r = A.srv[p.id]; return <tr key={p.id}><td className="l">{playerName(p.id)}</td><td>{serveAttempts(s)}</td><td>{s.SA}</td><td>{serveErrors(s)}</td><td>{fmtPct(serveInPct(s))}</td><td>{fmtHit(serveEfficiency(s))}</td><td>{r ? `${r.w}/${r.n} (${fmtPct(ratio(r.w, r.n))})` : "—"}</td><td>{r?.best || "—"}</td></tr>; })}</tbody>
+        <tbody>{servers.map((p) => { const s = A.ps[p.id] || ({ SA: 0, SI: 0, SE: 0, SEN: 0, SEO: 0 } as Stat), r = A.srv[p.id]; return <tr key={p.id}><td className="l">{playerName(p.id)}</td><td>{serves(s, r?.n)}</td><td>{s.SA}</td><td>{serveErrors(s)}</td><td>{fmtPct(serveInPct(s, r?.n))}</td><td>{fmtHit(serveEfficiency(s, r?.n))}</td><td>{r ? `${r.w}/${r.n} (${fmtPct(ratio(r.w, r.n))})` : "—"}</td><td>{r?.best || "—"}</td></tr>; })}</tbody>
       </table></div><p className="keys" style={{ marginTop: 8 }}>Rallies won and best run need a lineup so the app knows who is serving.</p></Card>
     </div>
     <ReceiveRot A={A} />
@@ -269,7 +271,7 @@ async function exportSheet(S: Scope, A: Agg) {
   const t = team()!, M = teamMetrics(A), T = A.T;
   const head = ["#", "Player", "Pos", "Sets", "Kills", "Attack att", "Attack err", "Hit %", "Set att", "Assists", "Set err", "Serve att", "Aces", "Serve in", "Serve err net", "Serve err out", "Serve eff", "Pass avg", "Receptions", "Perfect passes", "Pass 0s", "Digs", "Dig err", "Solo blocks", "Block assists", "Block/net err", "Comm err", "Effort err", "Position err", "+/-", "Net points"];
   const r3 = (v: number | null) => (v == null ? "" : +v.toFixed(3));
-  const row = (num: string, name: string, pos: string, s: Stat, id?: string) => { const pm = id ? playerMetrics(A, id) : null; return [num, name, pos, pm ? pm.sets : A.sets, s.K, s.TA, s.AE, r3(hitting(s)), s.SATT, s.AST, s.BHE, serveAttempts(s), s.SA, s.SI, s.SEN, s.SEO + s.SE, r3(serveEfficiency(s)), r3(passAvg(s)), s.R, s.R3, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE, pm?.plusMinus ?? "", netPoints(s)]; };
+  const row = (num: string, name: string, pos: string, s: Stat, id?: string) => { const pm = id ? playerMetrics(A, id) : null; return [num, name, pos, pm ? pm.sets : A.sets, s.K, s.TA, s.AE, r3(hitting(s)), s.SATT, s.AST, s.BHE, serves(s, id ? A.srv[id]?.n : A.psc.n), s.SA, s.SI, s.SEN, s.SEO + s.SE, r3(serveEfficiency(s, id ? A.srv[id]?.n : A.psc.n)), r3(passAvg(s)), s.R, s.R3, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE, pm?.plusMinus ?? "", netPoints(s)]; };
   const players = [head, ...teamPlayers().filter((p) => A.ps[p.id]).map((p) => row(p.num, `${p.first} ${p.last}`, p.pos, A.ps[p.id], p.id)), row("", "Team", "", T)];
   const summary: any[][] = [[`${t.name} · ${S.label}`], [], ["Metric", "Value"], ["Points won", A.us], ["Points lost", A.them], ["Hitting %", r3(M.hitting)], ["Kill %", r3(M.killPct)], ["Side-out %", r3(M.sideOut)], ["First-ball side-out %", r3(M.firstBallSO)], ["Point-scoring %", r3(M.pointScoring)], ["Pass average", r3(M.passAvg)], ["Perfect pass %", r3(M.perfectPass)], ["Serve in %", r3(M.serveIn)], ["Serve efficiency", r3(M.serveEff)], ["In-system %", r3(M.inSystemPct)], ["In-system hitting", r3(M.hitInSystem)], ["Out-of-system hitting", r3(M.hitOutOfSystem)], ["Transition hitting", r3(M.hitTransition)], ["Dig success", r3(M.digSuccess)], ["Side-out after 3 pass", r3(M.soByPass.P3)], ["Side-out after 2 pass", r3(M.soByPass.P2)], ["Side-out after 1 pass", r3(M.soByPass.P1)], ["Their errors", A.team.OE], ["Points we gave away", M.freePoints.ours], [], ["Date", "Opponent", "Result", "Set scores"], ...S.items.map(({ m, R }) => [m.date, m.opp, `${R.wonUs}-${R.wonThem}`, R.sets.map((s) => s.us + "-" + s.them).join(", ")])];
   const rot = [["Rotation", "Won", "Lost", "Side-out won", "Side-out chances", "Serve points won", "Serve chances"], ...[1, 2, 3, 4, 5, 6].map((r) => [r, A.rot[r].w, A.rot[r].l, A.rot[r].rw, A.rot[r].rn, A.rot[r].sw, A.rot[r].sn])];
@@ -278,7 +280,7 @@ async function exportSheet(S: Scope, A: Agg) {
   const sheets: [string, any[][]][] = [["Summary", summary], ["Players", players], ["Rotations", rot], ["Attack by pass", ctx], ["Opponent", opp]];
   if (S.single) sheets.push(["Play by play", [["Set", "Score", "Play"], ...S.single.R.log.map((l) => [l.set, l.kind === "stat" && l.w ? `${l.us}-${l.them}` : "", logText(l, S.single!.m, t.name)])]]);
   const blob = await buildXlsx(sheets);
-  download(`${t.name} ${S.label} ${new Date().toISOString().slice(0, 10)}.xlsx`.replace(/[^\w\- .·]+/g, ""), blob);
+  download(`${t.name} ${S.label} ${todayISO()}.xlsx`.replace(/[^\w\- .·]+/g, ""), blob);
   toast("Spreadsheet saved");
 }
 
@@ -535,10 +537,10 @@ export function TheirRotations({ A }: { A: Agg }) {
   const worst = rots.filter((n) => R[n].sn >= 8).sort((a, b) => R[b].sw / R[b].sn - R[a].sw / R[a].sn)[0];
   return <Card title="Their rotations">
     <div className="tbl"><table>
-      <thead><tr><th className="l">Their rotation</th><th>On their serve</th><th>They scored</th><th>Aces / 0 passes</th><th>On our serve</th><th>They sided out</th></tr></thead>
-      <tbody>{rots.map((n) => { const x = R[n], ps = ratio(x.sw, x.sn); return <tr key={n} style={n === worst ? { fontWeight: 700 } : undefined}><td className="l">R{n}{n === 1 ? " (first server)" : ""}</td><td>{x.sn}</td><td style={{ color: ps != null && ps >= 0.5 ? "var(--them)" : undefined }}>{fmtPct(ps)} <span className="muted small">{x.sw}/{x.sn}</span></td><td>{x.aces}</td><td>{x.rn}</td><td>{fmtPct(ratio(x.rw, x.rn))} <span className="muted small">{x.rw}/{x.rn}</span></td></tr>; })}</tbody>
+      <thead><tr><th className="l">Rot.</th><th title="Rallies on their serve">Their serve</th><th>They scored</th><th title="Aces and 0 passes against them">Aces</th><th title="Rallies on our serve">Our serve</th><th>They sided out</th></tr></thead>
+      <tbody>{rots.map((n) => { const x = R[n], ps = ratio(x.sw, x.sn); return <tr key={n} style={n === worst ? { fontWeight: 700 } : undefined}><td className="l">R{n}</td><td>{x.sn}</td><td style={{ color: ps != null && ps >= 0.5 ? "var(--them)" : undefined }}>{fmtPct(ps)} <span className="muted small">{x.sw}/{x.sn}</span></td><td>{x.aces}</td><td>{x.rn}</td><td>{fmtPct(ratio(x.rw, x.rn))} <span className="muted small">{x.rw}/{x.rn}</span></td></tr>; })}</tbody>
     </table></div>
-    <p className="keys" style={{ marginTop: 8 }}>Their rotation counts from their first server each set and moves each time they side out.{worst ? ` Their R${worst} server hurt you most: ${fmtPct(ratio(R[worst].sw, R[worst].sn))} of rallies won on that serve. Note who it is and plan your serve-receive for that turn.` : ""}</p>
+    <p className="keys" style={{ marginTop: 8 }}>R1 is their first server each set; it moves each time they side out.{worst ? ` Their R${worst} server hurt you most: ${fmtPct(ratio(R[worst].sw, R[worst].sn))} of rallies won on that serve. Note who it is and plan your serve-receive for that turn.` : ""}</p>
   </Card>;
 }
 

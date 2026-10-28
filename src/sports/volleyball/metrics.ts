@@ -15,10 +15,12 @@ export const attackErrPct = (s: Stat) => ratio(s.AE, s.TA);
 export const passAvg = (s: Stat) => ratio(s.RS, s.R);
 export const perfectPassPct = (s: Stat) => ratio(s.R3, s.R);
 export const goodPassPct = (s: Stat) => ratio(s.R3 + s.R2, s.R);
-export const serveInPct = (s: Stat) => ratio(s.SA + s.SI, serveAttempts(s));
+/** Serves = the larger of serves tapped and rallies actually served: a serve that started a rally and wasn't an ace or an error went in, even if nobody tapped "In". */
+export const serves = (s: Stat, served = 0) => Math.max(serveAttempts(s), served);
+export const serveInPct = (s: Stat, served = 0) => ratio(serves(s, served) - serveErrors(s), serves(s, served));
 export const aceErrorRatio = (s: Stat) => ratio(s.SA, serveErrors(s));
 /** (aces − errors) ÷ attempts, the serving version of hitting %. */
-export const serveEfficiency = (s: Stat) => ratio(s.SA - serveErrors(s), serveAttempts(s));
+export const serveEfficiency = (s: Stat, served = 0) => ratio(s.SA - serveErrors(s), serves(s, served));
 /** Points a player directly produced. */
 export const pointsWon = (s: Stat) => s.K + s.SA + s.BS + s.BA / 2;
 /** Points a player directly gave away. */
@@ -46,7 +48,8 @@ export function inSystemPct(A: Agg) {
 }
 
 /** Opponent attacks we can count: their kills + our digs + our dig errors. */
-export function digSuccess(A: Agg) { const T = A.T; return ratio(T.D, T.D + T.DE + A.team.OK); }
+/** Digs ÷ attacks we had a chance at (digs, dig errors, their kills). Nothing when digs aren't being tracked at all. */
+export function digSuccess(A: Agg) { const T = A.T; return T.D + T.DE ? ratio(T.D, T.D + T.DE + A.team.OK) : null; }
 
 export interface TeamMetrics {
   hitting: number | null; killPct: number | null; errPct: number | null;
@@ -67,7 +70,7 @@ export function teamMetrics(A: Agg): TeamMetrics {
     hitting: hitting(T), killPct: killPct(T), errPct: attackErrPct(T),
     sideOut: ratio(A.so.w, A.so.n), firstBallSO: ratio(A.fbso.w, A.fbso.n), pointScoring: ratio(A.psc.w, A.psc.n),
     passAvg: passAvg(T), perfectPass: perfectPassPct(T), goodPass: goodPassPct(T),
-    serveIn: serveInPct(T), serveEff: serveEfficiency(T), aceErr: aceErrorRatio(T),
+    serveIn: serveInPct(T, A.psc.n), serveEff: serveEfficiency(T, A.psc.n), aceErr: aceErrorRatio(T),
     inSystemPct: inSystemPct(A), hitInSystem: hitCtx(inSystem(A)), hitOutOfSystem: hitCtx(outOfSystem(A)), hitTransition: hitCtx(transition(A)),
     digSuccess: digSuccess(A), freeBallWin: ratio(A.fbr.w, A.fbr.n),
     soByPass: { P3: ratio(A.soByPass.P3.w, A.soByPass.P3.n), P2: ratio(A.soByPass.P2.w, A.soByPass.P2.n), P1: ratio(A.soByPass.P1.w, A.soByPass.P1.n), P0: ratio(A.soByPass.P0.w, A.soByPass.P0.n) },
@@ -87,7 +90,7 @@ export function playerMetrics(A: Agg, id: string): PlayerMetrics {
   if (!s) return { sets, hitting: null, killPct: null, kps: null, dps: null, aps: null, bps: null, acesPs: null, passAvg: null, perfectPass: null, serveIn: null, serveEff: null, aceErr: null, plusMinus: pm ? pm.w - pm.l : null, netPoints: 0, netPerSet: null };
   return {
     sets, hitting: hitting(s), killPct: killPct(s), kps: per(s.K), dps: per(s.D), aps: per(s.AST), bps: per(blocks(s)), acesPs: per(s.SA),
-    passAvg: passAvg(s), perfectPass: perfectPassPct(s), serveIn: serveInPct(s), serveEff: serveEfficiency(s), aceErr: aceErrorRatio(s),
+    passAvg: passAvg(s), perfectPass: perfectPassPct(s), serveIn: serveInPct(s, A.srv[id]?.n), serveEff: serveEfficiency(s, A.srv[id]?.n), aceErr: aceErrorRatio(s),
     plusMinus: pm ? pm.w - pm.l : null, netPoints: netPoints(s), netPerSet: per(netPoints(s)),
   };
 }

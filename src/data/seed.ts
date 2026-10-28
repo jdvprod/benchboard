@@ -1,6 +1,6 @@
 /** Starter content: a drill library for every new team, and a full sample team to explore. */
 import { Drill, Match, Player, PracticePlan } from "./model";
-import { all, appendEvents, createTeam, save, setTeamPatch, team, uid } from "./store";
+import { all, appendEvents, createTeam, localISO, save, setTeamPatch, team, uid } from "./store";
 import { SAMPLE_ROSTER, sampleMatch } from "../sports/volleyball/sample";
 
 const DRILLS: [string, string, number, string, string[]][] = [
@@ -46,7 +46,7 @@ export function createSampleTeam() {
   opps.forEach((opp, i) => {
     const date = new Date(now - (opps.length - i) * 7 * day);
     const m: Match = {
-      id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp, date: date.toISOString().slice(0, 10), bestOf: 5, status: "done",
+      id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp, date: localISO(date), bestOf: 5, status: "done",
       site: i >= 2 ? "neutral" : i % 2 ? "away" : "home", event: i >= 2 ? "Harvest Invitational" : "League", notes: "", oppPlayers: ["11", "7", "3", "15", "9"], scrim: null, filmStart: null, nextLu: null,
       report: "", reportAt: null, planId: null, createdAt: date.getTime(), sample: true,
     };
@@ -56,7 +56,7 @@ export function createSampleTeam() {
   });
   // a live match in progress
   const live: Match = {
-    id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp: "Ridgeview", date: new Date().toISOString().slice(0, 10), bestOf: 5, status: "live",
+    id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp: "Ridgeview", date: localISO(new Date()), bestOf: 5, status: "live",
     site: "home", event: "League", notes: "Rematch. Their #11 hits line when tight.", oppPlayers: ["11", "7", "3", "15", "9"], scrim: null, filmStart: null, nextLu: null,
     report: "", reportAt: null, planId: null, createdAt: now, sample: true,
   };
@@ -65,12 +65,12 @@ export function createSampleTeam() {
   // a practice plan built from the starter drills, plus a goal so the player page shows progress
   const ds = all("drills").filter((d) => d.teamId === t.id);
   const pick = ["Dynamic warm-up + arm care", "Three-person serve receive", "Out-of-system hitting", "Dig from coach on box", "Rotation scrimmage", "Huddle: goals for today"];
-  const tomorrow = new Date(now + day).toISOString().slice(0, 10);
+  const tomorrow = localISO(new Date(now + day));
   save("plans", { id: uid("pl"), teamId: t.id, seasonId: t.activeSeasonId, date: tomorrow, title: "Serve receive + rotation 2", start: "15:30", notes: "Focus from the Westbrook match: passing and rotation 2.", status: "planned", createdAt: now,
     blocks: pick.map((n) => ds.find((d) => d.name === n)).filter(Boolean).map((d) => ({ id: uid("b"), title: d!.name, category: d!.category, minutes: d!.minutes, notes: d!.description, drillId: d!.id })) } as PracticePlan, true);
   const maya = all("players").find((p) => p.teamId === t.id && p.num === "7");
   if (maya) save("players", { ...maya, goals: [{ id: uid("g"), metric: "hitting", target: 0.3 }, { id: uid("g"), metric: "passAvg", target: 2.2 }] }, true);
-  const iso = (d: number) => new Date(now + d * day).toISOString().slice(0, 10);
+  const iso = (d: number) => localISO(new Date(now + d * day));
   setTeamPatch({ schedule: [
     { id: uid("sc"), date: iso(3), time: "18:00", opp: "Lakeside", site: "away", event: "League" },
     { id: uid("sc"), date: iso(7), time: "17:30", opp: "Westbrook", site: "home", event: "League" },

@@ -143,6 +143,9 @@ const scenarios = {
     for (let i = 0; i < 25; i++) { await p.keyboard.type("2"); await p.keyboard.press("k"); }
     await p.keyboard.press("Escape"); await p.waitForTimeout(200);
     ok("keyboard entry wins set 1 25–0", (await p.locator(".banner", { hasText: "Set 1 to E2E High, 25–0" }).count()) === 1);
+    await p.keyboard.type("2"); await p.keyboard.press("k"); await p.waitForTimeout(200);
+    ok("a play after set point doesn't add to the finished set", (await p.locator(".banner", { hasText: "Set 1 to E2E High, 25–0" }).count()) === 1 && (await p.getByText("Pick who serves first in set 2").count()) > 0);
+    await p.keyboard.press("Escape");
     await p.getByRole("button", { name: "E2E High serve" }).click(); await p.waitForTimeout(150);
     // buttons: tool, blocked, ace by server, their kill, timeout, undo
     const pl = (n) => p.locator(".pl", { hasText: n }).first();
@@ -422,8 +425,14 @@ const scenarios = {
     await go(A, "live"); await A.getByRole("button", { name: "Share live link" }).click(); await A.waitForTimeout(1200);
     const live = (await A.locator("span.small.muted", { hasText: "#/watch/" }).first().innerText()).trim();
     const P = await newPage(browser, { phone: true }); await P.goto(live); await P.waitForTimeout(1200);
-    ok("parent gamecast shows 1–0", /1\s*–\s*0/.test(await P.locator(".gc-score").innerText()));
+    const gcScore = async (pg) => (await pg.locator(".gs-big").allInnerTexts()).map((x) => x.trim()).join("–");
+    ok("parent gamecast shows 1–0", (await gcScore(P)) === "1–0", await gcScore(P));
+    ok("gamecast says it's live and in set 1", /Live · Set 1/i.test(await P.locator(".gs-status").innerText()));
     ok("parent gamecast fits a phone", (await overflow(P)) <= 1);
+    // live: the coach keeps tracking (no "Sync now"), the parent's open page catches up on its own
+    await go(A, "track"); for (let i = 0; i < 2; i++) { await A.getByRole("button", { name: "Our point", exact: true }).click(); await A.waitForTimeout(400); }
+    { const t0 = Date.now(); let seen = ""; while (Date.now() - t0 < 15000) { seen = await gcScore(P); if (seen === "3–0") break; await P.waitForTimeout(500); }
+      ok("gamecast updates live without reloading (within 15s)", seen === "3–0", `${seen.replace(/\s+/g, " ")} after ${Date.now() - t0}ms`); console.log(`    (gamecast caught up in ${Date.now() - t0}ms)`); }
     { const ax = await a11y(P); ok("gamecast controls all have names", !ax.length, ax.join(" | ")); }
     { const cx = await contrast(P); ok("gamecast text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     // season page + recruiting link
@@ -431,6 +440,7 @@ const scenarios = {
     const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
     ok("season page shows first names", (await P.locator("body").innerText()).includes("Nia"));
+    ok("season page shows the live match with a link to the gamecast", (await P.locator(".sh-live .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the full gamecast" }).count()) === 1);
     // a family that said no to team pages: Nia shows only as her number
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
     await A.getByLabel("Keep off public pages").check(); await A.waitForTimeout(2500);
@@ -469,9 +479,69 @@ const scenarios = {
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     ok("viewer's sync says it's view-only instead of failing forever", (await V.getByText("view-only access").count()) > 0);
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800); await go(A, "track");
-    ok("viewer's entry never reaches the team", /CLOUD CLUB 1/.test(await score(A)), await score(A));
+    ok("viewer's entry never reaches the team", /CLOUD CLUB 3 /.test(await score(A)), await score(A));
     for (const [n, pg] of [["head coach", A], ["assistant", B], ["parent", P], ["viewer", V]]) ok(`cloud: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, B, P, V]) await pg.context().close();
+  },
+  /** A walk through everything with screenshots (node e2e/run.cjs _explore). Not part of the regular run. */
+  async _explore(browser) {
+    const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore"); fs.mkdirSync(OUT, { recursive: true });
+    let n = 0; const shot = async (pg, name, full = false) => { await pg.waitForTimeout(250); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("coach@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await go(A, "team"); await A.getByRole("button", { name: "Paste a roster" }).click();
+    await A.locator("textarea").first().fill(["1 Ava Ramirez S Sr 5'8\"", "3 Lily Torres L Jr", "4 Jordan Lee OH So 5'10\"", "7 Maya Chen OH Sr 5'11\"", "8 Zoe Grant MB Jr 6'1\"", "9 Riley Brooks MB So", "10 Emma Diaz DS Fr", "12 Sofia Nguyen OPP Jr 5'11\"", "14 Kenzie Park OH Sr", "15 Harper Kim S So"].join("\n"));
+    await A.getByRole("button", { name: "Add players" }).click(); await A.waitForTimeout(300);
+    const perm = A.getByRole("button", { name: "I have permission" }); if (await perm.count()) await perm.click();
+    const syncBtn = A.getByRole("button", { name: /Sync this team/ }); if (await syncBtn.count()) { await syncBtn.click(); await A.waitForTimeout(1500); }
+    await shot(A, "team-desktop", true);
+    await go(A, "lineup"); await shot(A, "lineup-desktop", true);
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await shot(A, "track-prematch");
+    await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(400);
+    await shot(A, "track-start");
+    // share the live link and open it on a parent's phone before play starts
+    await go(A, "live"); await A.getByRole("button", { name: "Share live link" }).click(); await A.waitForTimeout(1200);
+    const live = (await A.locator("span.small.muted", { hasText: "#/watch/" }).first().innerText()).trim();
+    const P = await newPage(browser, { phone: true }); await P.goto(live); await P.waitForTimeout(1500); await shot(P, "gamecast-parent-start", true);
+    // a realistic match by keyboard: serve, pass, set, attack, dig
+    await go(A, "track");
+    let seed = 7; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+    const pick = (a) => a[Math.floor(rnd() * a.length)];
+    const hitters = ["4", "7", "8", "9", "12", "14"], passers = ["3", "10", "4", "7"], servers = ["1", "4", "7", "8", "12", "14", "3"];
+    const key = async (k) => { await A.keyboard.press(k); };
+    const num = async (x) => { for (const ch of x.padStart(2, "0") === x ? x : x) await A.keyboard.type(ch); await A.waitForTimeout(x.length === 1 ? 850 : 50); };
+    const play = async () => {
+      const r = rnd();
+      if (r < 0.06) { await num(pick(servers)); await key("s"); }
+      else if (r < 0.12) { await num(pick(servers)); await key(pick(["n", "o"])); }
+      else if (r < 0.2) { await key("A"); }
+      else if (r < 0.32) { await key("E"); }
+      else if (r < 0.45) { await key("K"); }
+      else { await num(pick(passers)); await key("p"); await key(pick(["3", "2", "2", "1"])); await num("1"); await key("h"); await num(pick(hitters)); await key(pick(["k", "k", "w", "e", "r", "k"])); }
+      await A.keyboard.press("Escape"); await A.waitForTimeout(60);
+    };
+    for (let i = 0; i < 40; i++) await play();
+    await shot(A, "track-midset");
+    await P.waitForTimeout(6000); await shot(P, "gamecast-parent-mid", true);
+    await P.getByLabel("Follow a player").selectOption({ label: "#7 Maya C." }).catch(() => {}); await P.waitForTimeout(300); await shot(P, "gamecast-follow", true);
+    for (let i = 0; i < 80; i++) { if (await A.locator(".banner", { hasText: /Match over/ }).count()) break; await play(); const nx = A.getByRole("button", { name: /serve$/ }); if (await nx.count() && await A.locator(".banner", { hasText: /^Set \d to/ }).count()) { await shot(A, `set-banner-${i}`); await nx.first().click(); } }
+    await shot(A, "track-later");
+    await go(A, "live"); await shot(A, "live-desktop", true);
+    await go(A, "stats"); await shot(A, "stats-overview", true);
+    for (const t of ["Players", "Offense", "Serve & pass", "Rotations", "Situations", "Opponent", "Film", "Fix plays"]) { const b = A.getByRole("button", { name: t, exact: true }); if (await b.count()) { await b.first().click(); await shot(A, "stats-" + t.replace(/\W+/g, "-").toLowerCase(), true); } }
+    for (const r of ["matchup", "practice", "court", "labs", "settings", "club"]) { await go(A, r); await shot(A, r, true); }
+    // the same coach on a phone
+    const Ph = await newPage(browser, { phone: true });
+    await go(Ph, "account"); await Ph.getByLabel("Email").fill("coach@explore.test"); await Ph.locator("#auth-pw").fill("secret123"); await Ph.getByRole("button", { name: "Sign in" }).click(); await Ph.waitForTimeout(2500);
+    for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "live"]) { await go(Ph, r); await shot(Ph, "phone-" + r, true); }
+    await P.waitForTimeout(5500); await shot(P, "gamecast-parent-late", true);
+    await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
+    const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
+    await P.goto(season); await P.waitForTimeout(1500); await shot(P, "season-page", true);
+    for (const [nm, pg] of [["coach", A], ["parent", P], ["phone", Ph]]) if (pg.errors.length) console.log(`    ${nm} errors: ${pg.errors.slice(0, 5).join(" | ")}`);
+    console.log("    screenshots: " + OUT);
   },
 };
 
@@ -479,7 +549,7 @@ const scenarios = {
   if (!fs.existsSync(path.join(DIST, "index.html"))) { console.error("Build first: npm run build"); process.exit(1); }
   const app = await serveDist(), mock = await startMock(MOCK_PORT), browser = await chromium.launch();
   for (const [name, fn] of Object.entries(scenarios)) {
-    if (only && name !== only) continue;
+    if (only ? name !== only : name.startsWith("_")) continue; // "_" scenarios run only when named
     const t0 = Date.now(), f0 = failures; console.log(`• ${name}`);
     try { await fn(browser); } catch (e) {
       failures++; console.log(`  ✗ ${name} crashed: ${String(e.message || e).split("\n")[0]}`);

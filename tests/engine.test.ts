@@ -244,3 +244,18 @@ test("roster spreadsheet cells: positions, classes, grades and heights", () => {
   for (const [raw, want] of [["2028", 2028], ["'29", 2029], ["Jr.", 2028], ["Senior", 2027], ["9", 2030], ["12th", 2027], ["", null], ["n/a", null]] as [string, number | null][]) assert.equal(gradCell(raw, fall), want, raw);
   for (const [raw, want] of [[`5'10"`, `5'10"`], ["5-9", `5'9"`], ["6 1", `6'1"`], ["70", `5'10"`], ["", ""], ["tall", "tall"]]) assert.equal(heightCell(raw), want, raw);
 });
+
+test("serving: rallies on our serve count as serves even when nobody tapped 'In'", () => {
+  // we serve 4 rallies: an ace, a net error (side-out), then (after siding back) two rallies won by kills with no serve tapped
+  const R = replay([ev("NS", { serve: "us", lu: LU, lib: "lib" }), ev("SA", { p: LU[0] }), ev("SEN", { p: LU[0] }), ev("OE"), ev("K", { p: "oh1" }), ev("K", { p: "oh1" })]);
+  const A = aggregate(R.sets), M = teamMetrics(A);
+  assert.equal(A.psc.n, 4, "four rallies on our serve");
+  assert.equal(M.serveIn, 3 / 4, "3 of 4 serves in (one net error)");
+  assert.equal(M.serveEff, 0, "(1 ace − 1 error) ÷ 4");
+  assert.equal(M.digSuccess, null, "no digs tracked → no dig success number");
+});
+
+test("recording after a set is over doesn't happen: a following point needs the next set (engine keeps the old set closed once NS arrives)", () => {
+  const evs = [ev("NS", { serve: "us" })]; for (let i = 0; i < 25; i++) evs.push(ev("UP"));
+  const R = replay(evs); assert.equal(R.cur!.over, true); assert.equal(R.cur!.us, 25);
+});

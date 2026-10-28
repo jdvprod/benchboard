@@ -70,7 +70,7 @@ Until then, keep **Confirm email** off (Authentication → Sign In / Providers �
 
 Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/functions/ai/index.ts`), which holds your Anthropic key and limits each coach to 40 requests a day (`AI_DAILY_LIMIT` to change it). To turn it on:
 
-1. Run the latest `supabase/schema.sql` (version 8; adds the `ai_usage` counter).
+1. Run the latest `supabase/schema.sql` (version 9; adds the `ai_usage` counter).
 2. In Supabase → Edge Functions, create a function named `ai` and paste in `supabase/functions/ai/index.ts` (or `supabase functions deploy ai`).
 3. In Edge Functions → Secrets, add `ANTHROPIC_API_KEY`.
 

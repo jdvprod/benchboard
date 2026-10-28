@@ -1,6 +1,6 @@
 /** Lineup builder: six starters, libero, all six rotations, rotation results, AI suggestion. */
 import { useState } from "react";
-import { activePlayers, appendEvents, currentMatch, matchesOf, patch, player, playerName, replayOf, setTeamPatch, team, toast, uid } from "../../data/store";
+import { activePlayers, appendEvents, currentMatch, matchesOf, patch, player, playerName, replayOf, setTeamPatch, team, toast, todayISO, uid } from "../../data/store";
 import { Lineup } from "../../data/model";
 import { aggregate, rotateLineup } from "../../sports/volleyball/engine";
 import { fmtPct, fmtSigned, ratio } from "../../sports/volleyball/metrics";
@@ -86,7 +86,7 @@ export function LineupPage() {
       <div className="row">
         <button className="btn primary" disabled={!valid} onClick={saveDefault}>Save as starting lineup</button>
         <button className="btn" disabled={!valid} onClick={() => {
-          const today = new Date().toISOString().slice(0, 10), next = (team()!.schedule || []).filter((x) => x.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+          const today = todayISO(), next = (team()!.schedule || []).filter((x) => x.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
           const opp = m && m.kind === "match" && m.status === "live" ? m.opp : next?.opp, date = m && m.kind === "match" && m.status === "live" ? m.date : next?.date;
           download(`${team()!.name} lineup cards.html`.replace(/[^\w\- .]+/g, ""), lineupCardsHtml(lu, lib, { opp, date, sets: 5 }), "text/html"); toast("Lineup cards saved. Open the file to print.");
         }}>Lineup cards</button>
