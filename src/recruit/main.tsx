@@ -42,12 +42,19 @@ function Profile({ code }: { code: string }) {
   const { player: p, team: t, profile: pr, season: s, games, clips } = d.data;
   const video = safeUrl(pr.video), vk = video ? videoKind(video) : "other";
   const fullVideo: Clip[] = video && (vk === "youtube" || vk === "vimeo") ? [{ id: "full", matchId: "", url: video, start: 0, end: 36000, label: "Highlight video", t: "VID", date: "", opp: "" }] : [];
-  const tiles: [string, string, string][] = [
-    ["Kills / set", fmtNum(s.kps, 2), `${s.K} kills`], ["Hitting %", s.TA ? fmtHit(s.hitting) : "—", `${s.TA} swings, ${s.AE} errors`], ["Aces / set", fmtNum(s.acesPs, 2), `${s.SA} aces`], ["Serve in", fmtPct(s.serveIn), `${s.SE} serve errors`],
-    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", s.R ? `0–3 scale, ${s.R} passes` : "no passes"], ["Digs / set", fmtNum(s.dps, 2), `${s.D} digs`], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists`], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`],
+  // only what the staff recorded: a team that doesn't track digs shouldn't make a player look like she has none
+  const tiles: [string, string, string, number][] = [
+    ["Kills / set", fmtNum(s.kps, 2), `${s.K} kills`, s.K + s.TA], ["Hitting %", s.TA ? fmtHit(s.hitting) : "—", `${s.TA} swings, ${s.AE} errors`, s.TA], ["Aces / set", fmtNum(s.acesPs, 2), `${s.SA} aces`, s.SA + s.SE], ["Serve in", fmtPct(s.serveIn), `${s.SE} serve errors`, s.serveIn != null ? 1 : 0],
+    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${s.R} passes`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${s.D} digs`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
   ];
+  const shown = tiles.filter((x) => x[3] > 0);
   const measure: [string, string | undefined][] = [["Height", p.height], ["Standing reach", pr.reach], ["Approach jump", pr.approach], ["Block jump", pr.block], ["Dominant hand", pr.hand], ["GPA", pr.gpa], ["Club", pr.club]];
   const contact = mail(pr.email);
+  type G = RecruitData["games"][number];
+  const allCols: [string, (g: G) => string | number, (g: G) => number][] = [["SP", (g) => g.sets, () => 1], ["K", (g) => g.K, (g) => g.K + g.TA], ["E", (g) => g.AE, (g) => g.TA], ["TA", (g) => g.TA, (g) => g.TA], ["Hit%", (g) => (g.TA ? fmtHit((g.K - g.AE) / g.TA) : "–"), (g) => g.TA],
+    ["A", (g) => g.SA, (g) => g.SA + g.SE], ["Rec", (g) => g.R, (g) => g.R], ["Pass", (g) => (g.R ? fmtAvg(g.RS / g.R) : "–"), (g) => g.R], ["D", (g) => g.D, (g) => g.D], ["Blk", (g) => fmtNum(g.BS + g.BA / 2), (g) => g.BS + g.BA], ["Ast", (g) => g.AST, (g) => g.AST]];
+  // columns the staff never recorded for this player are left out
+  const cols = allCols.filter(([, , has]) => games.some((g) => has(g) > 0)).map(([h, f]) => [h, f] as [string, (g: G) => string | number]);
   return <Shell crumb={t.name}>
     <section className="rc-hero">
       <span className="rc-num" aria-label={"Number " + p.num}>{p.num}</span>
@@ -63,7 +70,7 @@ function Profile({ code }: { code: string }) {
       {video && vk === "other" && <p><a href={video} target="_blank" rel="noopener">Watch the highlight video</a></p>}
       <ul className="rc-print-clips">{clips.map((c) => <li key={c.id}>{c.label} · vs {c.opp} · {day(c.date)}</li>)}</ul>
     </section>}
-    <section className="rc-card"><h2>Season numbers</h2><div className="rc-tiles">{tiles.map(([l, v, sub]) => <div key={l}><span>{l}</span><b>{v}</b><small>{sub}</small></div>)}</div></section>
+    {shown.length > 0 && <section className="rc-card"><h2>Season numbers</h2><div className="rc-tiles">{shown.map(([l, v, sub]) => <div key={l}><span>{l}</span><b>{v}</b><small>{sub}</small></div>)}</div></section>}
     <div className="rc-two">
       {measure.some(([, v]) => v) && <section className="rc-card"><h2>Measurables and academics</h2><dl className="rc-dl">{measure.filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>}
       <section className="rc-card"><h2>Contact</h2><dl className="rc-dl">
@@ -75,8 +82,8 @@ function Profile({ code }: { code: string }) {
     </div>
     {pr.about && <section className="rc-card"><h2>About {p.first}</h2><p className="rc-about">{pr.about}</p></section>}
     {games.length > 0 && <section className="rc-card"><h2>Game log</h2><div className="tbl rc-log"><table>
-      <thead><tr><th className="l">Date</th><th className="l">Opponent</th><th className="l">Result</th><th>SP</th><th>K</th><th>E</th><th>TA</th><th>Hit%</th><th>A</th><th>Rec</th><th>Pass</th><th>D</th><th>Blk</th><th>Ast</th></tr></thead>
-      <tbody>{games.map((g, i) => <tr key={i}><td className="l">{day(g.date)}</td><td className="l">{g.opp}</td><td className="l">{g.res}</td><td>{g.sets}</td><td>{g.K}</td><td>{g.AE}</td><td>{g.TA}</td><td>{g.TA ? fmtHit((g.K - g.AE) / g.TA) : "–"}</td><td>{g.SA}</td><td>{g.R}</td><td>{g.R ? fmtAvg(g.RS / g.R) : "–"}</td><td>{g.D}</td><td>{fmtNum(g.BS + g.BA / 2)}</td><td>{g.AST}</td></tr>)}</tbody>
+      <thead><tr><th className="l">Date</th><th className="l">Opponent</th><th className="l">Result</th>{cols.map(([h]) => <th key={h}>{h}</th>)}</tr></thead>
+      <tbody>{games.map((g, i) => <tr key={i}><td className="l">{day(g.date)}</td><td className="l">{g.opp}</td><td className="l">{g.res}</td>{cols.map(([h, f]) => <td key={h}>{f(g)}</td>)}</tr>)}</tbody>
     </table></div><p className="rc-note">SP sets played · Hit% (kills − errors) ÷ attempts · Pass on a 0–3 scale · Blk = solo + half of each assist.</p></section>}
   </Shell>;
 }

@@ -73,7 +73,7 @@
 
 .lv-box table{font-size:14.5px}
 .lv-box th,.lv-box td{white-space:nowrap}
-.lv-box td.l,.lv-box th.l{position:sticky;left:0;background:var(--surface);z-index:1}
+.lv-box td.l,.lv-box th.l{position:sticky;left:0;background:var(--surface);z-index:1;white-space:nowrap;min-width:0}
 .lv-box tr.mine td{background:var(--us-soft)}
 .lv-box tfoot td{font-weight:700;border-top:2px solid var(--line)}
 .lv-box a{color:inherit;text-decoration:none;font-weight:600}
@@ -95,3 +95,4 @@
 .lv-k{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.lv-k div{display:flex;flex-direction:column}
 .lv-k span{font-size:12.5px;color:var(--muted);font-weight:600}.lv-k b{font-family:var(--display);font-size:28px;line-height:1.1}.lv-k small{color:var(--muted);font-size:12px}
 @media (max-width:560px){.lv-k{grid-template-columns:repeat(2,1fr)}.lv-games li,.lv-games li>a{grid-template-columns:78px minmax(0,1fr) auto}.lv-follow-k b{font-size:23px}}
+body{padding-left:0}

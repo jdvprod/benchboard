@@ -34,7 +34,7 @@ export function recruitData(id: string, opts: { clips?: Clip[] } = {}): RecruitD
     const R = replayOf(m); if (!R) continue; const A = aggregate(R.sets), s = A.ps[id]; if (!s && !A.pm[id]) continue;
     sets.push(...R.sets);
     const r = resultOf(R);
-    games.push({ date: m.date, opp: m.opp, res: r ? `${r} ${R.wonUs}-${R.wonThem}` : `${R.wonUs}-${R.wonThem}`, sets: A.setsPlayed[id] || 0, K: s?.K || 0, AE: s?.AE || 0, TA: s?.TA || 0, SA: s?.SA || 0, SE: s ? s.SE + s.SEN + s.SEO : 0, R: s?.R || 0, RS: s?.RS || 0, D: s?.D || 0, BS: s?.BS || 0, BA: s?.BA || 0, AST: s?.AST || 0 });
+    games.push({ date: m.date, opp: m.opp, res: r ? `${r} ${R.wonUs}-${R.wonThem}` : m.status === "live" ? `In progress ${R.wonUs}-${R.wonThem}` : `${R.wonUs}-${R.wonThem}`, sets: A.setsPlayed[id] || 0, K: s?.K || 0, AE: s?.AE || 0, TA: s?.TA || 0, SA: s?.SA || 0, SE: s ? s.SE + s.SEN + s.SEO : 0, R: s?.R || 0, RS: s?.RS || 0, D: s?.D || 0, BS: s?.BS || 0, BA: s?.BA || 0, AST: s?.AST || 0 });
   }
   const A = aggregate(sets), s = A.ps[id], pm = playerMetrics(A, id);
   const z = { K: 0, AE: 0, TA: 0, SA: 0, SE: 0, SEN: 0, SEO: 0, R: 0, RS: 0, D: 0, BS: 0, BA: 0, AST: 0 } as any, S = s || z;

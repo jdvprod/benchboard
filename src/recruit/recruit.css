@@ -23,7 +23,7 @@
 .rc-dl dt{color:var(--muted)}.rc-dl dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
 .rc-about{white-space:pre-wrap;margin:0;max-width:70ch}
 .rc-note{color:var(--muted);font-size:13px;margin:8px 0 0}
-.rc-log th,.rc-log td{white-space:nowrap}
+.rc-log th,.rc-log td,.rc-log td.l{white-space:nowrap}
 .rc-print-clips{display:none}
 .rc-landing{max-width:640px;padding:30px 0}
 .rc-landing h1{font-family:var(--display);font-size:clamp(30px,6.5vw,46px);line-height:1.05;margin:0 0 14px;text-transform:uppercase}
@@ -42,3 +42,4 @@
 .rc-pc-f{grid-column:1/-1;color:var(--muted);font-size:13px}
 @media (max-width:700px){.rc-hero{grid-template-columns:auto minmax(0,1fr)}.rc-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.rc-num{width:72px;height:72px;font-size:38px}.rc-tiles{grid-template-columns:repeat(2,1fr)}.rc-two{grid-template-columns:1fr}}
 @media print{.rc-top,.rc-acts,.rc-foot,.clips,.rc-filters{display:none!important}.rc-print-clips{display:block;margin:0;padding-left:18px;font-size:12px}body,.rc{background:#fff}.rc-card{break-inside:avoid;border-color:#ccc}.rc-main{padding:0}}
+body{padding-left:0}

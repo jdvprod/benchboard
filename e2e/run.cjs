@@ -616,6 +616,67 @@ const scenarios = {
     await step("other tabs", async () => { for (const r of ["matchup", "court", "labs", "settings"]) { await go(p, r); await shot(p, r); } });
     if (p.errors.length) console.log(`    errors: ${p.errors.slice(0, 5).join(" | ")}`);
     console.log("    screenshots: " + OUT);
+  },
+  /** Benchboard Live and Recruit with screenshots (node e2e/run.cjs _explore3). */
+  async _explore3(browser) {
+    const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore3"); fs.mkdirSync(OUT, { recursive: true });
+    let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(300); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("coach3@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await go(A, "team"); await A.getByRole("button", { name: "Paste a roster" }).click();
+    await A.locator("textarea").first().fill(["1 Ava Ramirez S Sr 5'8\"", "3 Lily Torres L Jr", "4 Jordan Lee OH So 5'10\"", "7 Maya Chen OH Sr 5'11\"", "8 Zoe Grant MB Jr 6'1\"", "9 Riley Brooks MB So", "10 Emma Diaz DS Fr", "12 Sofia Nguyen OPP Jr 5'11\""].join("\n"));
+    await A.getByRole("button", { name: "Add players" }).click(); await A.waitForTimeout(300);
+    const perm = A.getByRole("button", { name: "I have permission" }); if (await perm.count()) await perm.click();
+    const syncBtn = A.getByRole("button", { name: /Sync this team/ }); if (await syncBtn.count()) { await syncBtn.click(); await A.waitForTimeout(1500); }
+    await go(A, "lineup"); await A.getByRole("button", { name: "Save as starting lineup" }).click();
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(400);
+    let seed = 11; const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; const pick = (a) => a[Math.floor(rnd() * a.length)];
+    const num = async (x) => { await A.keyboard.type(x); await A.waitForTimeout(x.length === 1 ? 850 : 50); };
+    const play = async () => { const r = rnd();
+      if (r < 0.08) { await num(pick(["1", "4", "7", "8", "12"])); await A.keyboard.press("s"); }
+      else if (r < 0.14) { await num(pick(["4", "12"])); await A.keyboard.press("n"); }
+      else if (r < 0.22) await A.keyboard.press("A"); else if (r < 0.34) await A.keyboard.press("E"); else if (r < 0.46) await A.keyboard.press("K");
+      else { await num(pick(["3", "10", "4", "7"])); await A.keyboard.press("p"); await A.keyboard.press(pick(["3", "2", "2", "1"])); await num("1"); await A.keyboard.press("h"); await num(pick(["4", "7", "7", "8", "12"])); await A.keyboard.press(pick(["k", "k", "w", "e", "k"])); }
+      await A.keyboard.press("Escape"); await A.waitForTimeout(40); };
+    for (let set = 0; set < 2; set++) { for (let i = 0; i < 70; i++) { if (await A.locator(".banner", { hasText: /to Clovis|to Buchanan|Match over/ }).count()) break; await play(); } const nx = A.getByRole("button", { name: "Clovis North serve" }); if (await nx.count()) await nx.click(); }
+    for (let i = 0; i < 18; i++) await play();
+    // video + clips
+    await go(A, "stats"); await A.getByRole("button", { name: "One match", exact: true }).click(); await A.getByRole("button", { name: "Film", exact: true }).click();
+    await A.getByLabel("Video link").fill(U + "__fixtures/match.webm"); await A.getByLabel("Time of first serve in the video").fill("0:00"); await A.getByLabel("Time of first serve in the video").press("Tab");
+    await A.getByLabel("Player").selectOption({ label: "#7 Maya" }); await A.getByLabel("Plays").selectOption("kills"); await A.waitForTimeout(200);
+    const w = A.getByRole("button", { name: /^Watch / }); if (await w.count()) { await w.click(); await A.waitForTimeout(1500); } await shot(A, "coach-film-clips");
+    // recruiting profile for Maya
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Maya" }).first().click(); await A.waitForTimeout(300);
+    await A.getByRole("button", { name: "Fill in" }).click();
+    for (const [l, v] of [["Club team", "Central Valley 17 Elite"], ["GPA", "3.9"], ["Dominant hand", "Right"], ["Standing reach", "7'7\""], ["Approach jump", "9'10\""], ["Player email", "maya.chen@example.com"], ["Coach contact", "Coach Rivera · rivera@example.com"]]) { await A.getByLabel(l).fill(v); await A.getByLabel(l).press("Tab"); }
+    await A.getByLabel("About").fill("Six-rotation outside hitter and team captain. Strong in serve receive, aggressive from the back row, and looking for a program that values a fast tempo offense."); await A.getByLabel("About").press("Tab");
+    await A.locator(".consent-check input").check(); await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
+    await shot(A, "coach-recruiting-card");
+    const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href");
+    await go(A, "live"); await A.getByRole("button", { name: "Share gamecast" }).click(); await A.waitForTimeout(1000);
+    const game = (await A.locator("span.small.muted", { hasText: "/live/#/g/" }).first().innerText()).trim();
+    await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
+    const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    await A.getByRole("button", { name: "Share recruiting board" }).click(); await A.waitForTimeout(800);
+    const board = await A.locator("a", { hasText: "/recruit/#/b/" }).first().getAttribute("href");
+    await shot(A, "coach-team-sharing");
+    for (const [tag, opts] of [["phone", { phone: true }], ["desktop", {}], ["phone-dark", { phone: true, dark: true }]]) {
+      const P = await newPage(browser, opts);
+      await P.goto(teamUrl.replace(/#.*$/, "")); await shot(P, tag + "-live-landing", false);
+      await P.goto(teamUrl); await shot(P, tag + "-live-team-home");
+      if (tag === "phone-dark") { await P.context().close(); continue; }
+      for (const t of ["schedule", "stats", "roster"]) { await P.goto(teamUrl + "/" + t); await shot(P, tag + "-live-team-" + t); }
+      await P.goto(game); await shot(P, tag + "-live-gamecast");
+      for (const t of ["Box score", "Play-by-play", "Team stats"]) { await P.getByRole("button", { name: t, exact: true }).click(); await shot(P, tag + "-live-" + t.replace(/\W+/g, "-").toLowerCase()); }
+      await P.goto(rec); await P.waitForTimeout(1500); await shot(P, tag + "-recruit-profile");
+      await P.goto(board); await shot(P, tag + "-recruit-board");
+      if (P.errors.length) console.log(`    ${tag} errors: ${P.errors.slice(0, 4).join(" | ")}`);
+      await P.context().close();
+    }
+    if (A.errors.length) console.log(`    coach errors: ${A.errors.slice(0, 4).join(" | ")}`);
+    console.log("    screenshots: " + OUT);
   }
 };
 

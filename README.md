@@ -53,7 +53,18 @@ GitHub Pages also works (`.github/workflows/pages.yml`, run by hand) but ignores
 5. Until you connect an email provider (see **Sign-up and password emails** below), turn off **Confirm email** in **Authentication → Sign In / Providers → Email**. Supabase's built-in email can't reach your coaches.
 6. Open the app → **Settings → Setup check → Run check**. It confirms the database version, your account, team sync and AI, and says what's left.
 
-Then coaches sign in on the Team tab, tap **Sync this team**, and invite assistants with a code. Every match is an event log per device, so several coaches can track the same match and their entries merge. Each device picks a job under **My job** on the Track screen: everything, score only, or stats only (chosen stat groups that count for players but never change the score). **Share live link** on the Live screen gives parents a public gamecast (`#/watch/CODE`) that shows only that match, player numbers, first names and last initials; parents can follow one player. **Share season page** on the Team tab gives players and parents a read-only season hub (`#/season/CODE`) with results, schedule, leaders, box scores and every player's line.
+Then coaches sign in on the Team tab, tap **Sync this team**, and invite assistants with a code. Every match is an event log per device, so several coaches can track the same match and their entries merge. Each device picks a job under **My job** on the Track screen: everything, score only, or stats only (chosen stat groups that count for players but never change the score). Public pages live on their own sites, separate from the coaching app (see **Public sites** below).
+
+## Public sites
+
+The build makes two more sites beside the coaching app, from the same code and deploy. They have no accounts and nothing on them can be changed:
+
+- **Benchboard Live** (`/live/`) for families and fans. **Share team page** on the Team tab gives a link (`/live/#/t/CODE`) and a six-letter code: live scoreboard during matches, schedule and results, season stats, roster and player pages. Every match opens as an ESPN-style game page with Gamecast, Box score, Play-by-play and Team stats tabs. **Share gamecast** on the Live screen gives a link to one match (`/live/#/g/CODE`). Players appear as first name and last initial (or number only when a family asks); coaches' notes and film tags never reach these pages. Old `#/watch/` and `#/season/` links redirect.
+- **Benchboard Recruit** (`/recruit/`) for college coaches. A player's page → Recruiting profile → **Share profile link** (after confirming the family agreed) publishes `/recruit/#/p/CODE`: verified season numbers, game log, measurables, contact and highlight clips. **Share recruiting board** on the Team tab lists every shared profile (`/recruit/#/b/CODE`), filterable by class and position. Profiles are snapshots: tap **Update profile link** after new matches.
+
+**Clips.** On Stats → One match → Film, paste the match video link (YouTube, Vimeo or a video file link) or pick a video file on the device, and set **First serve at**. Every play then becomes a clip: watch any filter (a player's kills, every point, our errors) back to back, and from a video file save one clip or the whole reel as a video file. A player's best plays (kills, aces and blocks first) become the highlight clips on their Recruit profile; clips from a file on the device stay on the device.
+
+With a custom domain you can point `live.yourdomain.com` and `recruit.yourdomain.com` at the same Worker and redirect them to `/live/` and `/recruit/` (Cloudflare → Rules → Redirect Rules).
 
 ## Sign-up and password emails
 
@@ -70,7 +81,7 @@ Until then, keep **Confirm email** off (Authentication → Sign In / Providers �
 
 Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/functions/ai/index.ts`), which holds your Anthropic key and limits each coach to 40 requests a day (`AI_DAILY_LIMIT` to change it). To turn it on:
 
-1. Run the latest `supabase/schema.sql` (version 9; adds the `ai_usage` counter).
+1. Run the latest `supabase/schema.sql` (version 10; adds the `ai_usage` counter).
 2. In Supabase → Edge Functions, create a function named `ai` and paste in `supabase/functions/ai/index.ts` (or `supabase functions deploy ai`).
 3. In Edge Functions → Secrets, add `ANTHROPIC_API_KEY`.
 
