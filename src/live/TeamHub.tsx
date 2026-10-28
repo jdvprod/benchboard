@@ -3,7 +3,7 @@ import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
 import { GameScore } from "../ui/GameScore";
 import { todayISO } from "../lib/dates";
-import { fmtDay, fmtTime, Game, isLive, LPlayer, pname, SeasonData, seasonGames } from "./data";
+import { fmtDay, fmtTime, Game, isLive, isResult, LPlayer, pname, SeasonData, seasonGames } from "./data";
 import { GameView, playText } from "./GameView";
 
 type Tab = "home" | "schedule" | "stats" | "roster";
@@ -16,7 +16,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
   }
   if (view.player && P.has(view.player)) return <PlayerSeason p={P.get(view.player)!} games={games} team={team} season={d.season} back={href("roster")} />;
   const tab = (["home", "schedule", "stats", "roster"].includes(view.tab || "") ? view.tab : "home") as Tab;
-  const rec = recordOf(games.map((g) => g.R));
+  const rec = recordOf(games.filter(isResult).map((g) => g.R));
   return <>
     <header className="lv-team">
       <div><h1>{team}</h1><p>{d.season || "Season"}{d.team?.level ? " · " + d.team.level : ""}</p></div>
@@ -24,7 +24,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
     </header>
     <nav className="lv-tabs" aria-label="Team sections">{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{l}</a>)}</nav>
     {tab === "home" && <Home d={d} games={games} team={team} code={code} fresh={fresh} P={P} />}
-    {tab === "schedule" && <Schedule d={d} games={games} code={code} all />}
+    {tab === "schedule" && <Schedule d={d} games={games.filter(isResult)} code={code} all />}
     {tab === "stats" && <SeasonStats games={games} P={P} code={code} />}
     {tab === "roster" && <Roster d={d} games={games} code={code} />}
   </>;
@@ -43,7 +43,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
       {lastPts.length > 0 && <ul className="lv-pbp">{lastPts.map((l) => <li key={l.id}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, live.m.opp || "Opponent", P)}</span></li>)}</ul>}
       <a className="btn primary" href={`#/t/${code}/m/${live.m.id}`}>Open the gamecast</a>
     </section>}
-    <Schedule d={d} games={games.slice(0, 5)} code={code} />
+    <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>Season leaders</h2><a href={`#/t/${code}/stats`}>All stats ›</a></div><div className="lv-leads">{leaders}</div></section>}
   </>;
 }
@@ -58,7 +58,7 @@ function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code:
       {games.length ? <ul className="lv-games">{games.map((g) => { const r = resultOf(g.R), live = isLive(g); return <li key={g.m.id}><a href={`#/t/${code}/m/${g.m.id}`}>
         <span className="lv-date">{fmtDay(g.m.date)}</span>
         <b>{g.m.site === "away" ? "at " : "vs "}{g.m.opp}<small>{g.R.sets.filter((s) => s.us + s.them).map((s) => `${s.us}-${s.them}`).join(", ")}</small></b>
-        <span className={"lv-res " + (live ? "live" : r === "W" ? "w" : r === "L" ? "l" : "")}>{live ? `Live · ${g.R.cur?.us ?? 0}–${g.R.cur?.them ?? 0}` : r ? `${r} ${g.R.wonUs}–${g.R.wonThem}` : `${g.R.wonUs}–${g.R.wonThem}`}</span></a></li>; })}</ul>
+        <span className={"lv-res " + (live ? "live" : r === "W" ? "w" : r === "L" ? "l" : "")}>{live ? `Live · ${g.R.cur?.us ?? 0}–${g.R.cur?.them ?? 0}` : r ? `${r} ${g.R.wonUs}–${g.R.wonThem}` : g.R.sets.some((s) => s.us + s.them) ? `${g.R.wonUs}–${g.R.wonThem}` : "Stats only"}</span></a></li>; })}</ul>
         : <p className="lv-note">No results yet. Scores show up here as soon as the first point is recorded.</p>}
     </section>
   </>;

@@ -87,6 +87,10 @@ export interface Match {
   planId: string | null;
   createdAt: number;
   sample?: boolean;
+  /** Brought in from another app's file: stats-only plays and final set scores, no rally detail. */
+  imported?: { source: string; file: string; at: number; season?: boolean };
+  /** Part of a tournament day (Team.tournaments). */
+  tournamentId?: string;
 }
 
 /** Events recorded on one device for one match. Several devices can record the same match. */

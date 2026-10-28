@@ -61,7 +61,7 @@ async function newPage(browser, { phone = false, tablet = false, dark = false, c
 }
 const go = async (p, hash) => { await p.goto(U + "#/" + hash); await p.waitForTimeout(350); };
 const score = async (p) => { const t = (await p.locator(".board").first().innerText()).replace(/\s+/g, " "); const n = t.match(/(\d+) SET (\d) .* (\d+) (?:Rotation|Our)/); return t; };
-const download = async (p, click, timeout = 8000) => { const [d] = await Promise.all([p.waitForEvent("download", { timeout }), click()]); const f = await d.path(); return { name: d.suggestedFilename(), size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
+const download = async (p, click, timeout = 8000) => { const [d] = await Promise.all([p.waitForEvent("download", { timeout }), click()]); const f = await d.path(); return { name: d.suggestedFilename(), path: f, size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 /** Basic accessibility: every control has a name screen readers can announce, images have alt text, ids are unique. */
 const a11y = (p) => p.evaluate(() => {
@@ -404,6 +404,43 @@ const scenarios = {
     await p.getByRole("button", { name: "Run practice" }).click(); await p.waitForTimeout(200);
     ok("run practice timer opens", (await p.locator(".run").count()) > 0 || (await p.getByText(/Next up|Block 1|of \d+ min/).count()) > 0);
     ok("planning: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
+
+  async imports(browser) {
+    const p = await newPage(browser);
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click();
+    await p.getByLabel("Team name").fill("Import High"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste a roster" }).click();
+    await p.locator("textarea").first().fill("1 Ava Ramirez S\n4 Jordan Lee OH\n7 Maya Chen OH\n10 Emma Diaz DS"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(200);
+    const card = p.locator(".card", { hasText: "Import stats from another app" });
+    await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt"), path.join(__dirname, "fixtures", "game-log.csv")]); await p.waitForTimeout(500);
+    const files = card.locator(".imp-file");
+    ok("import reads a Hudl/SoloStats MaxPreps file and a spreadsheet", (await files.count()) === 2 && (await files.nth(0).innerText()).includes("MaxPreps file"));
+    ok("opponent comes from the file name", (await files.nth(0).getByLabel("Opponent").inputValue()) === "Buchanan");
+    ok("team totals line is left out and the new player is flagged", /3 players · 1 total lines left out/.test(await files.nth(0).innerText()) && /1 not yet: #99/.test(await files.nth(0).innerText()));
+    await files.nth(0).getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
+    ok("a game log splits into its matches", /2 matches by date and opponent/.test(await files.nth(1).innerText()));
+    await files.nth(0).locator("summary").click(); ok("columns can be checked", (await files.nth(0).locator(".imp-colgrid select").count()) === 13);
+    { const ax = await a11y(p); ok("import controls all have names", !ax.length, ax.join(" | ")); }
+    await card.getByRole("button", { name: "Import 3 matches" }).click(); await p.waitForTimeout(400);
+    ok("three matches imported", (await p.locator(".card", { hasText: "Matches & practices" }).locator(".tag", { hasText: "Imported" }).count()) === 3);
+    ok("player not on the roster was added", (await p.locator(".card", { hasText: "Roster" }).locator("tbody tr").count()) === 5);
+    await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.waitForTimeout(200);
+    { const row = (await p.locator("tr", { hasText: "Maya" }).first().innerText()).split(/\s+/); ok("Maya's season kills add up across the imported files (12 + 9 + 14)", row.includes("35"), row.join(" ")); }
+    await go(p, "track"); ok("record counts the imported results", (await p.locator("h1 + p", { hasText: "3–0 this season" }).count()) === 1 || (await p.getByText("3–0 this season").count()) > 0);
+    // importing the same file again skips it
+    await go(p, "team"); await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt")]); await p.waitForTimeout(300);
+    await card.locator(".imp-file").first().getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
+    ok("a file already imported is skipped", (await card.getByRole("button", { name: "Import 0 matches" }).isDisabled()) && (await card.getByText("already imported").count()) === 1);
+    // Benchboard's own spreadsheet comes back in as season totals
+    await card.getByRole("button", { name: "Cancel" }).click();
+    await go(p, "stats"); const xl = await download(p, () => p.getByRole("button", { name: "Download spreadsheet" }).click());
+    ok("own spreadsheet export downloads", xl.size > 3000);
+    await go(p, "team"); await card.locator("input[type=file]").setInputFiles({ name: "Import High season.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(xl.path) }); await p.waitForTimeout(800);
+    { const txt = await card.locator(".imp-file").first().innerText(); ok("an Excel file picks its player sheet and reads as season totals", txt.includes("Excel spreadsheet") && /sheet "/.test(txt) && (await card.locator(".imp-file").first().getByRole("button", { name: "Season totals" }).getAttribute("aria-pressed")) === "true", txt.slice(0, 160)); }
+    await card.getByRole("button", { name: "Cancel" }).click();
+    ok("imports: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
 

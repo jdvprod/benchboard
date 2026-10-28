@@ -4,12 +4,14 @@ import { cloudAvailable, rpc } from "../cloud/client";
 import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";
 
 export interface LPlayer { id: string; num: string; first: string; last: string; pos: string }
-export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any }
+export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any; imported?: { season?: boolean } | null; tournamentId?: string | null }
 export interface LSched { id: string; date: string; time: string; opp: string; site: string; event: string }
 export interface SeasonData { team: { name: string; level: string; color?: string; schedule: LSched[] } | null; season: string | null; matches: LMatch[]; logs: { matchId: string; events: any[] }[]; players: LPlayer[]; live?: { matchId: string; code: string }[]; at: string }
 export interface WatchData { team: { name: string; color: string; level: string } | null; match: LMatch; logs: any[][]; players: LPlayer[]; at: string }
 export interface Game { m: LMatch; R: Replay }
 
+/** Imported season totals count toward stats but aren't a match result. */
+export const isResult = (g: Game) => !g.m.imported?.season;
 export const isLive = (g: Game) => g.m.status === "live" && !g.R.matchOver;
 export const replayOf = (m: LMatch, logs: any[][]): Replay => replay(mergeLogs(logs), { id: m.id, bestOf: m.bestOf || 5, scrim: m.scrim, setTo: m.setTo, cap: m.cap });
 
@@ -43,7 +45,7 @@ export function useWatch(code: string) {
 /** Games in a season, newest first; a live match shows even before its first point. */
 export function seasonGames(d: SeasonData): Game[] {
   return d.matches.map((m) => ({ m, R: replayOf(m, d.logs.filter((l) => l.matchId === m.id).map((l) => l.events || [])) }))
-    .filter((g) => g.m.status === "live" || g.R.sets.some((s) => s.us + s.them > 0))
+    .filter((g) => g.m.status === "live" || g.R.sets.some((s) => s.us + s.them > 0) || g.R.log.some((l) => l.kind === "stat"))
     .sort((a, b) => b.m.date.localeCompare(a.m.date));
 }
 

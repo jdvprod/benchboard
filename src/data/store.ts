@@ -218,6 +218,18 @@ export function deleteMatch(matchId: string) {
 import { localISO, todayISO } from "../lib/dates";
 export { localISO, todayISO };
 
+/** Saves a finished match from another app's file without touching the match being tracked. */
+export function importMatch(o: { opp: string; date: string; bestOf: number; setTo?: number; site?: Match["site"]; event?: string; imported: NonNullable<Match["imported"]>; events: Partial<MatchEvent>[] }): Match {
+  const t = team()!;
+  const m: Match = {
+    id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp: o.opp, date: o.date, bestOf: o.bestOf, setTo: o.setTo, cap: null, status: "done", site: o.site || "", event: o.event || "", notes: "",
+    oppPlayers: [], scrim: null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: null, createdAt: Date.now(), imported: o.imported,
+  };
+  save("matches", m, true);
+  if (!o.imported.season) ensureOpponent(m.opp);
+  appendEvents(m.id, o.events);
+  return m;
+}
 export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: MatchEvent[]; lineup?: Lineup | null }): Match {
   const t = team()!;
   const prev = currentMatch();

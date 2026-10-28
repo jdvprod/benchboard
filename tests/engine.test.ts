@@ -285,3 +285,59 @@ test("clips: video kinds, YouTube ids, timing from 'first serve at', best plays 
   assert.deepEqual(highlightPick(clips, 2).map((c) => c.t), ["K", "SA"], "kills and aces before digs, errors never");
   assert.equal(clipsFrom({ id: "m", date: "", opp: "" }, T, R.log, () => true, () => "").length, 0, "no video, no clips");
 });
+
+import { guessFields, linesOf, matchEvents, parseDate, parseSetScores, plansFrom, playsFor, readText, oppFromFileName, formatFrom } from "../src/import/statsImport";
+test("import: MaxPreps file from Hudl/SoloStats → stats-only plays and final set scores", () => {
+  const txt = ["SUPPLIER-1234", "Jersey|SetsPlayed|Kills|AttackErrors|AttackAttempts|KillsPerSet|ServingAces|ServingErrors|ServeAttempts|Digs|BlockSolos|BlockAssists|Assists|BallHandlingErrors",
+    "|9|40|12|99|0|5|6|60|30|2|4|41|2", "7|3|12|3|30|4|2|1|15|8|0|1|0|0", "1|3|1|0|4|0.3|1|2|14|5|0|0|38|1", "04|2|5|1|11|2.5|0|1|6|3|1|1|0|0"].join("\n");
+  const t = readText(txt); assert.equal(t.kind, "maxpreps"); assert.equal(t.rows.length, 3, "supplier line and team totals skipped");
+  const f = guessFields(t.header);
+  assert.deepEqual(f, ["num", "SP", "K", "AE", "TA", "ignore", "SA", "SE", "SERV", "D", "BS", "BA", "AST", "BHE"]);
+  const lines = linesOf(t, f); assert.equal(lines[0].num, "7"); assert.equal(lines[0].v.K, 12);
+  const [plan] = plansFrom(lines, { mode: "match", opp: "Buchanan", date: "2026-10-27", scores: "25-20, 22-25, 15-12" });
+  const ids: Record<string, string> = { "7": "maya", "1": "ava", "04": "jordan" }, notes = new Set<any>();
+  const R = replay(matchEvents(plan, (l) => ids[l.num], notes).map((e, i) => ({ id: "x" + i, ts: 1000 + i, ...e } as any)), { bestOf: formatFrom(plan.scores).bestOf });
+  assert.deepEqual(R.sets.map((s) => [s.us, s.them]), [[25, 20], [22, 25], [15, 12]]);
+  assert.equal(R.matchOver, true); assert.equal(R.wonUs, 2);
+  const A = aggregate(R.sets);
+  assert.equal(A.ps.maya.K, 12); assert.equal(A.ps.maya.AE, 3); assert.equal(A.ps.maya.TA, 30); assert.equal(A.ps.maya.SA, 2); assert.equal(A.ps.ava.AST, 38);
+  assert.equal(A.ps.ava.SA + A.ps.ava.SI + A.ps.ava.SE + A.ps.ava.SEN + A.ps.ava.SEO, 14, "serve attempts kept");
+  assert.equal(A.setsPlayed.maya, 3); assert.equal(A.setsPlayed.jordan, 2, "sets played respected");
+  assert.equal(A.rallies.length, 0, "no rallies invented: side-out and rotation numbers stay empty");
+});
+
+test("import: NCAA box score (A = assists, SA = aces) vs MaxPreps sheet (A = aces, SA = serve attempts)", () => {
+  const ncaa = readText("#,Player,SP,K,E,TA,PCT,A,SA,SE,RE,DIG,BS,BA,BE,BHE\n7,\"Chen, Maya\",3,12,3,30,.300,1,2,1,1,8,0,1,0,0\nTeam,,3,40,12,99,.283,41,5,6,3,30,2,4,0,2");
+  const f1 = guessFields(ncaa.header); assert.equal(f1[ncaa.header.indexOf("A")], "AST"); assert.equal(f1[ncaa.header.indexOf("SA")], "SA"); assert.equal(f1[ncaa.header.indexOf("PCT")], "ignore");
+  const l1 = linesOf(ncaa, f1); assert.equal(l1.length, 1, "team line skipped"); assert.equal(l1[0].first, "Maya"); assert.equal(l1[0].last, "Chen");
+  const mp = readText("Jersey,Name,SP,SA,A,SE,PTS,ATT,K,E,R,RE,BS,BA,BE,BHA,AST,BHE,D,DE\n7,Maya Chen,3,15,2,1,9,30,12,3,20,2,0,1,0,0,0,0,8,1");
+  const f2 = guessFields(mp.header); const at = (h: string) => f2[mp.header.indexOf(h)];
+  assert.deepEqual([at("SA"), at("A"), at("ATT"), at("R"), at("RE"), at("PTS")], ["SERV", "SA", "TA", "RGOOD", "RE", "ignore"]);
+  const notes = new Set<any>(); playsFor(linesOf(mp, f2)[0], 3, notes); assert.ok(notes.has("passes-unrated"), "receptions without ratings are left out, not guessed");
+});
+
+test("import: pass average turns into 3-2-1-0 passes with the same average; game logs split into matches", () => {
+  const notes = new Set<any>();
+  const per = playsFor({ num: "3", first: "", last: "", pos: "", v: { RTOT: 20, RE: 2, PAVG: 2.2 } }, 1, notes)[0];
+  const c = (x: string) => per.filter((p) => p === x).length;
+  assert.equal(c("P3") + c("P2") + c("P1") + c("P0"), 20); assert.equal(c("P0"), 2); assert.equal(Math.round(((3 * c("P3") + 2 * c("P2") + c("P1")) / 20) * 10) / 10, 2.2);
+  const log = readText("Date\tOpponent\tScore\t#\tK\tE\tTA\n10/14/2026\tBuchanan\t25-20 25-18\t7\t9\t1\t20\n10/14/2026\tBuchanan\t25-20 25-18\t4\t5\t2\t14\n10/21/2026\tvs Clovis West\t21-25, 25-23, 15-9\t7\t14\t4\t33");
+  const plans = plansFrom(linesOf(log, guessFields(log.header)), { mode: "rows", opp: "", date: "2026-10-27", scores: "" });
+  assert.deepEqual(plans.map((p) => [p.date, p.opp, p.scores.length, p.lines.length]), [["2026-10-14", "Buchanan", 2, 2], ["2026-10-21", "Clovis West", 3, 1]]);
+  assert.deepEqual(parseSetScores("W 3-1"), []); assert.deepEqual(parseSetScores("25–20/18–25"), [[25, 20], [18, 25]]);
+  assert.equal(parseDate("Oct 27, 2026"), "2026-10-27"); assert.equal(parseDate("9/5", 2026), "2026-09-05");
+  assert.equal(oppFromFileName("Buchanan_10-27.txt"), "Buchanan"); assert.equal(oppFromFileName("import.txt"), "");
+  assert.deepEqual(formatFrom([[25, 20], [25, 18]]), { bestOf: 3, setTo: 25 }); assert.deepEqual(formatFrom([[25, 20], [20, 25]]), { bestOf: 2, setTo: 25 });
+});
+
+test("import: Benchboard's own spreadsheet export comes back in with the same numbers", () => {
+  const head = ["#", "Player", "Pos", "Sets", "Kills", "Attack att", "Attack err", "Hit %", "Set att", "Assists", "Set err", "Serve att", "Aces", "Serve in", "Serve err net", "Serve err out", "Serve eff", "Pass avg", "Receptions", "Perfect passes", "Pass 0s", "Digs", "Dig err", "Solo blocks", "Block assists", "Block/net err", "Comm err", "Effort err", "Position err", "+/-", "Net points"];
+  const t = readText(head.join(",") + "\n7,Maya Chen,OH,3,12,30,3,.300,0,0,0,15,2,12,1,0,.067,2.20,20,8,2,8,1,0,1,0,0,0,0,5,9");
+  const f = guessFields(t.header), F = (h: string) => f[head.indexOf(h)];
+  assert.deepEqual(["Attack att", "Attack err", "Serve att", "Serve err net", "Serve err out", "Perfect passes", "Pass 0s", "Receptions", "Pass avg", "Set err", "Block/net err", "Comm err", "+/-", "Net points"].map(F),
+    ["TA", "AE", "SERV", "SE", "SE", "R3", "R0", "RTOT", "PAVG", "BHE", "BE", "ignore", "ignore", "ignore"]);
+  const l = linesOf(t, f)[0]; assert.equal(l.v.SE, 1, "net + out errors add up");
+  const per = playsFor(l, 3, new Set()).flat(), c = (x: string) => per.filter((p) => p === x).length;
+  assert.deepEqual([c("P3"), c("P0"), c("P3") + c("P2") + c("P1") + c("P0")], [8, 2, 20]);
+  assert.equal(Math.round(((3 * c("P3") + 2 * c("P2") + c("P1")) / 20) * 100) / 100, 2.2);
+});

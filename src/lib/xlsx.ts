@@ -27,3 +27,33 @@ export async function buildXlsx(sheets: [string, Cell[][]][]): Promise<Blob> {
   sheets.forEach(([, rows], i) => zip.file(`xl/worksheets/sheet${i + 1}.xml`, sheetXml(rows)));
   return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
+
+/** Reads every worksheet of an .xlsx file into rows of text (shared strings, inline strings and numbers). */
+export async function readXlsx(data: ArrayBuffer): Promise<{ name: string; rows: string[][] }[]> {
+  const { default: JSZip } = await import("jszip");
+  const zip = await JSZip.loadAsync(data);
+  const xml = async (p: string) => { const f = zip.file(p); return f ? new DOMParser().parseFromString(await f.async("string"), "application/xml") : null; };
+  const shared: string[] = [];
+  const ss = await xml("xl/sharedStrings.xml");
+  if (ss) for (const si of Array.from(ss.getElementsByTagName("si"))) shared.push(Array.from(si.getElementsByTagName("t")).map((t) => t.textContent || "").join(""));
+  const wb = await xml("xl/workbook.xml"), rels = await xml("xl/_rels/workbook.xml.rels");
+  const target = (rid: string | null) => { if (rid && rels) for (const r of Array.from(rels.getElementsByTagName("Relationship"))) if (r.getAttribute("Id") === rid) { const tg = r.getAttribute("Target") || ""; return tg.startsWith("/") ? tg.slice(1) : "xl/" + tg.replace(/^\.\//, ""); } return null; };
+  const colIdx = (ref: string) => { const m = ref.match(/^[A-Z]+/); let n = 0; for (const ch of m ? m[0] : "A") n = n * 26 + ch.charCodeAt(0) - 64; return n - 1; };
+  const sheets = Array.from(wb?.getElementsByTagName("sheet") || []);
+  const list = sheets.length ? sheets.map((sh, i) => ({ name: sh.getAttribute("name") || "Sheet" + (i + 1), path: target(sh.getAttribute("r:id") || sh.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")) || `xl/worksheets/sheet${i + 1}.xml` })) : [{ name: "Sheet1", path: "xl/worksheets/sheet1.xml" }];
+  const out: { name: string; rows: string[][] }[] = [];
+  for (const { name, path } of list) {
+    const sheet = await xml(path); if (!sheet) continue;
+    const rows: string[][] = [];
+    for (const row of Array.from(sheet.getElementsByTagName("row"))) {
+      const cells: string[] = [];
+      for (const c of Array.from(row.getElementsByTagName("c"))) {
+        const t = c.getAttribute("t"), v = c.getElementsByTagName("v")[0]?.textContent ?? "";
+        cells[colIdx(c.getAttribute("r") || "A1")] = t === "s" ? shared[+v] ?? "" : t === "inlineStr" ? Array.from(c.getElementsByTagName("t")).map((x) => x.textContent || "").join("") : v;
+      }
+      rows.push(Array.from(cells, (x) => x ?? ""));
+    }
+    out.push({ name, rows });
+  }
+  return out;
+}

@@ -2,6 +2,7 @@ import { recordOf } from "../../sports/volleyball/engine";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
 import { gradCell, heightCell, parseRosterLine, positionCell } from "./parseRoster";
+import { ImportStats } from "./ImportStats";
 import { LEGAL, LEGAL_VERSION } from "../../app/legal";
 import { currentUser } from "../../cloud/client";
 import { todayISO, all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
@@ -26,7 +27,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Opponents /><Backup /></div>
+        <div className="stack"><CloudCard /><Opponents /><ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;
@@ -101,14 +102,14 @@ function History() {
     {!list.length && <p className="empty">Nothing recorded yet.</p>}
     <ul className="log">{list.map((m) => {
       const R = replayOf(m), live = t.currentMatchId === m.id;
-      const res = R && m.kind !== "drills" ? `${R.wonUs}–${R.wonThem}` : "";
+      const res = R && m.kind !== "drills" && R.sets.some((s) => s.us + s.them) ? `${R.wonUs}–${R.wonThem}` : "";
       return <li key={m.id} style={{ gridTemplateColumns: "1fr auto" }}>
-        <span><b>{m.kind === "match" ? "vs " + m.opp : m.opp}</b>{live && <span className="tag good">Live</span>}{m.kind !== "match" && <span className="tag">{m.kind === "scrimmage" ? "Scrimmage" : "Practice"}</span>}<br />
-          <span className="small muted">{fmtDate(m.date)}{m.site ? " · " + m.site : ""}{m.event ? " · " + m.event : ""}{R ? " · " + R.sets.map((s) => s.us + "-" + s.them).join(", ") : ""}</span></span>
+        <span><b>{m.imported?.season ? "Season totals" : m.kind === "match" ? "vs " + m.opp : m.opp}</b>{live && <span className="tag good">Live</span>}{m.imported && <span className="tag" title={m.imported.source + ": " + m.imported.file}>Imported</span>}{m.kind !== "match" && <span className="tag">{m.kind === "scrimmage" ? "Scrimmage" : "Practice"}</span>}<br />
+          <span className="small muted">{fmtDate(m.date)}{m.site ? " · " + m.site : ""}{m.event ? " · " + m.event : ""}{R && R.sets.some((s) => s.us + s.them) ? " · " + R.sets.filter((s) => s.us + s.them).map((s) => s.us + "-" + s.them).join(", ") : m.imported ? " · stats only" : ""}</span></span>
         <span className="row" style={{ flexWrap: "nowrap" }}>
           {res && <b className={"num " + (R!.wonUs > R!.wonThem ? "us" : R!.wonThem > R!.wonUs ? "them" : "")} style={{ color: R!.wonUs > R!.wonThem ? "var(--us)" : R!.wonThem > R!.wonUs ? "var(--them)" : undefined }}>{res}</b>}
           <button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + m.id }); go("stats"); }}>Stats</button>
-          {!live && <button className="btn sm ghost" onClick={() => { setTeamPatch({ currentMatchId: m.id }); patch("matches", m.id, { status: "live" }); go(m.kind === "match" ? "track" : "practice"); }}>Reopen</button>}
+          {!live && !m.imported && <button className="btn sm ghost" onClick={() => { setTeamPatch({ currentMatchId: m.id }); patch("matches", m.id, { status: "live" }); go(m.kind === "match" ? "track" : "practice"); }}>Reopen</button>}
           <ConfirmButton className="btn sm ghost" confirmText="Delete?" onConfirm={() => { deleteMatch(m.id); toast("Deleted"); }}>✕</ConfirmButton>
         </span>
       </li>;

@@ -27,7 +27,7 @@ function Spark({ vals }: { vals: (number | null)[] }) {
 export function Home() {
   const t = team()!, today = todayISO();
   const games = matchesOf().filter((m) => m.kind === "match" && (!t.activeSeasonId || m.seasonId === t.activeSeasonId)).map((m) => ({ m, R: replayOf(m)! })).filter((x) => x.R && x.R.sets.length);
-  const done = games.filter((g) => g.R.matchOver || g.m.status === "done");
+  const done = games.filter((g) => (g.R.matchOver || g.m.status === "done") && !g.m.imported?.season && g.R.sets.some((s) => s.us + s.them > 0));
   const W = done.filter((g) => g.R.wonUs > g.R.wonThem).length, L = done.filter((g) => g.R.wonThem > g.R.wonUs).length, T = done.filter((g) => g.R.matchOver && g.R.wonUs === g.R.wonThem).length;
   const last = done[0];
   const next = (t.schedule || []).filter((s) => s.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];

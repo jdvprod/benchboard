@@ -637,3 +637,8 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .clip-list small{color:var(--muted);white-space:nowrap}
 .rc-clips{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
 .clips{max-width:860px}
+/* importing stats */
+.imp-file{border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:10px}
+.imp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:8px}
+.imp-cols{margin-top:8px}.imp-cols summary{cursor:pointer;font-size:14px;color:var(--us);font-weight:600}
+.imp-colgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;margin-top:8px}
