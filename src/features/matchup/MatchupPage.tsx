@@ -14,6 +14,7 @@ import { AiCard } from "../../ui/ai";
 import { scoutPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
+import { TournamentList } from "../tournament/TournamentPage";
 
 interface H2H { o: Opponent; games: { m: Match; R: Replay }[]; A: Agg; season: Agg }
 
@@ -39,7 +40,7 @@ export function MatchupPage({ id }: { id?: string }) {
     </div>
     <div className="mu-layout">
       <div className="stack">{o ? <Matchup key={o.id} h={headToHead(o)} next={upcoming.find((s) => oppKey(s.opp) === oppKey(o.name))} /> : <Card><p className="empty">Add an upcoming match or play a team, and its matchup shows up here.</p></Card>}</div>
-      <aside className="stack"><Schedule items={sched} onOpen={(name) => pick(ensureOpponent(name).id)} current={o?.name} /></aside>
+      <aside className="stack"><Schedule items={sched} onOpen={(name) => pick(ensureOpponent(name).id)} current={o?.name} /><TournamentList /></aside>
     </div>
   </div>;
 }

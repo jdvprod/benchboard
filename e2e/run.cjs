@@ -444,6 +444,53 @@ const scenarios = {
     await p.context().close();
   },
 
+  async tournament(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("tn@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("TN Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await A.locator("input[type=file][accept*=csv]").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
+    await go(A, "matchup"); await A.getByRole("button", { name: "New tournament" }).click();
+    await A.getByLabel("Name", { exact: true }).fill("Fall Classic"); await A.getByLabel("Where").fill("Fresno Convention Center"); await A.getByRole("button", { name: "Create tournament" }).click(); await A.waitForTimeout(300);
+    const addGame = async (stage, opp, time, court, round) => {
+      if (await A.getByRole("button", { name: "Add a game" }).count()) await A.getByRole("button", { name: "Add a game" }).click();
+      await A.getByRole("button", { name: stage, exact: true }).click();
+      await A.locator(".tn-add input[list=tn-teams]").fill(opp); await A.getByLabel("Time").fill(time); await A.getByLabel("Court").fill(court);
+      if (round) await A.getByLabel("Round").fill(round);
+      await A.getByRole("button", { name: "Add game" }).click(); await A.waitForTimeout(150);
+    };
+    await addGame("Pool", "Buchanan", "09:00", "3"); await addGame("Pool", "Central", "10:00", "3"); await addGame("Work (ref)", "Buchanan vs Central", "11:00", "3"); await addGame("Bracket", "Fresno Elite", "13:00", "1", "Semifinal");
+    ok("tournament lists our games in time order", (await A.locator(".tn-games li").allInnerTexts()).map((x) => x.split("\n").find((l) => /vs |Work/.test(l))).join("|") === "vs Buchanan|vs Central|Work: Buchanan vs Central|vs Fresno Elite");
+    await A.getByLabel("Add a team to the pool").fill("Fresno Elite"); await A.getByRole("button", { name: "Add", exact: true }).click();
+    await A.getByLabel("First team", { exact: true }).selectOption("Central"); await A.getByLabel("Second team", { exact: true }).selectOption("Fresno Elite"); await A.getByLabel("Set scores, first team's points first").fill("25-10, 25-12"); await A.getByRole("button", { name: "Add result" }).click(); await A.waitForTimeout(200);
+    { const ax = await a11y(A); ok("tournament controls all have names", !ax.length, ax.join(" | ")); }
+    // the Track home screen offers the next game
+    await go(A, "track"); ok("home shows today's tournament with the next game", (await A.locator(".tn-today", { hasText: "Up next: vs Buchanan" }).count()) === 1);
+    await A.locator(".tn-today").getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(400);
+    ok("the tournament game starts as a 2-set pool match", /TN CLUB 0 SET 1/.test(await score(A)));
+    for (let s = 0; s < 2; s++) { for (let i = 0; i < 25; i++) { await A.keyboard.type("7"); await A.waitForTimeout(860); await A.keyboard.press("k"); } await A.keyboard.press("Escape"); await A.waitForTimeout(200); const nx = A.getByRole("button", { name: "TN Club serve" }); if (await nx.count()) await nx.click(); }
+    ok("pool match ends 2–0", (await A.locator(".banner", { hasText: "Match over" }).count()) === 1);
+    await A.getByRole("button", { name: "Finish" }).click(); await A.waitForTimeout(300);
+    await go(A, "matchup"); await A.locator(".tn-list button", { hasText: "Fall Classic" }).click(); await A.waitForTimeout(300);
+    ok("our result shows in the tournament", (await A.locator(".tn-games li", { hasText: "vs Buchanan" }).innerText()).includes("W 2–0"));
+    ok("up next moves to the following game", (await A.locator(".tn-next", { hasText: "vs Central" }).count()) === 1);
+    const st = (await A.locator(".card", { hasText: "standings" }).locator("tbody tr").allInnerTexts()).map((r) => r.split("\t")[0].trim());
+    ok("pool standings rank by record, then sets, then points", st.join("|") === "TN Club|Central|Fresno Elite|Buchanan", st.join("|"));
+    // families see it on Benchboard Live
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
+    await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
+    const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    const P = await newPage(browser, { phone: true }); await P.goto(teamUrl); await P.waitForTimeout(1500);
+    const card = P.locator(".lv-tn");
+    ok("Live team page shows the tournament day", (await card.count()) === 1 && (await card.innerText()).toLowerCase().includes("fall classic"), (await P.locator("body").innerText()).slice(0, 300).replace(/\s+/g, " "));
+    ok("Live shows our result, the next game's court and the work duty", /W 2–0/.test(await card.innerText()) && /Court 3/.test(await card.innerText()) && /Working: Buchanan vs Central/.test(await card.innerText()));
+    ok("Live shows pool standings and the bracket path", (await card.locator("tbody tr").count()) === 4 && /Semifinal/.test(await card.innerText()));
+    ok("Live tournament fits a phone", (await overflow(P)) <= 1);
+    { const cx = await contrast(P); ok("Live tournament text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    for (const [n, pg] of [["coach", A], ["parent", P]]) ok(`tournament: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
+    for (const pg of [A, P]) await pg.context().close();
+  },
+
   async cloud(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();

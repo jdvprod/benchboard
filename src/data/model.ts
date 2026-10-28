@@ -39,6 +39,8 @@ export interface Team {
   targets?: Partial<Record<"hitting" | "sideOut" | "pointScoring" | "passAvg" | "serveIn" | "firstBallSO", number>>;
   /** Upcoming matches. */
   schedule?: ScheduleItem[];
+  /** Tournament days: games with times and courts, pool, bracket path. */
+  tournaments?: import("../tournament/model").Tournament[];
   formationPresets?: { id: string; name: string; f: import("../sports/volleyball/formations").Formations }[];
 }
 

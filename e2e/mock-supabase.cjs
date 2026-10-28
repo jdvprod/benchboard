@@ -46,7 +46,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 10);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 11);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -56,8 +56,8 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
       const tr = R.find((r) => r.store === "teams" && r.id === s.team_id), se = R.find((r) => r.store === "seasons" && r.id === s.season_id);
       const ms = R.filter((r) => r.store === "matches" && r.data.seasonId === s.season_id && r.data.kind === "match").map((r) => r.data), ids = new Set(ms.map((m) => m.id));
-      return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level, schedule: tr.data.schedule || [] }, season: se && se.data.name,
-        matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, status: m.status, event: m.event, site: m.site })),
+      return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level, color: tr.data.color, schedule: tr.data.schedule || [], tournaments: tr.data.tournaments || [] }, season: se && se.data.name,
+        matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, status: m.status, event: m.event, site: m.site, imported: m.imported ? { season: m.imported.season } : null, tournamentId: m.tournamentId })),
         logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: pubEvents(r.data.events) })),
         players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), live: [...shares.values()].filter((x) => x.team_id === s.team_id).map((x) => ({ matchId: x.match_id, code: x.code })), at: new Date().toISOString() });
     }

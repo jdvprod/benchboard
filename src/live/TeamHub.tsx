@@ -5,6 +5,7 @@ import { GameScore } from "../ui/GameScore";
 import { todayISO } from "../lib/dates";
 import { fmtDay, fmtTime, Game, isLive, isResult, LPlayer, pname, SeasonData, seasonGames } from "./data";
 import { GameView, playText } from "./GameView";
+import { TournamentCard } from "./TournamentCard";
 
 type Tab = "home" | "schedule" | "stats" | "roster";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
@@ -31,7 +32,9 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
 }
 
 function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]; team: string; code: string; fresh: string; P: Map<string, LPlayer> }) {
-  const live = games.find(isLive);
+  const live = games.find(isLive), today = todayISO();
+  // a tournament happening now (or within the last day, so results stay up the evening after)
+  const tn = (d.team?.tournaments || []).filter((t) => today >= t.start && today <= addDays(t.end || t.start, 1)).sort((a, b) => b.start.localeCompare(a.start))[0];
   const lastPts = live ? live.R.log.filter((l) => l.kind === "stat" && l.w).slice(-3).reverse() : [];
   const A = aggregate(games.flatMap((g) => g.R.sets));
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).filter(([id]) => P.has(id)).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <a className="lv-lead" key={label} href={`#/t/${code}/p/${top[0]}`}><span>{label}</span><b>{+top[1].toFixed(1)}</b><small>{pname(P.get(top[0]))}</small></a> : null; };
@@ -43,15 +46,20 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
       {lastPts.length > 0 && <ul className="lv-pbp">{lastPts.map((l) => <li key={l.id}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, live.m.opp || "Opponent", P)}</span></li>)}</ul>}
       <a className="btn primary" href={`#/t/${code}/m/${live.m.id}`}>Open the gamecast</a>
     </section>}
+    {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>Season leaders</h2><a href={`#/t/${code}/stats`}>All stats ›</a></div><div className="lv-leads">{leaders}</div></section>}
   </>;
 }
 
+const addDays = (iso: string, n: number) => { const x = new Date(iso + "T12:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+
 function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code: string; all?: boolean }) {
   const today = todayISO();
   const upcoming = (d.team?.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, all ? 50 : 3);
+  const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
   return <>
+    {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>Coming up</h2>{!all && <a href={`#/t/${code}/schedule`}>Full schedule ›</a>}</div>
       <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{x.site === "away" ? "at " : "vs "}{x.opp}</b><span className="lv-ev">{x.event}</span></li>)}</ul></section>}
     <section className="lv-card"><div className="lv-h"><h2>Results</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>All results ›</a>}</div>

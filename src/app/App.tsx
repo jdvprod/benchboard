@@ -20,6 +20,7 @@ import { needsTermsAgreement, currentUser } from "../cloud/client";
 const LineupPage = lazy(() => import("../features/lineup/LineupPage").then((m) => ({ default: m.LineupPage })));
 const FormationsPage = lazy(() => import("../features/formations/FormationsPage").then((m) => ({ default: m.FormationsPage })));
 const LabsPage = lazy(() => import("../features/labs/LabsPage").then((m) => ({ default: m.LabsPage })));
+const TournamentPage = lazy(() => import("../features/tournament/TournamentPage").then((m) => ({ default: m.TournamentPage })));
 const MatchupPage = lazy(() => import("../features/matchup/MatchupPage").then((m) => ({ default: m.MatchupPage })));
 const PracticePage = lazy(() => import("../features/practice/PracticePage").then((m) => ({ default: m.PracticePage })));
 const StatsPage = lazy(() => import("../features/stats/StatsPage").then((m) => ({ default: m.StatsPage })));
@@ -82,6 +83,7 @@ export function App() {
     case "formations": body = <FormationsPage />; break;
     case "labs": body = <LabsPage />; break;
     case "matchup": body = <MatchupPage id={route.id} />; break;
+    case "tournament": body = <TournamentPage id={route.id} />; break;
     case "join": body = <JoinPage code={route.id || ""} />; break;
     case "account": body = <AccountPage />; break;
     case "practice": body = <PracticePage />; break;
@@ -97,7 +99,7 @@ export function App() {
     <nav className="nav" aria-label="Sections">
       <div className="brand"><i><Icon name="brand" /></i><b>Benchboard</b></div>
       <div className="teamswitch">{switcher("")}</div>
-      {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
+      {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <AccountChip />
       <a className="tab" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
     </nav>

@@ -12,6 +12,7 @@ import { StartMatch } from "../track/TrackPage";
 import { focusAreas } from "../practice/PracticePage";
 import { matchReportHtml } from "../stats/matchReport";
 import { download } from "../../ui/kit";
+import { TournamentToday } from "../tournament/TournamentPage";
 import { shareFinalGraphic } from "../stats/finalGraphic";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -45,6 +46,7 @@ export function Home() {
       <div><h1>{t.name}</h1><p className="muted">{t.level}{done.length ? ` · ${W}–${L}${T ? "–" + T : ""} this season` : ""}</p></div>
       <button className="btn primary" onClick={() => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Start a match</button>
     </div>
+    <TournamentToday />
     <Setup />
     <div className="home-top">
       <section className="card home-next">

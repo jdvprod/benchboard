@@ -6,7 +6,7 @@ import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";
 export interface LPlayer { id: string; num: string; first: string; last: string; pos: string }
 export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any; imported?: { season?: boolean } | null; tournamentId?: string | null }
 export interface LSched { id: string; date: string; time: string; opp: string; site: string; event: string }
-export interface SeasonData { team: { name: string; level: string; color?: string; schedule: LSched[] } | null; season: string | null; matches: LMatch[]; logs: { matchId: string; events: any[] }[]; players: LPlayer[]; live?: { matchId: string; code: string }[]; at: string }
+export interface SeasonData { team: { name: string; level: string; color?: string; schedule: LSched[]; tournaments?: import("../tournament/model").Tournament[] } | null; season: string | null; matches: LMatch[]; logs: { matchId: string; events: any[] }[]; players: LPlayer[]; live?: { matchId: string; code: string }[]; at: string }
 export interface WatchData { team: { name: string; color: string; level: string } | null; match: LMatch; logs: any[][]; players: LPlayer[]; at: string }
 export interface Game { m: LMatch; R: Replay }
 

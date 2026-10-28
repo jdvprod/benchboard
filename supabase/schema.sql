@@ -196,9 +196,9 @@ begin
   select * into s from season_shares where code = upper(trim(share));
   if s.code is null then return null; end if;
   select jsonb_build_object(
-    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'schedule', coalesce(data->'schedule', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
+    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
-    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site'))
+    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId'))
                          from records where store = 'matches' and team_id = s.team_id and data->>'seasonId' = s.season_id and data->>'kind' = 'match' and not deleted), '[]'::jsonb),
     'logs', coalesce((select jsonb_agg(jsonb_build_object('matchId', l.data->>'matchId', 'events', public_events(l.data->'events')))
                       from records l where l.store = 'logs' and l.team_id = s.team_id and not l.deleted
@@ -288,7 +288,7 @@ end $$;
 grant execute on function public.recruit_board(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
-create or replace function public.schema_version() returns int language sql immutable as $$ select 10 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 11 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

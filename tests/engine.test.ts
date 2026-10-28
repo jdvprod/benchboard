@@ -341,3 +341,14 @@ test("import: Benchboard's own spreadsheet export comes back in with the same nu
   assert.deepEqual([c("P3"), c("P0"), c("P3") + c("P2") + c("P1") + c("P0")], [8, 2, 20]);
   assert.equal(Math.round(((3 * c("P3") + 2 * c("P2") + c("P1")) / 20) * 100) / 100, 2.2);
 });
+
+import { nextGame, standings } from "../src/tournament/model";
+test("tournament: pool standings by match record, then set %, then point %; next game", () => {
+  const S = standings("Clovis North", ["Buchanan", "Central", "Fresno Elite"], [
+    { opp: "Buchanan", sets: [[25, 20], [25, 18]], over: true }, { opp: "Central", sets: [[23, 25], [25, 21], [13, 15]], over: true }, { opp: "Fresno Elite", sets: [[10, 5]], over: false },
+  ], [{ id: "o1", a: "Central", b: "Fresno Elite", sets: [[25, 10], [25, 12]] }, { id: "o2", a: "Buchanan", b: "Fresno Elite", sets: [[25, 23], [24, 26], [15, 13]] }]);
+  assert.deepEqual(S.map((r) => [r.team, r.w, r.l, r.sw, r.sl]), [["Central", 2, 0, 4, 1], ["Clovis North", 1, 1, 3, 2], ["Buchanan", 1, 1, 2, 3], ["Fresno Elite", 0, 2, 1, 4]]);
+  assert.equal(S[1].us, true); assert.equal(S[1].pf, 25 + 25 + 23 + 25 + 13);
+  const t: any = { start: "2026-11-07", games: [{ id: "a", stage: "pool", time: "10:00", matchId: "m1" }, { id: "w", stage: "work", time: "11:00" }, { id: "b", stage: "pool", time: "12:00" }, { id: "c", stage: "bracket", time: "15:00" }] };
+  assert.equal(nextGame(t, (id) => id === "m1")?.id, "b");
+});

@@ -22,7 +22,7 @@ grant select, insert, update, delete on all tables in schema public to authentic
 insert into auth.users values ('11111111-1111-1111-1111-111111111111', 'coach@example.com');
 insert into teams_cloud (id, name, owner) values ('t1', 'Test', '11111111-1111-1111-1111-111111111111');
 insert into records (store, id, team_id, data) values
-  ('teams', 't1', 't1', '{"name":"Test"}'), ('seasons', 's1', 't1', '{"name":"Fall"}'),
+  ('teams', 't1', 't1', '{"name":"Test","tournaments":[{"id":"tn1","name":"Fall Classic","start":"2026-11-07","poolTeams":["A","B"],"games":[],"others":[]}]}'), ('seasons', 's1', 't1', '{"name":"Fall"}'),
   ('matches', 'm1', 't1', '{"id":"m1","seasonId":"s1","kind":"match","opp":"Them","date":"2026-10-01","bestOf":5,"status":"done"}'),
   ('logs', 'l1', 't1', '{"matchId":"m1","events":[{"id":"e1","t":"K","p":"p1","ts":1},{"id":"e2","t":"TAG","note":"private film note","ts":2}]}'),
   ('players', 'p1', 't1', '{"id":"p1","num":"7","first":"Maya","last":"Chen","pos":"OH"}'),
@@ -39,6 +39,7 @@ check "select count(*) from jsonb_array_elements(season_view('s1s1s1')->'players
 check "select watch('l1l1l1')::text like '%private%';" "f" "live link never includes match notes or film tags"
 check "select season_view('s1s1s1')::text like '%private%';" "f" "season page never includes film tags"
 check "select season_view('s1s1s1')->'live'->0->>'code';" "L1L1L1" "season page links to the live gamecast"
+check "select season_view('s1s1s1')->'team'->'tournaments'->0->>'name';" "Fall Classic" "season page includes tournament days"
 check "select jsonb_array_length(watch('l1l1l1')->'logs'->0);" "1" "live link keeps the plays"
 check "select jsonb_array_length(season_view('s1s1s1')->'matches');" "1" "season page lists matches"
 check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the match"
@@ -47,7 +48,7 @@ check "select recruit_view('r1r1r1')->'data'->'player'->>'first';" "Maya" "recru
 check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting board lists shared profiles with their clip count"
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "10" "schema version is reported"
+check "select schema_version();" "11" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
