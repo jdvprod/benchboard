@@ -623,3 +623,16 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .gs-run.us{color:var(--us-bright)}.gs-run.them{color:var(--them-bright)}
 /* scrollable tables show a soft shadow on the side that has more columns */
 .tbl{background:linear-gradient(to right,var(--surface) 30%,rgba(255,255,255,0)) left center/32px 100% no-repeat local,linear-gradient(to left,var(--surface) 30%,rgba(255,255,255,0)) right center/32px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) left center/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) right center/12px 100% no-repeat scroll}
+/* clip player (coaching app and Benchboard Recruit) */
+.clips{display:grid;gap:8px;min-width:0}
+.clip-title{font:700 15px var(--display);letter-spacing:.05em;text-transform:uppercase}
+.clip-stage{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
+.clip-stage video,.clip-stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.clip-ext{position:absolute;inset:0;display:grid;place-content:center;gap:10px;text-align:center;color:#C7CCD3;padding:16px}
+.clip-now{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.clip-now span{color:var(--muted);font-size:14px}.clip-count{margin-left:auto}
+.clip-ctrl{gap:8px}
+.clip-list{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px;max-height:260px;overflow:auto}
+.clip-list button{width:100%;display:flex;justify-content:space-between;gap:10px;text-align:left;background:none;border:1px solid var(--line);border-radius:8px;padding:7px 10px;color:var(--ink);font:inherit;cursor:pointer}
+.clip-list button[aria-current]{border-color:var(--us);background:var(--us-soft)}
+.clip-list small{color:var(--muted);white-space:nowrap}
+.rc-clips{border-top:1px solid var(--line);margin-top:10px;padding-top:10px}

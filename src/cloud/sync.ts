@@ -4,6 +4,7 @@
  * incrementally by server time. Conflicts: the most recent edit wins. Match event logs are per device,
  * so two coaches tracking the same match never overwrite each other; their logs merge.
  */
+import { siteUrl } from "./links";
 import { all, emit, get, hooks, remove, save, setClockOffset, state } from "../data/store";
 import { StoreName } from "../data/model";
 import { CloudError, cloudAvailable, currentUser, rest, rpc, upsert } from "./client";
@@ -199,7 +200,7 @@ export async function shareLive(teamId: string, matchId: string) {
   const c = existing[0]?.code || code(6);
   if (!existing[0]) await rest("live_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, match_id: matchId }) });
   await syncNow();
-  return { code: c, url: location.origin + location.pathname + "#/watch/" + c };
+  return { code: c, url: siteUrl("live", "g/" + c) };
 }
 
 /** A read-only season page for players and parents: results, schedule, leaders and every player's line. */
@@ -208,16 +209,23 @@ export async function shareSeason(teamId: string, seasonId: string) {
   const c = existing[0]?.code || code(6);
   if (!existing[0]) await rest("season_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, season_id: seasonId }) });
   await syncNow();
-  return { code: c, url: location.origin + location.pathname + "#/season/" + c };
+  return { code: c, url: siteUrl("live", "t/" + c) };
 }
 
 /** Publish (or refresh) a player's recruiting page. The page is a snapshot: tap again after new matches. */
-export async function shareRecruit(teamId: string, playerId: string, html: string) {
+export async function shareRecruit(teamId: string, playerId: string, html: string, data?: unknown) {
   const existing: any[] = await rest(`recruit_shares?select=code&team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}&limit=1`);
   let c = existing[0]?.code;
-  if (c) await rest(`recruit_shares?code=eq.${c}`, { method: "PATCH", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ html, updated_at: new Date().toISOString() }) });
-  else { c = code(6); await rest("recruit_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, player_id: playerId, html }) }); }
-  return { code: c as string, url: location.origin + location.pathname + "#/recruit/" + c };
+  if (c) await rest(`recruit_shares?code=eq.${c}`, { method: "PATCH", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ html, data: data ?? null, updated_at: new Date().toISOString() }) });
+  else { c = code(6); await rest("recruit_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, player_id: playerId, html, data: data ?? null }) }); }
+  return { code: c as string, url: siteUrl("recruit", "p/" + c) };
+}
+/** One link for college coaches listing every player on the team with a shared recruiting profile. */
+export async function shareBoard(teamId: string) {
+  const existing: any[] = await rest(`recruit_boards?select=code&team_id=eq.${encodeURIComponent(teamId)}&limit=1`);
+  const c = existing[0]?.code || code(6);
+  if (!existing[0]) await rest("recruit_boards", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId }) });
+  return { code: c as string, url: siteUrl("recruit", "b/" + c) };
 }
 export async function unshareRecruit(teamId: string, playerId: string) {
   await rest(`recruit_shares?team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}`, { method: "DELETE" });

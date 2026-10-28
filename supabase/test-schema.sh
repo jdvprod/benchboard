@@ -30,7 +30,8 @@ insert into records (store, id, team_id, data) values
 update records set data = data || '{"notes":"private match notes","video":"https://youtu.be/x"}' where id = 'm1';
 insert into season_shares values ('S1S1S1', 't1', 's1');
 insert into live_shares (code, team_id, match_id) values ('L1L1L1', 't1', 'm1');
-insert into recruit_shares (code, team_id, player_id, html) values ('R1R1R1', 't1', 'p1', '<p>profile</p>');
+insert into recruit_shares (code, team_id, player_id, html, data) values ('R1R1R1', 't1', 'p1', '<p>profile</p>', '{"player":{"first":"Maya","num":"7"},"season":{"sets":3},"clips":[{"start":10}]}');
+insert into recruit_boards (code, team_id) values ('B1B1B1', 't1');
 SQL
 check() { [ "$(q -c "set role anon; $1" | tail -1)" = "$2" ] && echo "ok   $3" || { echo "FAIL $3"; exit 1; }; }
 check "select season_view('s1s1s1')->'players'->0->>'last';" "C" "season page shows last initial only"
@@ -42,8 +43,11 @@ check "select jsonb_array_length(watch('l1l1l1')->'logs'->0);" "1" "live link ke
 check "select jsonb_array_length(season_view('s1s1s1')->'matches');" "1" "season page lists matches"
 check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the match"
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
+check "select recruit_view('r1r1r1')->'data'->'player'->>'first';" "Maya" "recruit link returns the profile data"
+check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting board lists shared profiles with their clip count"
+check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "9" "schema version is reported"
+check "select schema_version();" "10" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

@@ -12,6 +12,9 @@ import { go } from "../../app/router";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked, shareRecruit, unshareRecruit } from "../../cloud/sync";
 import { LEGAL } from "../../app/legal";
+import { ClipPlayer } from "../../ui/ClipPlayer";
+import { highlightPick } from "../../film/clips";
+import { playerClips, recruitData } from "./recruitData";
 import { copyText } from "../../ui/kit";
 import { QrButton } from "../../ui/QrButton";
 import { CourtSvg } from "../../ui/court";
@@ -156,16 +159,26 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
   const consented = !!pr.consentAt;
   const setUrl = (u: string) => patch("players", id, { profile: { ...(player(id)!.profile || {}), sharedUrl: u || undefined } });
   const canShare = cloudAvailable() && !!currentUser() && isLinked(t.id) && !t.sample;
+  const [preview, setPreview] = useState(false);
+  const allClips = playerClips(id), picked = highlightPick(allClips);
   const set = (k: keyof RecruitProfile, v: string) => patch("players", id, { profile: { ...(player(id)!.profile || {}), [k]: v } });
   return <Card title={<>Recruiting profile <span className="tag" style={{ verticalAlign: 2 }}>Preview</span></>} actions={<div className="row">
     {!open && <button className="btn sm" onClick={() => setOpen(true)}>Fill in</button>}
-    {canShare && <button className="btn sm" disabled={busy || !consented} title={consented ? undefined : "Confirm family consent below first"} onClick={async () => { setBusy(true); try { const r = await shareRecruit(t.id, id, recruitHtml(id, rows, A)); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Profile link copied. It's a snapshot; tap again after new matches." : "Profile link: " + r.url); } catch (e: any) { toast(e?.message || "Couldn't share the profile."); } setBusy(false); }}>{busy ? "Publishing…" : url ? "Update profile link" : "Share profile link"}</button>}
+    {canShare && <button className="btn sm" disabled={busy || !consented} title={consented ? undefined : "Confirm family consent below first"} onClick={async () => { setBusy(true); try { const r = await shareRecruit(t.id, id, recruitHtml(id, rows, A), recruitData(id, { clips: pr.clipsOff ? [] : picked })); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Profile link copied. It's a snapshot; tap again after new matches." : "Profile link: " + r.url); } catch (e: any) { toast(e?.message || "Couldn't share the profile."); } setBusy(false); }}>{busy ? "Publishing…" : url ? "Update profile link" : "Share profile link"}</button>}
     <button className="btn sm primary" onClick={() => { download(`${p.first} ${p.last} recruiting profile.html`, recruitHtml(id, rows, A), "text/html"); toast("Recruiting sheet saved. Send it to college coaches or attach it to emails."); }}>Download recruiting sheet</button></div>}>
     {open ? <div className="stack">
       <div className="pf-grid">{PF.map(([k, label, ph]) => <label key={k} className="field"><span className="label">{label}</span><input key={id + k} defaultValue={pr[k] || ""} placeholder={ph} onBlur={(e) => set(k, e.target.value.trim())} /></label>)}</div>
       <label className="field"><span className="label">About</span><textarea key={id + "about"} rows={3} defaultValue={pr.about || ""} placeholder="Strengths, leadership, what they're looking for in a program" onBlur={(e) => set("about", e.target.value.trim())} /></label>
       <p className="keys">Stays private on your account until you share it. The download and the profile link show the player's full name, these details and verified stats; the link is a snapshot you can update anytime.</p>
     </div> : <p className="small muted">Measurables, contact info and a highlight link, combined with verified season stats into a one-page sheet for college coaches.</p>}
+    <div className="rc-clips">
+      <div className="row between"><b>Highlight clips</b>{picked.length > 0 && <button className="btn sm" onClick={() => setPreview(!preview)}>{preview ? "Hide" : "Preview"}</button>}</div>
+      {picked.length ? <>
+        <p className="small muted" style={{ margin: "4px 0 6px" }}>{picked.length} of {p.first || "this player"}'s best plays (kills, aces and blocks first) from {allClips.length} tracked plays with linked video. College coaches can watch them on the profile.</p>
+        <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={!pr.clipsOff} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), clipsOff: e.target.checked ? undefined : true } })} /> Include clips on the shared profile</label>
+        {preview && <div style={{ marginTop: 8 }}><ClipPlayer clips={picked} title={`${p.first} ${p.last} · highlights`} /></div>}
+      </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
+    </div>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />

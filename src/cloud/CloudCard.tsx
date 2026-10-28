@@ -1,9 +1,10 @@
 /** Account, team sync, invites and joining, shown on the Team tab. */
+import { siteUrl } from "./links";
 import { useEffect, useState } from "react";
 import { team, toast } from "../data/store";
 import { Card, ConfirmButton, copyText } from "../ui/kit";
 import { cloudAvailable, CloudError, currentUser, sendPasswordReset, signIn, signOut, signUp } from "./client";
-import { createInvite, isLinked, joinWithCode, linkTeam, members, pendingCount, removeMember, roleOn, shareLive, shareSeason, status, syncNow, unlinkTeam } from "./sync";
+import { createInvite, isLinked, joinWithCode, linkTeam, members, pendingCount, removeMember, roleOn, shareLive, shareSeason, status, syncNow, unlinkTeam, shareBoard } from "./sync";
 import { go } from "../app/router";
 import { QrButton } from "../ui/QrButton";
 
@@ -27,7 +28,7 @@ export function AuthForm({ onDone }: { onDone?: () => void }) {
 }
 
 export function CloudCard() {
-  const [seasonUrl, setSeasonUrl] = useState("");
+  const [seasonUrl, setSeasonUrl] = useState(""), [boardUrl, setBoardUrl] = useState("");
   const t = team()!, user = currentUser(), linked = isLinked(t.id);
   const [busy, setBusy] = useState(false), [err, setErr] = useState(""), [invite, setInvite] = useState<{ code: string; role: string } | null>(null);
   const [joinCode, setJoinCode] = useState(""), [mem, setMem] = useState<{ user_id: string; role: string; email: string | null }[] | null>(null);
@@ -69,11 +70,16 @@ export function CloudCard() {
             <div className="row" style={{ marginTop: 6 }}><b style={{ fontFamily: "var(--display)", fontSize: 22, letterSpacing: ".12em" }}>{invite.code}</b><button className="btn sm" onClick={() => copyText(link).then((ok) => toast(ok ? "Link copied" : link))}>Copy link</button></div>
             <div className="small muted" style={{ marginTop: 4 }}>{invite.role === "coach" ? "Coaches can track matches, edit the roster and plan practices." : "View-only accounts can see everything but not change it."}</div></div>}
           {isOwnerOrCoach && <>
-            <div className="label">Season page for players and parents</div>
-            <p className="small muted" style={{ margin: 0 }}>A read-only page with results, schedule, leaders and every player's stats. Last names show as initials. No account needed to view.</p>
-            <div className="row"><button className="btn sm" disabled={busy || !t.activeSeasonId} onClick={() => act(async () => { const r = await shareSeason(t.id, t.activeSeasonId!); setSeasonUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Season link copied. Share it with the team." : "Season link: " + r.url); })}>Share season page</button>
-              {seasonUrl && <QrButton url={seasonUrl} title="Scan for the team's season page" label="QR code" />}
+            <div className="label">Team page on Benchboard Live</div>
+            <p className="small muted" style={{ margin: 0 }}>A separate public site for families and fans: live scores during matches, results, schedule, box scores and every player's stats. Last names show as initials, and nobody can change anything. Families can open the link or type the code at Benchboard Live.</p>
+            <div className="row"><button className="btn sm" disabled={busy || !t.activeSeasonId} onClick={() => act(async () => { const r = await shareSeason(t.id, t.activeSeasonId!); setSeasonUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Team page link copied. Share it with families." : "Team page: " + r.url); })}>Share team page</button>
+              {seasonUrl && <QrButton url={seasonUrl} title="Scan to follow the team on Benchboard Live" label="QR code" />}
+              {seasonUrl && <span className="small">Code <b style={{ fontFamily: "var(--display)", letterSpacing: ".12em" }}>{seasonUrl.split("/").pop()}</b></span>}
               {seasonUrl && <a className="small" href={seasonUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{seasonUrl}</a>}</div>
+            <div className="label">Recruiting board on Benchboard Recruit</div>
+            <p className="small muted" style={{ margin: 0 }}>One link for college coaches listing every player whose recruiting profile you've shared (only with the family's permission, from each player's page), with verified stats and highlight clips.</p>
+            <div className="row"><button className="btn sm" disabled={busy} onClick={() => act(async () => { const r = await shareBoard(t.id); setBoardUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Recruiting board link copied." : "Recruiting board: " + r.url); })}>Share recruiting board</button>
+              {boardUrl && <a className="small" href={boardUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boardUrl}</a>}</div>
           </>}
           <div className="row"><ConfirmButton className="btn sm ghost" confirmText="Stop syncing on this device?" onConfirm={() => { unlinkTeam(t.id); toast("Stopped syncing this team on this device"); }}>Stop syncing on this device</ConfirmButton></div>
         </>}
@@ -103,14 +109,14 @@ export function JoinPage({ code }: { code: string }) {
 }
 
 /** "Share live link" for parents, on the Live screen. */
-export const liveUrlFor = (matchId: string) => { try { return localStorage.getItem("bs-live-url-" + matchId) || ""; } catch { return ""; } };
+export const liveUrlFor = (matchId: string) => { try { const u = localStorage.getItem("bs-live-url-" + matchId) || ""; const old = /#\/watch\/([A-Z0-9]+)/i.exec(u); return old ? siteUrl("live", "g/" + old[1]) : u; } catch { return ""; } };
 export function ShareLive({ matchId }: { matchId: string }) {
   const t = team()!, [busy, setBusy] = useState(false), [url, setUrlState] = useState(() => liveUrlFor(matchId));
   const setUrl = (u: string) => { setUrlState(u); try { localStorage.setItem("bs-live-url-" + matchId, u); } catch { /* private mode */ } };
   if (!cloudAvailable() || t.sample) return null;
   if (!currentUser() || !isLinked(t.id)) return <button className="btn sm" onClick={() => go("team")} title="Sign in and sync this team to share a live link">Share with parents</button>;
   return <span className="row" style={{ flexWrap: "nowrap" }}>
-    <button className="btn sm primary" disabled={busy} onClick={async () => { setBusy(true); try { const r = await shareLive(t.id, matchId); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Live link copied. Text it to parents." : "Live link: " + r.url); } catch (e) { toast(errText(e)); } setBusy(false); }}>{busy ? "Making link…" : "Share live link"}</button>
+    <button className="btn sm primary" disabled={busy} onClick={async () => { setBusy(true); try { const r = await shareLive(t.id, matchId); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Gamecast link copied. Text it to parents." : "Gamecast: " + r.url); } catch (e) { toast(errText(e)); } setBusy(false); }}>{busy ? "Making link…" : "Share gamecast"}</button>
     {url && <QrButton url={url} title="Scan to follow the match live" label="QR code" />}
     {url && <span className="small muted" style={{ maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{url}</span>}
   </span>;

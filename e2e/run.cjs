@@ -34,6 +34,12 @@ function serveDist() {
     const srv = http.createServer((req, res) => {
       if (NO_WIFI === "slow") { HANGING.push(req.socket); return; } // the request just hangs, like weak gym Wi-Fi
       if (NO_WIFI) return req.socket.destroy();
+      if (req.url.startsWith("/__fixtures/")) { // test media, with byte ranges so video can seek
+        const file = path.join(__dirname, "fixtures", path.basename(new URL(req.url, U).pathname)); if (!fs.existsSync(file)) { res.writeHead(404); return res.end(); }
+        const size = fs.statSync(file).size, r = /bytes=(\d*)-(\d*)/.exec(req.headers.range || "");
+        if (r) { const a = r[1] ? +r[1] : 0, b = r[2] ? +r[2] : size - 1; res.writeHead(206, { "content-type": "video/webm", "accept-ranges": "bytes", "content-range": `bytes ${a}-${b}/${size}`, "content-length": b - a + 1 }); return fs.createReadStream(file, { start: a, end: b }).pipe(res); }
+        res.writeHead(200, { "content-type": "video/webm", "accept-ranges": "bytes", "content-length": size }); return fs.createReadStream(file).pipe(res);
+      }
       let f = decodeURIComponent(new URL(req.url, U).pathname); if (f.endsWith("/")) f += "index.html";
       const file = path.join(DIST, f);
       if (!file.startsWith(DIST) || !fs.existsSync(file)) { res.writeHead(404); return res.end(); }
@@ -55,7 +61,7 @@ async function newPage(browser, { phone = false, tablet = false, dark = false, c
 }
 const go = async (p, hash) => { await p.goto(U + "#/" + hash); await p.waitForTimeout(350); };
 const score = async (p) => { const t = (await p.locator(".board").first().innerText()).replace(/\s+/g, " "); const n = t.match(/(\d+) SET (\d) .* (\d+) (?:Rotation|Our)/); return t; };
-const download = async (p, click) => { const [d] = await Promise.all([p.waitForEvent("download"), click()]); const f = await d.path(); return { name: d.suggestedFilename(), size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
+const download = async (p, click, timeout = 8000) => { const [d] = await Promise.all([p.waitForEvent("download", { timeout }), click()]); const f = await d.path(); return { name: d.suggestedFilename(), size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
 const overflow = (p) => p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 /** Basic accessibility: every control has a name screen readers can announce, images have alt text, ids are unique. */
 const a11y = (p) => p.evaluate(() => {
@@ -63,7 +69,7 @@ const a11y = (p) => p.evaluate(() => {
   const name = (e) => (e.getAttribute("aria-label") || (e.getAttribute("aria-labelledby") && document.getElementById(e.getAttribute("aria-labelledby"))?.textContent) || (e.id && document.querySelector(`label[for="${e.id}"]`)?.textContent) || e.closest("label")?.textContent || e.textContent || e.getAttribute("title") || (e.tagName === "INPUT" && ["submit", "button"].includes(e.type) && e.value) || "").trim();
   for (const e of document.querySelectorAll("button, a[href], input:not([type=hidden]), select, textarea, [role=button]")) {
     const st = getComputedStyle(e); if (st.display === "none" || st.visibility === "hidden" || e.closest("[hidden],[aria-hidden=true]")) continue;
-    if (!name(e) && !(e.tagName === "INPUT" && e.placeholder && e.type !== "checkbox")) out.push(`${e.tagName.toLowerCase()}${e.className ? "." + String(e.className).split(" ")[0] : ""} has no label`);
+    if (!name(e) && !(e.tagName === "INPUT" && e.placeholder && e.type !== "checkbox")) out.push(`${e.tagName.toLowerCase()}${e.className ? "." + String(e.className).split(" ")[0] : ""}${e.getAttribute("href") ? "[" + e.getAttribute("href").slice(0, 40) + "]" : ""} has no label`);
   }
   for (const i of document.querySelectorAll("img")) if (!i.hasAttribute("alt")) out.push("img without alt: " + i.src.slice(-30));
   const ids = {}; for (const e of document.querySelectorAll("[id]")) ids[e.id] = (ids[e.id] || 0) + 1;
@@ -231,6 +237,7 @@ const scenarios = {
     await A.getByLabel("Team name").fill("No Wifi High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.goto(SW + "track"); await A.waitForTimeout(400); await A.reload(); await A.waitForTimeout(1500); // let the service worker install and cache the app
+    await A.goto(SW.replace("#/", "") + "legal/privacy.html"); await A.waitForTimeout(300); await A.goto(SW.replace("#/", "") + "live/"); await A.waitForTimeout(300); await A.goto(SW + "track"); await A.waitForTimeout(500); // other pages must not replace the app's offline copy
     NO_WIFI = "slow"; { const t0 = Date.now(); await A.reload({ waitUntil: "domcontentloaded" }).catch(() => {}); await A.locator(".page").first().waitFor({ timeout: 9000 }).catch(() => {});
       ok("weak Wi-Fi: the app still opens from the cache within a few seconds", (await A.locator(".page").count()) > 0 && Date.now() - t0 < 7000, `${Date.now() - t0}ms`); }
     await A.context().setOffline(true); NO_WIFI = true; HANGING.splice(0).forEach((sk) => sk.destroy());
@@ -422,8 +429,8 @@ const scenarios = {
     for (const P of [B, A]) { await go(P, "team"); await P.getByRole("button", { name: "Sync now" }).click(); await P.waitForTimeout(900); }
     await go(A, "track"); ok("head coach sees 1–0 and the assistant", /CLOUD CLUB 1/.test(await score(A)) && (await A.locator(".banner", { hasText: "Tracking with assistant" }).count()) === 1);
     // live link + parent
-    await go(A, "live"); await A.getByRole("button", { name: "Share live link" }).click(); await A.waitForTimeout(1200);
-    const live = (await A.locator("span.small.muted", { hasText: "#/watch/" }).first().innerText()).trim();
+    await go(A, "live"); await A.getByRole("button", { name: "Share gamecast" }).click(); await A.waitForTimeout(1200);
+    const live = (await A.locator("span.small.muted", { hasText: "/live/#/g/" }).first().innerText()).trim();
     const P = await newPage(browser, { phone: true }); await P.goto(live); await P.waitForTimeout(1200);
     const gcScore = async (pg) => (await pg.locator(".gs-big").allInnerTexts()).map((x) => x.trim()).join("–");
     ok("parent gamecast shows 1–0", (await gcScore(P)) === "1–0", await gcScore(P));
@@ -436,28 +443,58 @@ const scenarios = {
     { const ax = await a11y(P); ok("gamecast controls all have names", !ax.length, ax.join(" | ")); }
     { const cx = await contrast(P); ok("gamecast text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     // season page + recruiting link
-    await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
-    const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
-    await P.goto(season); await P.waitForTimeout(1200); ok("season page loads", (await P.locator(".sh-hero", { hasText: "CLOUD CLUB" }).count()) === 1);
-    ok("season page shows first names", (await P.locator("body").innerText()).includes("Nia"));
-    ok("season page shows the live match with a link to the gamecast", (await P.locator(".sh-live .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the full gamecast" }).count()) === 1);
+    await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
+    const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    await P.goto(season); await P.waitForTimeout(1200); ok("team page on Benchboard Live loads", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
+    await P.goto(season + "/roster"); await P.waitForTimeout(800); ok("team roster shows first names", (await P.locator("body").innerText()).includes("Nia")); await P.goto(season); await P.waitForTimeout(800);
+    ok("team page shows the live match with a link to the gamecast", (await P.locator(".lv-livecard .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the gamecast" }).count()) === 1);
+    // the game from the team page: ESPN-style tabs
+    await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(500);
+    await P.getByRole("button", { name: "Box score", exact: true }).click(); ok("box score lists Nia with her pass", (await P.locator(".lv-box tbody tr", { hasText: "Nia" }).count()) === 1);
+    await P.getByRole("button", { name: "Play-by-play", exact: true }).click(); ok("play-by-play groups by set", (await P.locator(".lv-set h3", { hasText: "Set 1" }).count()) === 1 && (await P.locator(".lv-pbp li").count()) >= 3);
+    await P.getByRole("button", { name: "Team stats", exact: true }).click(); ok("team stats compare both teams", (await P.locator(".lv-cmp-r").count()) >= 5);
+    ok("Live site fits a phone", (await overflow(P)) <= 1);
+    { const ax = await a11y(P); ok("Live game page controls all have names", !ax.length, ax.join(" | ")); }
+    { const cx = await contrast(P); ok("Live game page text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    // families can type the code instead of opening the link
+    await P.goto(season.replace(/#.*$/, "")); await P.getByLabel("Team or game code").fill(season.split("/").pop().toLowerCase()); await P.getByRole("button", { name: "Follow" }).click(); await P.waitForTimeout(800);
+    ok("typing the team code opens the team page", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
     // a family that said no to team pages: Nia shows only as her number
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
     await A.getByLabel("Keep off public pages").check(); await A.waitForTimeout(2500);
-    await P.reload(); await P.waitForTimeout(1500);
+    await P.goto(season + "/roster"); await P.reload(); await P.waitForTimeout(1500);
     { const body = await P.locator("body").innerText(); ok("player kept off public pages shows only her number", !body.includes("Nia") && /22\s+Player/.test(body), body.slice(0, 400).replace(/\s+/g, " ")); }
     await A.getByLabel("Keep off public pages").uncheck(); await A.waitForTimeout(300);
-    { const ax = await a11y(P); ok("season page controls all have names", !ax.length, ax.join(" | ")); }
-    { const cx = await contrast(P); ok("season page text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    { const ax = await a11y(P); ok("team page controls all have names", !ax.length, ax.join(" | ")); }
+    { const cx = await contrast(P); ok("team page text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    // clips: link the match video, line it up, watch the plays as clips and save one
+    await go(A, "stats"); await A.getByRole("button", { name: "One match", exact: true }).click(); await A.getByRole("button", { name: "Film", exact: true }).click(); await A.waitForTimeout(200);
+    await A.getByLabel("Video link").fill(U + "__fixtures/match.webm"); await A.getByLabel("Time of first serve in the video").fill("0:20"); await A.getByLabel("Time of first serve in the video").press("Tab"); await A.waitForTimeout(300);
+    await A.getByRole("button", { name: /^Watch these \d+ plays as clips$/ }).click(); await A.waitForTimeout(2000);
+    { const t = await A.locator(".clip-stage video").evaluate((v) => v.currentTime); ok("clips play from the match video at the play's time", t > 10 && t < 40, `at ${t}s`); }
+    await A.getByRole("button", { name: "Next ›" }).click(); await A.waitForTimeout(400); ok("next clip moves through the list", (await A.locator(".clip-count").innerText()).startsWith("2 of"));
+    { const sv = await download(A, () => A.getByRole("button", { name: "Save clip" }).click(), 30000); ok("a clip saves as a video file", sv.name.endsWith(".webm") && sv.size > 2000, `${sv.name} ${sv.size} bytes`); }
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
     { const ax = await a11y(A); ok("player page controls all have names", !ax.length, ax.join(" | ")); }
+    ok("recruiting card offers Nia's highlight clips", (await A.locator(".rc-clips", { hasText: /\d+ of Nia's best plays/ }).count()) === 1);
     ok("recruiting link needs family consent first", await A.getByRole("button", { name: "Share profile link" }).isDisabled());
     await A.locator(".consent-check input").check();
     await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
-    const rec = await A.locator("a", { hasText: "#/recruit/" }).first().getAttribute("href");
-    await P.goto(rec); await P.waitForTimeout(1000); ok("recruiting page shows full name", (await P.frameLocator("iframe.recruit-frame").locator("h1").innerText()) === "Nia Lopez");
+    const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href");
+    await P.goto(rec); await P.waitForTimeout(1200); ok("Benchboard Recruit shows the profile with her full name", (await P.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
+    ok("profile says the stats are verified by the coaching staff", (await P.locator(".rc-verified").innerText()).includes("Cloud Club"));
+    ok("profile plays her highlight clips", (await P.locator(".rc-card .clip-stage video").count()) === 1 && (await P.locator(".clip-list li").count()) >= 1);
+    ok("Recruit profile fits a phone", (await overflow(P)) <= 1);
+    { const ax = await a11y(P); ok("Recruit profile controls all have names", !ax.length, ax.join(" | ")); }
+    { const cx = await contrast(P); ok("Recruit profile text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    // the team's recruiting board lists her
+    await go(A, "team"); await A.getByRole("button", { name: "Share recruiting board" }).click(); await A.waitForTimeout(800);
+    const board = await A.locator("a", { hasText: "/recruit/#/b/" }).first().getAttribute("href");
+    await P.goto(board); await P.waitForTimeout(1000); ok("recruiting board lists players with shared profiles", (await P.locator(".rc-pc", { hasText: "Nia Lopez" }).count()) === 1);
+    await P.locator(".rc-pc", { hasText: "Nia Lopez" }).click(); await P.waitForTimeout(800); ok("board opens the profile", (await P.locator(".rc-id h1").count()) === 1);
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
     await A.getByRole("button", { name: "Stop sharing" }).click(); await A.getByRole("button", { name: "Take it down?" }).click(); await A.waitForTimeout(600);
-    await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't active").count()) === 1);
+    await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't shared right now").count()) === 1);
     // AI through the server function, and the setup check
     const sent = []; A.on("request", (r) => { if (r.url().includes("/functions/v1/ai")) sent.push(r.postData() || ""); });
     await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
@@ -502,8 +539,8 @@ const scenarios = {
     await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(400);
     await shot(A, "track-start");
     // share the live link and open it on a parent's phone before play starts
-    await go(A, "live"); await A.getByRole("button", { name: "Share live link" }).click(); await A.waitForTimeout(1200);
-    const live = (await A.locator("span.small.muted", { hasText: "#/watch/" }).first().innerText()).trim();
+    await go(A, "live"); await A.getByRole("button", { name: "Share gamecast" }).click(); await A.waitForTimeout(1200);
+    const live = (await A.locator("span.small.muted", { hasText: "/live/#/g/" }).first().innerText()).trim();
     const P = await newPage(browser, { phone: true }); await P.goto(live); await P.waitForTimeout(1500); await shot(P, "gamecast-parent-start", true);
     // a realistic match by keyboard: serve, pass, set, attack, dig
     await go(A, "track");
@@ -537,8 +574,8 @@ const scenarios = {
     await go(Ph, "account"); await Ph.getByLabel("Email").fill("coach@explore.test"); await Ph.locator("#auth-pw").fill("secret123"); await Ph.getByRole("button", { name: "Sign in" }).click(); await Ph.waitForTimeout(2500);
     for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "live"]) { await go(Ph, r); await shot(Ph, "phone-" + r, true); }
     await P.waitForTimeout(5500); await shot(P, "gamecast-parent-late", true);
-    await go(A, "team"); await A.getByRole("button", { name: "Share season page" }).click(); await A.waitForTimeout(1200);
-    const season = await A.locator("a", { hasText: "#/season/" }).first().getAttribute("href");
+    await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
+    const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1500); await shot(P, "season-page", true);
     for (const [nm, pg] of [["coach", A], ["parent", P], ["phone", Ph]]) if (pg.errors.length) console.log(`    ${nm} errors: ${pg.errors.slice(0, 5).join(" | ")}`);
     console.log("    screenshots: " + OUT);
@@ -584,7 +621,7 @@ const scenarios = {
 
 (async () => {
   if (!fs.existsSync(path.join(DIST, "index.html"))) { console.error("Build first: npm run build"); process.exit(1); }
-  const app = await serveDist(), mock = await startMock(MOCK_PORT), browser = await chromium.launch();
+  const app = await serveDist(), mock = await startMock(MOCK_PORT), browser = await chromium.launch({ args: ["--autoplay-policy=no-user-gesture-required"] });
   for (const [name, fn] of Object.entries(scenarios)) {
     if (only ? name !== only : name.startsWith("_")) continue; // "_" scenarios run only when named
     const t0 = Date.now(), f0 = failures; console.log(`• ${name}`);

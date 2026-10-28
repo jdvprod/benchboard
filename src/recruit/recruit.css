@@ -1,0 +1,44 @@
+/* Benchboard Recruit: a clean, printable profile for college coaches. */
+.rc{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
+.rc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#000;color:#fff;padding:12px max(16px,env(safe-area-inset-left,0px))}
+.rc-brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:var(--display);font-size:18px;letter-spacing:.04em}
+.rc-brand b{font-weight:700;text-transform:uppercase}.rc-brand span{border:1.5px solid var(--us-bright);color:var(--us-bright);border-radius:4px;padding:0 7px;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
+.rc-crumb{color:#C7CCD3;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.rc-main{flex:1;width:100%;max-width:960px;margin:0 auto;padding:18px 16px 30px}
+.rc-foot{color:var(--muted);font-size:13px;text-align:center;padding:16px 16px 26px;max-width:760px;margin:0 auto}.rc-foot a{color:var(--muted)}
+.rc-empty{padding:40px 6px;color:var(--muted);text-align:center}
+.rc-hero{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:18px;align-items:center;margin-bottom:10px}
+.rc-num{width:92px;height:92px;border-radius:16px;background:#000;color:var(--us-bright);display:grid;place-items:center;font:700 50px var(--display)}
+.rc-num.sm{width:52px;height:52px;border-radius:10px;font-size:26px;flex:none}
+.rc-id h1{margin:0;font-family:var(--display);font-size:clamp(32px,6vw,48px);line-height:1;text-transform:uppercase;letter-spacing:.01em}
+.rc-meta{margin:6px 0 0;color:var(--muted);font-size:16px}.rc-meta+.rc-meta{margin-top:2px}
+.rc-acts{display:flex;flex-direction:column;gap:8px}
+.rc-verified{margin:0 0 14px;padding:10px 14px;border-radius:10px;background:var(--us-soft);font-size:14.5px}.rc-verified b{color:var(--us)}
+.rc-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-bottom:14px;min-width:0}
+.rc-card h2{margin:0 0 12px;font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase}
+.rc-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.rc-tiles div{display:flex;flex-direction:column}.rc-tiles span{font-size:13px;color:var(--muted);font-weight:600}.rc-tiles b{font:700 32px/1.1 var(--display);font-variant-numeric:tabular-nums}.rc-tiles small{color:var(--muted);font-size:12.5px}
+.rc-two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.rc-two .rc-card{margin-bottom:14px}
+.rc-dl{margin:0;display:grid;gap:8px}.rc-dl div{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:6px}.rc-dl div:last-child{border-bottom:0}
+.rc-dl dt{color:var(--muted)}.rc-dl dd{margin:0;font-weight:600;text-align:right;overflow-wrap:anywhere}
+.rc-about{white-space:pre-wrap;margin:0;max-width:70ch}
+.rc-note{color:var(--muted);font-size:13px;margin:8px 0 0}
+.rc-log th,.rc-log td{white-space:nowrap}
+.rc-print-clips{display:none}
+.rc-landing{max-width:640px;padding:30px 0}
+.rc-landing h1{font-family:var(--display);font-size:clamp(30px,6.5vw,46px);line-height:1.05;margin:0 0 14px;text-transform:uppercase}
+.rc-landing p{color:var(--muted);font-size:17px;margin:0 0 22px}
+.rc-code label{display:block;font-weight:600;margin-bottom:6px}.rc-code div{display:flex;gap:8px}
+.rc-code input{flex:1;min-width:0;font:700 22px var(--display);letter-spacing:.18em;padding:11px 14px;border-radius:10px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
+.rc-err{color:var(--bad);margin:8px 0 0}
+.rc-boardhead h1{margin:0;font-family:var(--display);font-size:clamp(28px,6vw,42px);text-transform:uppercase}.rc-boardhead p{margin:4px 0 14px;color:var(--muted)}
+.rc-filters{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:12px}.rc-filters label{display:flex;gap:8px;align-items:center;font-weight:600}.rc-filters select{width:auto}
+.rc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.rc-pc{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;color:inherit;text-decoration:none}
+.rc-pc:hover{border-color:var(--us)}
+.rc-pc-id b{display:block;font-size:18px}.rc-pc-id small{display:block;color:var(--muted)}
+.rc-pc-k{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;border-top:1px solid var(--line);padding-top:8px}
+.rc-pc-k b{display:block;font:700 22px var(--display)}.rc-pc-k small{color:var(--muted);font-size:12px}
+.rc-pc-f{grid-column:1/-1;color:var(--muted);font-size:13px}
+@media (max-width:700px){.rc-hero{grid-template-columns:auto minmax(0,1fr)}.rc-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.rc-num{width:72px;height:72px;font-size:38px}.rc-tiles{grid-template-columns:repeat(2,1fr)}.rc-two{grid-template-columns:1fr}}
+@media print{.rc-top,.rc-acts,.rc-foot,.clips,.rc-filters{display:none!important}.rc-print-clips{display:block;margin:0;padding-left:18px;font-size:12px}body,.rc{background:#fff}.rc-card{break-inside:avoid;border-color:#ccc}.rc-main{padding:0}}

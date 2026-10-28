@@ -215,9 +215,8 @@ export function deleteMatch(matchId: string) {
   emit();
 }
 
-/** A date as YYYY-MM-DD in the coach's own time zone (toISOString would give tomorrow's date on a US evening). */
-export const localISO = (d: Date) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-export const todayISO = () => localISO(new Date());
+import { localISO, todayISO } from "../lib/dates";
+export { localISO, todayISO };
 
 export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: MatchEvent[]; lineup?: Lineup | null }): Match {
   const t = team()!;

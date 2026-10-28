@@ -2,7 +2,7 @@
 const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
-const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map();
+const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
 const uid = () => "u" + Math.random().toString(36).slice(2, 10);
@@ -46,9 +46,11 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 9);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 10);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
-    if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, updated_at: r.updated_at } : null); }
+    if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
+    if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
+      return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level }, players: [...recruits.values()].filter((r) => r.team_id === bd.team_id && r.data).map((r) => ({ code: r.code, updated_at: r.updated_at, player: r.data.player, profile: { club: r.data.profile?.club, video: r.data.profile?.video }, season: r.data.season, clips: (r.data.clips || []).length })) }); }
     if (p === "/rest/v1/rpc/season_view") {
       const s = seasonShares.get(String(b.share).toUpperCase()); if (!s) return send(res, 200, null);
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
@@ -75,6 +77,8 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/invites" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); invites.set(b.code, b); return send(res, 201); }
     if (p === "/rest/v1/members" && req.method === "GET" && P.user_id) { return send(res, 200, members.filter((m) => m.user_id === val(P.user_id) && m.user_id === me)); }
     if (p === "/rest/v1/members" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, isMember(t, me) ? members.filter((m) => m.team_id === t) : []); }
+    if (p === "/rest/v1/recruit_boards" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, [...boards.values()].filter((x) => x.team_id === t && isMember(t, me))); }
+    if (p === "/rest/v1/recruit_boards" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); boards.set(b.code, b); return send(res, 201); }
     if (p === "/rest/v1/recruit_shares" && req.method === "GET") { const t = val(P.team_id), pl = val(P.player_id); return send(res, 200, [...recruits.values()].filter((r) => r.team_id === t && r.player_id === pl && isMember(t, me))); }
     if (p === "/rest/v1/recruit_shares" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); recruits.set(b.code, { ...b, updated_at: now() }); return send(res, 201); }
     if (p === "/rest/v1/recruit_shares" && req.method === "DELETE") { const t = val(P.team_id), pl = val(P.player_id); if (!canEdit(t, me)) return send(res, 403, { message: "rls" }); for (const [k, r] of recruits) if (r.team_id === t && r.player_id === pl) recruits.delete(k); return send(res, 204); }

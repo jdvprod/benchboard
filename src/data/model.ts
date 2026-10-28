@@ -60,7 +60,7 @@ export interface Player {
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }
-export interface RecruitProfile { consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
+export interface RecruitProfile { clipsOff?: boolean; consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
 
 export type MatchKind = "match" | "scrimmage" | "drills";
 export interface ScrimSetup { a: { name: string; ids: string[] }; b: { name: string; ids: string[] }; to: number }

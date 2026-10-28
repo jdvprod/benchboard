@@ -250,14 +250,45 @@ drop policy if exists "recruit update" on public.recruit_shares;
 create policy "recruit update" on public.recruit_shares for update using (can_edit(team_id));
 drop policy if exists "recruit delete" on public.recruit_shares;
 create policy "recruit delete" on public.recruit_shares for delete using (can_edit(team_id));
+-- the profile as data (stats, game log, highlight clips) for Benchboard Recruit; html stays as the printable sheet
+alter table public.recruit_shares add column if not exists data jsonb;
 create or replace function public.recruit_view(share text) returns jsonb
 language sql stable security definer set search_path = public as $$
-  select jsonb_build_object('html', html, 'updated_at', updated_at) from recruit_shares where code = upper(trim(share));
+  select jsonb_build_object('html', html, 'data', data, 'updated_at', updated_at) from recruit_shares where code = upper(trim(share));
 $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
 
+-- ---------- team recruiting board: one link listing every player whose family agreed to share a profile ----------
+create table if not exists public.recruit_boards (
+  code text primary key,
+  team_id text not null unique references public.teams_cloud(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+alter table public.recruit_boards enable row level security;
+drop policy if exists "boards read" on public.recruit_boards;
+create policy "boards read" on public.recruit_boards for select using (is_member(team_id));
+drop policy if exists "boards create" on public.recruit_boards;
+create policy "boards create" on public.recruit_boards for insert with check (can_edit(team_id));
+drop policy if exists "boards delete" on public.recruit_boards;
+create policy "boards delete" on public.recruit_boards for delete using (can_edit(team_id));
+-- only players who already have a shared profile (which needs the family's consent) appear
+create or replace function public.recruit_board(share text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare b recruit_boards; out jsonb;
+begin
+  select * into b from recruit_boards where code = upper(trim(share));
+  if b.code is null then return null; end if;
+  select jsonb_build_object(
+    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level') from records where store = 'teams' and id = b.team_id and not deleted),
+    'players', coalesce((select jsonb_agg(jsonb_build_object('code', r.code, 'updated_at', r.updated_at, 'player', r.data->'player', 'profile', jsonb_build_object('club', r.data->'profile'->'club', 'video', r.data->'profile'->'video'), 'season', r.data->'season', 'clips', jsonb_array_length(coalesce(r.data->'clips', '[]'::jsonb))))
+                         from recruit_shares r where r.team_id = b.team_id and r.data is not null), '[]'::jsonb)
+  ) into out;
+  return out;
+end $$;
+grant execute on function public.recruit_board(text) to anon, authenticated;
+
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
-create or replace function public.schema_version() returns int language sql immutable as $$ select 9 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 10 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

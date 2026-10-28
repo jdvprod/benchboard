@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { all, currentMatch, setPrefs, state, team, useVersion } from "../data/store";
 import { useRoute } from "./router";
+import { siteUrl } from "../cloud/links";
 import { applyTheme } from "./theme";
 import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
@@ -26,9 +27,6 @@ const CourtPage = lazy(() => import("../features/court/CourtPage").then((m) => (
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const PlayerPage = lazy(() => import("../features/player/PlayerPage").then((m) => ({ default: m.PlayerPage })));
 const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ default: m.LivePage })));
-const WatchPage = lazy(() => import("../cloud/WatchPage").then((m) => ({ default: m.WatchPage })));
-const SeasonPage = lazy(() => import("../cloud/SeasonPage").then((m) => ({ default: m.SeasonPage })));
-const RecruitPage = lazy(() => import("../cloud/RecruitPage").then((m) => ({ default: m.RecruitPage })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
@@ -39,9 +37,11 @@ export function App() {
   useVersion();
   const route = useRoute(), t = team();
   useEffect(() => { applyTheme(t?.color || "#2A78AE", state.prefs.theme, state.prefs.size, HOST_THEME); }, [t?.color, state.prefs.theme, state.prefs.size]);
-  if (route.page === "watch" && route.id) return <><Suspense fallback={<Wait />}><WatchPage code={route.id} /></Suspense><Toast /></>;
-  if (route.page === "season" && route.id) return <><Suspense fallback={<Wait />}><SeasonPage code={route.id} /></Suspense><Toast /></>;
-  if (route.page === "recruit" && route.id) return <Suspense fallback={<Wait />}><RecruitPage code={route.id} /></Suspense>;
+  // public pages moved to their own sites: Benchboard Live and Benchboard Recruit (old links keep working)
+  if ((route.page === "watch" || route.page === "season" || route.page === "recruit") && route.id) {
+    location.replace(siteUrl(route.page === "recruit" ? "recruit" : "live", (route.page === "watch" ? "g/" : route.page === "season" ? "t/" : "p/") + route.id));
+    return <Wait />;
+  }
   if (!state.ready) return <div className="content"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
   const user = currentUser();
   if (route.page === "sample") {

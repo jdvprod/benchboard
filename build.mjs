@@ -31,7 +31,8 @@ cpSync(path.join(root, "public"), dist, { recursive: true });
 
 const legal = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).legal || {};
 const options = {
-  entryPoints: { app: path.join(root, "src/main.tsx") },
+  // the coaching app, plus the public sites that live beside it: /live/ (families and fans) and /recruit/ (college coaches)
+  entryPoints: { app: path.join(root, "src/main.tsx"), "live/live": path.join(root, "src/live/main.tsx"), ...(existsSync(path.join(root, "src/recruit/main.tsx")) ? { "recruit/recruit": path.join(root, "src/recruit/main.tsx") } : {}) },
   bundle: true, format: "esm", target: "es2020", outdir: dist, jsx: "automatic", splitting: true, chunkNames: "chunks/[name]-[hash]",
   minify: !args.has("--watch"), sourcemap: args.has("--watch") ? "inline" : false,
   define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || "") },
@@ -55,6 +56,7 @@ for (const f of readdirSync(path.join(dist, "legal"))) {
 
 const html = readFileSync(path.join(root, "index.html"), "utf8").replaceAll("%VERSION%", version);
 writeFileSync(path.join(dist, "index.html"), html);
+for (const site of ["live", "recruit"]) { const f = path.join(dist, site, "index.html"); if (existsSync(f)) writeFileSync(f, readFileSync(f, "utf8").replaceAll("%VERSION%", version)); }
 const sw = readFileSync(path.join(root, "public/sw.js"), "utf8").replace("%VERSION%", version + "-" + Date.now().toString(36));
 writeFileSync(path.join(dist, "sw.js"), sw);
 

@@ -269,3 +269,19 @@ test("first lineup: setter 1, opposite 4, outsides 2 & 5, middles 3 & 6, libero 
   assert.deepEqual(autoLineup([P("s1", "S"), P("s2", "S"), P("oh1", "OH"), P("oh2", "OH"), P("mb1", "MB"), P("mb2", "MB")]).lu, ["s1", "oh1", "mb1", "s2", "oh2", "mb2"]);
   assert.equal(autoLineup([P("a", "OH"), P("b", "OH"), P("c", "DS"), P("d", "MB")]).lu.length, 4);
 });
+
+import { clipsFrom, filmTiming, highlightPick, shareable, videoKind, youtubeId } from "../src/film/clips";
+test("clips: video kinds, YouTube ids, timing from 'first serve at', best plays first", () => {
+  assert.equal(videoKind("https://youtu.be/abc123XYZ"), "youtube"); assert.equal(youtubeId("https://youtu.be/abc123XYZ?t=4"), "abc123XYZ");
+  assert.equal(youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s"), "dQw4w9WgXcQ"); assert.equal(youtubeId("https://www.youtube.com/live/abcDEF12345"), "abcDEF12345");
+  assert.equal(videoKind("https://vimeo.com/12345"), "vimeo"); assert.equal(videoKind("https://x.org/m.mp4"), "file"); assert.equal(videoKind("local:game.mov"), "local"); assert.equal(videoKind("https://www.hudl.com/video/1"), "other");
+  assert.equal(shareable("local:game.mov"), false); assert.equal(shareable("https://youtu.be/abc123XYZ"), true);
+  const evs = [ev("NS", { serve: "us", lu: LU, lib: "lib" }), ev("K", { p: "oh1" }), ev("D", { p: "lib" }), ev("SA", { p: "s" }), ev("AE", { p: "oh1" })];
+  evs.forEach((e, k) => (e.ts = 100_000 + k * 20_000)); // a play every 20 s
+  const R = replay(evs), T = filmTiming({ filmStart: null, videoOffset: 300 }, R, evs); // first serve at 5:00 in the video
+  const clips = clipsFrom({ id: "m", video: "https://youtu.be/abc123XYZ", date: "2026-10-27", opp: "Buchanan" }, T, R.log, (l) => l.kind === "stat", (l) => (l as any).t, 8, 2);
+  assert.deepEqual(clips.map((c) => [c.t, c.start, c.end]), [["K", 312, 322], ["D", 332, 342], ["SA", 352, 362], ["AE", 372, 382]]);
+  assert.equal(clips[0].score, "1–0");
+  assert.deepEqual(highlightPick(clips, 2).map((c) => c.t), ["K", "SA"], "kills and aces before digs, errors never");
+  assert.equal(clipsFrom({ id: "m", date: "", opp: "" }, T, R.log, () => true, () => "").length, 0, "no video, no clips");
+});
