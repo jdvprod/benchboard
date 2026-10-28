@@ -133,6 +133,14 @@ function SetupCheck() {
           : { label: "AI features", state: "warn", detail: "The ai function didn't answer: " + (e?.message || "unknown error") + "." });
       }
     }
+    if (user) {
+      try { await fn("notify", { action: "key" }); out.push({ label: "Family notifications", state: "ok", detail: "The notify Edge Function is deployed with its keys. Families can turn on match notifications on your team page." }); }
+      catch (e: any) {
+        out.push(e?.status === 404 ? { label: "Family notifications", state: "todo", detail: "Optional: deploy the notify Edge Function (supabase/functions/notify/index.ts, with Verify JWT turned off) so families get a notification when a match starts and ends. Then add its keys below." }
+          : e?.status === 503 ? { label: "Family notifications", state: "todo", detail: "The notify function is deployed but has no keys. Make them below and add them in Supabase → Edge Functions → Secrets." }
+          : { label: "Family notifications", state: "warn", detail: "The notify function didn't answer: " + (e?.message || "unknown error") + "." });
+      }
+    }
     out.push(LEGAL_EMAIL ? { label: "Privacy contact", state: "ok", detail: "Your Privacy Policy and Terms list " + LEGAL_EMAIL + " for questions." } : { label: "Privacy contact", state: "todo", detail: "Your Privacy Policy needs a contact email for privacy requests. Add it as legal.email in package.json (or ask your developer)." });
     out.push(installed() ? { label: "Installed on this device", state: "ok", detail: "Opened from the home screen." } : { label: "Installed on this device", state: "warn", detail: "Optional: add it to your home screen (see Install the app above) so it opens full screen and works offline." });
     setChecks(out); setBusy(false);
@@ -140,7 +148,25 @@ function SetupCheck() {
   return <Card title="Setup check" actions={<button className="btn sm" disabled={busy} onClick={run}>{busy ? "Checking…" : checks ? "Check again" : "Run check"}</button>}>
     {!checks ? <p className="small muted">Checks the database, your account, team sync and AI, and tells you exactly what's left to set up.</p>
       : <ul className="check-list">{checks.map((c) => <li key={c.label} className={"sc-" + c.state}><span className="sc-dot" aria-hidden="true">{c.state === "ok" ? "✓" : c.state === "todo" ? "!" : "·"}</span><div><b>{c.label}</b><p className="small" style={{ margin: 0 }}>{c.detail}</p></div></li>)}</ul>}
+    {checks?.some((c) => c.label === "Family notifications" && c.state === "todo") && <NotifyKeys />}
   </Card>;
+}
+
+/** Makes the key pair the notify function signs notifications with (VAPID). Made on this device; nothing is sent anywhere. */
+const b64url = (b: Uint8Array) => btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+export async function makeVapidKeys() {
+  const kp = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]) as CryptoKeyPair;
+  const pub = new Uint8Array(await crypto.subtle.exportKey("raw", kp.publicKey)), jwk = await crypto.subtle.exportKey("jwk", kp.privateKey);
+  return { publicKey: b64url(pub), privateKey: jwk.d! };
+}
+function NotifyKeys() {
+  const [k, setK] = useState<{ publicKey: string; privateKey: string } | null>(null);
+  const row = (name: string, v: string) => <div className="field"><span className="label">{name}</span><div className="row" style={{ gap: 6 }}><input className="input" readOnly value={v} aria-label={name} onFocus={(e) => e.target.select()} /><button className="btn sm" onClick={() => copyText(v).then((ok) => toast(ok ? name + " copied." : "Couldn't copy."))}>Copy</button></div></div>;
+  return <div className="stack" style={{ marginTop: 12 }}>
+    {!k ? <button className="btn sm" onClick={() => makeVapidKeys().then(setK).catch(() => toast("This browser can't make the keys. Try Chrome, Edge or Safari."))}>Make notification keys</button>
+      : <>{row("VAPID_PUBLIC_KEY", k.publicKey)}{row("VAPID_PRIVATE_KEY", k.privateKey)}
+        <p className="small muted" style={{ margin: 0 }}>Add both in Supabase → Edge Functions → Secrets, plus VAPID_SUBJECT set to mailto: and your contact email. Keep the private key there only; if you lose it, make a new pair (families then turn notifications on again).</p></>}
+  </div>;
 }
 
 /** Privacy, legal documents and deleting data. */

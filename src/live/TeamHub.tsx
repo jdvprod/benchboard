@@ -6,6 +6,7 @@ import { todayISO } from "../lib/dates";
 import { fmtDay, fmtTime, Game, isLive, isResult, LPlayer, pname, SeasonData, seasonGames } from "./data";
 import { GameView, playText } from "./GameView";
 import { TournamentCard } from "./TournamentCard";
+import { NotifyCard } from "./Notify";
 
 type Tab = "home" | "schedule" | "stats" | "roster";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
@@ -48,6 +49,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
     </section>}
     {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
+    <NotifyCard code={code} team={team} />
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>Season leaders</h2><a href={`#/t/${code}/stats`}>All stats ›</a></div><div className="lv-leads">{leaders}</div></section>}
   </>;
 }

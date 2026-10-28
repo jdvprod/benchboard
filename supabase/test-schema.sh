@@ -32,6 +32,8 @@ insert into season_shares values ('S1S1S1', 't1', 's1');
 insert into live_shares (code, team_id, match_id) values ('L1L1L1', 't1', 'm1');
 insert into recruit_shares (code, team_id, player_id, html, data) values ('R1R1R1', 't1', 'p1', '<p>profile</p>', '{"player":{"first":"Maya","num":"7"},"season":{"sets":3},"clips":[{"start":10}]}');
 insert into recruit_boards (code, team_id) values ('B1B1B1', 't1');
+insert into push_subs (endpoint, team_id, p256dh, auth) values ('https://push.example/1', 't1', 'k', 'a');
+insert into push_sent (match_id, kind, team_id) values ('m1', 'start', 't1');
 SQL
 check() { [ "$(q -c "set role anon; $1" | tail -1)" = "$2" ] && echo "ok   $3" || { echo "FAIL $3"; exit 1; }; }
 check "select season_view('s1s1s1')->'players'->0->>'last';" "C" "season page shows last initial only"
@@ -47,6 +49,7 @@ check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link r
 check "select recruit_view('r1r1r1')->'data'->'player'->>'first';" "Maya" "recruit link returns the profile data"
 check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting board lists shared profiles with their clip count"
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
+check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
 check "select schema_version();" "11" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"

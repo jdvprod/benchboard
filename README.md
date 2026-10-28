@@ -18,6 +18,8 @@ Volleyball stats, lineups, rotations and practice planning for coaches. Works of
 - **Live**: an ESPN-style gamecast with box score, momentum, leaders, team stats and play-by-play.
 - **Match report**: a one-page report with set scores, score flow, leaders and box score that parents can open on any phone or print.
 - **Team**: multiple teams and seasons, roster CSV import and export, (grad year and height for recruiting), opponents with scouting notes, and backup and restore (including v1 backups).
+- **Import stats**: bring history over from Hudl or SoloStats (each match's MaxPreps .txt export), MaxPreps, or any .csv/.xlsx spreadsheet: one match, season totals, or a game log with one row per match. Columns are matched automatically and can be changed; players are matched to the roster by number and name.
+- **Tournament days**: on Matchup → Tournaments, list pool games (with work-team duties), bracket rounds, courts and times. Pool standings update as matches finish, each game starts tracking with the right format, and Home shows today's next game. Families see the day on Benchboard Live.
 
 ## Run it
 
@@ -64,6 +66,11 @@ The build makes two more sites beside the coaching app, from the same code and d
 
 **Clips.** On Stats → One match → Film, paste the match video link (YouTube, Vimeo or a video file link) or pick a video file on the device, and set **First serve at**. Every play then becomes a clip: watch any filter (a player's kills, every point, our errors) back to back, and from a video file save one clip or the whole reel as a video file. A player's best plays (kills, aces and blocks first) become the highlight clips on their Recruit profile; clips from a file on the device stay on the device.
 
+**Notifications.** On Benchboard Live a family taps **Turn on notifications** on the team page (on iPhone, after adding the page to the Home Screen) and gets a phone notification when a match starts and the final score when it ends, with a tap through to the game. The coach's app sends them automatically after it syncs, once per match however many coaches are tracking. Setting it up:
+
+1. In Supabase → Edge Functions, create a function named `notify` and paste in `supabase/functions/notify/index.ts` (or `supabase functions deploy notify --no-verify-jwt`). Turn off **Verify JWT** for it: families following a team aren't signed in, and the function checks coaches itself.
+2. In the app, Settings → Setup check → **Make notification keys**. In Edge Functions → Secrets add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:` plus your contact email).
+
 With a custom domain you can point `live.yourdomain.com` and `recruit.yourdomain.com` at the same Worker and redirect them to `/live/` and `/recruit/` (Cloudflare → Rules → Redirect Rules).
 
 ## Sign-up and password emails
@@ -100,7 +107,7 @@ These documents are a careful starting point written for this app, not legal adv
 ## Tests
 
 - `npm test`: engine unit tests plus backtesting, where thousands of random matches (every action, subs, timeouts, deletes, several devices, stats-only entries, score fixes) are checked against invariants: scores match rallies, rotations follow side-outs, team totals equal player totals, merging devices or deleting entries gives the same result, no metric is ever NaN. `FUZZ_SCALE=60 npm test` runs a deep backtest (about 90,000 matches).
-- `npm run e2e`: drives the built app in Chromium on desktop and phone, light and dark, with a mock Supabase (about 380 checks, including accessibility names, WCAG contrast, squeezed text and the content security policy): a full match by keyboard and buttons, match formats (sets to 21, caps, pool play, ending a set early), scrimmages and type-in codes, offline tracking in a gym with no signal or weak Wi-Fi (the test server really drops the connection) and syncing after, family data requests (export and erase a player), players kept off public pages, backups restored on a new device, long names on a small phone, planning, two coaches splitting a match, a phone with a wrong clock, view-only accounts, parent links, the season page, recruiting links, AI and the setup check.
+- `npm run e2e`: drives the built app in Chromium on desktop and phone, light and dark, with a mock Supabase (about 450 checks, including accessibility names, WCAG contrast, squeezed text and the content security policy): a full match by keyboard and buttons, match formats (sets to 21, caps, pool play, ending a set early), scrimmages and type-in codes, offline tracking in a gym with no signal or weak Wi-Fi (the test server really drops the connection) and syncing after, family data requests (export and erase a player), players kept off public pages, backups restored on a new device, long names on a small phone, planning, two coaches splitting a match, a phone with a wrong clock, view-only accounts, parent links, the season page, recruiting links, importing Hudl/MaxPreps files and spreadsheets, tournament days, family notifications, AI and the setup check.
 - `supabase/test-schema.sh`: runs `schema.sql` twice on a throwaway Postgres, checks the public functions (no coach notes or film tags ever reach public pages), and checks row level security as real coaches (owner, stranger, view-only, last edit wins).
 
 All three run on every push (GitHub Actions).

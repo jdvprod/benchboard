@@ -352,3 +352,12 @@ test("tournament: pool standings by match record, then set %, then point %; next
   const t: any = { start: "2026-11-07", games: [{ id: "a", stage: "pool", time: "10:00", matchId: "m1" }, { id: "w", stage: "work", time: "11:00" }, { id: "b", stage: "pool", time: "12:00" }, { id: "c", stage: "bracket", time: "15:00" }] };
   assert.equal(nextGame(t, (id) => id === "m1")?.id, "b");
 });
+
+import { finalMessage, startMessage } from "../src/notify/messages";
+test("notifications: start and final messages read naturally", () => {
+  assert.deepEqual(startMessage("Clovis North", "Buchanan", { event: "Fall Classic · Pool", court: "3" }), { title: "Clovis North vs Buchanan is starting", body: "Fall Classic · Pool · Court 3 · Follow it live on Benchboard Live" });
+  assert.equal(finalMessage("Clovis North", "Buchanan", 2, 1, [[25, 20], [22, 25], [15, 12]]).title, "Final: Clovis North beat Buchanan 2–1");
+  assert.equal(finalMessage("Clovis North", "Buchanan", 0, 2, [[20, 25], [18, 25]]).title, "Final: Buchanan beat Clovis North 2–0");
+  assert.equal(finalMessage("Clovis North", "Buchanan", 2, 0, [[25, 20], [25, 18]], "League").body, "25-20, 25-18 · League · Box score on Benchboard Live");
+  assert.equal(finalMessage("Clovis North", "Buchanan", 1, 1, [[25, 20], [18, 25]]).title, "Final: Clovis North and Buchanan split 1–1");
+});

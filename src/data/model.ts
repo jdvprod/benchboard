@@ -93,6 +93,8 @@ export interface Match {
   imported?: { source: string; file: string; at: number; season?: boolean };
   /** Part of a tournament day (Team.tournaments). */
   tournamentId?: string;
+  /** Families were told this match started / finished (Benchboard Live notifications). */
+  notified?: { start?: boolean; final?: boolean };
 }
 
 /** Events recorded on one device for one match. Several devices can record the same match. */

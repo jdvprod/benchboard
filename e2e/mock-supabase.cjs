@@ -3,6 +3,7 @@ const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
+const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
 const uid = () => "u" + Math.random().toString(36).slice(2, 10);
@@ -19,6 +20,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     const url = new URL(req.url, "http://x"), p = url.pathname, b = body ? JSON.parse(body) : null;
     const tok = (req.headers.authorization || "").replace("Bearer ", ""), me = tokens.get(tok) || null;
     if (p === "/__mock/strip-terms") { for (const u of users.values()) if (u.meta) delete u.meta.terms_version; return send(res, 204); } // simulate accounts made before the terms existed
+    if (p === "/__mock/pushes") return send(res, 200, { subs: [...pushSubs.values()], pushes }); // test inspection only
     if (p === "/__mock/users") return send(res, 200, [...users.values()].map((u) => ({ email: u.email, meta: u.meta }))); // test inspection only
     if (!req.headers.apikey) return send(res, 401, { message: "no apikey" });
     // auth
@@ -60,6 +62,19 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
         matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, status: m.status, event: m.event, site: m.site, imported: m.imported ? { season: m.imported.season } : null, tournamentId: m.tournamentId })),
         logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: pubEvents(r.data.events) })),
         players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), live: [...shares.values()].filter((x) => x.team_id === s.team_id).map((x) => ({ matchId: x.match_id, code: x.code })), at: new Date().toISOString() });
+    }
+    if (p === "/functions/v1/notify") {
+      if (b.action === "key") return send(res, 200, { key: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" });
+      if (b.action === "subscribe") { const s = seasonShares.get(String(b.code).toUpperCase()); if (!s) return send(res, 404, { error: "That team page isn't shared anymore." }); if (!b.sub?.endpoint) return send(res, 400, { error: "bad" }); pushSubs.set(b.sub.endpoint, { endpoint: b.sub.endpoint, team_id: s.team_id, starts: b.starts !== false, finals: b.finals !== false }); return send(res, 200, { ok: true }); }
+      if (b.action === "unsubscribe") { pushSubs.delete(b.endpoint); return send(res, 200, { ok: true }); }
+      if (b.action === "send") {
+        if (!me || !canEdit(b.team_id, me)) return send(res, 403, { error: "Only the team's coaches can send notifications." });
+        const k = b.match_id + ":" + b.kind; if (pushSent.has(k)) return send(res, 200, { sent: 0, duplicate: true }); pushSent.add(k);
+        const to = [...pushSubs.values()].filter((x) => x.team_id === b.team_id && (b.kind === "start" ? x.starts : x.finals));
+        pushes.push({ kind: b.kind, title: b.title, body: b.body, base: b.base, match_id: b.match_id, to: to.length });
+        return send(res, 200, { sent: to.length });
+      }
+      return send(res, 400, { error: "Unknown action." });
     }
     if (p === "/functions/v1/ai") { if (!me) return send(res, 401, { message: "JWT required" }); return send(res, 200, { content: [{ type: "text", text: "Strengths:\n- Mock report from the server function (" + b.model + ")" }], stop_reason: "end_turn" }); }
     if (!me) return send(res, 401, { message: "JWT required" });

@@ -235,7 +235,7 @@ const scenarios = {
     await A.goto(SW + "track"); await A.waitForTimeout(300); await A.getByRole("button", { name: "Create an account" }).click();
     await A.getByLabel("Email").fill("gym@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("No Wifi High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
-    await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
+    await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.goto(SW + "track"); await A.waitForTimeout(400); await A.reload(); await A.waitForTimeout(1500); // let the service worker install and cache the app
     await A.goto(SW.replace("#/", "") + "legal/privacy.html"); await A.waitForTimeout(300); await A.goto(SW.replace("#/", "") + "live/"); await A.waitForTimeout(300); await A.goto(SW + "track"); await A.waitForTimeout(500); // other pages must not replace the app's offline copy
     NO_WIFI = "slow"; { const t0 = Date.now(); await A.reload({ waitUntil: "domcontentloaded" }).catch(() => {}); await A.locator(".page").first().waitFor({ timeout: 9000 }).catch(() => {});
@@ -322,7 +322,7 @@ const scenarios = {
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
     await A.getByLabel("Email").fill("clock@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clock High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
-    await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
+    await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
     const code = (await A.locator(".hint b").first().innerText()).trim();
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Skew Prep"); await A.getByRole("button", { name: "Start · they serve first" }).click(); await A.waitForTimeout(200);
@@ -449,7 +449,7 @@ const scenarios = {
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
     await A.getByLabel("Email").fill("tn@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("TN Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
-    await A.locator("input[type=file][accept*=csv]").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
+    await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
     await go(A, "matchup"); await A.getByRole("button", { name: "New tournament" }).click();
     await A.getByLabel("Name", { exact: true }).fill("Fall Classic"); await A.getByLabel("Where").fill("Fresno Convention Center"); await A.getByRole("button", { name: "Create tournament" }).click(); await A.waitForTimeout(300);
     const addGame = async (stage, opp, time, court, round) => {
@@ -491,12 +491,64 @@ const scenarios = {
     for (const pg of [A, P]) await pg.context().close();
   },
 
+  async notify(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("notify@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Ping Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
+    await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
+    const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    // a parent on the team page: browsers' push services aren't reachable from the test, so the subscription is stubbed
+    const P = await newPage(browser, { phone: true });
+    await P.context().grantPermissions(["notifications"], { origin: new URL(season).origin });
+    await P.context().addInitScript(() => {
+      const fake = { endpoint: "https://push.example.test/sub-1", toJSON() { return { endpoint: this.endpoint, keys: { p256dh: "p", auth: "a" } }; }, unsubscribe: async () => { localStorage.removeItem("__sub"); return true; } };
+      if (self.Notification) { Object.defineProperty(Notification, "permission", { get: () => "granted" }); Notification.requestPermission = async () => "granted"; } // headless Chromium reports "denied" even when granted
+      if (self.PushManager) { PushManager.prototype.subscribe = async function () { localStorage.setItem("__sub", "1"); return fake; }; PushManager.prototype.getSubscription = async function () { return localStorage.getItem("__sub") ? fake : null; }; }
+    });
+    await P.goto(season); await P.waitForTimeout(1200);
+    ok("team page offers notifications", (await P.getByRole("button", { name: "Turn on notifications" }).count()) === 1);
+    if (process.env.SHOTS) await P.locator(".lv-notify").screenshot({ path: path.join(process.env.SHOTS, "notify-off.png") });
+    await P.getByRole("button", { name: "Turn on notifications" }).click(); await P.waitForTimeout(1500);
+    ok("notifications turn on", (await P.locator(".lv-notify h2", { hasText: "Notifications on" }).count()) === 1, await P.locator(".lv-notify").innerText().catch(() => ""));
+    ok("the live site's service worker is registered", await P.evaluate(async () => !!(await navigator.serviceWorker.getRegistration("./"))));
+    let M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    ok("the phone is subscribed to the team for starts and finals", M.subs.length === 1 && M.subs[0].starts && M.subs[0].finals, JSON.stringify(M.subs));
+    { const ax = await a11y(P); ok("notification card controls all have names", !ax.length, ax.join(" | ")); }
+    await P.reload(); await P.waitForTimeout(1200);
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "notify-on.png"), fullPage: true });
+    ok("notifications stay on after a reload", (await P.locator(".lv-notify h2", { hasText: "Notifications on" }).count()) === 1);
+    // the coach starts a match: one "starting" notification
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "2 sets (pool)" }).click();
+    await A.getByLabel("Scoring").selectOption("21c23"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    ok("families are told the match is starting", M.pushes.length === 1 && M.pushes[0].kind === "start" && M.pushes[0].title === "Ping Club vs Buchanan is starting" && M.pushes[0].to === 1 && /\/live\/$/.test(M.pushes[0].base), JSON.stringify(M.pushes));
+    await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(900);
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1")); ok("the start is announced only once", M.pushes.length === 1, JSON.stringify(M.pushes.map((x) => x.kind)));
+    // ...and the final
+    await go(A, "track");
+    for (let set = 0; set < 2; set++) { for (let i = 0; i < 21; i++) { await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } await A.waitForTimeout(200); const nx = A.getByRole("button", { name: /serve$/ }); if (set === 0 && await nx.count()) await nx.first().click(); }
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1500);
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    ok("families get the final score", M.pushes.length === 2 && M.pushes[1].kind === "final" && M.pushes[1].title === "Final: Ping Club beat Buchanan 2–0" && M.pushes[1].body.startsWith("21-0, 21-0"), JSON.stringify(M.pushes));
+    // turning off
+    await P.getByRole("button", { name: "Change" }).click(); await P.getByRole("button", { name: "Turn off" }).click(); await P.waitForTimeout(800);
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    ok("turning off removes the subscription", M.subs.length === 0 && (await P.getByRole("button", { name: "Turn on notifications" }).count()) === 1);
+    // setup check: the notify function answers
+    await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1500);
+    ok("setup check finds the notify function", (await A.locator(".check-list li.sc-ok", { hasText: "Family notifications" }).count()) === 1);
+    ok("notify: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
+    await A.context().close(); await P.context().close();
+  },
   async cloud(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
     await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Cloud Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
-    await A.locator("input[type=file][accept*=csv]").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
+    await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
     const code = (await A.locator(".hint b").first().innerText()).trim(); ok("invite code made", /^[A-Z0-9]{6}$/.test(code), code);
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · they serve first" }).click(); await A.waitForTimeout(200);

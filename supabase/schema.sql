@@ -288,6 +288,26 @@ end $$;
 grant execute on function public.recruit_board(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
+-- ---------- match notifications for families (Benchboard Live), used only by the "notify" edge function ----------
+create table if not exists public.push_subs (
+  endpoint text primary key,
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  p256dh text not null,
+  auth text not null,
+  starts boolean not null default true,
+  finals boolean not null default true,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subs enable row level security; -- no policies: only the notify function (service role) touches it
+create table if not exists public.push_sent (
+  match_id text not null,
+  kind text not null check (kind in ('start', 'final')),
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  sent_at timestamptz not null default now(),
+  primary key (match_id, kind)
+);
+alter table public.push_sent enable row level security;
+
 create or replace function public.schema_version() returns int language sql immutable as $$ select 11 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 

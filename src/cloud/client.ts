@@ -44,6 +44,8 @@ async function call(path: string, init: RequestInit & { auth?: boolean } = {}): 
   if (init.auth !== false && session && session.expires_at * 1000 < Date.now() + 60_000) await refresh();
   const headers: Record<string, string> = { apikey: c.key, "content-type": "application/json", ...(init.headers as any) };
   if (init.auth !== false && session) headers.authorization = "Bearer " + session.access_token;
+  // Edge Functions want a bearer token even from visitors who aren't signed in (Benchboard Live notifications): the legacy anon key is one
+  else if (path.startsWith("/functions/") && /^eyJ/.test(c.key)) headers.authorization = "Bearer " + c.key;
   let res: Response;
   try { res = await fetch(c.url + path, { ...init, headers }); }
   catch { throw new CloudError(0, "Couldn't reach the cloud. Check your internet connection."); }

@@ -30,6 +30,7 @@ function TeamRoute({ code, rest }: { code: string; rest: string[] }) {
   const { d, err, got } = useSeason(code); useTick();
   useEffect(() => { if (d?.team) { document.title = `${d.team.name} · Benchboard Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.team?.color]);
   useWakeLock(!!d?.matches.some((m) => m.status === "live") && rest[0] === "m");
+  useEffect(() => { if (d?.team) try { localStorage.setItem("bbl-last", JSON.stringify({ code, name: d.team.name })); } catch { /* private window */ } }, [code, d?.team?.name]);
   if (!d) return <Shell><p className="lv-empty">{err || "Loading…"}</p></Shell>;
   const view = rest[0] === "m" ? { match: rest[1] } : rest[0] === "p" ? { player: rest[1] } : { tab: rest[0] };
   return <Shell team={d.team?.name} home={`#/t/${code}`}><TeamHub code={code} d={d} fresh={freshText(got, err)} view={view} /></Shell>;
@@ -44,8 +45,12 @@ function GameRoute({ code }: { code: string }) {
   return <Shell team={d.team?.name}><GameView g={g} team={d.team?.name || "Us"} players={d.players} fresh={freshText(got, err)} /></Shell>;
 }
 
+const lastTeam = (): { code: string; name: string } | null => { try { return JSON.parse(localStorage.getItem("bbl-last") || "null"); } catch { return null; } };
+
 function Landing() {
-  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), last = lastTeam();
+  // opened from the Home Screen: straight to the team the family follows
+  useEffect(() => { if (last && matchMedia("(display-mode: standalone)").matches) location.replace(`#/t/${last.code}`); }, []);
   const go = async () => {
     const c = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length < 4) { setErr("Codes are 6 letters and numbers, like K7Q2XM."); return; }
     if (!cloudAvailable()) { setErr("This site isn't connected yet."); return; }
@@ -65,6 +70,7 @@ function Landing() {
       <div><input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} /><button className="btn primary" disabled={busy}>{busy ? "Finding…" : "Follow"}</button></div>
       {err && <p className="lv-err" role="alert">{err}</p>}
     </form>
+    {last && <p className="lv-note" style={{ marginTop: 18 }}><a className="lv-back" href={`#/t/${last.code}`}>Back to {last.name}</a></p>}
   </section></Shell>;
 }
 

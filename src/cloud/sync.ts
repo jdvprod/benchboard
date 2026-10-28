@@ -5,6 +5,7 @@
  * so two coaches tracking the same match never overwrite each other; their logs merge.
  */
 import { siteUrl } from "./links";
+import { announce } from "./notify";
 import { all, emit, get, hooks, remove, save, setClockOffset, state } from "../data/store";
 import { StoreName } from "../data/model";
 import { CloudError, cloudAvailable, currentUser, rest, rpc, upsert } from "./client";
@@ -128,6 +129,7 @@ export function syncNow(): Promise<void> {
       for (const t of S.teams) changed = (await pull(t)) || changed;
       if (changed) { if (!state.prefs.teamId || !get("teams", state.prefs.teamId)) state.prefs.teamId = S.teams.find((t) => get("teams", t)) || state.prefs.teamId; }
       setStatus(blocked ? { state: "error", error: "You have view-only access to this team, so changes made on this device stay here." } : { state: "idle", last: Date.now() });
+      if (!blocked) await announce((t) => roleOn(t), (t) => S.teams.includes(t)).catch(() => {});
     } catch (e) {
       setStatus({ state: "error", error: e instanceof CloudError ? e.message : "Sync failed. It will try again." });
     } finally { running = null; }
