@@ -363,3 +363,12 @@ test("notifications: start and final messages read naturally", () => {
   assert.equal(finalMessage("Clovis North", "Buchanan", 2, 0, [[25, 20], [25, 18]], "League").body, "25-20, 25-18 · League · Box score on Benchboard Live");
   assert.equal(finalMessage("Clovis North", "Buchanan", 1, 1, [[25, 20], [18, 25]]).title, "Final: Clovis North and Buchanan split 1–1");
 });
+
+import { shortTeam } from "../src/live/Overlay";
+test("overlay: long team names shorten sensibly", () => {
+  assert.equal(shortTeam("Buchanan Bears Volleyball Club"), "Buchanan Bears");
+  assert.equal(shortTeam("Clovis North High School"), "Clovis North");
+  assert.equal(shortTeam("Central Valley Christian Academy"), "Central");
+  assert.equal(shortTeam("St. Joseph Notre Dame"), "St. Joseph");
+  assert.equal(shortTeam("Buchanan"), "Buchanan");
+});

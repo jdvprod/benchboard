@@ -13,6 +13,14 @@ export function overlayOpts(q: string): OverlayOpts {
   return { size: pick("size", ["s", "m", "l"], "m"), pos: pick("pos", ["bl", "br", "tl", "tr"], "bl"), us: nm("us"), them: nm("them"), sets: p.get("sets") !== "0" };
 }
 
+/** Long school and club names shortened for the bug: "Buchanan Bears Volleyball Club" → "Buchanan Bears", then "Buchanan". */
+export function shortTeam(name: string, max = 14) {
+  let n = name.trim().replace(/\s+(high school|hs|volleyball club|volleyball|vbc|club|academy|athletics)$/i, "").trim();
+  if (n.length <= max) return n;
+  const w = n.split(/\s+/), two = w.slice(0, 2).join(" ");
+  return w[0].length <= 4 && two.length <= max ? two : w[0].length <= max ? w[0] : n.slice(0, max);
+}
+
 function useSeeThrough() {
   useEffect(() => { document.documentElement.classList.add("ov-page"); return () => document.documentElement.classList.remove("ov-page"); }, []);
 }
@@ -29,7 +37,7 @@ export function ScoreBug({ R, m, us, them, o }: { R: Replay; m: LMatch; us: stri
   const done = R.sets.filter((s) => s.winner && s !== c || (s === c && c.over));
   const between = live && !!c?.over, final = !live && (R.matchOver || R.sets.some((s) => s.us + s.them));
   const side = (k: "us" | "them") => {
-    const nm = k === "us" ? o.us || us : o.them || them, won = k === "us" ? R.wonUs : R.wonThem;
+    const nm = k === "us" ? o.us || shortTeam(us) : o.them || shortTeam(them), won = k === "us" ? R.wonUs : R.wonThem;
     const pts = final || between ? won : c ? c[k] : 0, serving = live && c && !c.over && c.serve === k;
     return <div className={"ov-row " + k + (final && (k === "us" ? R.wonUs > R.wonThem : R.wonThem > R.wonUs) ? " win" : "")}>
       <span className="ov-nm">{nm}</span>

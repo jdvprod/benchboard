@@ -14,7 +14,7 @@ Volleyball stats, lineups, rotations and practice planning for coaches. Works of
 - **Labs** (off until turned on): **Formations**: drag players into serve-receive, serving and base-defense spots for all six rotations. It flags overlap (rotation) faults at the serve, shows where each player moves after the serve, and saves named sets like "5-1 three-passer".
 - **Lineup**: a starting-six builder with the libero, checks that the lineup is balanced, a preview of all six rotations with season results, "on court now" or "next set" buttons, and an AI lineup suggestion.
 - **Practice**: a plan builder with a timeline and drill library, a "what to work on" list built from your stats, AI plans, scrimmages with a roster split and head-to-head stats, drill tracking and history.
-- **Player pages**: KPIs, trend charts, match log, goals with progress bars, an AI report card and a downloadable report for players and parents.
+- **Player pages**: KPIs, trend charts, match log, goals with progress bars, an AI report card, a downloadable report for players and parents, and a stat graphic (last match or season so far) sized for Instagram. Players kept off public pages don't get one.
 - **Live**: an ESPN-style gamecast with box score, momentum, leaders, team stats and play-by-play.
 - **Match report**: a one-page report with set scores, score flow, leaders and box score that parents can open on any phone or print.
 - **Team**: multiple teams and seasons, roster CSV import and export, (grad year and height for recruiting), opponents with scouting notes, and backup and restore (including v1 backups).

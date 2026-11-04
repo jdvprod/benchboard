@@ -1,7 +1,8 @@
 /** Player portal: season numbers, trends, match log, goals, AI report card and a shareable report. */
 import { useState } from "react";
-import { matchesOf, patch, plansOf, player, replayOf, teamPlayers, team, toast, uid } from "../../data/store";
-import { Goal, GoalMetric, Match, RecruitProfile } from "../../data/model";
+import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
+import { Goal, GoalMetric, Match, Player, RecruitProfile } from "../../data/model";
+import { matchHead, playerTiles, sharePlayerGraphic } from "./playerGraphic";
 import { aggregate, Agg, SetState, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, passAvg, playerMetrics, PlayerMetrics, serveAttempts, serveErrors } from "../../sports/volleyball/metrics";
 import { Card, ConfirmButton, download, fmtDate, Kpi, plural, Seg, SetRow, Switch } from "../../ui/kit";
@@ -46,6 +47,21 @@ function rowsFor(id: string, src: "games" | "practice" | "all" = "games"): Row[]
   return out;
 }
 
+/** Stat card for social posts: the last match or the season. Off for players whose family asked to stay off public pages. */
+function GraphicButton({ p }: { p: Player }) {
+  const [open, setOpen] = useState(false), games = rowsFor(p.id, "games").filter((r) => r.s && playerTiles(r.s).length), last = games[games.length - 1];
+  const se = seasonsOf().find((x) => x.id === team()!.activeSeasonId), season = aggregate(games.flatMap((r) => r.sets)).ps[p.id];
+  if (!games.length) return null;
+  if (p.hidePublic) return <button className="btn" disabled title="This player's family asked to keep them off public pages">Stat graphic</button>;
+  if (!open) return <button className="btn" onClick={() => setOpen(true)}>Stat graphic</button>;
+  const R = last && replayOf(last.m);
+  return <div className="row" role="group" aria-label="Stat graphic">
+    {last && R && <button className="btn sm primary" onClick={() => { sharePlayerGraphic(p, last.s!, "Match stats", matchHead(last.m, R)); setOpen(false); }}>Last match: vs {last.m.opp}</button>}
+    {season && games.length > 1 && <button className="btn sm" onClick={() => { sharePlayerGraphic(p, season, (se?.name || "Season") + " so far", `${games.length} matches  ·  ${aggregate(games.flatMap((r) => r.sets)).setsPlayed[p.id] || 0} sets`); setOpen(false); }}>Season so far</button>}
+    <button className="btn sm ghost" onClick={() => setOpen(false)}>Cancel</button>
+  </div>;
+}
+
 export function PlayerPage({ id }: { id: string }) {
   const p = player(id), t = team()!;
   const [pickMetric, setMetric] = useState<GoalMetric | "net" | null>(null), [src, setSrc] = useState<"games" | "practice" | "all">("games");
@@ -72,7 +88,8 @@ export function PlayerPage({ id }: { id: string }) {
         <p className="muted">{[p.pos, p.height, p.grad ? "Class of " + p.grad : "", t.name].filter(Boolean).join(" · ")}</p>
         <p className="small muted">{src === "practice" ? plural(rows.length, "practice") : src === "all" ? plural(rows.length, "match or practice", "matches and practices") : plural(rows.length, "match", "matches")} · {plural(pm.sets, "set")} this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
       <div className="stack" style={{ alignItems: "flex-end" }}><Seg value={src} onChange={setSrc} options={[["games", "Matches"], ["practice", "Practice"], ["all", "All"]]} label="Which stats" />
-        <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button></div>
+        <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button>
+        <GraphicButton p={p} /></div>
     </div></section>
     {!s ? <Card><p className="empty">No stats yet this season.</p></Card> : <>
       <div className="kpis">

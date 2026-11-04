@@ -442,6 +442,12 @@ const scenarios = {
     await card.getByRole("button", { name: "Cancel" }).click();
     await go(p, "stats"); { const body = await p.locator("body").innerText();
       ok("imported stats don't invent rally numbers", /Side-out\s*—/.test(body) && /In-system %\s*—/.test(body) && /Free points\s*—/.test(body), body.slice(450, 900).replace(/\s+/g, " ")); }
+    await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "Stat graphic" }).click();
+    { const g = await download(p, () => p.getByRole("button", { name: /^Last match: vs / }).click(), 15000);
+      const dim = await p.evaluate(async (b64) => { const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode(); return img.width + "x" + img.height; }, fs.readFileSync(g.path).toString("base64"));
+      ok("a player's stat graphic saves as a 1080×1350 image", g.name.endsWith(".png") && dim === "1080x1350" && g.size > 20000, `${g.name} ${dim} ${g.size}`);
+      if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic.png")); }
     await go(p, "track"); ok("imports don't tick off 'Track your first match'", (await p.locator(".setup-list li.ok", { hasText: "Track your first match" }).count()) === 0 && (await p.locator(".setup-list li", { hasText: "Track your first match" }).count()) === 1);
     ok("imports: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
