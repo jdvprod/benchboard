@@ -16,7 +16,7 @@ export const isLive = (g: Game) => g.m.status === "live" && !g.R.matchOver;
 export const replayOf = (m: LMatch, logs: any[][]): Replay => replay(mergeLogs(logs), { id: m.id, bestOf: m.bestOf || 5, scrim: m.scrim, setTo: m.setTo, cap: m.cap });
 
 /** Polls an RPC: every `fast` ms while `live(data)` is true and the page is visible, every `slow` ms otherwise. */
-function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, fast: number, slow: number, missing: string) {
+function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, fast: number, slow: number, missing: string, always = false) {
   const [d, setD] = useState<T | null>(null), [err, setErr] = useState(""), [got, setGot] = useState(0), live = useRef(false);
   useEffect(() => {
     let stop = false, timer: any;
@@ -25,8 +25,9 @@ function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, f
         const r: T | null = await rpc(fnName, { share: code }, true); if (stop) return;
         if (!r || !isActive(r)) setErr(missing); else { live.current = (r as any).__live ?? false; setD(r); setGot(Date.now()); setErr(""); }
       } catch { if (!stop) setErr((e) => e || "Reconnecting…"); }
-      if (!stop) timer = setTimeout(load, document.visibilityState === "visible" && live.current ? fast : slow);
+      if (!stop) timer = setTimeout(load, (always || document.visibilityState === "visible") && live.current ? fast : slow);
     };
+    if (!code) { setD(null); return () => {}; }
     if (cloudAvailable()) load(); else setErr("Live links aren't set up for this site yet.");
     const wake = () => { if (document.visibilityState === "visible") { clearTimeout(timer); load(); } };
     document.addEventListener("visibilitychange", wake);
@@ -35,11 +36,11 @@ function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, f
   return { d, err, got };
 }
 
-export function useSeason(code: string) {
-  return usePoll<SeasonData>("season_view", code, (r) => { (r as any).__live = r.matches.some((m) => m.status === "live"); return !!r.team; }, 8000, 60000, "We couldn't find that team. Check the link or code with the coach.");
+export function useSeason(code: string, fast = 8000, slow = 60000, always = false) {
+  return usePoll<SeasonData>("season_view", code, (r) => { (r as any).__live = r.matches.some((m) => m.status === "live"); return !!r.team; }, fast, slow, "We couldn't find that team. Check the link or code with the coach.", always);
 }
-export function useWatch(code: string) {
-  return usePoll<WatchData>("watch", code, (r) => { (r as any).__live = r.match?.status === "live"; return !!r.match; }, 5000, 20000, "This game link isn't active. Ask the coach for a new one.");
+export function useWatch(code: string, fast = 5000, always = false) {
+  return usePoll<WatchData>("watch", code, (r) => { (r as any).__live = r.match?.status === "live"; return !!r.match; }, fast, 20000, "This game link isn't active. Ask the coach for a new one.", always);
 }
 
 /** Games in a season, newest first; a live match shows even before its first point. */

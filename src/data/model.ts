@@ -41,6 +41,8 @@ export interface Team {
   schedule?: ScheduleItem[];
   /** Tournament days: games with times and courts, pool, bracket path. */
   tournaments?: import("../tournament/model").Tournament[];
+  /** A stream overlay link is in use: every live match gets a gamecast link automatically so the overlay updates fast. */
+  streamOverlay?: boolean;
   formationPresets?: { id: string; name: string; f: import("../sports/volleyball/formations").Formations }[];
 }
 

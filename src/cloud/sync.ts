@@ -130,6 +130,7 @@ export function syncNow(): Promise<void> {
       if (changed) { if (!state.prefs.teamId || !get("teams", state.prefs.teamId)) state.prefs.teamId = S.teams.find((t) => get("teams", t)) || state.prefs.teamId; }
       setStatus(blocked ? { state: "error", error: "You have view-only access to this team, so changes made on this device stay here." } : { state: "idle", last: Date.now() });
       if (!blocked) await announce((t) => roleOn(t), (t) => S.teams.includes(t)).catch(() => {});
+      if (!blocked) await streamLinks().catch(() => {});
     } catch (e) {
       setStatus({ state: "error", error: e instanceof CloudError ? e.message : "Sync failed. It will try again." });
     } finally { running = null; }
@@ -198,11 +199,29 @@ export async function removeMember(teamId: string, userId: string) {
 
 /** A public link parents can open to follow one match live. */
 export async function shareLive(teamId: string, matchId: string) {
+  const r = await ensureLiveShare(teamId, matchId);
+  await syncNow();
+  return r;
+}
+/** Teams streaming with the overlay: live matches get their gamecast link without the coach doing anything. */
+async function streamLinks() {
+  for (const m of all("matches")) {
+    if (m.kind !== "match" || m.status !== "live" || m.imported || !S.teams.includes(m.teamId)) continue;
+    const t = all("teams").find((x) => x.id === m.teamId), role = roleOn(m.teamId);
+    if (!t?.streamOverlay || (role !== "owner" && role !== "coach")) continue;
+    try { if (localStorage.getItem("bs-live-url-" + m.id)) continue; } catch { /* private mode */ }
+    if (Date.now() - m.createdAt > 6 * 3600_000) continue;
+    await ensureLiveShare(m.teamId, m.id);
+  }
+}
+/** The gamecast link for a match, made once. Remembered on this device for TV mode's QR code. */
+export async function ensureLiveShare(teamId: string, matchId: string) {
   const existing: any[] = await rest(`live_shares?select=code&team_id=eq.${encodeURIComponent(teamId)}&match_id=eq.${encodeURIComponent(matchId)}&limit=1`);
   const c = existing[0]?.code || code(6);
   if (!existing[0]) await rest("live_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, match_id: matchId }) });
-  await syncNow();
-  return { code: c, url: siteUrl("live", "g/" + c) };
+  const url = siteUrl("live", "g/" + c);
+  try { localStorage.setItem("bs-live-url-" + matchId, url); } catch { /* private mode */ }
+  return { code: c, url };
 }
 
 /** A read-only season page for players and parents: results, schedule, leaders and every player's line. */

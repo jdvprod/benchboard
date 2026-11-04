@@ -12,8 +12,10 @@ import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
 import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
+import { GameOverlay, TeamOverlay } from "./Overlay";
 
-const parse = () => (location.hash.replace(/^#\/?/, "").split("/").filter(Boolean));
+const parse = () => (location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean));
+const query = () => location.hash.split("?")[1] || "";
 function useRoute() { const [r, setR] = useState(parse()); useEffect(() => { const f = () => { setR(parse()); window.scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []); return r; }
 const freshText = (got: number, err: string) => err ? err : !got ? "" : Date.now() - got < 15000 ? "Updated just now" : `Updated ${Math.round((Date.now() - got) / 1000)}s ago`;
 function useTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { const t = setInterval(() => set((x) => x + 1), ms); return () => clearInterval(t); }, [ms]); }
@@ -76,6 +78,8 @@ function Landing() {
 
 function LiveApp() {
   const r = useRoute();
+  if (r[0] === "t" && r[1] && r[2] === "overlay") return <TeamOverlay key={r[1]} code={r[1].toUpperCase()} q={query()} />;
+  if (r[0] === "g" && r[1] && r[2] === "overlay") return <GameOverlay key={r[1]} code={r[1].toUpperCase()} q={query()} />;
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   return <Landing />;

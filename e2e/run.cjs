@@ -546,6 +546,38 @@ const scenarios = {
     ok("notify: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },
+  async overlay(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("stream@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan Bears Volleyball Club"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
+    await go(A, "live"); const card = A.locator(".card", { hasText: "Stream overlay" });
+    ok("Live tab offers a stream overlay", (await card.count()) === 1);
+    await card.getByRole("button", { name: "Large" }).click(); await card.getByRole("button", { name: "Bottom right" }).click(); await card.getByLabel("Short name").fill("CN");
+    await card.getByRole("button", { name: "Make overlay link" }).click(); await A.waitForTimeout(1200);
+    const url = (await card.locator(".ov-url").innerText()).trim();
+    ok("overlay link follows the team, with the options", /\/live\/#\/t\/[A-Z0-9]{6}\/overlay\?size=l&pos=br&us=CN$/.test(url), url);
+    { const ax = await a11y(A); ok("overlay settings controls all have names", !ax.length, ax.join(" | ")); }
+    // the streaming computer: a 1080p browser source
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } }); await ctx.addInitScript((u) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url: u, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
+    const O = await ctx.newPage(); O.errors = []; O.on("pageerror", (e) => O.errors.push(e.message));
+    await O.goto(url); await O.waitForTimeout(1500);
+    ok("overlay page is see-through", await O.evaluate(() => getComputedStyle(document.body).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(document.documentElement).backgroundColor === "rgba(0, 0, 0, 0)"));
+    const bug = async () => (await O.locator(".ov").innerText().catch(() => "")).replace(/\s+/g, " ").trim();
+    ok("overlay shows the live match with short and long names", /CN .*BUCHANAN BEARS/i.test(await bug()) && /Set 1/i.test(await bug()), await bug());
+    ok("overlay sits in the bottom-right corner", await O.evaluate(() => { const r = document.querySelector(".ov").getBoundingClientRect(); return r.right > 1700 && r.bottom > 950 && r.left > 960; }));
+    ok("long opponent name doesn't stretch the bug", await O.evaluate(() => document.querySelector(".ov").getBoundingClientRect().width < 700));
+    // points from the bench reach the stream
+    await go(A, "track"); for (let i = 0; i < 3; i++) { await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } await A.waitForTimeout(400);
+    { const t0 = Date.now(); let seen = ""; while (Date.now() - t0 < 15000) { seen = (await O.locator(".ov-row.us .ov-pts").innerText().catch(() => "")).trim(); if (seen === "3") break; await O.waitForTimeout(500); }
+      ok("overlay updates within a few seconds of the point", seen === "3", `${seen} after ${Date.now() - t0}ms`); console.log(`    (overlay caught up in ${Date.now() - t0}ms)`); }
+    ok("the coach's app made the fast game link by itself", await A.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("bs-live-url-"))));
+    if (process.env.SHOTS) { await O.evaluate(() => { document.documentElement.style.setProperty("background", "linear-gradient(135deg,#6b8f71,#2d4a3a)", "important"); }); await O.screenshot({ path: path.join(process.env.SHOTS, "overlay.png") }); }
+    ok("overlay: no page errors", !A.errors.length && !O.errors.length, A.errors.concat(O.errors).slice(0, 3).join(" | "));
+    await A.context().close(); await ctx.close();
+  },
   async cloud(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();

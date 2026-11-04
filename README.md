@@ -71,6 +71,8 @@ The build makes two more sites beside the coaching app, from the same code and d
 1. In Supabase → Edge Functions, create a function named `notify` and paste in `supabase/functions/notify/index.ts` (or `supabase functions deploy notify --no-verify-jwt`). Turn off **Verify JWT** for it: families following a team aren't signed in, and the function checks coaches itself.
 2. In the app, Settings → Setup check → **Make notification keys**. In Edge Functions → Secrets add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:` plus your contact email).
 
+**Stream overlay.** Live tab → Stream overlay makes one link for the whole season (`/live/#/t/CODE/overlay`). Add it as a Browser source in OBS, Streamlabs or vMix at 1920 × 1080: a see-through score bug (team names, sets, points, server) that follows whichever match is being tracked and updates within a few seconds. Options in the link: `size=s|m|l`, `pos=bl|br|tl|tr`, `us=` short name, `sets=0`. One match only: `/live/#/g/CODE/overlay`.
+
 With a custom domain you can point `live.yourdomain.com` and `recruit.yourdomain.com` at the same Worker and redirect them to `/live/` and `/recruit/` (Cloudflare → Rules → Redirect Rules).
 
 ## Sign-up and password emails
