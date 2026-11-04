@@ -440,6 +440,9 @@ const scenarios = {
     await go(p, "team"); await card.locator("input[type=file]").setInputFiles({ name: "Import High season.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: fs.readFileSync(xl.path) }); await p.waitForTimeout(800);
     { const txt = await card.locator(".imp-file").first().innerText(); ok("an Excel file picks its player sheet and reads as season totals", txt.includes("Excel spreadsheet") && /sheet "/.test(txt) && (await card.locator(".imp-file").first().getByRole("button", { name: "Season totals" }).getAttribute("aria-pressed")) === "true", txt.slice(0, 160)); }
     await card.getByRole("button", { name: "Cancel" }).click();
+    await go(p, "stats"); { const body = await p.locator("body").innerText();
+      ok("imported stats don't invent rally numbers", /Side-out\s*—/.test(body) && /In-system %\s*—/.test(body) && /Free points\s*—/.test(body), body.slice(450, 900).replace(/\s+/g, " ")); }
+    await go(p, "track"); ok("imports don't tick off 'Track your first match'", (await p.locator(".setup-list li.ok", { hasText: "Track your first match" }).count()) === 0 && (await p.locator(".setup-list li", { hasText: "Track your first match" }).count()) === 1);
     ok("imports: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
@@ -714,6 +717,33 @@ const scenarios = {
     const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
     await P.goto(season); await P.waitForTimeout(1500); await shot(P, "season-page", true);
     for (const [nm, pg] of [["coach", A], ["parent", P], ["phone", Ph]]) if (pg.errors.length) console.log(`    ${nm} errors: ${pg.errors.slice(0, 5).join(" | ")}`);
+    console.log("    screenshots: " + OUT);
+  },
+  /** A first-time tester with no cloud (like the test link): first run, tournament day and imports on a phone. (node e2e/run.cjs _explore4) */
+  async _explore4(browser) {
+    const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore4"); fs.mkdirSync(OUT, { recursive: true });
+    let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(250); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
+    for (const phone of [true, false]) {
+      const tag = phone ? "ph" : "dt";
+      const p = await newPage(browser, { phone, cloud: false });
+      const step = async (name, fn) => { try { await fn(); } catch (e) { console.log(`    ${tag} step "${name}" failed: ${String(e.message || e).split("\n")[0]}`); await shot(p, tag + "-FAIL-" + name.replace(/\W+/g, "-")); } };
+      await step("first run", async () => { await p.goto(U); await p.waitForTimeout(600); await shot(p, tag + "-first-run", false); });
+      await step("no account", async () => { await p.getByRole("button", { name: "Use without an account" }).click(); await p.waitForTimeout(300); await shot(p, tag + "-create-team", false); await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(500); await shot(p, tag + "-after-create"); });
+      await step("roster", async () => { await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill(["1 Ava Ramirez S", "3 Lily Torres L", "4 Jordan Lee OH", "7 Maya Chen OH", "8 Zoe Grant MB", "9 Riley Brooks MB", "10 Emma Diaz DS", "12 Sofia Nguyen OPP"].join("\n")); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300); await shot(p, tag + "-team"); });
+      await step("import", async () => { await p.locator("input[type=file][multiple]").setInputFiles([path.join(__dirname, "fixtures/Buchanan.txt"), path.join(__dirname, "fixtures/game-log.csv")]); await p.waitForTimeout(800); await shot(p, tag + "-import-review"); await p.getByRole("button", { name: /^Import \d+ match/ }).click(); await p.waitForTimeout(600); await shot(p, tag + "-after-import"); });
+      await step("tournament", async () => { await go(p, "matchup"); await shot(p, tag + "-matchup"); await p.getByRole("button", { name: "New tournament" }).click(); await shot(p, tag + "-tn-new", false);
+        await p.getByLabel("Name", { exact: true }).fill("Fall Classic"); await p.getByLabel("Where").fill("Fresno Convention Center"); await p.getByRole("button", { name: "Create tournament" }).click(); await p.waitForTimeout(300); await shot(p, tag + "-tn-empty");
+        for (const [stage, opp, time, court, round] of [["Pool", "Buchanan", "09:00", "3"], ["Pool", "Central", "10:00", "3"], ["Work (ref)", "Buchanan vs Central", "11:00", "3"], ["Bracket", "Fresno Elite", "13:00", "1", "Semifinal"]]) {
+          if (await p.getByRole("button", { name: "Add a game" }).count()) await p.getByRole("button", { name: "Add a game" }).click();
+          await p.getByRole("button", { name: stage, exact: true }).click(); await p.locator(".tn-add input[list=tn-teams]").fill(opp); await p.getByLabel("Time").fill(time); await p.getByLabel("Court").fill(court); if (round) await p.getByLabel("Round").fill(round);
+          await p.getByRole("button", { name: "Add game" }).click(); await p.waitForTimeout(150); }
+        await shot(p, tag + "-tn-full"); });
+      await step("home", async () => { await go(p, "track"); await shot(p, tag + "-home-tournament"); });
+      await step("stats", async () => { await go(p, "stats"); await shot(p, tag + "-stats-with-imports"); });
+      await step("settings", async () => { await go(p, "settings"); await shot(p, tag + "-settings"); });
+      if (p.errors.length) console.log(`    ${tag} errors: ${p.errors.slice(0, 4).join(" | ")}`);
+      await p.context().close();
+    }
     console.log("    screenshots: " + OUT);
   },
   /** Phone coach, taps only: lineup, subs, timeout, tags, a full match, player page, practice. (node e2e/run.cjs _explore2) */

@@ -12,7 +12,7 @@ import { StartMatch } from "../track/TrackPage";
 import { focusAreas } from "../practice/PracticePage";
 import { matchReportHtml } from "../stats/matchReport";
 import { download } from "../../ui/kit";
-import { TournamentToday } from "../tournament/TournamentPage";
+import { TournamentToday, todaysTournament } from "../tournament/TournamentPage";
 import { shareFinalGraphic } from "../stats/finalGraphic";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -56,7 +56,8 @@ export function Home() {
           <p className="muted">{next.date === today ? "Today" : fmtDate(next.date)}{next.time ? " · " + fmtTime(next.time) : ""}{next.event ? " · " + next.event : ""}</p>
           <p className="small">{vsNext.length ? `You're ${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season.` : "First meeting this season."}</p>
           <div className="row"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{next.date === today && <button className="btn sm primary" onClick={startNext}>Start now</button>}</div>
-        </> : <><p className="muted" style={{ margin: "6px 0 10px" }}>Nothing scheduled.</p><button className="btn sm" onClick={() => go("matchup")}>Add your schedule</button></>}
+        </> : todaysTournament() ? <p className="muted" style={{ margin: "6px 0 0" }}>Today's games are in {todaysTournament()!.name} above.</p>
+          : <><p className="muted" style={{ margin: "6px 0 10px" }}>Nothing scheduled.</p><button className="btn sm" onClick={() => go("matchup")}>Add your schedule</button></>}
       </section>
       <section className="card home-last">
         <div className="label">Last match</div>
@@ -112,8 +113,8 @@ function Setup() {
   const steps: [string, string, boolean, () => void][] = [
     ["Add your roster", players ? `${plural(players, "player")} so far` : "Type them in, paste a list, or import a CSV", players >= 6, () => go("team")],
     ["Set your starting lineup", "So the app tracks rotations and who's serving", !!t.defLineup, () => go("lineup")],
-    ["Add your schedule", "Get a scouting page before every game", !!(t.schedule && t.schedule.length), () => go("matchup")],
-    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match"), () => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth" })],
+    ["Add your schedule", "Get a scouting page before every game", !!(t.schedule?.length || t.tournaments?.length), () => go("matchup")],
+    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth" })],
     ["Invite your assistant", "Sign in, then share an invite code from the Team tab", cloudAvailable() && !!currentUser() && isLinked(t.id), () => go(currentUser() ? "team" : "account")],
   ];
   const done = steps.filter((x) => x[2]).length;

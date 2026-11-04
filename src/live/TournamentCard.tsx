@@ -22,6 +22,6 @@ export function TournamentCard({ t, team, games, code }: { t: Tournament; team: 
       <div className="tbl lv-box"><table><thead><tr><th className="l">Team</th><th>W–L</th><th>Sets</th><th>Pts +/−</th></tr></thead>
         <tbody>{S.map((r) => <tr key={r.team + (r.us ? "-us" : "")} className={r.us ? "mine" : undefined}><td className="l">{r.team}</td><td>{r.w}–{r.l}</td><td>{r.sw}–{r.sl}</td><td>{r.pf - r.pa > 0 ? "+" : ""}{r.pf - r.pa}</td></tr>)}</tbody></table></div></>}
     {bracket.length > 0 && <><h3 className="lv-sub">{t.bracketName ? t.bracketName + " bracket" : "Bracket"}</h3>
-      <ol className="lv-path">{bracket.map((g) => { const s = st(g); return <li key={g.id} className={s?.live ? "live" : s?.res === "W" ? "w" : s?.res === "L" ? "l" : ""}><b>{g.round || "Bracket"}</b><span>vs {g.opp}</span><small>{s ? (s.live ? "Live now" : `${s.res} ${s.x.R.wonUs}–${s.x.R.wonThem}`) : [clock(g.time), g.court ? "Court " + g.court : ""].filter(Boolean).join(" · ")}</small></li>; })}</ol></>}
+      <ol className="lv-path">{bracket.map((g) => { const s = st(g); return <li key={g.id} className={s?.live ? "live" : s?.res === "W" ? "w" : s?.res === "L" ? "l" : ""}><span><small>{g.round || "Bracket"}</small><b>vs {g.opp}</b></span><small>{s ? (s.live ? "Live now" : `${s.res} ${s.x.R.wonUs}–${s.x.R.wonThem}`) : [clock(g.time), g.court ? "Court " + g.court : ""].filter(Boolean).join(" · ")}</small></li>; })}</ol></>}
   </section>;
 }

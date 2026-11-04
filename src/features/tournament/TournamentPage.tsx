@@ -76,7 +76,7 @@ function TournamentView({ t }: { t: Tournament }) {
     <div className="grid2" style={{ alignItems: "start" }}>
       <div className="stack">
         <Card title="Our games"><TGames t={t} games={games} set={set} /></Card>
-        {bracket.length > 0 && <Card title={(t.bracketName ? t.bracketName + " bracket" : "Bracket") + " · our path"}><ol className="tn-path">{bracket.map((g) => { const s = gameState(g); return <li key={g.id} className={s.res === "W" ? "w" : s.res === "L" ? "l" : s.live ? "live" : ""}><b>{g.round || "Bracket"}</b><span>vs {g.opp}</span><span className="small muted">{s.text || [fmtClock(g.time), g.court ? "Court " + g.court : ""].filter(Boolean).join(" · ")}</span></li>; })}</ol></Card>}
+        {bracket.length > 0 && <Card title={(t.bracketName ? t.bracketName + " bracket" : "Bracket") + " · our path"}><ol className="tn-path">{bracket.map((g) => { const s = gameState(g); return <li key={g.id} className={s.res === "W" ? "w" : s.res === "L" ? "l" : s.live ? "live" : ""}><span><small>{g.round || "Bracket"}</small><b>vs {g.opp}</b></span><span className="small muted">{s.text || [fmtClock(g.time), g.court ? "Court " + g.court : ""].filter(Boolean).join(" · ")}</span></li>; })}</ol></Card>}
       </div>
       <div className="stack">
         <Card title={(t.poolName || "Pool") + " standings"}>
@@ -157,7 +157,7 @@ export function TournamentToday() {
   const next = nextGame(t, done), S = standings(team()!.name, t.poolTeams, ourResults(t), t.others), me = S.findIndex((r) => r.us);
   return <section className="card tn-today">
     <div className="row between"><div><span className="label">Tournament today</span><h2 style={{ margin: "2px 0 0" }}>{t.name}</h2></div><button className="btn sm" onClick={() => go("tournament", t.id)}>Open</button></div>
-    <p className="small muted" style={{ margin: "4px 0 8px" }}>{t.poolTeams.length ? `${S[me].w}–${S[me].l} in ${t.poolName || "pool"} · ${ordinal(me + 1)} of ${S.length}` : "Add your pool teams to see standings"}</p>
+    <p className="small muted" style={{ margin: "4px 0 8px" }}>{!t.poolTeams.length ? "Add your pool teams to see standings" : S.every((r) => !r.w && !r.l) ? `${t.poolName || "Pool"} · ${S.length} teams` : `${S[me].w}–${S[me].l} in ${t.poolName || "pool"} · ${ordinal(me + 1)} of ${S.length}`}</p>
     {next ? <div className="row between"><span><b>Up next: vs {next.opp}</b><br /><span className="small muted">{[fmtClock(next.time), next.court ? "Court " + next.court : "", fmtLabel(next)].filter(Boolean).join(" · ")}</span></span><button className="btn primary" onClick={() => startGame(t, next)}>Start</button></div> : <p className="small" style={{ margin: 0 }}>{t.games.length ? "All scheduled games played." : "Add your games to get one-tap starts."}</p>}
   </section>;
 }

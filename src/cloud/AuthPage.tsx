@@ -138,7 +138,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
       {mode === "signin" && <p>New to Benchboard? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
       {mode === "signup" && <p>Already have an account? <button className="auth-link" onClick={() => setMode("signin")}>Sign in</button></p>}
       {mode === "forgot" && <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>}
-      {onSkip && (mode === "signin" || mode === "signup") && <p className="auth-skip"><button className="auth-link quiet" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></p>}
+      {onSkip && (mode === "signin" || mode === "signup") && <div className="auth-skip"><button className="auth-btn alt" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></div>}
       <p className="auth-legal">By using Benchboard you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
   </AuthShell>;

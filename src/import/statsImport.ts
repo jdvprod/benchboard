@@ -220,7 +220,7 @@ export function matchEvents(plan: MatchPlan, pid: (l: Line) => string | null, no
   const evs: { t: string; [k: string]: any }[] = [];
   for (let s = 0; s < sets; s++) {
     evs.push({ t: "NS", serve: "us" });
-    for (const x of per) for (const code of x.plays[s]) evs.push({ t: code, p: x.id, ns: true });
+    for (const x of per) for (const code of x.plays[s]) evs.push({ t: code, p: x.id, ns: true, imp: true });
     const sc = plan.scores[s]; if (sc) evs.push({ t: "ADJ", us: sc[0], them: sc[1] });
   }
   return evs;

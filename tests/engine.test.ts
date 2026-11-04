@@ -304,6 +304,8 @@ test("import: MaxPreps file from Hudl/SoloStats → stats-only plays and final s
   assert.equal(A.ps.ava.SA + A.ps.ava.SI + A.ps.ava.SE + A.ps.ava.SEN + A.ps.ava.SEO, 14, "serve attempts kept");
   assert.equal(A.setsPlayed.maya, 3); assert.equal(A.setsPlayed.jordan, 2, "sets played respected");
   assert.equal(A.rallies.length, 0, "no rallies invented: side-out and rotation numbers stay empty");
+  assert.deepEqual(A.ctx, {}, "no attack context invented: in-system and transition stay empty");
+  assert.deepEqual(A.atkRot, {}, "no rotation invented for attacks");
 });
 
 test("import: NCAA box score (A = assists, SA = aces) vs MaxPreps sheet (A = aces, SA = serve attempts)", () => {

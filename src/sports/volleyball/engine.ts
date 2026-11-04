@@ -14,6 +14,7 @@ export interface StatEvent extends BaseEvent {
   t: ActionCode;
   p?: string; // player id
   op?: string; // opponent jersey number
+  imp?: boolean; // imported from another app: player totals only, no rally context
   x?: number; y?: number; // where the ball landed, court meters (see zoneOf)
   s?: "a" | "b"; // scrimmage side of the player
   ns?: boolean; // stats only: counts for the player but never changes the score (a second coach's device)
@@ -216,6 +217,8 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       if (scr) { const sd = ev.s === "b" ? "b" : "a"; bump(cur.side[sd], t); cur.pside[ev.p] = sd; }
     } else if (t in cur.team) (cur.team as any)[t]++;
 
+    // imported totals (ev.imp) count on players' lines only: they carry no rally order, rotation or attack context
+    if (!ev.imp) {
     if (t === "P3" || t === "P2" || t === "P1" || t === "P0") {
       if (!rally.pass && cur.serve === "them") rally.pass = t;
       if (cur.serve === "them" && ev.p) { const rr = cur.rcvRot[cur.rot] || (cur.rcvRot[cur.rot] = {}), q = rr[ev.p] || (rr[ev.p] = { R: 0, RS: 0 }); q.R++; q.RS += +t[1]; }
@@ -231,6 +234,7 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       const ar = cur.atkRot[cur.rot] || (cur.atkRot[cur.rot] = {}), pa = ar[ev.p || "_"] || (ar[ev.p || "_"] = { K: 0, E: 0, TA: 0 });
       for (const o of [c.team, pk, pa]) { o.TA++; if (t === "K") o.K++; if (t === "AE") o.E++; }
       if (t === "TA") rally.ctx = "OTH";
+    }
     }
     if (ev.op && OPP_NUMBER[t]) {
       const o = cur.opp[ev.op] || (cur.opp[ev.op] = { K: 0, A: 0, E: 0, P: 0, z: {} });
