@@ -4,6 +4,7 @@ import { download } from "../../ui/kit";
 import { Match, Player } from "../../data/model";
 import { Replay, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, hitting, passAvg } from "../../sports/volleyball/metrics";
+import { canvasImage, drawCover, drawLogo } from "../../lib/image";
 
 export interface Tile { label: string; value: string }
 /** The numbers worth posting, best first: up to six that this player actually has. */
@@ -33,14 +34,16 @@ export async function playerGraphic(p: Player, s: Stat, head: string, sub: strin
   const fit = (str: string, max: number, size: number) => { let z = size; g.font = `700 ${z}px ${disp}`; while (z > 30 && g.measureText(str).width > max) { z -= 2; g.font = `700 ${z}px ${disp}`; } return z; };
   g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
   // the jersey number, huge and faint, as the backdrop
-  text(p.num, W + 40, 640, 620, "rgba(155,211,242,.10)", { align: "right" });
+  if (!p.photo) text(p.num, W + 40, 640, 620, "rgba(155,211,242,.10)", { align: "right" });
   g.fillStyle = BLUE; g.fillRect(0, H - 18, W, 18);
   text(head.toUpperCase(), 80, 150, 40, BLUE, { spacing: 6 });
   text(sub, 80, 200, 30, GREY, { font: body, weight: 600 });
+  const photo = await canvasImage(p.photo), nameW = photo ? W - 160 - 330 : W - 160;
+  if (photo) { drawCover(g, photo, W - 80 - 300, 250, 300, 340, 28); g.fillStyle = BLUE; g.fillRect(W - 80 - 300, 590, 300, 8); }
   text("#" + p.num, 80, 330, 64, BLUE);
   const first = (p.first || "").toUpperCase(), last = (p.last || "").toUpperCase();
-  text(first || last || "#" + p.num, 80, 440, fit(first || last, W - 160, 112), "#fff");
-  if (first && last) text(last, 80, 550, fit(last, W - 160, 112), "#fff");
+  text(first || last || "#" + p.num, 80, 440, fit(first || last, nameW, 112), "#fff");
+  if (first && last) text(last, 80, 550, fit(last, nameW, 112), "#fff");
   const tiles = playerTiles(s), cols = tiles.length > 4 ? 3 : 2, tw = (W - 160 - (cols - 1) * 24) / cols, th = 190;
   tiles.forEach((tl, i) => {
     const x = 80 + (i % cols) * (tw + 24), y = 640 + Math.floor(i / cols) * (th + 24);
@@ -49,7 +52,9 @@ export async function playerGraphic(p: Player, s: Stat, head: string, sub: strin
     text(tl.value, x + 34, y + 120, 92, "#fff");
     text(tl.label.toUpperCase(), x + 36, y + 165, 24, GREY, { spacing: 3 });
   });
-  text(t.name.toUpperCase(), 80, H - 56, 26, "#fff", { spacing: 3 });
+  const logo = await canvasImage(t.logo);
+  if (logo) drawLogo(g, logo, 80, H - 104, 64);
+  text(t.name.toUpperCase(), logo ? 164 : 80, H - 56, 26, "#fff", { spacing: 3 });
   text("BENCHBOARD", W - 80, H - 56, 22, GREY, { align: "right", spacing: 6 });
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }

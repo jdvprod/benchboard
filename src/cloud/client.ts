@@ -119,6 +119,9 @@ export function signOut() { const s = session; setSession(null); if (s) call("/a
 
 /* ---------- data ---------- */
 export const rest = (path: string, init: RequestInit = {}) => call("/rest/v1/" + path, init);
+/** Supabase Storage: put a file (replacing one at the same path) and the public link to it. */
+export const uploadFile = (path: string, blob: Blob) => call("/storage/v1/object/" + path, { method: "POST", headers: { "content-type": blob.type || "application/octet-stream", "x-upsert": "true" } as any, body: blob });
+export const publicFileUrl = (path: string) => { const c = config(); return c ? `${c.url}/storage/v1/object/public/${path}` : ""; };
 /** Call a Supabase Edge Function as the signed-in user. */
 export const fn = (name: string, body: unknown, signal?: AbortSignal) => call("/functions/v1/" + name, { method: "POST", body: JSON.stringify(body), signal });
 /** Public sign-up settings (e.g. whether new accounts must confirm their email). */

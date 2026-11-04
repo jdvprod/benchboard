@@ -4,6 +4,7 @@ import { download } from "../../ui/kit";
 import { Match } from "../../data/model";
 import { aggregate, Replay, Stat } from "../../sports/volleyball/engine";
 import { blocks } from "../../sports/volleyball/metrics";
+import { canvasImage, drawLogo } from "../../lib/image";
 
 export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
   const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -27,9 +28,11 @@ export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
   const dt = new Date(m.date + "T12:00:00"), ds = isNaN(+dt) ? m.date : dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
   text(ds + (m.event ? "  ·  " + m.event : ""), 80, 200, 30, GREY, { font: body, weight: 600 });
   const nameUs = t.name.toUpperCase(), nameThem = (m.opp || "Opponent").toUpperCase();
-  text(nameUs, 80, 340, fit(nameUs, 700, 76), "#fff");
+  const [lu, lt] = await Promise.all([canvasImage(t.logo), canvasImage(m.oppLogo)]), nx = lu || lt ? 196 : 80, nw = lu || lt ? 584 : 700;
+  if (lu) drawLogo(g, lu, 80, 262, 96); if (lt) drawLogo(g, lt, 80, 422, 96);
+  text(nameUs, nx, 340, fit(nameUs, nw, 76), "#fff");
   text(String(R.wonUs), W - 80, 350, 150, won ? BLUE : "#fff", { align: "right" });
-  text(nameThem, 80, 500, fit(nameThem, 700, 76), GREY);
+  text(nameThem, nx, 500, fit(nameThem, nw, 76), GREY);
   text(String(R.wonThem), W - 80, 510, 150, !won ? "#fff" : GREY, { align: "right" });
   // set scores
   const sets = R.sets.filter((s) => s.us + s.them > 0), cw = (W - 160) / Math.max(1, sets.length);

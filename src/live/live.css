@@ -132,3 +132,13 @@ html.ov-page body{overflow:hidden}
 .ov-tag span.on{background:var(--us-bright);color:#000}
 .ov-tag small{font-size:.85em;color:#fff;opacity:.75;text-shadow:0 1px 3px #000}
 .ov-wait{position:fixed;left:3.5vw;bottom:5vh;margin:0;font:600 16px var(--body);color:#fff;background:rgba(0,0,0,.6);padding:6px 10px;border-radius:6px}
+
+/* photos and logos */
+.lv-team{align-items:center}.lv-team .grow{flex:1;min-width:0}
+.lv-team-logo{width:clamp(52px,14vw,72px);height:clamp(52px,14vw,72px);object-fit:contain;background:#fff;border-radius:12px;padding:5px;flex:none}
+.lv-opp-logo{vertical-align:-5px;margin-right:6px;background:#fff;border-radius:5px;padding:1px}
+.lv-photo{position:relative;flex:none}.lv-photo .avatar{border-radius:14px}.lv-photo b{position:absolute;right:-6px;bottom:-6px;background:#000;color:var(--us-bright);font:700 16px var(--display);border-radius:7px;padding:1px 6px}
+.ov-logo{width:1.3em;height:1.3em;object-fit:contain;background:#fff;border-radius:.15em;padding:.06em;align-self:center;justify-self:center}
+.ov-logo.none{background:#1C1E22;color:#8C929B;font-size:.5em;width:2.6em;height:2.6em}
+.ov-box.logos .ov-row{grid-template-columns:.28em 1.7em minmax(0,1fr) .9em auto auto 2.1em}
+.ov-box.logos .ov-nm{padding-left:.35em}

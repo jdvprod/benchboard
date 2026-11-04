@@ -56,7 +56,7 @@ export function setPrefs(p: Partial<Prefs>) {
 export function all<K extends StoreName>(s: K): StoreTypes[K][] { return Array.from(state.tables[s].values()) as StoreTypes[K][]; }
 export function get<K extends StoreName>(s: K, id: string | null | undefined): StoreTypes[K] | undefined { return id ? (state.tables[s].get(id) as StoreTypes[K] | undefined) : undefined; }
 /** Cloud sync listens here: every local change (not ones that came from the cloud). */
-export const hooks = { who: null as null | (() => string | null), change: null as null | ((s: StoreName, v: any, deleted: boolean) => void), paused: false, teamRemoved: null as null | ((teamId: string) => void) };
+export const hooks = { who: null as null | (() => string | null), change: null as null | ((s: StoreName, v: any, deleted: boolean) => void), paused: false, teamRemoved: null as null | ((teamId: string) => void), newOpponent: null as null | ((o: Opponent) => void) };
 
 export function save<K extends StoreName>(s: K, v: StoreTypes[K], silent = false, fromCloud = false) {
   if (!fromCloud) (v as any)._u = Math.max(now(), ((state.tables[s].get((v as any).id) as any)?._u || 0) + 1);
@@ -239,8 +239,8 @@ export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: M
     date: o.date || todayISO(), bestOf: o.bestOf || t.settings.bestOf, setTo: o.setTo, cap: o.cap ?? null, status: "live", site: o.site || "", event: o.event || "", notes: o.notes || "",
     oppPlayers: o.oppPlayers || [], scrim: o.scrim || null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: o.planId || null, createdAt: Date.now(), sample: o.sample,
   };
+  if (m.kind === "match") { const op = ensureOpponent(m.opp); if (op.logo) m.oppLogo = op.logo; else hooks.newOpponent?.(op); }
   save("matches", m, true);
-  if (m.kind === "match") ensureOpponent(m.opp);
   save("teams", { ...t, currentMatchId: m.id }, true);
   const lu = o.lineup !== undefined ? o.lineup : m.kind === "match" ? t.defLineup : null;
   const first: any = { t: "NS", serve: o.serve || "us" };
@@ -256,7 +256,14 @@ export function ensureOpponent(name: string): Opponent {
   if (ex) return ex;
   const o: Opponent = { id: uid("o"), teamId: t.id, name: name.replace(/\s*\(sample\)/i, ""), notes: "", scout: "", scoutAt: null };
   save("opponents", o, true);
+  hooks.newOpponent?.(o);
   return o;
+}
+/** An opponent's logo changed: past and live matches against them show it too. */
+export function setOpponentLogo(id: string, logo: string | undefined) {
+  const o = get("opponents", id); if (!o) return;
+  patch("opponents", id, { logo, logoTried: Date.now() });
+  for (const m of all("matches").filter((x) => x.teamId === o.teamId && x.kind === "match" && oppKey(x.opp) === oppKey(o.name))) patch("matches", m.id, { oppLogo: logo });
 }
 
 export function setTeamPatch(p: Partial<Team>) { const t = team(); if (t) save("teams", { ...t, ...p }); }

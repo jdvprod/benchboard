@@ -3,6 +3,7 @@ import { useState } from "react";
 import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
 import { Goal, GoalMetric, Match, Player, RecruitProfile } from "../../data/model";
 import { matchHead, playerTiles, sharePlayerGraphic } from "./playerGraphic";
+import { Avatar, PhotoPicker } from "../../ui/Pictures";
 import { aggregate, Agg, SetState, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, passAvg, playerMetrics, PlayerMetrics, serveAttempts, serveErrors } from "../../sports/volleyball/metrics";
 import { Card, ConfirmButton, download, fmtDate, Kpi, plural, Seg, SetRow, Switch } from "../../ui/kit";
@@ -83,13 +84,13 @@ export function PlayerPage({ id }: { id: string }) {
   return <div className="page">
     <div className="row"><button className="btn sm" onClick={() => history.length > 1 ? history.back() : go("stats")}>← Back</button></div>
     <section className="card"><div className="hero">
-      <div className="jersey">{p.num}</div>
+      {p.photo ? <div className="photo-wrap"><Avatar photo={p.photo} num={p.num} size={96} /><span className="num">#{p.num}</span></div> : <div className="jersey">{p.num}</div>}
       <div className="grow"><h1 style={{ margin: 0 }}>{p.first} {p.last}</h1>
         <p className="muted">{[p.pos, p.height, p.grad ? "Class of " + p.grad : "", t.name].filter(Boolean).join(" · ")}</p>
         <p className="small muted">{src === "practice" ? plural(rows.length, "practice") : src === "all" ? plural(rows.length, "match or practice", "matches and practices") : plural(rows.length, "match", "matches")} · {plural(pm.sets, "set")} this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
       <div className="stack" style={{ alignItems: "flex-end" }}><Seg value={src} onChange={setSrc} options={[["games", "Matches"], ["practice", "Practice"], ["all", "All"]]} label="Which stats" />
         <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button>
-        <GraphicButton p={p} /></div>
+        <GraphicButton p={p} /><PhotoPicker p={p} /></div>
     </div></section>
     {!s ? <Card><p className="empty">No stats yet this season.</p></Card> : <>
       <div className="kpis">

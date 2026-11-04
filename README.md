@@ -14,6 +14,7 @@ Volleyball stats, lineups, rotations and practice planning for coaches. Works of
 - **Labs** (off until turned on): **Formations**: drag players into serve-receive, serving and base-defense spots for all six rotations. It flags overlap (rotation) faults at the serve, shows where each player moves after the serve, and saves named sets like "5-1 three-passer".
 - **Lineup**: a starting-six builder with the libero, checks that the lineup is balanced, a preview of all six rotations with season results, "on court now" or "next set" buttons, and an AI lineup suggestion.
 - **Practice**: a plan builder with a timeline and drill library, a "what to work on" list built from your stats, AI plans, scrimmages with a roster split and head-to-head stats, drill tracking and history.
+- **Photos and logos**: a photo for each player (tap the circle on the Team tab, or Add photo on their page; taken or picked on the phone and cropped to a small square), and team logos for your team and every opponent. **Find logo** searches Wikipedia, the school's official logo on Wikidata and its website icon by name; new opponents get their school's logo automatically when exactly one school matches (in your state, once your own logo is set from Wikipedia). Or upload one. They show on the gamecast, Benchboard Live, the stream overlay, Recruit profiles and share graphics. Photos of players kept off public pages never leave the coaches' devices.
 - **Player pages**: KPIs, trend charts, match log, goals with progress bars, an AI report card, a downloadable report for players and parents, and a stat graphic (last match or season so far) sized for Instagram. Players kept off public pages don't get one.
 - **Live**: an ESPN-style gamecast with box score, momentum, leaders, team stats and play-by-play.
 - **Match report**: a one-page report with set scores, score flow, leaders and box score that parents can open on any phone or print.
@@ -72,6 +73,8 @@ The build makes two more sites beside the coaching app, from the same code and d
 2. In the app, Settings → Setup check → **Make notification keys**. In Edge Functions → Secrets add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:` plus your contact email).
 
 **Stream overlay.** Live tab → Stream overlay makes one link for the whole season (`/live/#/t/CODE/overlay`). Add it as a Browser source in OBS, Streamlabs or vMix at 1920 × 1080: a see-through score bug (team names, sets, points, server) that follows whichever match is being tracked and updates within a few seconds. Options in the link: `size=s|m|l`, `pos=bl|br|tl|tr`, `us=` short name, `sets=0`. One match only: `/live/#/g/CODE/overlay`.
+
+**Pictures.** Synced teams upload photos and logos to Supabase Storage (bucket `media`, made by `schema.sql`; only a team's coaches can add files, anyone can view them). Before a team syncs they stay on the device and upload after the next sync.
 
 With a custom domain you can point `live.yourdomain.com` and `recruit.yourdomain.com` at the same Worker and redirect them to `/live/` and `/recruit/` (Cloudflare → Rules → Redirect Rules).
 

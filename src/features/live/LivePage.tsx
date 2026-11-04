@@ -50,7 +50,7 @@ export function LivePage() {
       <div className="row"><button className="btn sm" onClick={() => { setTv(true); try { document.documentElement.requestFullscreen?.(); } catch { /* ignore */ } }}>TV mode</button><ShareLive matchId={m.id} />
       <select className="input" style={{ width: "auto", maxWidth: 260 }} value={m.id} onChange={(e) => setPick(e.target.value)} aria-label="Match">{games.slice(0, 40).map((g) => <option key={g.id} value={g.id}>{fmtDate(g.date)} vs {g.opp}</option>)}</select></div>
     </div>
-    <GameScore R={R} us={names.us} them={names.them} live={m.status === "live"} unit={m.scrim ? "Game" : "Set"} server={c && c.serve === "us" && srv ? playerName(srv) : undefined} />
+    <GameScore R={R} us={names.us} them={names.them} live={m.status === "live"} unit={m.scrim ? "Game" : "Set"} server={c && c.serve === "us" && srv ? playerName(srv) : undefined} logos={{ us: t.logo, them: m.oppLogo }} />
     <div className="grid2" style={{ alignItems: "start" }}>
       <div className="stack">
         {c && c.rallies.length > 1 && <Card title={`Momentum · set ${c.n}`}><MomentumChart diffs={momentum(c)} labels={[names.us + " ahead", names.them + " ahead"]} /></Card>}

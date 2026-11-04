@@ -3,6 +3,7 @@ const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
+const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
@@ -16,8 +17,11 @@ const val = (s) => s.replace(/^(eq|gte|gt|in)\./, "");
 
 module.exports = (port) => new Promise((ok) => { const srv = http.createServer((req, res) => {
   if (req.method === "OPTIONS") return send(res, 204);
-  let body = ""; req.on("data", (c) => (body += c)); req.on("end", () => {
+  const chunks = []; req.on("data", (c) => chunks.push(c)); req.on("end", () => {
+    const raw = Buffer.concat(chunks), isJson = !/^image\//.test(req.headers["content-type"] || ""), body = isJson ? raw.toString() : "";
     const url = new URL(req.url, "http://x"), p = url.pathname, b = body ? JSON.parse(body) : null;
+    // Storage: public pictures (no key needed, like Supabase's public buckets)
+    if (p.startsWith("/storage/v1/object/public/")) { const f = files.get(p.slice("/storage/v1/object/public/".length)); if (!f) return send(res, 404, { message: "not found" }); res.writeHead(200, { "content-type": f.type, "access-control-allow-origin": "*" }); return res.end(f.data); }
     const tok = (req.headers.authorization || "").replace("Bearer ", ""), me = tokens.get(tok) || null;
     if (p === "/__mock/strip-terms") { for (const u of users.values()) if (u.meta) delete u.meta.terms_version; return send(res, 204); } // simulate accounts made before the terms existed
     if (p === "/__mock/pushes") return send(res, 200, { subs: [...pushSubs.values()], pushes }); // test inspection only
@@ -32,13 +36,14 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     // rpc
     if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!isMember(inv.team_id, me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now() }); return send(res, 200, inv.team_id); }
     const pubEvents = (ev) => (ev || []).filter((e) => e.t !== "TAG");
-    const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1) });
-    const pubMatch = (m) => m && ({ id: m.id, opp: m.opp, date: m.date, event: m.event, status: m.status, kind: m.kind, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, scrim: m.scrim });
+    const pubUrl = (u) => (typeof u === "string" && /^https?:\/\//.test(u) ? u : null);
+    const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1), photo: d.hidePublic ? null : pubUrl(d.photo) });
+    const pubMatch = (m) => m && ({ id: m.id, opp: m.opp, date: m.date, event: m.event, status: m.status, kind: m.kind, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, scrim: m.scrim, oppLogo: pubUrl(m.oppLogo) });
     if (p === "/rest/v1/rpc/watch") {
       const s = shares.get(String(b.share).toUpperCase()); if (!s) return send(res, 200, null);
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
       const tr = R.find((r) => r.store === "teams" && r.id === s.team_id);
-      return send(res, 200, { team: tr && { name: tr.data.name, color: tr.data.color, level: tr.data.level }, match: pubMatch((R.find((r) => r.store === "matches" && r.id === s.match_id) || {}).data) || null,
+      return send(res, 200, { team: tr && { name: tr.data.name, color: tr.data.color, level: tr.data.level, logo: pubUrl(tr.data.logo) }, match: pubMatch((R.find((r) => r.store === "matches" && r.id === s.match_id) || {}).data) || null,
         logs: R.filter((r) => r.store === "logs" && r.data.matchId === s.match_id).map((r) => pubEvents(r.data.events)), players: R.filter((r) => r.store === "players").map((r) => pubPlayer(r.data)), at: new Date().toISOString() });
     }
     if (p === "/rest/v1/rpc/delete_my_account") {
@@ -48,7 +53,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 11);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 12);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -58,8 +63,8 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
       const tr = R.find((r) => r.store === "teams" && r.id === s.team_id), se = R.find((r) => r.store === "seasons" && r.id === s.season_id);
       const ms = R.filter((r) => r.store === "matches" && r.data.seasonId === s.season_id && r.data.kind === "match").map((r) => r.data), ids = new Set(ms.map((m) => m.id));
-      return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level, color: tr.data.color, schedule: tr.data.schedule || [], tournaments: tr.data.tournaments || [] }, season: se && se.data.name,
-        matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, status: m.status, event: m.event, site: m.site, imported: m.imported ? { season: m.imported.season } : null, tournamentId: m.tournamentId })),
+      return send(res, 200, { team: tr && { name: tr.data.name, level: tr.data.level, color: tr.data.color, logo: pubUrl(tr.data.logo), schedule: tr.data.schedule || [], tournaments: tr.data.tournaments || [] }, season: se && se.data.name,
+        matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, status: m.status, event: m.event, site: m.site, imported: m.imported ? { season: m.imported.season } : null, tournamentId: m.tournamentId, oppLogo: pubUrl(m.oppLogo) })),
         logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: pubEvents(r.data.events) })),
         players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), live: [...shares.values()].filter((x) => x.team_id === s.team_id).map((x) => ({ matchId: x.match_id, code: x.code })), at: new Date().toISOString() });
     }
@@ -78,6 +83,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     }
     if (p === "/functions/v1/ai") { if (!me) return send(res, 401, { message: "JWT required" }); return send(res, 200, { content: [{ type: "text", text: "Strengths:\n- Mock report from the server function (" + b.model + ")" }], stop_reason: "end_turn" }); }
     if (!me) return send(res, 401, { message: "JWT required" });
+    if (p.startsWith("/storage/v1/object/") && req.method === "POST") { const path = p.slice("/storage/v1/object/".length), team = path.split("/")[1]; if (!canEdit(team, me)) return send(res, 403, { message: "new row violates row-level security policy" }); files.set(path, { type: req.headers["content-type"], data: raw }); return send(res, 200, { Key: path }); }
     const P = q(url);
     if (p === "/rest/v1/teams_cloud" && req.method === "POST") { if (teams.has(b.id)) return send(res, 409, { message: "duplicate key" }); teams.set(b.id, { ...b, owner: me }); members.push({ team_id: b.id, user_id: me, role: "owner", email: users.get(me).email, joined_at: now() }); return send(res, 201); }
     if (p === "/rest/v1/records" && req.method === "POST") {

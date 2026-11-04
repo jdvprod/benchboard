@@ -1,4 +1,5 @@
 /** One game on Benchboard Live: scoreboard, then Gamecast · Box score · Play-by-play · Team stats. */
+import { Avatar } from "../ui/Logo";
 import { useState } from "react";
 import { aggregate, LogEntry, momentum, serverOf, Stat } from "../sports/volleyball/engine";
 import { ACTIONS } from "../sports/volleyball/actions";
@@ -10,7 +11,7 @@ import { fmtDay, Game, isLive, LPlayer, pname } from "./data";
 type Tab = "cast" | "box" | "pbp" | "team";
 const TABS: [Tab, string][] = [["cast", "Gamecast"], ["box", "Box score"], ["pbp", "Play-by-play"], ["team", "Team stats"]];
 
-export function GameView({ g, team, players, fresh, back }: { g: Game; team: string; players: LPlayer[]; fresh?: string; back?: { href: string; label: string } }) {
+export function GameView({ g, team, players, fresh, back, logo }: { g: Game; team: string; players: LPlayer[]; fresh?: string; back?: { href: string; label: string }; logo?: string | null }) {
   const { m, R } = g, c = R.cur, live = isLive(g), them = m.opp || "Opponent";
   const P = new Map(players.map((p) => [p.id, p]));
   const [tab, setTab] = useState<Tab>("cast");
@@ -20,7 +21,7 @@ export function GameView({ g, team, players, fresh, back }: { g: Game; team: str
   const srv = c ? serverOf(c) : null;
   return <div className="lv-game">
     {back && <a className="lv-back" href={back.href}>‹ {back.label}</a>}
-    <GameScore R={R} us={team} them={them} live={m.status === "live"} server={c && c.serve === "us" && srv ? pname(P.get(srv), false) || undefined : undefined} meta={live ? fresh : undefined} />
+    <GameScore R={R} us={team} them={them} live={m.status === "live"} server={c && c.serve === "us" && srv ? pname(P.get(srv), false) || undefined : undefined} meta={live ? fresh : undefined} logos={{ us: logo, them: m.oppLogo }} />
     <p className="lv-when">{fmtDay(m.date)}{m.site === "away" ? " · Away" : m.site === "home" ? " · Home" : ""}{m.event ? " · " + m.event : ""}</p>
     <nav className="lv-tabs" aria-label="Game sections">{TABS.map(([k, l]) => <button key={k} aria-current={tab === k ? "page" : undefined} onClick={() => setTab(k)}>{l}</button>)}</nav>
     {tab === "cast" && <Gamecast g={g} team={team} P={P} follow={follow} setFollow={setFollow} players={players} />}
@@ -53,7 +54,7 @@ function Gamecast({ g, team, P, follow, setFollow, players }: { g: Game; team: s
       <div className="lv-h"><h2>Follow a player</h2>
         <select className="input" value={follow} onChange={(e) => setFollow(e.target.value)} aria-label="Follow a player"><option value="">Choose…</option>{players.slice().sort((a, b) => (+a.num || 0) - (+b.num || 0)).map((p) => <option key={p.id} value={p.id}>{pname(p)}</option>)}</select></div>
       {fp ? <div className="lv-follow">
-        <div className="lv-follow-nm"><span className="lv-jersey">{fp.num}</span><div><b>{fp.first || "Player #" + fp.num}</b><small>{fp.pos}{c && (c.lu?.includes(follow) || c.lib === follow) && isLive(g) ? " · on the court now" : ""}</small></div></div>
+        <div className="lv-follow-nm">{fp.photo ? <Avatar photo={fp.photo} num={fp.num} size={42} /> : <span className="lv-jersey">{fp.num}</span>}<div><b>{fp.first || "Player #" + fp.num}</b><small>{fp.pos}{c && (c.lu?.includes(follow) || c.lib === follow) && isLive(g) ? " · on the court now" : ""}</small></div></div>
         <div className="lv-follow-k">{([["Kills", fs?.K || 0], ["Aces", fs?.SA || 0], ["Digs", fs?.D || 0], ["Blocks", fs ? +blocks(fs).toFixed(1) : 0], ["Assists", fs?.AST || 0]] as [string, number][]).map(([l, v]) => <div key={l}><b>{v}</b><span>{l}</span></div>)}</div>
         {fs && fs.TA > 0 && <p className="lv-note">Hitting {fmtHit(hitting(fs))} on {fs.TA} swings{fs.R ? ` · passing ${fmtAvg(passAvg(fs))} on ${fs.R}` : ""}</p>}
       </div> : <p className="lv-note">Pick a player to see their numbers update with every point.</p>}

@@ -57,7 +57,7 @@ function Profile({ code }: { code: string }) {
   const cols = allCols.filter(([, , has]) => games.some((g) => has(g) > 0)).map(([h, f]) => [h, f] as [string, (g: G) => string | number]);
   return <Shell crumb={t.name}>
     <section className="rc-hero">
-      <span className="rc-num" aria-label={"Number " + p.num}>{p.num}</span>
+      {p.photo ? <span className="rc-photo"><img src={p.photo} alt={`${p.first} ${p.last}`} /><b aria-label={"Number " + p.num}>#{p.num}</b></span> : <span className="rc-num" aria-label={"Number " + p.num}>{p.num}</span>}
       <div className="rc-id"><h1>{p.first} {p.last}</h1>
         <p className="rc-meta">{[p.grad ? "Class of " + p.grad : "", p.pos, p.height].filter(Boolean).join(" · ")}</p>
         <p className="rc-meta">{[t.name, t.level, pr.club ? "Club: " + pr.club : ""].filter(Boolean).join(" · ")}</p></div>

@@ -1,5 +1,6 @@
 /** ESPN-style scoreboard for the gamecast: one row per team (name, each set, current points), and a status line. */
 import { Replay, runOf } from "../sports/volleyball/engine";
+import { TeamLogo } from "./Logo";
 
 export function gameStatus(R: Replay, liveMatch: boolean, unit = "Set"): { text: string; live: boolean } {
   const c = R.cur;
@@ -9,7 +10,8 @@ export function gameStatus(R: Replay, liveMatch: boolean, unit = "Set"): { text:
   return { text: `${unit} ${c.n}`, live: true };
 }
 
-export function GameScore({ R, us, them, live: liveMatch, server, unit = "Set", meta }: { R: Replay; us: string; them: string; live: boolean; server?: string; unit?: string; meta?: string }) {
+export function GameScore({ R, us, them, live: liveMatch, server, unit = "Set", meta, logos }: { R: Replay; us: string; them: string; live: boolean; server?: string; unit?: string; meta?: string; logos?: { us?: string | null; them?: string | null } }) {
+  const withLogos = !!(logos?.us || logos?.them);
   const c = R.cur, st = gameStatus(R, liveMatch, unit), over = R.matchOver || !liveMatch;
   const sets = R.sets.filter((s) => s.us + s.them > 0 || s === c);
   const serving = st.live && c && !c.over ? c.serve : null;
@@ -20,7 +22,7 @@ export function GameScore({ R, us, them, live: liveMatch, server, unit = "Set", 
     const name = side === "us" ? us : them, big = between ? (side === "us" ? R.wonUs : R.wonThem) : c ? c[side] : 0;
     const won = over && (side === "us" ? R.wonUs > R.wonThem : R.wonThem > R.wonUs);
     return <div className={`gs-row ${side}${won ? " won" : ""}`}>
-      <span className="gs-nm"><span className="gs-tn">{name}</span>{serving === side && <span className="gs-srv" title="Serving" aria-label="serving">●</span>}</span>
+      <span className="gs-nm">{withLogos && <TeamLogo src={logos![side]} name={name} size={30} className="gs-logo" />}<span className="gs-tn">{name}</span>{serving === side && <span className="gs-srv" title="Serving" aria-label="serving">●</span>}</span>
       <span className="gs-sets" aria-label={`${unit}s`}>{sets.map((s) => <span key={s.n} className={(s.winner === side ? "w" : "") + (s === c && !over && !c.over ? " cur" : "")}>{s === c && !over && !c.over ? "" : s[side]}</span>)}</span>
       <span className="gs-big" aria-label={between ? `${unit}s won` : "Points this set"}>{big}</span>
     </div>;

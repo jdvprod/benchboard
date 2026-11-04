@@ -32,7 +32,8 @@ function Pts({ n }: { n: number }) {
   return <b className="ov-pts" key={k} data-bump={k ? "1" : undefined}>{n}</b>;
 }
 
-export function ScoreBug({ R, m, us, them, o }: { R: Replay; m: LMatch; us: string; them: string; o: OverlayOpts }) {
+export function ScoreBug({ R, m, us, them, o, logo }: { R: Replay; m: LMatch; us: string; them: string; o: OverlayOpts; logo?: string | null }) {
+  const logos = { us: logo, them: m.oppLogo }, withLogos = !!(logo || m.oppLogo);
   const c = R.cur, live = m.status === "live" && !R.matchOver;
   const done = R.sets.filter((s) => s.winner && s !== c || (s === c && c.over));
   const between = live && !!c?.over, final = !live && (R.matchOver || R.sets.some((s) => s.us + s.them));
@@ -40,6 +41,7 @@ export function ScoreBug({ R, m, us, them, o }: { R: Replay; m: LMatch; us: stri
     const nm = k === "us" ? o.us || shortTeam(us) : o.them || shortTeam(them), won = k === "us" ? R.wonUs : R.wonThem;
     const pts = final || between ? won : c ? c[k] : 0, serving = live && c && !c.over && c.serve === k;
     return <div className={"ov-row " + k + (final && (k === "us" ? R.wonUs > R.wonThem : R.wonThem > R.wonUs) ? " win" : "")}>
+      {withLogos && (logos[k] ? <img className="ov-logo" src={logos[k]!} alt="" referrerPolicy="no-referrer" /> : <span className="ov-logo none" aria-hidden="true">{nm.slice(0, 1)}</span>)}
       <span className="ov-nm">{nm}</span>
       <span className="ov-srv" aria-label={serving ? "serving" : undefined}>{serving ? "●" : ""}</span>
       <span className={"ov-won" + (final || between ? " off" : "")} aria-label={final || between ? undefined : "sets won"}>{final || between ? "" : won}</span>
@@ -49,7 +51,7 @@ export function ScoreBug({ R, m, us, them, o }: { R: Replay; m: LMatch; us: stri
   };
   const tag = final ? "Final" : between ? `End of set ${c!.n}` : c ? `Set ${c.n}` : "Starting soon";
   return <div className={`ov ov-${o.size} ov-${o.pos}`} role="img" aria-label={`${us} ${R.wonUs}, ${them} ${R.wonThem}${c && live ? `, set ${c.n} ${c.us}–${c.them}` : ""}`}>
-    <div className="ov-box">{side("us")}{side("them")}</div>
+    <div className={"ov-box" + (withLogos ? " logos" : "")}>{side("us")}{side("them")}</div>
     <div className="ov-tag"><span className={live && !between ? "on" : ""}>{tag}</span><small>Benchboard Live</small></div>
   </div>;
 }
@@ -62,7 +64,7 @@ export function GameOverlay({ code, q }: { code: string; q: string }) {
   const o = overlayOpts(q), { d, err } = useWatch(code, 3000, true);
   useEffect(() => { if (d?.team?.color) applyTheme(d.team.color, "dark", "normal", null); }, [d?.team?.color]);
   if (!d) return <Waiting text={err || "Loading…"} />;
-  return <ScoreBug R={replayOf(d.match, d.logs || [])} m={d.match} us={d.team?.name || "Us"} them={d.match.opp || "Opponent"} o={o} />;
+  return <ScoreBug R={replayOf(d.match, d.logs || [])} m={d.match} us={d.team?.name || "Us"} them={d.match.opp || "Opponent"} o={o} logo={d.team?.logo} />;
 }
 
 /** Follows whichever match is live; shows the last result between matches. A live gamecast link (if shared) updates fastest. */
@@ -76,5 +78,5 @@ export function TeamOverlay({ code, q }: { code: string; q: string }) {
   if (!d) return <Waiting text={err || "Loading…"} />;
   const g: Game | undefined = w.d && live && w.d.match.id === live.m.id ? { m: w.d.match, R: replayOf(w.d.match, w.d.logs || []) } : live || games.find((x) => !x.m.imported);
   if (!g) return null; // nothing to show yet: stays see-through
-  return <ScoreBug R={g.R} m={g.m} us={d.team?.name || "Us"} them={g.m.opp || "Opponent"} o={o} />;
+  return <ScoreBug R={g.R} m={g.m} us={d.team?.name || "Us"} them={g.m.opp || "Opponent"} o={o} logo={d.team?.logo} />;
 }

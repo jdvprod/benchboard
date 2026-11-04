@@ -44,7 +44,7 @@ function GameRoute({ code }: { code: string }) {
   useWakeLock(d?.match?.status === "live");
   if (!d) return <Shell><p className="lv-empty">{err || "Loading the game…"}</p></Shell>;
   const g: Game = { m: d.match, R: replayOf(d.match, d.logs || []) };
-  return <Shell team={d.team?.name}><GameView g={g} team={d.team?.name || "Us"} players={d.players} fresh={freshText(got, err)} /></Shell>;
+  return <Shell team={d.team?.name}><GameView g={g} team={d.team?.name || "Us"} players={d.players} fresh={freshText(got, err)} logo={d.team?.logo} /></Shell>;
 }
 
 const lastTeam = (): { code: string; name: string } | null => { try { return JSON.parse(localStorage.getItem("bbl-last") || "null"); } catch { return null; } };

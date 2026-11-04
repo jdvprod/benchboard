@@ -372,3 +372,33 @@ test("overlay: long team names shorten sensibly", () => {
   assert.equal(shortTeam("St. Joseph Notre Dame"), "St. Joseph");
   assert.equal(shortTeam("Buchanan"), "Buchanan");
 });
+
+import { autoPick, findLogos, regionOf, titleMatches } from "../src/lib/logoSearch";
+test("logos: matching names, regions, and the one-clear-school rule", async () => {
+  assert.ok(titleMatches("Clovis North Broncos", "Clovis North High School"));
+  assert.ok(titleMatches("Buchanan", "Buchanan High School (Clovis, California)"));
+  assert.ok(!titleMatches("Buchanan", "James Buchanan"), "first word must lead");
+  assert.ok(!titleMatches("Central Valley Christian", "Central High School (Fresno)"));
+  assert.equal(regionOf("Buchanan High School (Clovis, California)"), "California");
+  assert.equal(regionOf("Clovis North High School", "Public high school in Fresno, California, United States"), "California");
+  assert.equal(regionOf("Clovis North High School", "High school"), "");
+  // a fake Wikipedia / Wikidata / Commons
+  const get = async (url: string) => {
+    const u = new URL(url), q = u.searchParams;
+    if (u.host === "en.wikipedia.org") return { query: { pages: /buchanan/i.test(q.get("gsrsearch")!) ? [
+      { title: "Buchanan High School (Clovis, California)", index: 1, pageprops: { wikibase_item: "Q2" }, thumbnail: { source: "https://upload.wikimedia.org/b-ca-photo.jpg" } },
+      { title: "Buchanan High School (Michigan)", index: 2, pageprops: { wikibase_item: "Q3" } },
+      { title: "James Buchanan", index: 3, pageprops: { wikibase_item: "Q9" }, thumbnail: { source: "https://upload.wikimedia.org/president.jpg" } }] : [] } };
+    if (u.host === "www.wikidata.org") return { entities: {
+      Q2: { claims: { P154: [{ mainsnak: { datavalue: { value: "Buchanan Bears logo.png" } } }], P856: [{ mainsnak: { datavalue: { value: "https://buchanan.cusd.com/" } } }] } },
+      Q3: { claims: { P154: [{ mainsnak: { datavalue: { value: "Buchanan Bucks.svg" } } }] } } } };
+    if (u.host === "commons.wikimedia.org") return { query: { pages: [{ title: "File:Buchanan Bears logo.png", imageinfo: [{ thumburl: "https://upload.wikimedia.org/bb.png" }] }, { title: "File:Buchanan Bucks.svg", imageinfo: [{ thumburl: "https://upload.wikimedia.org/bucks.png" }] }] } };
+    throw new Error("unexpected " + url);
+  };
+  const hits = await findLogos("Buchanan", { get });
+  assert.deepEqual(hits.slice(0, 2).map((h) => h.url), ["https://upload.wikimedia.org/bb.png", "https://upload.wikimedia.org/bucks.png"], "school logos first");
+  assert.ok(hits.some((h) => h.source === "Website" && h.url.includes("buchanan.cusd.com")), "website icon offered");
+  assert.equal(autoPick("Buchanan", hits), null, "two Buchanan High Schools: ask the coach");
+  assert.equal(autoPick("Buchanan", hits, "California")?.url, "https://upload.wikimedia.org/bb.png", "the one in our region");
+  assert.deepEqual(await findLogos("Nowhere Elite 17", { get }), []);
+});

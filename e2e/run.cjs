@@ -23,7 +23,7 @@ function headersFor(urlPath) {
     if (!/^\s/.test(line)) { const pat = line.trim(); match = pat === urlPath || (pat.endsWith("*") && urlPath.startsWith(pat.slice(0, -1))); continue; }
     if (match) { const i = line.indexOf(":"); out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
   }
-  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*");
+  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*").replace("img-src 'self'", "img-src 'self' http://localhost:* http://127.0.0.1:*");
   return out;
 }
 
@@ -550,6 +550,63 @@ const scenarios = {
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1500);
     ok("setup check finds the notify function", (await A.locator(".check-list li.sc-ok", { hasText: "Family notifications" }).count()) === 1);
     ok("notify: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
+    await A.context().close(); await P.context().close();
+  },
+  async pictures(browser) {
+    // a stand-in for Wikipedia, Wikidata, Commons and the logo files (the real ones aren't reachable from tests)
+    const fakeWiki = async (ctx) => {
+      await ctx.route("https://en.wikipedia.org/**", (r) => { const q = new URL(r.request().url()).searchParams.get("gsrsearch") || ""; r.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ query: { pages: /clovis north/i.test(q) ? [
+        { title: "Clovis North High School", index: 1, description: "Public high school in Fresno, California, United States", pageprops: { wikibase_item: "Q1" }, thumbnail: { source: "https://upload.wikimedia.org/cn-campus.png" } }]
+        : /buchanan/i.test(q) ? [{ title: "Buchanan High School (Clovis, California)", index: 1, pageprops: { wikibase_item: "Q2" } }, { title: "Buchanan High School (Michigan)", index: 2, pageprops: { wikibase_item: "Q3" } }] : [] } }) }); });
+      await ctx.route("https://www.wikidata.org/**", (r) => r.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ entities: { Q1: { claims: { P154: [{ mainsnak: { datavalue: { value: "Clovis North logo.png" } } }] } }, Q2: { claims: { P154: [{ mainsnak: { datavalue: { value: "Buchanan Bears.png" } } }] } }, Q3: { claims: { P154: [{ mainsnak: { datavalue: { value: "Buchanan Bucks.png" } } }] } } } }) }));
+      await ctx.route("https://commons.wikimedia.org/**", (r) => r.fulfill({ contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ query: { pages: [{ title: "File:Clovis North logo.png", imageinfo: [{ thumburl: "https://upload.wikimedia.org/cn.png" }] }, { title: "File:Buchanan Bears.png", imageinfo: [{ thumburl: "https://upload.wikimedia.org/bb.png" }] }, { title: "File:Buchanan Bucks.png", imageinfo: [{ thumburl: "https://upload.wikimedia.org/bucks.png" }] }] } }) }));
+      await ctx.route("https://upload.wikimedia.org/**", (r) => r.fulfill({ contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(path.join(__dirname, "fixtures", /bb|bucks/.test(r.request().url()) ? "logo-bb.png" : "logo-cn.png")) }));
+    };
+    const A = await newPage(browser); await fakeWiki(A.context());
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("pics@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
+    // our logo: found by name
+    await go(A, "team"); const teamCard = A.locator(".card", { has: A.getByText("Team logo") });
+    await teamCard.getByRole("button", { name: "Find logo" }).click(); await A.waitForTimeout(800);
+    ok("logo search shows the school's logo first", (await teamCard.locator(".logo-hit").first().getAttribute("aria-label")) === "Use Clovis North High School · logo", await teamCard.locator(".logo-find").innerText().catch(() => ""));
+    { const ax = await a11y(A); ok("logo picker controls all have names", !ax.length, ax.join(" | ")); }
+    await teamCard.locator(".logo-hit").first().click(); await A.waitForTimeout(300);
+    ok("picking a logo sets it", (await teamCard.locator("img.tlogo").getAttribute("src")) === "https://upload.wikimedia.org/cn.png");
+    // a player's photo: uploaded for the team
+    const row = A.locator(".roster-tbl tr", { has: A.locator("input[value=Nia]") });
+    await row.locator("input[type=file][accept='image/*']").setInputFiles(path.join(__dirname, "fixtures/photo.jpg")); await A.waitForTimeout(1200);
+    const photo = await row.locator("img.avatar").getAttribute("src").catch(() => "");
+    ok("a player photo uploads to the team's pictures", /\/storage\/v1\/object\/public\/media\/.+\/player-.+\.jpg\?v=/.test(photo || ""), photo || "(none)");
+    ok("the photo is a small square", await A.evaluate(async (u) => { const i = new Image(); i.src = u; await i.decode(); return i.naturalWidth === 360 && i.naturalHeight === 360; }, photo));
+    // a new opponent gets its logo by itself: two Buchanan High Schools, one in our state
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(1500);
+    const logos = async () => (await A.locator(".board .tlogo, .gs .tlogo").evaluateAll((els) => els.map((e) => e.getAttribute("src") || "initials"))).join(" ");
+    await go(A, "live"); await A.waitForTimeout(400);
+    ok("the opponent's logo is found automatically (the school in our state)", /cn\.png .*bb\.png/.test(await logos()), await logos());
+    for (let i = 0; i < 3; i++) { await go(A, "track"); await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); }
+    await A.locator(".pl", { hasText: "Nia" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape");
+    // families see them
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1000);
+    await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
+    const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    const P = await newPage(browser, { phone: true }); await fakeWiki(P.context());
+    await P.goto(teamUrl); await P.waitForTimeout(1500);
+    ok("team page shows the team logo", (await P.locator(".lv-team-logo").getAttribute("src")) === "https://upload.wikimedia.org/cn.png");
+    ok("live score on the team page shows both logos", (await P.locator(".lv-livecard img.tlogo").count()) === 2);
+    await P.goto(teamUrl + "/roster"); await P.waitForTimeout(800);
+    ok("roster shows the player's photo", (await P.locator(".lv-rp", { hasText: "Nia" }).locator("img.avatar").count()) === 1);
+    { const loaded = await P.locator(".lv-rp img.avatar").first().evaluate((i) => i.complete && i.naturalWidth > 0); ok("the photo loads on the public site", loaded); }
+    if (process.env.SHOTS) { await P.goto(teamUrl); await P.waitForTimeout(800); await P.screenshot({ path: path.join(process.env.SHOTS, "live-logos.png"), fullPage: true }); await P.goto(teamUrl + "/roster"); await P.waitForTimeout(800); await P.screenshot({ path: path.join(process.env.SHOTS, "live-roster-photos.png"), fullPage: true }); }
+    // graphics carry the pictures
+    await go(A, "team"); await A.locator(".roster-tbl tr", { has: A.locator("input[value=Nia]") }).getByRole("button", { name: "View" }).click();
+    await A.waitForTimeout(400);
+    ok("player page shows the photo", (await A.locator(".hero img.avatar").count()) === 1);
+    { await A.getByRole("button", { name: "Stat graphic" }).click();
+      const g = await download(A, () => A.getByRole("button", { name: /^Last match: vs / }).click(), 15000); ok("stat graphic with a photo saves", g.size > 20000, String(g.size));
+      if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic-photo.png")); }
+    ok("pictures: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },
   async overlay(browser) {

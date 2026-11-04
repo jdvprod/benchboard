@@ -6,6 +6,8 @@
  */
 import { siteUrl } from "./links";
 import { announce } from "./notify";
+import { uploadPending } from "./media";
+import { autoLogo } from "./autoLogo";
 import { all, emit, get, hooks, remove, save, setClockOffset, state } from "../data/store";
 import { StoreName } from "../data/model";
 import { CloudError, cloudAvailable, currentUser, rest, rpc, upsert } from "./client";
@@ -131,6 +133,7 @@ export function syncNow(): Promise<void> {
       setStatus(blocked ? { state: "error", error: "You have view-only access to this team, so changes made on this device stay here." } : { state: "idle", last: Date.now() });
       if (!blocked) await announce((t) => roleOn(t), (t) => S.teams.includes(t)).catch(() => {});
       if (!blocked) await streamLinks().catch(() => {});
+      if (!blocked) await uploadPending(S.teams, (t) => roleOn(t) === "owner" || roleOn(t) === "coach").catch(() => {});
     } catch (e) {
       setStatus({ state: "error", error: e instanceof CloudError ? e.message : "Sync failed. It will try again." });
     } finally { running = null; }
@@ -259,6 +262,7 @@ export function startSync() {
   hooks.change = markDirty;
   hooks.who = () => currentUser()?.email || null;
   hooks.teamRemoved = (id) => unlinkTeam(id);
+  hooks.newOpponent = (o) => { autoLogo(o).catch(() => {}); };
   const tick = () => { if (document.visibilityState === "visible") syncNow(); };
   setInterval(() => {
     const live = all("matches").some((m) => m.status === "live" && isLinked(m.teamId));

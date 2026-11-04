@@ -43,6 +43,10 @@ export interface Team {
   tournaments?: import("../tournament/model").Tournament[];
   /** A stream overlay link is in use: every live match gets a gamecast link automatically so the overlay updates fast. */
   streamOverlay?: boolean;
+  /** Team logo (https, or data: until uploaded). */
+  logo?: string;
+  /** Where the team plays (from its Wikipedia article, e.g. "California"): narrows opponent logo searches. */
+  region?: string;
   formationPresets?: { id: string; name: string; f: import("../sports/volleyball/formations").Formations }[];
 }
 
@@ -61,6 +65,8 @@ export interface Player {
   notes: string;
   /** The family asked to keep this player off public pages: gamecasts and the season page show only the jersey number, and share graphics leave them out. */
   hidePublic?: boolean;
+  /** Head shot: an uploaded picture (https) or, before the team syncs, a small picture kept on this device (data:). */
+  photo?: string;
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }
@@ -97,6 +103,8 @@ export interface Match {
   tournamentId?: string;
   /** Families were told this match started / finished (Benchboard Live notifications). */
   notified?: { start?: boolean; final?: boolean };
+  /** The opponent's logo when the match was played (copied from Opponent.logo so public pages can show it). */
+  oppLogo?: string;
 }
 
 /** Events recorded on one device for one match. Several devices can record the same match. */
@@ -105,7 +113,7 @@ export interface EventLog { id: string; matchId: string; device: string; events:
   by?: string; job?: "all" | "score" | "stats"; groups?: string[]; seen?: number }
 
 export interface PlanItem { id: string; text: string; done?: boolean }
-export interface Opponent { id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: Record<string, { name?: string; pos?: string }> }
+export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: Record<string, { name?: string; pos?: string }> }
 export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string }
 
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;

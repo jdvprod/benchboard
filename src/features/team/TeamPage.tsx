@@ -1,11 +1,12 @@
 import { recordOf } from "../../sports/volleyball/engine";
+import { LogoPicker, PhotoPicker, teamLogoPick } from "../../ui/Pictures";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
 import { gradCell, heightCell, parseRosterLine, positionCell } from "./parseRoster";
 import { ImportStats } from "./ImportStats";
 import { LEGAL, LEGAL_VERSION } from "../../app/legal";
 import { currentUser } from "../../cloud/client";
-import { todayISO, all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey } from "../../data/store";
+import { todayISO, all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey, setOpponentLogo } from "../../data/store";
 import { Player } from "../../data/model";
 import { POSITIONS } from "../../sports/volleyball/actions";
 import { Card, ConfirmButton, download, fmtDate, plural } from "../../ui/kit";
@@ -42,6 +43,8 @@ function TeamInfo() {
         <label className="field"><span className="label">Team name</span><input defaultValue={t.name} onBlur={(e) => e.target.value.trim() && setTeamPatch({ name: e.target.value.trim() })} /></label>
         <label className="field"><span className="label">Level</span><input defaultValue={t.level} onBlur={(e) => setTeamPatch({ level: e.target.value.trim() })} /></label>
       </div>
+      <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, your team page, the stream overlay and share graphics.</p>
+        <LogoPicker kind="team" id={t.id} name={t.name} value={t.logo} onPick={teamLogoPick} /></div>
       <div><div className="label">Season</div>
         <div className="row" style={{ marginTop: 6 }}>
           <select className="input" style={{ width: "auto" }} value={t.activeSeasonId || ""} onChange={(e) => setTeamPatch({ activeSeasonId: e.target.value })}>{seasons.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -83,12 +86,12 @@ function Roster() {
       <thead><tr><th className="l">#</th><th className="l">First</th><th className="l">Last</th><th className="l">Pos</th><th className="l">Grad</th><th className="l">Height</th><th /></tr></thead>
       <tbody>{shown.map((p) => <tr key={[p.id, p.num, p.first, p.last, p.grad, p.height].join("|")} style={p.active ? undefined : { opacity: 0.55 }}>
         <td className="l"><input id={"num-" + p.id} className="input" style={{ width: 56 }} inputMode="numeric" defaultValue={p.num} onBlur={(e) => upd(p.id, "num", e.target.value.trim())} aria-label="Jersey number" /></td>
-        <td className="l"><input className="input" style={{ minWidth: 90 }} placeholder="First" defaultValue={p.first} onBlur={(e) => upd(p.id, "first", e.target.value.trim())} aria-label="First name" /></td>
-        <td className="l"><input className="input" style={{ minWidth: 90 }} placeholder="Last" defaultValue={p.last} onBlur={(e) => upd(p.id, "last", e.target.value.trim())} aria-label="Last name" /></td>
+        <td className="l"><input className="input" style={{ minWidth: 80 }} placeholder="First" defaultValue={p.first} onBlur={(e) => upd(p.id, "first", e.target.value.trim())} aria-label="First name" /></td>
+        <td className="l"><input className="input" style={{ minWidth: 80 }} placeholder="Last" defaultValue={p.last} onBlur={(e) => upd(p.id, "last", e.target.value.trim())} aria-label="Last name" /></td>
         <td className="l"><select className="input" style={{ width: 78 }} value={p.pos} onChange={(e) => upd(p.id, "pos", e.target.value)} aria-label="Position">{POSITIONS.map((x) => <option key={x}>{x}</option>)}</select></td>
         <td className="l"><input className="input" style={{ width: 72 }} inputMode="numeric" defaultValue={p.grad ?? ""} onBlur={(e) => upd(p.id, "grad", e.target.value ? +e.target.value : null)} aria-label="Graduation year" placeholder="Grad" /></td>
         <td className="l"><input className="input" style={{ width: 66 }} defaultValue={p.height} onBlur={(e) => upd(p.id, "height", e.target.value.trim())} aria-label="Height" placeholder={`5'9"`} /></td>
-        <td><div className="row" style={{ flexWrap: "nowrap" }}><button className="btn sm" onClick={() => go("player", p.id)}>View</button>{p.active ? <button className="btn sm ghost" onClick={() => upd(p.id, "active", false)} title="Hide from the roster; stats are kept">Remove</button> : <button className="btn sm" onClick={() => upd(p.id, "active", true)}>Restore</button>}</div></td>
+        <td><div className="row" style={{ flexWrap: "nowrap" }}><PhotoPicker p={p} compact /><button className="btn sm" onClick={() => go("player", p.id)}>View</button>{p.active ? <button className="btn sm ghost" onClick={() => upd(p.id, "active", false)} title="Hide from the roster; stats are kept">Remove</button> : <button className="btn sm" onClick={() => upd(p.id, "active", true)}>Restore</button>}</div></td>
       </tr>)}</tbody></table></div>}
     {ps.some((p) => !p.active) && <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => setShowInactive(!showInactive)}>{showInactive ? "Hide removed players" : "Show removed players"}</button>}
   </Card>;
@@ -133,6 +136,7 @@ function Opponents() {
           <button className="btn sm" disabled={!name.trim()} onClick={() => { const n = { id: uid("o"), teamId: team()!.id, name: name.trim(), notes: "", scout: "", scoutAt: null }; save("opponents", n); setSel(n.id); setName(""); }}>Add</button>
         </div>
         {o && <>
+          <LogoPicker key={o.id} kind="opp" id={o.id} name={o.name} value={o.logo} region={team()!.region} onPick={(u) => setOpponentLogo(o.id, u)} />
           <p className="small muted">{played.length ? `Played ${played.length}${rec[0] + rec[1] ? ` · record ${rec[0]}–${rec[1]}` : ""}` : "No matches recorded against them yet."}</p>
           <label className="field"><span className="label">Notes on {o.name} (kept for every match against them)</span><textarea rows={4} key={o.id} defaultValue={o.notes} placeholder="Best hitters, setter tendencies, serve targets, what worked last time…" onBlur={(e) => patch("opponents", o.id, { notes: e.target.value })} /></label>
           <div className="row"><button className="btn sm primary" onClick={() => go("matchup", o.id)}>Open matchup</button><button className="btn sm" onClick={() => { setUi({ courtTab: "tendency" }); go("court", o.id); }}>Their tendencies on the court</button><ConfirmButton className="btn sm ghost" onConfirm={() => { remove("opponents", o.id); setSel(""); }}>Delete opponent</ConfirmButton></div>

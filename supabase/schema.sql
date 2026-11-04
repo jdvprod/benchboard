@@ -145,12 +145,17 @@ create or replace function public.public_events(ev jsonb) returns jsonb
 language sql immutable as $$
   select coalesce(jsonb_agg(e), '[]'::jsonb) from jsonb_array_elements(coalesce(ev, '[]'::jsonb)) e where e->>'t' is distinct from 'TAG'
 $$;
+-- A picture link a public page may show: https only (pictures still embedded in a record stay private and heavy).
+create or replace function public.public_url(u text) returns text
+language sql immutable as $$ select case when u ~ '^https://' then left(u, 600) end $$;
 -- A player on a public page: first name and last initial, or only the number when the family asked to keep them off public pages.
+-- Photos only for players the family didn't keep off public pages, and only uploaded ones (never pictures embedded in the record).
 create or replace function public.public_player(d jsonb) returns jsonb
 language sql immutable as $$
   select jsonb_build_object('id', d->>'id', 'num', d->>'num', 'pos', d->>'pos',
     'first', case when coalesce((d->>'hidePublic')::boolean, false) then '' else coalesce(d->>'first', '') end,
-    'last', case when coalesce((d->>'hidePublic')::boolean, false) then '' else left(coalesce(d->>'last', ''), 1) end)
+    'last', case when coalesce((d->>'hidePublic')::boolean, false) then '' else left(coalesce(d->>'last', ''), 1) end,
+    'photo', case when coalesce((d->>'hidePublic')::boolean, false) then null else public_url(d->>'photo') end)
 $$;
 
 create or replace function public.watch(share text) returns jsonb
@@ -160,10 +165,10 @@ begin
   select * into s from live_shares where code = upper(trim(share));
   if s.code is null then return null; end if;
   select jsonb_build_object(
-    'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'level', data->>'level') from records where store = 'teams' and id = s.team_id and not deleted),
+    'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'level', data->>'level', 'logo', public_url(data->>'logo')) from records where store = 'teams' and id = s.team_id and not deleted),
     -- only what the gamecast shows: never the coach's match notes, film link or scouting
     'match', (select jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'event', data->>'event', 'status', data->>'status', 'kind', data->>'kind',
-                                        'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'scrim', data->'scrim')
+                                        'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'scrim', data->'scrim', 'oppLogo', public_url(data->>'oppLogo'))
               from records where store = 'matches' and id = s.match_id and not deleted),
     'logs', coalesce((select jsonb_agg(public_events(data->'events')) from records where store = 'logs' and team_id = s.team_id and data->>'matchId' = s.match_id and not deleted), '[]'::jsonb),
     'players', coalesce((select jsonb_agg(public_player(data)) from records where store = 'players' and team_id = s.team_id and not deleted), '[]'::jsonb),
@@ -196,9 +201,9 @@ begin
   select * into s from season_shares where code = upper(trim(share));
   if s.code is null then return null; end if;
   select jsonb_build_object(
-    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
+    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'logo', public_url(data->>'logo'), 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
-    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId'))
+    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId', 'oppLogo', public_url(data->>'oppLogo')))
                          from records where store = 'matches' and team_id = s.team_id and data->>'seasonId' = s.season_id and data->>'kind' = 'match' and not deleted), '[]'::jsonb),
     'logs', coalesce((select jsonb_agg(jsonb_build_object('matchId', l.data->>'matchId', 'events', public_events(l.data->'events')))
                       from records l where l.store = 'logs' and l.team_id = s.team_id and not l.deleted
@@ -308,7 +313,24 @@ create table if not exists public.push_sent (
 );
 alter table public.push_sent enable row level security;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 11 $$;
+-- ---------- pictures: player photos and team logos (Supabase Storage, public bucket "media") ----------
+-- Files live at media/<team id>/...; anyone can view them (they appear on public pages), only a team's coaches can add or change them.
+-- Skipped where Storage isn't installed (plain Postgres in the tests).
+do $do$ begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+      values ('media', 'media', true, 400000, array['image/jpeg', 'image/png', 'image/webp'])
+      on conflict (id) do update set public = true, file_size_limit = 400000, allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp'];
+    drop policy if exists "media add" on storage.objects;
+    create policy "media add" on storage.objects for insert to authenticated with check (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
+    drop policy if exists "media change" on storage.objects;
+    create policy "media change" on storage.objects for update to authenticated using (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
+    drop policy if exists "media remove" on storage.objects;
+    create policy "media remove" on storage.objects for delete to authenticated using (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
+  end if;
+end $do$;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 12 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
