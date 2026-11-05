@@ -355,7 +355,7 @@ test("tournament: pool standings by match record, then set %, then point %; next
   assert.equal(nextGame(t, (id) => id === "m1")?.id, "b");
 });
 
-import { finalMessage, startMessage } from "../src/notify/messages";
+import { finalMessage, startMessage, starLine } from "../src/notify/messages";
 test("notifications: start and final messages read naturally", () => {
   assert.deepEqual(startMessage("Clovis North", "Buchanan", { event: "Fall Classic · Pool", court: "3" }), { title: "Clovis North vs Buchanan is starting", body: "Fall Classic · Pool · Court 3 · Follow it live on Benchboard Live" });
   assert.equal(finalMessage("Clovis North", "Buchanan", 2, 1, [[25, 20], [22, 25], [15, 12]]).title, "Final: Clovis North beat Buchanan 2–1");
@@ -416,4 +416,11 @@ test("pictures: logo artwork box and photo framing math", () => {
   assert.equal(Math.round(c.size), 600); assert.equal(c.sy, 0, "dragged all the way down shows the top");
   const z = cropGeometry(600, 800, { zoom: 2, dx: 0, dy: 0, frame: 260 });
   assert.equal(Math.round(z.size), 300); assert.equal(Math.round(z.sx), 150); assert.equal(Math.round(z.sy), 250);
+});
+
+test("notifications: the final names the standout", () => {
+  assert.equal(starLine([{ name: "Maya C.", K: 14, SA: 1, BLK: 0, D: 6, AST: 0 }, { name: "Ava R.", K: 1, SA: 0, BLK: 0, D: 4, AST: 31 }]), "Maya C. 14 kills");
+  assert.equal(starLine([{ name: "Zoe G.", K: 2, SA: 0, BLK: 3.5, D: 0, AST: 0 }]), "Zoe G. 3.5 blocks");
+  assert.equal(starLine([{ name: "Lily T.", K: 0, SA: 0, BLK: 0, D: 1, AST: 0 }]), undefined);
+  assert.equal(finalMessage("CN", "Buchanan", 2, 0, [[25, 20], [25, 18]], undefined, "Maya C. 14 kills").body, "25-20, 25-18 · Maya C. 14 kills · Box score on Benchboard Live");
 });

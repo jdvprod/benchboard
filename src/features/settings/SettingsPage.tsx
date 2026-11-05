@@ -54,6 +54,7 @@ export function SettingsPage() {
       </div>
     </Card>
     <CloudSettings />
+    <AdminLink />
     <SetupCheck />
     <Card title="Your data">
       <p className="small">Saved on this device: {counts.teams} teams, {counts.players} players, {counts.matches} matches and practices, {counts.events.toLocaleString()} recorded plays.</p>
@@ -97,8 +98,15 @@ function InstallCard() {
   </Card>;
 }
 
+/** Shown only to Benchboard admins. */
+function AdminLink() {
+  const [ok, setOk] = useState(false);
+  useEffect(() => { if (currentUser()) import("../admin/AdminPage").then((m) => m.amAdmin()).then(setOk); }, []);
+  return ok ? <Card title="Admin"><div className="row between"><span className="small">Sign-ups, active teams, live matches, and review of uploaded photos and logos.</span><button className="btn sm primary" onClick={() => go("admin")}>Open admin</button></div></Card> : null;
+}
+
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);

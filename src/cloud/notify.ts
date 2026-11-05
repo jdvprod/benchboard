@@ -3,7 +3,9 @@
 import { all, localISO, patch, replayOf, todayISO } from "../data/store";
 import { fn, CloudError } from "./client";
 import { siteUrl } from "./links";
-import { startMessage, finalMessage } from "../notify/messages";
+import { startMessage, finalMessage, starLine } from "../notify/messages";
+import { aggregate } from "../sports/volleyball/engine";
+import { blocks } from "../sports/volleyball/metrics";
 
 let off = false; // the notify function isn't deployed or has no keys: don't keep asking this session
 const H3 = 3 * 3600_000;
@@ -20,7 +22,10 @@ export async function announce(roleOn: (teamId: string) => string | null, linked
     const game = (t.tournaments || []).flatMap((x) => x.games.map((g) => ({ x, g }))).find((y) => y.g.matchId === m.id);
     let kind: "start" | "final" | null = null, msg: { title: string; body: string } | null = null;
     if (!sent.final && (R.matchOver || (m.status === "done" && R.wonUs + R.wonThem > 0)) && m.date >= yesterday) {
-      kind = "final"; msg = finalMessage(t.name, m.opp, R.wonUs, R.wonThem, R.sets.filter((s) => s.us + s.them).map((s) => [s.us, s.them]), m.event || undefined);
+      const A = aggregate(R.sets), ps = all("players");
+      const star = starLine(Object.entries(A.ps).map(([id, s]) => ({ p: ps.find((x) => x.id === id), s })).filter((x) => x.p && !x.p.hidePublic && x.p.first)
+        .map(({ p, s }) => ({ name: `${p!.first}${p!.last ? " " + p!.last[0] + "." : ""}`, K: s.K, SA: s.SA, BLK: blocks(s), D: s.D, AST: s.AST })));
+      kind = "final"; msg = finalMessage(t.name, m.opp, R.wonUs, R.wonThem, R.sets.filter((s) => s.us + s.them).map((s) => [s.us, s.them]), m.event || undefined, star);
     } else if (!sent.start && !sent.final && m.status === "live" && !R.matchOver && m.date === today && Date.now() - m.createdAt < H3) {
       kind = "start"; msg = startMessage(t.name, m.opp, { event: m.event || undefined, court: game?.g.court });
     }

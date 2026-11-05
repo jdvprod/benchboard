@@ -1,11 +1,13 @@
 /** Keeps one broken screen from blanking the whole app. Data is never touched; the coach can go back or reload. */
 import { Component, ReactNode } from "react";
+import { reportError } from "./errors";
 
 export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string }, { err: Error | null }> {
   state = { err: null as Error | null };
   static getDerivedStateFromError(err: Error) { return { err }; }
   componentDidCatch(err: Error) {
     try { console.error("Benchboard screen error:", err); } catch { /* ignore */ }
+    if (!isLoadError(err)) reportError(err, "screen");
     // a page's code couldn't load (usually a new version was published): reload once to pick it up
     if (isLoadError(err) && navigator.onLine) try { if (!sessionStorage.getItem("bs-reloaded")) { sessionStorage.setItem("bs-reloaded", "1"); location.reload(); } } catch { /* ignore */ }
   }

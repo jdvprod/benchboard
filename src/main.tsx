@@ -1,4 +1,5 @@
 import { initInstall } from "./app/install";
+import { watchErrors } from "./app/errors";
 import { createRoot } from "react-dom/client";
 import "./styles/app.css";
 import { App } from "./app/App";
@@ -6,6 +7,7 @@ import { init, toast } from "./data/store";
 import { restoreTeams, startSync } from "./cloud/sync";
 import { consumeAuthRedirect, currentUser } from "./cloud/client";
 initInstall();
+watchErrors();
 
 consumeAuthRedirect().finally(() => {
   createRoot(document.getElementById("root")!).render(<App />);

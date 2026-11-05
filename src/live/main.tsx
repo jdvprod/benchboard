@@ -6,6 +6,7 @@ import "../styles/app.css";
 import "./live.css";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { watchErrors } from "../app/errors";
 import { cloudAvailable, rpc } from "../cloud/client";
 import { applyTheme } from "../app/theme";
 import { useWakeLock } from "../ui/wakeLock";
@@ -85,4 +86,5 @@ function LiveApp() {
   return <Landing />;
 }
 
+watchErrors();
 createRoot(document.getElementById("root")!).render(<LiveApp />);

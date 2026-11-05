@@ -4,6 +4,7 @@ import "../styles/app.css";
 import "./recruit.css";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { watchErrors } from "../app/errors";
 import { cloudAvailable, rpc } from "../cloud/client";
 import { ClipPlayer } from "../ui/ClipPlayer";
 import { Clip, videoKind } from "../film/clips";
@@ -142,4 +143,5 @@ function RecruitApp() {
   if (r[0] === "b" && r[1]) return <Board key={r[1]} code={r[1].toUpperCase()} />;
   return <Landing />;
 }
+watchErrors();
 createRoot(document.getElementById("root")!).render(<RecruitApp />);

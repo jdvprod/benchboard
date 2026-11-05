@@ -616,6 +616,22 @@ const scenarios = {
     { await A.getByRole("button", { name: "Stat graphic" }).click();
       const g = await download(A, () => A.getByRole("button", { name: /^Last match: vs / }).click(), 15000); ok("stat graphic with a photo saves", g.size > 20000, String(g.size));
       if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic-photo.png")); }
+    // the people who run Benchboard review uploads and take one down
+    await go(A, "settings"); await A.waitForTimeout(600); ok("the admin console is hidden from coaches", (await A.getByRole("button", { name: "Open admin" }).count()) === 0);
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=pics%40e2e.test`, { headers: { apikey: "anon" } });
+    await A.reload(); await go(A, "settings"); await A.waitForTimeout(800);
+    await A.evaluate(() => setTimeout(() => { throw new Error("e2e: deliberate crash"); }, 0)); await A.waitForTimeout(600); A.errors = A.errors.filter((e) => !/deliberate crash/.test(e));
+    { const errs = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/errors`, { headers: { apikey: "anon" } })).json(); ok("a crash is reported with the version and screen, no team data", errs.length === 1 && errs[0].message === "e2e: deliberate crash" && errs[0].page === "settings" && /^\d+\.\d+\.\d+$/.test(errs[0].version) && !JSON.stringify(errs[0]).includes("Clovis"), JSON.stringify(errs)); }
+    await A.getByRole("button", { name: "Open admin" }).click(); await A.waitForTimeout(800);
+    ok("admin console lists the crash", (await A.locator(".admin-errs li", { hasText: "deliberate crash" }).count()) === 1);
+    ok("admin console shows accounts, teams and live matches", /Accounts/.test(await A.locator(".kpis").innerText()) && (await A.locator("td", { hasText: "Clovis North" }).count()) >= 1);
+    const photoFig = A.locator(".admin-pics figure", { hasText: "Player photo" });
+    ok("admin sees uploaded photos and logos", (await photoFig.count()) === 1 && (await A.locator(".admin-pics figure").count()) >= 3, String(await A.locator(".admin-pics figure").count()));
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "admin.png"), fullPage: true });
+    await photoFig.getByRole("button", { name: "Take down" }).click(); await photoFig.getByRole("button", { name: "Take down?" }).click(); await A.waitForTimeout(500);
+    ok("a picture taken down leaves the admin list", (await A.locator(".admin-pics figure", { hasText: "Player photo" }).count()) === 0);
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
+    ok("…and the player has no photo anymore", (await A.locator(".roster-tbl tr", { has: A.locator("input[value=Nia]") }).locator("img").count()) === 0);
     ok("pictures: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },

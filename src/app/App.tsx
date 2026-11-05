@@ -28,6 +28,7 @@ const CourtPage = lazy(() => import("../features/court/CourtPage").then((m) => (
 const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const PlayerPage = lazy(() => import("../features/player/PlayerPage").then((m) => ({ default: m.PlayerPage })));
 const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ default: m.LivePage })));
+const AdminPage = lazy(() => import("../features/admin/AdminPage").then((m) => ({ default: m.AdminPage })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
@@ -91,6 +92,7 @@ export function App() {
     case "court": body = <CourtPage />; break;
     case "team": body = <TeamPage sub={route.id} />; break;
     case "settings": body = <SettingsPage />; break;
+    case "admin": body = <AdminPage />; break;
     case "player": body = <PlayerPage id={route.id!} />; break;
     case "live": body = <LivePage />; break;
     default: body = <TrackPage />;

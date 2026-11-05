@@ -10,7 +10,7 @@ trap '"$BIN/pg_ctl" -D "$DIR/data" stop -m fast >/dev/null 2>&1 || true; rm -rf 
 q() { psql -h "$DIR" -p "$PORT" -U "$(whoami)" -d postgres -v ON_ERROR_STOP=1 -qAt "$@"; }
 q <<'SQL'
 create schema auth;
-create table auth.users (id uuid primary key, email text);
+create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now());
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create role anon; create role authenticated;
 SQL
@@ -54,7 +54,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "12" "schema version is reported"
+check "select schema_version();" "13" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -82,4 +82,21 @@ expect "$(q -c "select count(*) from records where team_id = 't2';")" "0" "teams
 expect "$(q -c "select count(*) from members where user_id = '$A';")" "0" "memberships on other teams are removed"
 expect "$(q -c "select count(*) from teams_cloud where id = 't3';")" "1" "other people's teams stay"
 expect "$(q -c "set role anon; select delete_my_account();" 2>&1 | grep -c 'permission denied')" "1" "signed-out visitors can't call it"
+# admin console: only people in admins
+q -c "insert into auth.users (id, email) values ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'admin@example.com');" >/dev/null
+asall() { q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$1', false); $2" 2>&1; }
+expect "$(asall $B "select admin_overview();" | grep -c 'Admins only')" "1" "non-admins can't see the admin console"
+expect "$(as $B "select is_admin();")" "f" "is_admin says no for coaches"
+q -c "insert into admins values ('cccccccc-cccc-cccc-cccc-cccccccccccc');" >/dev/null
+C=cccccccc-cccc-cccc-cccc-cccccccccccc
+q -c "set role anon; insert into app_errors (version, message, page) values ('2.1.0', 'x is undefined', 'stats');" >/dev/null
+expect "$(q -c "set role anon; select count(*) from app_errors;" | tail -1)" "0" "crash reports can be sent but not read by visitors"
+expect "$(q -c "set role anon; insert into app_errors (message) values (repeat('x', 400));" 2>&1 | grep -c 'row-level security')" "1" "oversized crash reports are refused"
+expect "$(as $C "select (admin_overview()->>'users')::int >= 2;")" "t" "admins see the overview"
+expect "$(as $C "select admin_overview()->'errors'->0->>'message';")" "x is undefined" "admins see crash reports"
+expect "$(as $C "select admin_pictures();")" "[]" "pictures list works without Storage installed"
+q -c "update records set data = data || '{\"photo\":\"https://x.supabase.co/storage/v1/object/public/media/t1/player-p1.jpg?v=1\"}' where id = 'p1';" >/dev/null
+as $C "select admin_remove_picture('t1/player-p1.jpg');" >/dev/null
+expect "$(q -c "select data ? 'photo' from records where id = 'p1';")" "f" "taking a picture down removes it from the player"
+expect "$(asall $B "select admin_remove_picture('t1/x.jpg');" | grep -c 'Admins only')" "1" "coaches can't take pictures down"
 echo "schema OK"

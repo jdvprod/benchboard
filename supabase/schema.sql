@@ -330,7 +330,84 @@ do $do$ begin
   end if;
 end $do$;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 12 $$;
+-- ---------- admin console (the people who run Benchboard) ----------
+-- Add yourself once, in the SQL Editor:  insert into public.admins select id from auth.users where email = 'you@example.com';
+create table if not exists public.admins (user_id uuid primary key references auth.users(id) on delete cascade, added_at timestamptz not null default now());
+alter table public.admins enable row level security;   -- no policies: only these functions read it
+create or replace function public.is_admin() returns boolean
+language sql stable security definer set search_path = public as $$ select exists (select 1 from admins where user_id = auth.uid()) $$;
+grant execute on function public.is_admin() to authenticated;
+
+-- Crash reports from the app: the error, version and screen only (never team data). Anyone can send one; only admins read them.
+create table if not exists public.app_errors (
+  id bigserial primary key, at timestamptz not null default now(), uid uuid default auth.uid(),
+  version text, message text not null, stack text, page text, agent text
+);
+alter table public.app_errors enable row level security;
+drop policy if exists "errors send" on public.app_errors;
+create policy "errors send" on public.app_errors for insert to anon, authenticated
+  with check (length(message) <= 300 and length(coalesce(stack, '')) <= 2000 and length(coalesce(page, '')) <= 80 and length(coalesce(agent, '')) <= 200 and length(coalesce(version, '')) <= 20);
+grant insert on public.app_errors to anon, authenticated;
+grant usage on sequence public.app_errors_id_seq to anon, authenticated;
+create index if not exists app_errors_at on public.app_errors (at);
+
+-- How Benchboard is doing: accounts, teams, matches, what's live now, and the most active teams.
+create or replace function public.admin_overview() returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+declare out jsonb;
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  select jsonb_build_object(
+    'users', (select count(*) from auth.users),
+    'users7', (select count(*) from auth.users where created_at > now() - interval '7 days'),
+    'teams', (select count(*) from teams_cloud),
+    'activeTeams7', (select count(distinct team_id) from records where updated_at > now() - interval '7 days'),
+    'matches', (select count(*) from records where store = 'matches' and not deleted and data->>'kind' = 'match'),
+    'matches7', (select count(*) from records where store = 'matches' and not deleted and data->>'kind' = 'match' and updated_at > now() - interval '7 days'),
+    'liveNow', (select count(*) from records where store = 'matches' and not deleted and data->>'status' = 'live' and updated_at > now() - interval '3 hours'),
+    'teamPages', (select count(*) from season_shares), 'gamecasts', (select count(*) from live_shares), 'recruitProfiles', (select count(*) from recruit_shares),
+    'notifyPhones', (select count(*) from push_subs),
+    'errors', coalesce((select jsonb_agg(e order by e->>'last' desc) from (
+      select jsonb_build_object('message', message, 'count', count(*), 'users', count(distinct uid), 'last', max(at), 'version', max(version), 'page', max(page), 'stack', max(stack)) e
+      from app_errors where at > now() - interval '14 days' group by message order by max(at) desc limit 20) q), '[]'::jsonb),
+    'recentUsers', coalesce((select jsonb_agg(jsonb_build_object('email', email, 'at', created_at) order by created_at desc) from (select email, created_at from auth.users order by created_at desc limit 12) u), '[]'::jsonb),
+    'teamsList', coalesce((select jsonb_agg(x order by x->>'last' desc) from (
+      select jsonb_build_object('id', t.id, 'name', t.name, 'members', (select count(*) from members m where m.team_id = t.id),
+        'matches', (select count(*) from records r where r.team_id = t.id and r.store = 'matches' and not r.deleted and r.data->>'kind' = 'match'),
+        'last', (select max(updated_at) from records r where r.team_id = t.id), 'created', t.created_at) x
+      from teams_cloud t order by (select max(updated_at) from records r where r.team_id = t.id) desc nulls last limit 25) q), '[]'::jsonb),
+    'at', now()) into out;
+  return out;
+end $$;
+grant execute on function public.admin_overview() to authenticated;
+
+-- Pictures teams uploaded, newest first, so an admin can take down anything that isn't appropriate.
+create or replace function public.admin_pictures(lim int default 60) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare out jsonb;
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  if not exists (select 1 from pg_namespace where nspname = 'storage') then return '[]'::jsonb; end if;
+  execute $q$ select coalesce(jsonb_agg(jsonb_build_object('path', o.name, 'at', o.created_at, 'team', (select name from public.teams_cloud t where t.id = (storage.foldername(o.name))[1])) order by o.created_at desc), '[]'::jsonb)
+             from (select name, created_at from storage.objects where bucket_id = 'media' order by created_at desc limit $1) o $q$ into out using least(greatest(lim, 1), 200);
+  return out;
+end $$;
+grant execute on function public.admin_pictures(int) to authenticated;
+
+-- Take a picture down everywhere: the file, and every player, team, opponent or match that shows it.
+create or replace function public.admin_remove_picture(path text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  if path is null or path = '' or path like '%..%' then raise exception 'Bad path'; end if;
+  if exists (select 1 from pg_namespace where nspname = 'storage') then execute 'delete from storage.objects where bucket_id = ''media'' and name = $1' using path; end if;
+  update records set data = data - 'photo', u = (extract(epoch from now()) * 1000)::bigint, updated_at = now() where store = 'players' and data->>'photo' like '%/media/' || path || '%';
+  update records set data = data - 'logo', u = (extract(epoch from now()) * 1000)::bigint, updated_at = now() where store in ('teams', 'opponents') and data->>'logo' like '%/media/' || path || '%';
+  update records set data = data - 'oppLogo', u = (extract(epoch from now()) * 1000)::bigint, updated_at = now() where store = 'matches' and data->>'oppLogo' like '%/media/' || path || '%';
+end $$;
+grant execute on function public.admin_remove_picture(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 13 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

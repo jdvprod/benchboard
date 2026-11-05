@@ -15,12 +15,16 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 1. Supabase (the database and accounts)
 
-1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 12: it also makes the `media` storage for photos and logos.
+1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 13: it also makes the `media` storage for photos and logos, crash reports and the admin console.
 2. **Authentication → URL Configuration**: Site URL = your site address. Redirect URLs: add `https://YOUR-SITE/**`.
 3. **Authentication → Emails**: either turn off **Confirm email** (Sign In / Providers), or connect an email provider under **SMTP Settings** (Resend, Postmark, SendGrid). Supabase's built-in email only reaches your own team and a few emails an hour, so real coaches won't get password-reset emails without it.
 4. **Edge Functions → Deploy a new function → Via Editor**:
    - `ai`: paste `supabase/functions/ai/index.ts`. Secret: `ANTHROPIC_API_KEY`.
    - `notify`: paste `supabase/functions/notify/index.ts`, and turn **off** "Verify JWT" for it. Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (make them in the app: Settings → Setup check → Make notification keys) and `VAPID_SUBJECT` (`mailto:` + your contact email).
+
+5. **Make yourself an admin** (SQL Editor, after you've created your account in the app):
+   `insert into public.admins select id from auth.users where email = 'you@example.com';`
+   Settings in the app then shows **Admin**: sign-ups, active teams, live matches, crash reports, and every uploaded photo and logo with a **Take down** button.
 
 ## 2. Cloudflare (the website)
 
@@ -50,7 +54,7 @@ On phone B (parent):
 6. Tap **Turn on notifications** (on iPhone: Share → Add to Home Screen first, open from there).
 7. Phone A finishes the match. Phone B gets "Final: …" within a minute.
 
-Also: Live tab → **Stream overlay** → Preview shows the score bug; a player's page → **Stat graphic** saves an image.
+Also: Settings → **Admin** shows your test team, the uploads and no problems. Live tab → **Stream overlay** → Preview shows the score bug; a player's page → **Stat graphic** saves an image.
 
 ## 5. After launch
 
