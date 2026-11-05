@@ -15,6 +15,7 @@ import { Game, replayOf, useSeason, useWatch } from "./data";
 import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
 import { GameOverlay, TeamOverlay } from "./Overlay";
+import { TeamLogo } from "../ui/Logo";
 
 const parse = () => (location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean));
 const query = () => location.hash.split("?")[1] || "";
@@ -35,7 +36,7 @@ function TeamRoute({ code, rest }: { code: string; rest: string[] }) {
   const { d, err, got } = useSeason(code); useTick();
   useEffect(() => { if (d?.team) { document.title = `${d.team.name} · Benchboard Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.team?.color]);
   useWakeLock(!!d?.matches.some((m) => m.status === "live") && rest[0] === "m");
-  useEffect(() => { if (d?.team) try { localStorage.setItem("bbl-last", JSON.stringify({ code, name: d.team.name })); } catch { /* private window */ } }, [code, d?.team?.name]);
+  useEffect(() => { if (d?.team) rememberTeam({ code, name: d.team.name, logo: d.team.logo || null }); }, [code, d?.team?.name, d?.team?.logo]);
   if (!d) return <Shell><p className="lv-empty">{err || tr("Loading…")}</p></Shell>;
   const view = rest[0] === "m" ? { match: rest[1] } : rest[0] === "p" ? { player: rest[1] } : { tab: rest[0] };
   return <Shell team={d.team?.name} home={`#/t/${code}`}><TeamHub code={code} d={d} fresh={freshText(got, err)} view={view} /></Shell>;
@@ -50,12 +51,16 @@ function GameRoute({ code }: { code: string }) {
   return <Shell team={d.team?.name}><GameView g={g} team={d.team?.name || "Us"} players={d.players} fresh={freshText(got, err)} logo={d.team?.logo} /></Shell>;
 }
 
-const lastTeam = (): { code: string; name: string } | null => { try { return JSON.parse(localStorage.getItem("bbl-last") || "null"); } catch { return null; } };
+/** Teams this phone has followed, most recent first (a family with kids on several teams sees them all on the home page). */
+type Followed = { code: string; name: string; logo?: string | null };
+const myTeams = (): Followed[] => { try { const a = JSON.parse(localStorage.getItem("bbl-teams") || "null"); if (Array.isArray(a)) return a; const l = JSON.parse(localStorage.getItem("bbl-last") || "null"); return l ? [l] : []; } catch { return []; } };
+function rememberTeam(t: Followed) { try { localStorage.setItem("bbl-teams", JSON.stringify([t, ...myTeams().filter((x) => x.code !== t.code)].slice(0, 8))); } catch { /* private window */ } }
+const forgetTeam = (code: string) => { try { localStorage.setItem("bbl-teams", JSON.stringify(myTeams().filter((x) => x.code !== code))); localStorage.removeItem("bbl-last"); } catch { /* private window */ } };
 
 function Landing() {
-  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), last = lastTeam();
-  // opened from the Home Screen: straight to the team the family follows
-  useEffect(() => { if (last && matchMedia("(display-mode: standalone)").matches) location.replace(`#/t/${last.code}`); }, []);
+  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [mine, setMine] = useState(myTeams);
+  // opened from the Home Screen with one team followed: straight to it
+  useEffect(() => { if (mine.length === 1 && matchMedia("(display-mode: standalone)").matches) location.replace(`#/t/${mine[0].code}`); }, []);
   const go = async () => {
     const c = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length < 4) { setErr(tr("Codes are 6 letters and numbers, like K7Q2XM.")); return; }
     if (!cloudAvailable()) { setErr(tr("This site isn't connected yet.")); return; }
@@ -75,7 +80,9 @@ function Landing() {
       <div><input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} /><button className="btn primary" disabled={busy}>{tr(busy ? "Finding…" : "Follow")}</button></div>
       {err && <p className="lv-err" role="alert">{err}</p>}
     </form>
-    {last && <p className="lv-note" style={{ marginTop: 18 }}><a className="lv-back" href={`#/t/${last.code}`}>{tr("Back to {team}", { team: last.name })}</a></p>}
+    {mine.length > 0 && <section className="lv-mine" aria-label={tr("Your teams")}><h2>{tr("Your teams")}</h2>
+      <ul>{mine.map((t) => <li key={t.code}><a href={`#/t/${t.code}`}><TeamLogo src={t.logo} name={t.name} size={40} /><b>{t.name}</b><span aria-hidden="true">›</span></a>
+        <button className="lv-x" aria-label={tr("Remove {team}", { team: t.name })} onClick={() => { forgetTeam(t.code); setMine(myTeams()); }}>×</button></li>)}</ul></section>}
   </section></Shell>;
 }
 

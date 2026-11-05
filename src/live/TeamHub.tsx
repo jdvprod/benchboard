@@ -9,6 +9,7 @@ import { TournamentCard } from "./TournamentCard";
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { NotifyCard } from "./Notify";
 import { tr } from "../lib/i18n";
+import { icsFile, CalItem } from "../lib/ics";
 
 type Tab = "home" | "schedule" | "stats" | "roster";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
@@ -57,6 +58,20 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
   </>;
 }
 
+/** Every upcoming match and tournament game as a calendar file the phone opens in its calendar app. */
+function addToCalendar(d: SeasonData, code: string) {
+  const today = todayISO(), team = d.team?.name || "Team", page = location.href.split("#")[0] + "#/t/" + code;
+  const items: CalItem[] = (d.team?.schedule || []).filter((x) => x.date >= today).map((x) => ({ uid: "s-" + x.id, date: x.date, time: x.time, title: `${team} ${x.site === "away" ? "at" : "vs"} ${x.opp}`, where: x.event || undefined, note: page }));
+  for (const t of d.team?.tournaments || []) {
+    if ((t.end || t.start) < today) continue;
+    const ours = t.games.filter((g) => g.stage !== "work");
+    if (!ours.length) items.push({ uid: "t-" + t.id, date: t.start, title: `${team} · ${t.name}`, where: t.site, note: page });
+    for (const g of ours) items.push({ uid: "g-" + g.id, date: g.day || t.start, time: g.time, title: `${team} vs ${g.opp} · ${t.name}`, where: [t.site, g.court ? tr("Court {n}", { n: g.court }) : ""].filter(Boolean).join(" · ") || undefined, note: page, minutes: 60 });
+  }
+  const blob = new Blob([icsFile(team, items)], { type: "text/calendar" }), a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = `${team} schedule.ics`.replace(/[^\w\- .]+/g, ""); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+
 const addDays = (iso: string, n: number) => { const x = new Date(iso + "T12:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
 
 function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code: string; all?: boolean }) {
@@ -65,7 +80,7 @@ function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code:
   const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
   return <>
     {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
-    {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all && <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a>}</div>
+    {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
       <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b><span className="lv-ev">{x.event}</span></li>)}</ul></section>}
     <section className="lv-card"><div className="lv-h"><h2>{tr("Results")}</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>{tr("All results ›")}</a>}</div>
       {games.length ? <ul className="lv-games">{games.map((g) => { const r = resultOf(g.R), live = isLive(g); return <li key={g.m.id}><a href={`#/t/${code}/m/${g.m.id}`}>

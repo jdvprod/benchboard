@@ -440,3 +440,17 @@ test("notifications: a followed player's line", () => {
   assert.equal(playerLine("Ava R.", { K: 1, SA: 0, BLK: 0.5, D: 4, AST: 31 }), "Ava R.: 31 assists, 4 digs, 1 kill");
   assert.equal(playerLine("Lily T.", { K: 0, SA: 0, BLK: 0, D: 0, AST: 0 }), "");
 });
+
+import { icsFile } from "../src/lib/ics";
+test("calendar file: timed and all-day events, escaping, folding", () => {
+  const f = icsFile("Clovis North", [
+    { uid: "a", date: "2026-11-10", time: "18:30", title: "Clovis North vs Buchanan", where: "Gym, Clovis", note: "https://x/live/#/t/ABC" },
+    { uid: "b", date: "2026-11-14", title: "Clovis North · Fall Classic; Day 1" },
+  ], new Date("2026-11-04T10:00:00Z"));
+  assert.ok(f.startsWith("BEGIN:VCALENDAR\r\n") && f.endsWith("END:VCALENDAR\r\n"));
+  assert.ok(f.includes("DTSTART:20261110T183000\r\nDTEND:20261110T200000"));
+  assert.ok(f.includes("LOCATION:Gym\\, Clovis"));
+  assert.ok(f.includes("DTSTART;VALUE=DATE:20261114\r\nDTEND;VALUE=DATE:20261115"));
+  assert.ok(f.includes("SUMMARY:Clovis North · Fall Classic\\; Day 1"));
+  assert.ok(f.split("\r\n").every((l) => l.length <= 75), "lines folded");
+});

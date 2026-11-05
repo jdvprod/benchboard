@@ -12,10 +12,10 @@ const KEY = (id: string) => "bs-overlay-" + id;
 
 export function StreamOverlay() {
   const t = team()!, [base, setBase] = useState(() => { try { return localStorage.getItem(KEY(t.id)) || ""; } catch { return ""; } });
-  const [size, setSize] = useState<Size>("m"), [pos, setPos] = useState<Pos>("bl"), [us, setUs] = useState(""), [sets, setSets] = useState(true), [busy, setBusy] = useState(false);
+  const [size, setSize] = useState<Size>("m"), [pos, setPos] = useState<Pos>("bl"), [us, setUs] = useState(""), [sets, setSets] = useState(true), [plays, setPlays] = useState(true), [busy, setBusy] = useState(false);
   if (!cloudAvailable() || t.sample) return null;
   const ready = !!currentUser() && isLinked(t.id) && (roleOn(t.id) === "owner" || roleOn(t.id) === "coach");
-  const q = new URLSearchParams({ size, pos, ...(us.trim() ? { us: us.trim() } : {}), ...(sets ? {} : { sets: "0" }) }).toString();
+  const q = new URLSearchParams({ size, pos, ...(us.trim() ? { us: us.trim() } : {}), ...(sets ? {} : { sets: "0" }), ...(plays ? {} : { plays: "0" }) }).toString();
   const url = base ? `${base}/overlay?${q}` : "";
   const make = async () => {
     setBusy(true);
@@ -35,7 +35,8 @@ export function StreamOverlay() {
         <div className="field"><span className="label">Size</span><Seg value={size} onChange={setSize} label="Overlay size" options={[["s", "Small"], ["m", "Medium"], ["l", "Large"]]} /></div>
         <div className="field"><span className="label">Corner</span><Seg value={pos} onChange={setPos} label="Overlay corner" options={[["tl", "Top left"], ["tr", "Top right"], ["bl", "Bottom left"], ["br", "Bottom right"]]} /></div>
         <label className="field"><span className="label">Short name</span><input className="input" value={us} maxLength={14} onChange={(e) => setUs(e.target.value)} placeholder={short(t.name)} /></label>
-        <label className="small row" style={{ gap: 6, alignSelf: "end" }}><input type="checkbox" checked={sets} onChange={(e) => setSets(e.target.checked)} /> Show finished set scores</label>
+        <div className="stack" style={{ gap: 4, alignSelf: "end" }}><label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={sets} onChange={(e) => setSets(e.target.checked)} /> Show finished set scores</label>
+          <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={plays} onChange={(e) => setPlays(e.target.checked)} /> Show who scored each point</label></div>
       </div>
       <div className="row">
         <button className={"btn sm" + (url ? "" : " primary")} disabled={busy || !t.activeSeasonId} onClick={make}>{busy ? "Making link…" : url ? "Copy overlay link" : "Make overlay link"}</button>

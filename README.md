@@ -69,6 +69,8 @@ The build makes two more sites beside the coaching app, from the same code and d
 
 **Clips.** On Stats → One match → Film, paste the match video link (YouTube, Vimeo or a video file link) or pick a video file on the device, and set **First serve at**. Every play then becomes a clip: watch any filter (a player's kills, every point, our errors) back to back, and from a video file save one clip or the whole reel as a video file. A player's best plays (kills, aces and blocks first) become the highlight clips on their Recruit profile; clips from a file on the device stay on the device.
 
+**Gameday extras on Live.** The gamecast shows who's on the court in their rotation spots (with photos, the libero and the server marked). The schedule has **Add to calendar** (a calendar file of upcoming matches and tournament games), and the Live home page lists every team the phone follows. The stream overlay captions who scored each point (`plays=0` turns it off). On the coach's Home, **Text recap** copies the result, set scores, three standouts and the box score link for the team group chat.
+
 **Spanish.** Benchboard Live shows in Spanish on phones set to Spanish, with English / Español buttons at the bottom of every page (scores, box scores, play-by-play, tournaments, notifications).
 
 **Family flyer.** After **Share team page**, the Team tab makes a printable "Follow us live" flyer (QR code, team code, how to turn on notifications) and the same as an image for group chats.

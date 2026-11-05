@@ -1,11 +1,11 @@
 /** Home (the Track tab when no match is live): next match, last match, season snapshot, what to work on. */
 import { useState } from "react";
-import { ensureOpponent, matchesOf, newMatch, oppKey, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO } from "../../data/store";
+import { ensureOpponent, matchesOf, newMatch, oppKey, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/metrics";
-import { Card, fmtDate, plural } from "../../ui/kit";
+import { Card, copyText, fmtDate, plural } from "../../ui/kit";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
 import { StartMatch } from "../track/TrackPage";
@@ -14,6 +14,8 @@ import { matchReportHtml } from "../stats/matchReport";
 import { download } from "../../ui/kit";
 import { TournamentToday, todaysTournament } from "../tournament/TournamentPage";
 import { shareFinalGraphic } from "../stats/finalGraphic";
+import { recapText } from "../stats/recap";
+import { liveUrlFor } from "../../cloud/CloudCard";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 
@@ -65,7 +67,7 @@ export function Home() {
           <div className="home-opp"><span className={resultOf(last.R) === "W" ? "w" : resultOf(last.R) === "L" ? "l" : ""}>{resultOf(last.R) || ""}</span> {last.R.wonUs}–{last.R.wonThem} vs {last.m.opp}</div>
           <p className="muted">{fmtDate(last.m.date)} · {last.R.sets.map((s) => `${s.us}-${s.them}`).join(", ")}{!last.R.matchOver ? " · ended early" : ""}</p>
           <p className="small">Hitting {fmtHit(lastM.hitting)} · side-out {fmtPct(lastM.sideOut)} · pass {fmtAvg(lastM.passAvg)}{star && star[1] > 0 ? ` · Top: ${playerName(star[0])}` : ""}</p>
-          <div className="row"><button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button><button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button><button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button></div>
+          <div className="row"><button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button><button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button><button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button><button className="btn sm" onClick={() => shareRecap(last.m, last.R)}>Text recap</button></div>
         </> : <p className="muted" style={{ marginTop: 6 }}>Your most recent result shows up here.</p>}
       </section>
     </div>
@@ -103,6 +105,13 @@ function TeamGoals({ M }: { M: ReturnType<typeof teamMetrics> }) {
         return <div key={k} className="goal"><div className="row between"><span><b>{label}</b> <span className="small muted">goal {f(target)}</span></span><span className={hit ? "hi" : ""}>{f(v)}{hit ? " ✓" : ""}</span></div><div className="meter"><i style={{ width: prog * 100 + "%" }} /></div></div>; })}
         {!active.length && <p className="small muted">Suggested goals. Tap Set goals to make them yours.</p>}</div>}
   </Card>;
+}
+
+/** Copy (or share from the phone) a text recap with the gamecast link when the match was shared. */
+async function shareRecap(m: import("../../data/model").Match, R: import("../../sports/volleyball/engine").Replay) {
+  const text = recapText(m, R, liveUrlFor(m.id)), nav: any = navigator;
+  if (nav.share && matchMedia("(pointer: coarse)").matches) { try { await nav.share({ text }); return; } catch { /* cancelled: copy instead */ } }
+  const ok = await copyText(text); toast(ok ? "Recap copied. Paste it in the team group chat." : text);
 }
 
 /* Getting started: the five things that make Benchboard useful, checked off automatically. */

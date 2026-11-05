@@ -657,6 +657,48 @@ const scenarios = {
     ok("pictures: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },
+  async gameday(browser) {
+    const A = await newPage(browser); await A.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("gameday@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await go(A, "team"); await A.getByRole("button", { name: "Paste list" }).click();
+    await A.locator("textarea").first().fill(["1 Ava Ramirez S", "3 Lily Torres L", "4 Jordan Lee OH", "7 Maya Chen OH", "8 Zoe Grant MB", "9 Riley Brooks MB", "12 Sofia Nguyen OPP"].join("\n")); await A.getByRole("button", { name: "Add players" }).click(); await A.waitForTimeout(300);
+    await go(A, "lineup"); await A.getByRole("button", { name: "Save as starting lineup" }).click(); await A.waitForTimeout(200);
+    await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/1 vs Central 6:00 PM\n12/4 @ Clovis West 5:30pm (League)"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
+    const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    await go(A, "live"); await A.locator(".card", { hasText: "Stream overlay" }).getByRole("button", { name: "Make overlay link" }).click(); await A.waitForTimeout(1200);
+    const ovUrl = (await A.locator(".ov-url").innerText()).trim();
+    const P = await newPage(browser, { phone: true }); await P.goto(teamUrl); await P.waitForTimeout(1500);
+    await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(600);
+    const court = P.locator("section", { has: P.getByRole("heading", { name: "On the court" }) });
+    ok("gamecast shows the six on the court with the server", (await court.locator(".lv-spot").count()) === 6 && (await court.locator(".lv-spot.srv").count()) === 1 && /Rotation 1/.test(await court.innerText()), (await court.innerText().catch(() => "")).replace(/\s+/g, " "));
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "on-court.png"), fullPage: true });
+    { const ax = await a11y(P); ok("on-court view controls all have names", !ax.length, ax.join(" | ")); }
+    // the stream: a caption names who scored
+    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } }); await ctx.addInitScript((u) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url: u, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
+    const O = await ctx.newPage(); await O.goto(ovUrl); await O.waitForTimeout(1500);
+    ok("no caption before anything happens", (await O.locator(".ov-cap").count()) === 0);
+    await go(A, "track"); await A.locator(".pl", { hasText: "Maya" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape");
+    { const t0 = Date.now(); let cap = ""; while (Date.now() - t0 < 12000) { cap = await O.locator(".ov-cap").innerText().catch(() => ""); if (cap) break; await O.waitForTimeout(400); } ok("stream caption names who scored", /#7 Maya · Kill/.test(cap), cap || "(none)"); }
+    if (process.env.SHOTS) await O.screenshot({ path: path.join(process.env.SHOTS, "overlay-caption.png") });
+    await P.waitForTimeout(6000); ok("the rotation moves as the match goes on", /Rotation \d/.test(await court.innerText()));
+    // families: calendar and their teams list
+    await P.goto(teamUrl + "/schedule"); await P.waitForTimeout(800);
+    { const f = await download(P, () => P.getByRole("button", { name: "Add to calendar" }).click()); const ics = f.text();
+      ok("Add to calendar gives the upcoming matches", f.name.endsWith(".ics") && (ics.match(/BEGIN:VEVENT/g) || []).length === 2 && ics.includes("SUMMARY:Clovis North vs Central") && ics.includes("SUMMARY:Clovis North at Clovis West") && /DTSTART:\d{4}1201T180000/.test(ics), ics.slice(0, 400)); }
+    await P.goto(teamUrl.replace(/#.*$/, "")); await P.waitForTimeout(600);
+    ok("Live home lists the teams this phone follows", (await P.locator(".lv-mine a", { hasText: "Clovis North" }).count()) === 1);
+    // the coach finishes and texts a recap
+    await go(A, "track"); for (let set = 0; set < 3; set++) { for (let i = 0; i < 30; i++) { if (await A.locator(".banner", { hasText: /to Clovis|Match over/ }).count()) break; await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } if (await A.locator(".banner", { hasText: "Match over" }).count()) break; const nx = A.getByRole("button", { name: /serve$/ }); if (await nx.count()) await nx.first().click(); }
+    await A.getByRole("button", { name: "Finish" }).click(); await A.waitForTimeout(300);
+    await go(A, "track"); await A.getByRole("button", { name: "Text recap" }).click(); await A.waitForTimeout(400);
+    { const txt = await A.evaluate(() => navigator.clipboard.readText()); ok("text recap has the result, set scores and the box score link", /^Final: Clovis North def\. Buchanan 3–0 \(25-0, 25-0, 25-0\)/.test(txt) && /Box score: http.*\/live\/#\/g\//.test(txt), txt); }
+    ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
+    await A.context().close(); await P.context().close(); await ctx.close();
+  },
   async overlay(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();

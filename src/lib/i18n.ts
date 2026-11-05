@@ -48,6 +48,8 @@ const ES: Record<string, string> = {
   "Opponent numbers come from what {team}'s staff recorded; some only exist for {team}.": "Los números del rival vienen de lo que registró el cuerpo técnico de {team}; algunos solo existen para {team}.",
   "Set {n} · {team} serves first": "Set {n} · {team} saca primero", "Timeout {team}": "Tiempo fuera {team}", "Sub: {a} in for {b}": "Cambio: entra {a} por {b}", "player": "jugador", " (their #{n})": " (su #{n})",
   "W": "G", "L": "P",
+  "On the court": "En la cancha", "Rotation {n}": "Rotación {n}", "{team} serving": "{team} al saque", "Net": "Red",
+  "Your teams": "Tus equipos", "Add to calendar": "Agregar al calendario", "Remove {team}": "Quitar {team}",
   // tournament
   "Working: {x}": "Arbitrando: {x}", "Court {n}": "Cancha {n}", "Ref duty": "Arbitraje", "Upcoming": "Próximo", "Bracket": "Llave", "Pool": "Grupo", "{pool} standings": "Tabla del {pool}", "Live now": "En vivo ahora",
   // notifications

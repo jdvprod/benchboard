@@ -7,6 +7,7 @@ import { MomentumChart } from "../ui/charts";
 import { GameScore } from "../ui/GameScore";
 import { fmtDay, Game, isLive, LPlayer, pname } from "./data";
 import { oppPlay, playName, tr } from "../lib/i18n";
+import { OnCourt } from "./OnCourt";
 
 type Tab = "cast" | "box" | "pbp" | "team";
 const TABS: [Tab, string][] = [["cast", "Gamecast"], ["box", "Box score"], ["pbp", "Play-by-play"], ["team", "Team stats"]];
@@ -60,6 +61,7 @@ function Gamecast({ g, team, P, follow, setFollow, players }: { g: Game; team: s
         {fs && fs.TA > 0 && <p className="lv-note">{tr("Hitting {h} on {n} swings", { h: fmtHit(hitting(fs)), n: fs.TA })}{fs.R ? tr(" · passing {p} on {n}", { p: fmtAvg(passAvg(fs)), n: fs.R }) : ""}</p>}
       </div> : <p className="lv-note">{tr("Pick a player to see their numbers update with every point.")}</p>}
     </section>
+    {c && isLive(g) && !c.over && <OnCourt c={c} P={P} follow={follow} team={team} />}
     {points.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Latest points")}</h2></div>
       <ul className="lv-pbp">{points.map((l) => <li key={l.id} className={(l as any).p === follow && follow ? "mine" : undefined}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, them, P)}</span></li>)}</ul></section>}
     {c && c.rallies.length > 1 && <section className="lv-card"><div className="lv-h"><h2>{tr("Momentum · set {n}", { n: c.n })}</h2></div><MomentumChart diffs={momentum(c)} height={120} labels={[tr("{team} ahead", { team }), tr("{team} ahead", { team: them })]} /></section>}

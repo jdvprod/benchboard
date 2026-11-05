@@ -146,3 +146,28 @@ html.ov-page body{overflow:hidden}
 .lv-lang button{background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:600 13px var(--body);color:var(--muted);cursor:pointer}
 .lv-lang button[aria-pressed="true"]{border-color:var(--us);color:var(--ink)}
 .lv-notify-pl{display:flex;flex-direction:column;gap:4px;margin:0 0 12px;font-size:14px}.lv-notify-pl span{font-weight:600}.lv-notify-pl small{color:var(--muted)}.lv-notify-pl select{max-width:320px}
+
+/* on the court */
+.lv-court{position:relative;background:linear-gradient(#E8C38F,#DDB47A);border-radius:12px;padding:30px 10px 12px;border:2px solid #C79C5E}
+:root[data-theme="dark"] .lv-court{background:linear-gradient(#5A4630,#4A3A28);border-color:#6B5338}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .lv-court{background:linear-gradient(#5A4630,#4A3A28);border-color:#6B5338}}
+.lv-net{position:absolute;left:0;right:0;top:0;height:16px;background:repeating-linear-gradient(90deg,#fff 0 2px,transparent 2px 8px),#111;color:transparent;font-size:0;border-radius:10px 10px 0 0}
+.lv-court ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);row-gap:12px}
+.lv-spot{display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center;min-width:0}
+.lv-spot:nth-child(n+4){padding-top:12px;border-top:2px solid rgba(255,255,255,.7)}
+.lv-spot b{font-size:13px;color:#1A1208;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:rgba(255,255,255,.75);border-radius:6px;padding:1px 6px}
+.lv-spot-pic{position:relative}.lv-spot .avatar{box-shadow:0 0 0 2px #fff}
+.lv-spot.mine .avatar{box-shadow:0 0 0 3px var(--us)}
+.lv-spot-tag{position:absolute;right:-6px;bottom:-4px;font:700 11px var(--display);font-style:normal;background:#000;color:#fff;border-radius:6px;padding:1px 5px}
+.lv-spot-tag.srv{left:-6px;right:auto;background:var(--us-bright);color:#000;font-size:9px;padding:2px 5px}
+.ov-cap{position:absolute;top:calc(100% + .3em);left:0;background:#000;color:#fff;font-weight:700;font-size:.72em;letter-spacing:.03em;padding:.3em .7em;border-radius:.25em;border-left:.22em solid var(--us-bright);animation:ov-cap .35s ease-out;white-space:nowrap;max-width:24em;overflow:hidden;text-overflow:ellipsis}
+.ov-cap.them{border-left-color:#6A707A}
+.ov-br .ov-cap,.ov-tr .ov-cap{left:auto;right:0}
+@keyframes ov-cap{from{opacity:0;transform:translateY(.4em)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.ov-cap{animation:none}}
+.lv-mine{margin-top:30px}.lv-mine h2{font:700 15px var(--display);letter-spacing:.06em;text-transform:uppercase;margin:0 0 10px}
+.lv-mine ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.lv-mine li{display:flex;align-items:center;gap:6px}
+.lv-mine li a{flex:1;min-width:0;display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border:1px solid var(--line);border-radius:12px;color:inherit;text-decoration:none}
+.lv-mine li a b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:17px}.lv-mine li a span{color:var(--muted);font-size:22px}
+.lv-x{background:none;border:0;color:var(--muted);font-size:22px;width:36px;height:36px;border-radius:50%;cursor:pointer}.lv-x:hover{background:var(--surface-2)}
