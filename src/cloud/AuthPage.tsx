@@ -48,7 +48,7 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
         <ul className="soon">
           <li><a href="about.html" style={{ color: "#9BD3F2" }}>See everything Benchboard does</a><span style={{ border: 0 }} /></li>
           <li>Benchboard Recruit profiles and clips <span>Early access</span></li>
-          <li>College staff search <span>Coming soon</span></li>
+          <li>College coach search on Recruit <span>New</span></li>
         </ul>
       </div>
     </aside>

@@ -1,15 +1,17 @@
 /** Benchboard Recruit: player profiles and team recruiting boards for college coaches. Separate from the coaching app.
- *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/  what this is, enter a code */
+ *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
+ *   #/  what this is, enter a code */
 import "../styles/app.css";
 import "./recruit.css";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
-import { cloudAvailable, rpc } from "../cloud/client";
+import { cloudAvailable, consumeAuthRedirect, rpc } from "../cloud/client";
 import { ClipPlayer } from "../ui/ClipPlayer";
 import { Clip, videoKind } from "../film/clips";
 import { fmtAvg, fmtHit, fmtNum, fmtPct } from "../sports/volleyball/metrics";
 import type { RecruitData } from "../features/player/recruitData";
+import { College } from "./College";
 
 const parse = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
 function useRoute() { const [r, setR] = useState(parse()); useEffect(() => { const f = () => { setR(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []); return r; }
@@ -139,6 +141,7 @@ function Landing() {
     <form className="rc-code" onSubmit={(e) => { e.preventDefault(); go(); }}><label htmlFor="rc-code">Profile or board code</label>
       <div><input id="rc-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" maxLength={12} autoComplete="off" spellCheck={false} /><button className="btn primary" disabled={busy}>{busy ? "Finding…" : "Open"}</button></div>
       {err && <p className="rc-err" role="alert">{err}</p>}</form>
+    <p className="rc-college-cta">College coach? <a href="#/college">Search players whose families chose to be found ›</a></p>
   </section></Shell>;
 }
 
@@ -146,7 +149,10 @@ function RecruitApp() {
   const r = useRoute();
   if (r[0] === "p" && r[1]) return <Profile key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "b" && r[1]) return <Board key={r[1]} code={r[1].toUpperCase()} />;
+  if (r[0] === "college") return <College Shell={Shell} />;
   return <Landing />;
 }
 watchErrors();
+// back from a "confirm your email" link: finish signing in, then the college coach page
+if (/access_token=|error_description=/.test(location.hash)) consumeAuthRedirect().catch(() => null).finally(() => { location.hash = "#/college"; });
 createRoot(document.getElementById("root")!).render(<RecruitApp />);

@@ -753,6 +753,56 @@ const scenarios = {
     ok("voice: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
+  async college(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
+    await A.getByLabel("Email").fill("hs@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
+    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Central"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
+    for (let i = 0; i < 4; i++) { await A.locator(".pl", { hasText: "Nia" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape"); }
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    await A.locator(".consent-check input").first().check(); await A.waitForTimeout(150);
+    const list = A.locator(".consent-check", { hasText: "college coach search" }).locator("input");
+    ok("listing in college search is offered once the family agreed", (await list.count()) === 1); await list.check();
+    await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
+    const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href"), base = rec.replace(/#.*$/, "");
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=hs%40e2e.test`, { headers: { apikey: "anon" } });
+    // a college coach
+    const C = await newPage(browser);
+    await C.goto(base); await C.waitForTimeout(600); await C.getByRole("link", { name: /Search players whose families chose/ }).click(); await C.waitForTimeout(300);
+    await C.getByRole("button", { name: "Create account" }).first().click();
+    await C.getByLabel("School email").fill("scout@gmail.com"); await C.getByLabel("Password").fill("secret123"); await C.locator(".rc-check input").check(); await C.getByRole("button", { name: "Create account" }).last().click(); await C.waitForTimeout(600);
+    await C.getByLabel("Your name").fill("Sam Scout"); await C.getByLabel("College or university").fill("Nowhere"); await C.getByRole("button", { name: "Request access" }).click(); await C.waitForTimeout(400);
+    ok("college access needs a school (.edu) email", /ending in \.edu/.test(await C.locator(".rc-err").innerText()));
+    await C.getByRole("button", { name: "Sign out" }).click(); await C.waitForTimeout(800);
+    await C.getByRole("button", { name: "Create account" }).first().click();
+    await C.getByLabel("School email").fill("pat@state.edu"); await C.getByLabel("Password").fill("secret123"); await C.locator(".rc-check input").check(); await C.getByRole("button", { name: "Create account" }).last().click(); await C.waitForTimeout(600);
+    await C.getByLabel("Your name").fill("Pat Coach"); await C.getByLabel("College or university").fill("State University"); await C.getByLabel("Title").fill("Assistant coach"); await C.getByRole("button", { name: "Request access" }).click(); await C.waitForTimeout(500);
+    ok("the request waits for approval", /Your request for State University is in/.test(await C.locator("main").innerText()));
+    { const ax = await a11y(C); ok("college sign-up controls all have names", !ax.length, ax.join(" | ")); }
+    // Benchboard approves
+    await go(A, "settings"); await A.waitForTimeout(800); await A.getByRole("button", { name: "Open admin" }).click(); await A.waitForTimeout(800);
+    const row = A.locator("tr", { hasText: "pat@state.edu" }); ok("admin sees the college request", (await row.count()) === 1 && /Waiting/.test(await row.innerText()));
+    await row.getByRole("button", { name: "Approve" }).click(); await A.waitForTimeout(300);
+    await C.reload(); await C.waitForTimeout(1500);
+    ok("approved staff see the search with the listed player", (await C.locator(".rc-hit", { hasText: "Nia Lopez" }).count()) === 1, (await C.locator("main").innerText()).slice(0, 300));
+    await C.locator(".rc-chips button", { hasText: "2028" }).click(); await C.waitForTimeout(600); ok("class filter keeps her (2028)", (await C.locator(".rc-hit").count()) === 1);
+    await C.locator(".rc-chips button", { hasText: "2028" }).click(); await C.locator(".rc-chips button", { hasText: "2027" }).click(); await C.waitForTimeout(600); ok("class filter drops her for 2027", (await C.locator(".rc-hit").count()) === 0);
+    await C.locator(".rc-chips button", { hasText: "2027" }).click(); await C.getByLabel("Kills / set", { exact: true }).fill("50"); await C.waitForTimeout(600); ok("a stat minimum filters", (await C.locator(".rc-hit").count()) === 0);
+    await C.getByLabel("Kills / set", { exact: true }).fill(""); await C.waitForTimeout(600);
+    await C.getByRole("button", { name: /Add Nia Lopez to watchlist/ }).click(); await C.getByLabel(/Only my watchlist/).check(); await C.waitForTimeout(200);
+    ok("watchlist keeps her", (await C.locator(".rc-hit").count()) === 1);
+    if (process.env.SHOTS) await C.screenshot({ path: path.join(process.env.SHOTS, "college-search.png"), fullPage: true });
+    { const ax = await a11y(C); ok("college search controls all have names", !ax.length, ax.join(" | ")); }
+    await C.locator(".rc-hit-main").first().click(); await C.waitForTimeout(800); ok("a result opens the full profile", (await C.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
+    // the team takes her out of search
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    await A.locator(".consent-check", { hasText: "college coach search" }).locator("input").uncheck(); await A.waitForTimeout(500);
+    await C.goto(base + "#/college"); await C.waitForTimeout(1200); ok("unlisted players leave the search", (await C.locator(".rc-hit").count()) === 0);
+    ok("college: no page errors", !A.errors.length && !C.errors.length, A.errors.concat(C.errors).slice(0, 3).join(" | "));
+    await A.context().close(); await C.context().close();
+  },
   async overlay(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();

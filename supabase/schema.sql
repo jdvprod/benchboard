@@ -419,7 +419,80 @@ begin
 end $$;
 grant execute on function public.admin_remove_picture(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 14 $$;
+-- ---------- college coach search (Benchboard Recruit) ----------
+-- A profile appears in search only when its team lists it (on top of the family's consent to share it), and only
+-- college staff an admin approved (school .edu email) can search. Search returns summaries; the profile link has the rest.
+alter table public.recruit_shares add column if not exists listed boolean not null default false;
+create table if not exists public.college_staff (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null, name text not null, school text not null, title text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),
+  requested_at timestamptz not null default now(), decided_at timestamptz
+);
+alter table public.college_staff enable row level security;
+drop policy if exists "staff own row" on public.college_staff;
+create policy "staff own row" on public.college_staff for select using (user_id = auth.uid());
+
+create or replace function public.college_request(name text, school text, title text default null) returns text
+language plpgsql security definer set search_path = public, auth as $$
+declare em text;
+begin
+  select email into em from auth.users where id = auth.uid();
+  if em is null then raise exception 'Sign in first.'; end if;
+  if em !~* '\.edu$' then raise exception 'Use your school email (ending in .edu) so we can confirm you coach at a college.'; end if;
+  if length(trim(coalesce(name, ''))) < 2 or length(trim(coalesce(school, ''))) < 2 then raise exception 'Add your name and school.'; end if;
+  insert into college_staff (user_id, email, name, school, title) values (auth.uid(), em, left(trim(name), 80), left(trim(school), 120), left(trim(coalesce(title, '')), 80))
+    on conflict (user_id) do update set name = excluded.name, school = excluded.school, title = excluded.title
+    where college_staff.status <> 'approved';
+  return (select status from college_staff where user_id = auth.uid());
+end $$;
+grant execute on function public.college_request(text, text, text) to authenticated;
+
+create or replace function public.college_status() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_build_object('status', status, 'name', name, 'school', school) from college_staff where user_id = auth.uid()), '{"status":"none"}'::jsonb)
+$$;
+grant execute on function public.college_status() to authenticated;
+
+-- f: { grad: [2027, 2028], pos: ["OH", "S"], q: "text", region: "California", min: { kps, hitting, dps, passAvg, aps, bps, acesPs } }
+create or replace function public.recruit_search(f jsonb default '{}'::jsonb) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare out jsonb;
+begin
+  if not exists (select 1 from college_staff where user_id = auth.uid() and status = 'approved') then raise exception 'College staff only'; end if;
+  select coalesce(jsonb_agg(x order by (x->>'updated') desc), '[]'::jsonb) into out from (
+    select jsonb_build_object('code', r.code, 'updated', r.updated_at,
+      'player', r.data->'player', 'team', r.data->'team', 'ranks', coalesce(r.data->'ranks', '[]'::jsonb), 'clips', jsonb_array_length(coalesce(r.data->'clips', '[]'::jsonb)),
+      'season', (select jsonb_object_agg(k, r.data->'season'->k) from unnest(array['matches', 'sets', 'kps', 'hitting', 'TA', 'dps', 'passAvg', 'R', 'aps', 'bps', 'acesPs', 'serveIn']) k)) x
+    from recruit_shares r
+    where r.listed and r.data is not null
+      and (not (f ? 'grad') or jsonb_array_length(f->'grad') = 0 or (r.data->'player'->'grad') in (select jsonb_array_elements(f->'grad')))
+      and (not (f ? 'pos') or jsonb_array_length(f->'pos') = 0 or exists (select 1 from jsonb_array_elements_text(f->'pos') p where (r.data->'player'->>'pos') ilike '%' || p || '%'))
+      and (coalesce(f->>'q', '') = '' or (r.data->'player'->>'first') || ' ' || (r.data->'player'->>'last') || ' ' || coalesce(r.data->'team'->>'name', '') || ' ' || coalesce(r.data->'profile'->>'club', '') ilike '%' || (f->>'q') || '%')
+      and (coalesce(f->>'region', '') = '' or coalesce(r.data->'team'->>'region', '') ilike f->>'region')
+      and not exists (select 1 from jsonb_each(coalesce(f->'min', '{}'::jsonb)) m
+        where jsonb_typeof(m.value) = 'number' and coalesce(case when jsonb_typeof(r.data->'season'->m.key) = 'number' then (r.data->'season'->>m.key)::numeric end, -1e9) < (m.value #>> '{}')::numeric)
+    order by r.updated_at desc limit 200) q;
+  return out;
+end $$;
+grant execute on function public.recruit_search(jsonb) to authenticated;
+
+create or replace function public.admin_college_staff() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('user_id', user_id, 'email', email, 'name', name, 'school', school, 'title', title, 'status', status, 'at', requested_at) order by (status = 'pending') desc, requested_at desc) from college_staff), '[]'::jsonb);
+end $$;
+grant execute on function public.admin_college_staff() to authenticated;
+create or replace function public.admin_decide_college(uid uuid, approve boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  update college_staff set status = case when approve then 'approved' else 'denied' end, decided_at = now() where user_id = uid;
+end $$;
+grant execute on function public.admin_decide_college(uuid, boolean) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 15 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

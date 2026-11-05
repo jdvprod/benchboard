@@ -9,7 +9,7 @@ export interface RecruitGame { date: string; opp: string; res: string; sets: num
 export interface RecruitData {
   v: 1; updated: number;
   player: { first: string; last: string; num: string; pos: string; grad: number | null; height: string; photo?: string | null };
-  team: { name: string; level: string; season: string };
+  team: { name: string; level: string; season: string; region?: string };
   profile: { club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string };
   season: { matches: number; sets: number; K: number; AE: number; TA: number; SA: number; SE: number; R: number; D: number; BS: number; BA: number; AST: number; hitting: number | null; kps: number | null; acesPs: number | null; serveIn: number | null; passAvg: number | null; dps: number | null; bps: number | null; aps: number | null };
   games: RecruitGame[];
@@ -65,7 +65,7 @@ export function recruitData(id: string, opts: { clips?: Clip[] } = {}): RecruitD
   return {
     v: 1, updated: Date.now(),
     player: { first: p.first, last: p.last, num: p.num, pos: p.pos, grad: p.grad, height: p.height, photo: p.photo && /^https:/.test(p.photo) ? p.photo : null },
-    team: { name: t.name, level: t.level || "", season: seasonsOf().find((x) => x.id === t.activeSeasonId)?.name || "" },
+    team: { name: t.name, level: t.level || "", season: seasonsOf().find((x) => x.id === t.activeSeasonId)?.name || "", ...(t.region ? { region: t.region } : {}) },
     profile: keep({ club: pr.club, gpa: pr.gpa, email: pr.email, phone: pr.phone, reach: pr.reach, approach: pr.approach, block: pr.block, hand: pr.hand, video: pr.video, about: pr.about, coachContact: pr.coachContact }),
     season: { matches: games.length, sets: pm.sets, K: S.K, AE: S.AE, TA: S.TA, SA: S.SA, SE: S.SE + S.SEN + S.SEO, R: S.R, D: S.D, BS: S.BS, BA: S.BA, AST: S.AST, hitting: s ? hitting(s) : null, kps: pm.kps, acesPs: pm.acesPs, serveIn: pm.serveIn, passAvg: s ? passAvg(s) : null, dps: pm.dps, bps: s && pm.sets ? blocks(s) / pm.sets : null, aps: pm.aps },
     games, ranks: teamRanks(A, id),

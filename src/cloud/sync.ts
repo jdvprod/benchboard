@@ -237,11 +237,11 @@ export async function shareSeason(teamId: string, seasonId: string) {
 }
 
 /** Publish (or refresh) a player's recruiting page. The page is a snapshot: tap again after new matches. */
-export async function shareRecruit(teamId: string, playerId: string, html: string, data?: unknown) {
+export async function shareRecruit(teamId: string, playerId: string, html: string, data?: unknown, listed = false) {
   const existing: any[] = await rest(`recruit_shares?select=code&team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}&limit=1`);
   let c = existing[0]?.code;
-  if (c) await rest(`recruit_shares?code=eq.${c}`, { method: "PATCH", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ html, data: data ?? null, updated_at: new Date().toISOString() }) });
-  else { c = code(6); await rest("recruit_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, player_id: playerId, html, data: data ?? null }) }); }
+  if (c) await rest(`recruit_shares?code=eq.${c}`, { method: "PATCH", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ html, data: data ?? null, listed, updated_at: new Date().toISOString() }) });
+  else { c = code(6); await rest("recruit_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, player_id: playerId, html, data: data ?? null, listed }) }); }
   return { code: c as string, url: siteUrl("recruit", "p/" + c) };
 }
 /** One link for college coaches listing every player on the team with a shared recruiting profile. */
@@ -250,6 +250,10 @@ export async function shareBoard(teamId: string) {
   const c = existing[0]?.code || code(6);
   if (!existing[0]) await rest("recruit_boards", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId }) });
   return { code: c as string, url: siteUrl("recruit", "b/" + c) };
+}
+/** Show or hide a shared profile in college coach search. */
+export async function setRecruitListed(teamId: string, playerId: string, listed: boolean) {
+  await rest(`recruit_shares?team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}`, { method: "PATCH", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ listed }) });
 }
 /** How many times the player's shared profile was opened, and when last. */
 export async function recruitViews(teamId: string, playerId: string): Promise<{ views: number; last: string | null } | null> {

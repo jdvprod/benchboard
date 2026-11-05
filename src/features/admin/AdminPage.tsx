@@ -8,6 +8,7 @@ import { toast } from "../../data/store";
 interface Overview { users: number; users7: number; teams: number; activeTeams7: number; matches: number; matches7: number; liveNow: number; teamPages: number; gamecasts: number; recruitProfiles: number; notifyPhones: number; errors?: { message: string; count: number; users: number; last: string; version: string; page: string; stack?: string }[];
   recentUsers: { email: string; at: string }[]; teamsList: { id: string; name: string; members: number; matches: number; last: string | null; created: string }[]; at: string }
 interface Pic { path: string; at: string; team: string | null }
+interface Staff { user_id: string; email: string; name: string; school: string; title?: string; status: "pending" | "approved" | "denied"; at: string }
 
 const ago = (iso?: string | null) => { if (!iso) return "never"; const m = Math.round((Date.now() - +new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 
@@ -16,9 +17,9 @@ let adminCache: Promise<boolean> | null = null;
 export const amAdmin = () => (adminCache ||= rpc("is_admin", {}).then((x) => x === true).catch(() => false));
 
 export function AdminPage() {
-  const [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState("");
+  const [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]);
   const load = async () => {
-    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setErr(""); }
+    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setErr(""); }
     catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Benchboard admin." : e?.message || "Couldn't load the admin console."); }
   };
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
@@ -40,6 +41,12 @@ export function AdminPage() {
         <tbody>{o.teamsList.map((t) => <tr key={t.id}><td className="l">{t.name || "(no name)"}</td><td>{t.members}</td><td>{t.matches}</td><td>{ago(t.last)}</td></tr>)}</tbody></table></div></Card>
       <Card title="New accounts"><ul className="log">{o.recentUsers.map((u) => <li key={u.email + u.at} style={{ gridTemplateColumns: "1fr auto" }}><span>{u.email}</span><span className="small muted">{ago(u.at)}</span></li>)}</ul></Card>
     </div>
+    <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Benchboard Recruit. Check the school's staff directory first.</span>}>
+      {!staff.length ? <p className="empty">No requests yet.</p> : <div className="tbl"><table><thead><tr><th className="l">Name</th><th className="l">School</th><th className="l">Email</th><th>Status</th><th></th></tr></thead>
+        <tbody>{staff.map((s) => <tr key={s.user_id}><td className="l">{s.name}{s.title ? <div className="small muted">{s.title}</div> : null}</td><td className="l">{s.school}</td><td className="l small">{s.email}</td><td>{s.status === "pending" ? <b>Waiting</b> : s.status === "approved" ? "Approved" : "Turned down"}</td>
+          <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{s.status !== "approved" && <button className="btn sm primary" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: true }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "approved" } : y))); }}>Approve</button>}
+            {s.status !== "denied" && <button className="btn sm ghost" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: false }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "denied" } : y))); }}>{s.status === "approved" ? "Remove access" : "Turn down"}</button>}</div></td></tr>)}</tbody></table></div>}
+    </Card>
     <Card title="Problems in the last two weeks" actions={<span className="small muted">Crashes coaches hit, newest first. No team data is sent, only the error and the screen.</span>}>
       {!o.errors?.length ? <p className="empty">No problems reported.</p> : <ul className="log admin-errs">{o.errors.map((e) => <li key={e.message}>
         <details><summary><b>{e.message}</b><span className="small muted"> · {e.count}× · {e.users} {e.users === 1 ? "coach" : "coaches"} · {e.page} · v{e.version} · {ago(e.last)}</span></summary>{e.stack && <pre>{e.stack}</pre>}</details></li>)}</ul>}

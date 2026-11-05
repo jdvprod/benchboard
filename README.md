@@ -69,6 +69,8 @@ The build makes two more sites beside the coaching app, from the same code and d
 
 **Highlight videos.** On a player's page, **Make highlight video** turns their best plays into one finished video in the browser: a title card (photo, name, number, class, team), each play with a broadcast-style caption ("KILL · vs Central · Set 2 · 14–12") and a player bug, and a closing card with verified numbers and the profile link. Pick and order the plays and choose 5, 7 or 10 seconds each. Works from a match video file on the device or a direct video link (YouTube and Vimeo can't be cut in a browser). Saves as MP4 where the browser can, otherwise WebM.
 
+**College coach search.** Benchboard Recruit has a page for college staff (`/recruit/#/college`): they create an account with a school (.edu) email and request access; an admin approves them in Settings → Admin → College coaches. Approved staff search players by class, position, state, name or team, and minimum numbers (kills, hitting, digs, pass average, assists, blocks per set), sort, and keep a watchlist. Only players whose coach checked **List in college coach search** (after the family's consent) appear, as summaries linking to the full profile.
+
 **Recruiting profiles** also show where the player ranks on the team ("1st on the team in kills per set", counting regulars only), and the coach sees how often the shared profile was opened.
 
 **Voice entry (Labs).** With type-in codes on, a **Voice** button listens on the bench: "seven kill", "twelve ace, their kill eleven", "four pass three", "scratch that". Clear phrases record right away; anything unclear waits in the box to fix.
@@ -107,7 +109,7 @@ Until then, keep **Confirm email** off (Authentication → Sign In / Providers �
 
 Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/functions/ai/index.ts`), which holds your Anthropic key and limits each coach to 40 requests a day (`AI_DAILY_LIMIT` to change it). To turn it on:
 
-1. Run the latest `supabase/schema.sql` (version 14).
+1. Run the latest `supabase/schema.sql` (version 15).
 2. In Supabase → Edge Functions, create a function named `ai` and paste in `supabase/functions/ai/index.ts` (or `supabase functions deploy ai`).
 3. In Edge Functions → Secrets, add `ANTHROPIC_API_KEY`.
 

@@ -12,7 +12,7 @@ import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { cloudAvailable, currentUser } from "../../cloud/client";
-import { isLinked, recruitViews, shareRecruit, unshareRecruit } from "../../cloud/sync";
+import { isLinked, recruitViews, setRecruitListed, shareRecruit, unshareRecruit } from "../../cloud/sync";
 import { LEGAL } from "../../app/legal";
 import { ClipPlayer } from "../../ui/ClipPlayer";
 import { ReelMaker } from "../../film/ReelMaker";
@@ -184,7 +184,7 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
   const set = (k: keyof RecruitProfile, v: string) => patch("players", id, { profile: { ...(player(id)!.profile || {}), [k]: v } });
   return <Card title={<>Recruiting profile <span className="tag" style={{ verticalAlign: 2 }}>Preview</span></>} actions={<div className="row">
     {!open && <button className="btn sm" onClick={() => setOpen(true)}>Fill in</button>}
-    {canShare && <button className="btn sm" disabled={busy || !consented} title={consented ? undefined : "Confirm family consent below first"} onClick={async () => { setBusy(true); try { const r = await shareRecruit(t.id, id, recruitHtml(id, rows, A), recruitData(id, { clips: pr.clipsOff ? [] : picked })); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Profile link copied. It's a snapshot; tap again after new matches." : "Profile link: " + r.url); } catch (e: any) { toast(e?.message || "Couldn't share the profile."); } setBusy(false); }}>{busy ? "Publishing…" : url ? "Update profile link" : "Share profile link"}</button>}
+    {canShare && <button className="btn sm" disabled={busy || !consented} title={consented ? undefined : "Confirm family consent below first"} onClick={async () => { setBusy(true); try { const r = await shareRecruit(t.id, id, recruitHtml(id, rows, A), recruitData(id, { clips: pr.clipsOff ? [] : picked }), !!pr.listed); setUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Profile link copied. It's a snapshot; tap again after new matches." : "Profile link: " + r.url); } catch (e: any) { toast(e?.message || "Couldn't share the profile."); } setBusy(false); }}>{busy ? "Publishing…" : url ? "Update profile link" : "Share profile link"}</button>}
     <button className="btn sm primary" onClick={() => { download(`${p.first} ${p.last} recruiting profile.html`, recruitHtml(id, rows, A), "text/html"); toast("Recruiting sheet saved. Send it to college coaches or attach it to emails."); }}>Download recruiting sheet</button></div>}>
     {open ? <div className="stack">
       <div className="pf-grid">{PF.map(([k, label, ph]) => <label key={k} className="field"><span className="label">{label}</span><input key={id + k} defaultValue={String(pr[k] ?? "")} placeholder={ph} onBlur={(e) => set(k, e.target.value.trim())} /></label>)}</div>
@@ -202,6 +202,8 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
     </div>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
+    {canShare && consented && <label className="consent-check"><input type="checkbox" checked={!!pr.listed} onChange={async (e) => { const on = e.target.checked; patch("players", id, { profile: { ...(player(id)!.profile || {}), listed: on || undefined } }); if (url) { try { await setRecruitListed(t.id, id, on); toast(on ? "Listed in college coach search." : "Taken out of college coach search."); } catch { toast("Couldn't update the listing. Check your connection."); } } }} />
+      <span>List {p.first || "this player"} in <b>college coach search</b> on Benchboard Recruit. Only college staff Benchboard has verified can search; they see the same profile as the link.</span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />
       <ConfirmButton className="btn sm ghost" confirmText="Take it down?" onConfirm={async () => { try { await unshareRecruit(t.id, id); setUrl(""); toast("Profile link taken down. It no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down. Check your connection."); } }}>Stop sharing</ConfirmButton></div>}
     {url && views && <p className="small" style={{ margin: "6px 0 0" }}><b>{views.views === 0 ? "Not opened yet" : `Opened ${views.views} ${views.views === 1 ? "time" : "times"}`}</b>{views.last ? <span className="muted"> · last {new Date(views.last).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}<span className="muted"> · counts each visit to the profile link</span></p>}

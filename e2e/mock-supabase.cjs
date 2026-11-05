@@ -3,7 +3,7 @@ const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
-const admins = new Set(), appErrors = [];
+const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
@@ -56,7 +56,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 14);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 15);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -88,8 +88,23 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     }
     if (p === "/functions/v1/ai") { if (!me) return send(res, 401, { message: "JWT required" }); return send(res, 200, { content: [{ type: "text", text: "Strengths:\n- Mock report from the server function (" + b.model + ")" }], stop_reason: "end_turn" }); }
     if (!me) return send(res, 401, { message: "JWT required" });
+    if (p === "/rest/v1/rpc/college_request") { const u = [...users.values()].find((x) => x.id === me); if (!/\.edu$/i.test(u.email)) return send(res, 400, { message: "Use your school email (ending in .edu) so we can confirm you coach at a college." }); const cur = staff.get(me); if (cur?.status !== "approved") staff.set(me, { user_id: me, email: u.email, name: b.name, school: b.school, title: b.title, status: cur?.status === "denied" ? "denied" : "pending", at: now() }); return send(res, 200, staff.get(me).status); }
+    if (p === "/rest/v1/rpc/college_status") { const s = staff.get(me); return send(res, 200, s ? { status: s.status, name: s.name, school: s.school } : { status: "none" }); }
+    if (p === "/rest/v1/rpc/recruit_search") {
+      if (staff.get(me)?.status !== "approved") return send(res, 400, { message: "College staff only" });
+      const f = b?.f || {}, out = [...recruits.values()].filter((r) => r.listed && r.data).filter((r) => { const d = r.data, s = d.season || {};
+        if (f.grad?.length && !f.grad.includes(d.player.grad)) return false; if (f.pos?.length && !f.pos.some((x) => String(d.player.pos || "").toUpperCase().includes(x))) return false;
+        if (f.q && !`${d.player.first} ${d.player.last} ${d.team?.name || ""} ${d.profile?.club || ""}`.toLowerCase().includes(String(f.q).toLowerCase())) return false;
+        if (f.region && String(d.team?.region || "").toLowerCase() !== String(f.region).toLowerCase()) return false;
+        for (const [k, v] of Object.entries(f.min || {})) if (typeof v === "number" && !(typeof s[k] === "number" && s[k] >= v)) return false; return true; })
+        .map((r) => ({ code: r.code, updated: r.updated_at, player: r.data.player, team: r.data.team, ranks: r.data.ranks || [], clips: (r.data.clips || []).length, season: r.data.season }));
+      return send(res, 200, out);
+    }
+    if (p === "/__mock/staff") return send(res, 200, [...staff.values()]);
     if (p === "/rest/v1/rpc/is_admin") return send(res, 200, admins.has(me));
     if (p.startsWith("/rest/v1/rpc/admin_") && !admins.has(me)) return send(res, 400, { message: "Admins only" });
+    if (p === "/rest/v1/rpc/admin_college_staff") return send(res, 200, [...staff.values()]);
+    if (p === "/rest/v1/rpc/admin_decide_college") { const s = staff.get(b.uid); if (s) s.status = b.approve ? "approved" : "denied"; return send(res, 200, null); }
     if (p === "/rest/v1/rpc/admin_overview") {
       const R = [...records.values()].filter((r) => !r.deleted), ms = R.filter((r) => r.store === "matches" && r.data.kind === "match");
       return send(res, 200, { users: users.size, users7: users.size, teams: teams.size, activeTeams7: new Set(R.map((r) => r.team_id)).size, matches: ms.length, matches7: ms.length, liveNow: ms.filter((r) => r.data.status === "live").length,
@@ -124,6 +139,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/recruit_shares" && req.method === "GET") { const t = val(P.team_id), pl = val(P.player_id); return send(res, 200, [...recruits.values()].filter((r) => r.team_id === t && r.player_id === pl && isMember(t, me))); }
     if (p === "/rest/v1/recruit_shares" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); recruits.set(b.code, { ...b, updated_at: now() }); return send(res, 201); }
     if (p === "/rest/v1/recruit_shares" && req.method === "DELETE") { const t = val(P.team_id), pl = val(P.player_id); if (!canEdit(t, me)) return send(res, 403, { message: "rls" }); for (const [k, r] of recruits) if (r.team_id === t && r.player_id === pl) recruits.delete(k); return send(res, 204); }
+    if (p === "/rest/v1/recruit_shares" && req.method === "PATCH" && P.team_id) { const t = val(P.team_id), pl = val(P.player_id); if (!canEdit(t, me)) return send(res, 403, { message: "rls" }); for (const r of recruits.values()) if (r.team_id === t && r.player_id === pl) Object.assign(r, b); return send(res, 204); }
     if (p === "/rest/v1/recruit_shares" && req.method === "PATCH") { const r = recruits.get(val(P.code)); if (!r || !canEdit(r.team_id, me)) return send(res, 403, { message: "rls" }); Object.assign(r, b); return send(res, 204); }
     if (p === "/rest/v1/season_shares" && req.method === "GET") { const t = val(P.team_id), se = val(P.season_id); return send(res, 200, [...seasonShares.values()].filter((s) => s.team_id === t && s.season_id === se && isMember(t, me))); }
     if (p === "/rest/v1/season_shares" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); seasonShares.set(b.code, b); return send(res, 201); }

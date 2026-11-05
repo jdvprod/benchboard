@@ -15,7 +15,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 1. Supabase (the database and accounts)
 
-1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 14: it also makes the `media` storage for photos and logos, crash reports and the admin console.
+1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 15: it also makes the `media` storage for photos and logos, crash reports and the admin console.
 2. **Authentication → URL Configuration**: Site URL = your site address. Redirect URLs: add `https://YOUR-SITE/**`.
 3. **Authentication → Emails**: either turn off **Confirm email** (Sign In / Providers), or connect an email provider under **SMTP Settings** (Resend, Postmark, SendGrid). Supabase's built-in email only reaches your own team and a few emails an hour, so real coaches won't get password-reset emails without it.
 4. **Edge Functions → Deploy a new function → Via Editor**:

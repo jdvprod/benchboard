@@ -54,7 +54,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "14" "schema version is reported"
+check "select schema_version();" "15" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -102,4 +102,18 @@ expect "$(asall $B "select admin_remove_picture('t1/x.jpg');" | grep -c 'Admins 
 q -c "set role anon; select recruit_seen('r1r1r1'); select recruit_seen('r1r1r1');" >/dev/null
 expect "$(q -c "select views from recruit_shares where code = 'R1R1R1';")" "2" "profile views are counted"
 expect "$(q -c "set role anon; select count(*) from recruit_shares;" | tail -1)" "0" "visitors can't read view counts"
+# college coach search: listed profiles, approved .edu staff only
+q -c "update recruit_shares set listed = true, data = '{\"player\":{\"first\":\"Maya\",\"num\":\"7\",\"grad\":2027,\"pos\":\"OH\"},\"team\":{\"name\":\"Test\"},\"season\":{\"sets\":3,\"kps\":3.2,\"hitting\":0.31},\"clips\":[]}' where code = 'R1R1R1';" >/dev/null
+q -c "insert into auth.users (id, email) values ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'coach@state.edu'), ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'scout@gmail.com');" >/dev/null
+D=dddddddd-dddd-dddd-dddd-dddddddddddd; E=eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+expect "$(asall $E "select college_request('Sam Scout', 'State', 'Recruiter');" | grep -c 'ending in .edu')" "1" "college access needs a .edu email"
+expect "$(as $D "select college_request('Pat Coach', 'State University', 'Assistant coach');")" "pending" "college staff request access"
+expect "$(asall $D "select recruit_search();" | grep -c 'College staff only')" "1" "pending staff can't search"
+as $C "select admin_decide_college('$D', true);" >/dev/null
+expect "$(as $D "select jsonb_array_length(recruit_search('{\"grad\":[2027],\"pos\":[\"OH\"],\"min\":{\"kps\":3}}'));")" "1" "approved staff find listed players by class, position and numbers"
+expect "$(as $D "select jsonb_array_length(recruit_search('{\"min\":{\"kps\":4}}'));")" "0" "number filters exclude players below them"
+expect "$(as $D "select jsonb_array_length(recruit_search('{\"min\":{\"dps\":1}}'));")" "0" "a stat the staff never recorded doesn't pass a filter"
+q -c "update recruit_shares set listed = false where code = 'R1R1R1';" >/dev/null
+expect "$(as $D "select jsonb_array_length(recruit_search());")" "0" "unlisted profiles never show in search"
+expect "$(asall $B "select admin_decide_college('$E', true);" | grep -c 'Admins only')" "1" "only admins approve college staff"
 echo "schema OK"
