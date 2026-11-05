@@ -46,3 +46,7 @@ body{padding-left:0}
 
 .rc-photo{position:relative;flex:none}.rc-photo img{width:112px;height:112px;object-fit:cover;border-radius:16px;display:block}
 .rc-photo b{position:absolute;right:-8px;bottom:-8px;background:#000;color:var(--us-bright);font:700 20px var(--display);border-radius:8px;padding:2px 8px}
+.rc-ranks{list-style:none;margin:0 0 12px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.rc-ranks li{background:var(--us-soft);border:1px solid color-mix(in srgb,var(--us) 30%,transparent);border-radius:999px;padding:6px 14px;font-size:14.5px}
+.rc-ranks b{font-family:var(--display);color:var(--us)}.rc-ranks small{color:var(--muted)}
+@media print{.rc-ranks li{border-color:#999;background:none}}

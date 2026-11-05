@@ -41,6 +41,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     const pubUrl = (u) => (typeof u === "string" && /^https?:\/\//.test(u) ? u : null);
     const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1), photo: d.hidePublic ? null : pubUrl(d.photo) });
     const pubMatch = (m) => m && ({ id: m.id, opp: m.opp, date: m.date, event: m.event, status: m.status, kind: m.kind, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, scrim: m.scrim, oppLogo: pubUrl(m.oppLogo) });
+    if (p === "/rest/v1/rpc/recruit_seen") { const r = recruits.get(String(b.share).toUpperCase()); if (r) { r.views = (r.views || 0) + 1; r.last_viewed = new Date().toISOString(); } return send(res, 200, null); }
     if (p === "/rest/v1/rpc/watch") {
       const s = shares.get(String(b.share).toUpperCase()); if (!s) return send(res, 200, null);
       const R = [...records.values()].filter((r) => r.team_id === s.team_id && !r.deleted);
@@ -55,7 +56,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 13);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 14);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

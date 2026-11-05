@@ -262,6 +262,14 @@ language sql stable security definer set search_path = public as $$
   select jsonb_build_object('html', html, 'data', data, 'updated_at', updated_at) from recruit_shares where code = upper(trim(share));
 $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
+-- how often a profile is opened, so the family and coach know when colleges are looking (the page counts once per visit)
+alter table public.recruit_shares add column if not exists views int not null default 0;
+alter table public.recruit_shares add column if not exists last_viewed timestamptz;
+create or replace function public.recruit_seen(share text) returns void
+language sql volatile security definer set search_path = public as $$
+  update recruit_shares set views = views + 1, last_viewed = now() where code = upper(trim(share));
+$$;
+grant execute on function public.recruit_seen(text) to anon, authenticated;
 
 -- ---------- team recruiting board: one link listing every player whose family agreed to share a profile ----------
 create table if not exists public.recruit_boards (
@@ -411,7 +419,7 @@ begin
 end $$;
 grant execute on function public.admin_remove_picture(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 13 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 14 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

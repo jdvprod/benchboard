@@ -67,6 +67,12 @@ The build makes two more sites beside the coaching app, from the same code and d
 - **Benchboard Live** (`/live/`) for families and fans. **Share team page** on the Team tab gives a link (`/live/#/t/CODE`) and a six-letter code: live scoreboard during matches, schedule and results, season stats, roster and player pages. Every match opens as an ESPN-style game page with Gamecast, Box score, Play-by-play and Team stats tabs. **Share gamecast** on the Live screen gives a link to one match (`/live/#/g/CODE`). Players appear as first name and last initial (or number only when a family asks); coaches' notes and film tags never reach these pages. Old `#/watch/` and `#/season/` links redirect.
 - **Benchboard Recruit** (`/recruit/`) for college coaches. A player's page → Recruiting profile → **Share profile link** (after confirming the family agreed) publishes `/recruit/#/p/CODE`: verified season numbers, game log, measurables, contact and highlight clips. **Share recruiting board** on the Team tab lists every shared profile (`/recruit/#/b/CODE`), filterable by class and position. Profiles are snapshots: tap **Update profile link** after new matches.
 
+**Highlight videos.** On a player's page, **Make highlight video** turns their best plays into one finished video in the browser: a title card (photo, name, number, class, team), each play with a broadcast-style caption ("KILL · vs Central · Set 2 · 14–12") and a player bug, and a closing card with verified numbers and the profile link. Pick and order the plays and choose 5, 7 or 10 seconds each. Works from a match video file on the device or a direct video link (YouTube and Vimeo can't be cut in a browser). Saves as MP4 where the browser can, otherwise WebM.
+
+**Recruiting profiles** also show where the player ranks on the team ("1st on the team in kills per set", counting regulars only), and the coach sees how often the shared profile was opened.
+
+**Voice entry (Labs).** With type-in codes on, a **Voice** button listens on the bench: "seven kill", "twelve ace, their kill eleven", "four pass three", "scratch that". Clear phrases record right away; anything unclear waits in the box to fix.
+
 **Clips.** On Stats → One match → Film, paste the match video link (YouTube, Vimeo or a video file link) or pick a video file on the device, and set **First serve at**. Every play then becomes a clip: watch any filter (a player's kills, every point, our errors) back to back, and from a video file save one clip or the whole reel as a video file. A player's best plays (kills, aces and blocks first) become the highlight clips on their Recruit profile; clips from a file on the device stay on the device.
 
 **Gameday extras on Live.** The gamecast shows who's on the court in their rotation spots (with photos, the libero and the server marked). The schedule has **Add to calendar** (a calendar file of upcoming matches and tournament games), and the Live home page lists every team the phone follows. The stream overlay captions who scored each point (`plays=0` turns it off). Once a season has three results, the team page shows **Season in review** (record, sets, longest win streak, biggest win, best single-match lines), and Stats → **Season graphic** makes the same as an image. On the coach's Home, **Text recap** copies the result, set scores, three standouts and the box score link for the team group chat.
@@ -101,7 +107,7 @@ Until then, keep **Confirm email** off (Authentication → Sign In / Providers �
 
 Signed-in coaches use AI through the `ai` Supabase Edge Function (`supabase/functions/ai/index.ts`), which holds your Anthropic key and limits each coach to 40 requests a day (`AI_DAILY_LIMIT` to change it). To turn it on:
 
-1. Run the latest `supabase/schema.sql` (version 13).
+1. Run the latest `supabase/schema.sql` (version 14).
 2. In Supabase → Edge Functions, create a function named `ai` and paste in `supabase/functions/ai/index.ts` (or `supabase functions deploy ai`).
 3. In Edge Functions → Secrets, add `ANTHROPIC_API_KEY`.
 

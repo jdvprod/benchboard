@@ -708,6 +708,51 @@ const scenarios = {
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close(); await ctx.close();
   },
+  async reel(browser) {
+    const p = await newPage(browser, { cloud: false });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill(["1 Ava Ramirez S", "3 Lily Torres L", "4 Jordan Lee OH", "7 Maya Chen OH 2027", "8 Zoe Grant MB", "9 Riley Brooks MB", "12 Sofia Nguyen OPP"].join("\n")); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
+    await go(p, "track"); await p.getByPlaceholder("e.g. Buchanan").fill("Central"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300);
+    for (let i = 0; i < 4; i++) { await p.waitForTimeout(1200); await p.keyboard.type("7"); await p.waitForTimeout(860); await p.keyboard.press(i === 2 ? "a" : "k"); await p.keyboard.press("Escape"); }
+    await go(p, "stats"); await p.getByRole("button", { name: "One match", exact: true }).click(); await p.getByRole("button", { name: "Film", exact: true }).click();
+    await p.getByLabel("Video link").fill(U + "__fixtures/match.webm"); await p.getByLabel("Time of first serve in the video").fill("0:12"); await p.getByLabel("Time of first serve in the video").press("Tab"); await p.waitForTimeout(300);
+    await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "Make highlight video" }).click(); await p.waitForTimeout(300);
+    const items = p.locator(".reel-list li");
+    ok("highlight video starts with her best plays picked", (await items.count()) >= 3 && (await p.locator(".reel-list li.on").count()) >= 3, String(await items.count()));
+    { const ax = await a11y(p); ok("highlight video controls all have names", !ax.length, ax.join(" | ")); }
+    await p.getByRole("button", { name: "5 s" }).click();
+    while ((await p.locator(".reel-list li.on").count()) > 2) await p.locator(".reel-list li.on input").last().uncheck();
+    await p.getByRole("button", { name: /^Move .* later$/ }).first().click();
+    ok("the length shows plays and seconds", /2 plays · about 17 seconds/.test(await p.locator(".reel").innerText()), (await p.locator(".reel").innerText()).slice(0, 300));
+    await p.getByRole("button", { name: "Make highlight video" }).last().click();
+    await p.waitForTimeout(4500); if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "reel-making.png"), fullPage: true });
+    await p.locator("video.reel-out").waitFor({ timeout: 60000 });
+    const dur = await p.locator("video.reel-out").evaluate(async (v) => { if (!isFinite(v.duration) || !v.duration) { v.currentTime = 1e9; await new Promise((r) => v.addEventListener("timeupdate", r, { once: true })); } return v.duration; });
+    ok("the finished video runs about as long as planned", dur > 13 && dur < 24, String(dur));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "reel-done.png"), fullPage: true });
+    const f = await download(p, () => p.getByRole("button", { name: "Save video" }).click(), 15000);
+    ok("the highlight video saves", /Maya Chen highlights\.(webm|mp4)$/.test(f.name) && f.size > 100000, `${f.name} ${f.size}`);
+    if (process.env.SHOTS) fs.copyFileSync(f.path, path.join(process.env.SHOTS, f.name));
+    ok("reel: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
+  async voice(browser) {
+    const p = await newPage(browser, { cloud: false });
+    // a stand-in microphone: each start() "hears" the next phrase queued in window.__say
+    await p.context().addInitScript(() => { window.__say = []; window.SpeechRecognition = class { start() { setTimeout(() => { const t = window.__say.shift(); if (t) this.onresult?.({ results: [[{ transcript: t }]] }); }, 100); } stop() { this.onend?.(); } }; });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Voice High"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill("7 Maya Chen OH\n12 Sofia Nguyen OPP\n4 Jordan Lee OH"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(200);
+    await go(p, "labs"); await p.getByLabel("Type-in stat codes").check({ force: true });
+    await go(p, "track"); await p.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300);
+    const say = async (t) => { await p.evaluate((x) => window.__say.push(x), t); const b = p.locator(".quick").getByRole("button", { name: /^(Voice|● Listening)$/ }); if ((await b.getAttribute("aria-pressed")) === "true") await b.click(); await b.click(); await p.waitForTimeout(500); };
+    await say("seven kill"); ok("voice: “seven kill” records a kill for #7", /Recorded: 7k/.test(await p.locator(".quick").innerText()) && /1/.test(await score(p)), await p.locator(".quick").innerText());
+    await say("twelve ace their kill eleven"); ok("voice: two plays in one breath", /Recorded: 12ace ok11/.test(await p.locator(".quick").innerText()), await p.locator(".quick").innerText());
+    await say("great job everybody"); ok("voice: chatter records nothing", /no stat in it/.test(await p.locator(".quick").innerText()));
+    await say("scratch that"); ok("voice: “scratch that” undoes", /Recorded: undo/.test(await p.locator(".quick").innerText()));
+    ok("voice: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
   async overlay(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
@@ -826,6 +871,7 @@ const scenarios = {
     await P.goto(board); await P.waitForTimeout(1000); ok("recruiting board lists players with shared profiles", (await P.locator(".rc-pc", { hasText: "Nia Lopez" }).count()) === 1);
     await P.locator(".rc-pc", { hasText: "Nia Lopez" }).click(); await P.waitForTimeout(800); ok("board opens the profile", (await P.locator(".rc-id h1").count()) === 1);
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: "Nia" }).first().click(); await A.waitForTimeout(300);
+    await A.waitForTimeout(600); ok("the coach sees how often the profile was opened", /Opened 1 time\b/.test(await A.locator(".card", { hasText: "Recruiting profile" }).innerText()), (await A.locator(".card", { hasText: "Recruiting profile" }).innerText()).slice(-300));
     await A.getByRole("button", { name: "Stop sharing" }).click(); await A.getByRole("button", { name: "Take it down?" }).click(); await A.waitForTimeout(600);
     await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't shared right now").count()) === 1);
     // AI through the server function, and the setup check

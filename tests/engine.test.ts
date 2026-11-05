@@ -466,3 +466,28 @@ test("season summary: record, streaks, biggest win and single-match highs", () =
   const k = S.highs.find((h) => h.key === "K")!; assert.equal(k.v, 14); assert.equal(k.opp, "Opp c", "7 kills a set × 2 sets");
   assert.equal(seasonSummary([g("x", "2026-09-01", [[25, 10], [25, 12]], 3)], () => false).highs.length, 0, "players kept off public pages don't count");
 });
+
+import { teamRanks } from "../src/features/player/recruitData";
+test("recruiting: team ranks count regulars only and keep the top three spots", () => {
+  const mk = (sets: [number, number][], plays: [string, string, number][]) => { const ev: any[] = []; let i = 0;
+    for (const [a, b] of sets) { ev.push({ id: "n" + i++, t: "NS", serve: "us", ts: i }); for (const [p, t, n] of plays) for (let k = 0; k < n; k++) ev.push({ id: "e" + i++, t, p, ns: true, ts: i }); ev.push({ id: "a" + i++, t: "ADJ", us: a, them: b, ts: i }); }
+    return replay(ev, { bestOf: 5 }); };
+  const R = mk([[25, 20], [25, 20], [25, 20]], [["maya", "K", 5], ["zoe", "K", 3], ["ava", "K", 1], ["ava", "AST", 10], ["sub", "K", 9]]);
+  const A = aggregate(R.sets); A.setsPlayed = { maya: 3, zoe: 3, ava: 3, sub: 1 } as any;
+  assert.deepEqual(teamRanks(A, "maya").find((r) => r.label === "kills per set"), { label: "kills per set", rank: 1, of: 3 }, "a one-set sub with 9 kills doesn't count");
+  assert.equal(teamRanks(A, "zoe").find((r) => r.label === "kills per set")?.rank, 2);
+  assert.equal(teamRanks(A, "sub").length, 0);
+});
+
+import { spokenToCodes } from "../src/sports/volleyball/quickcodes";
+test("voice entry: speech becomes type-in codes", () => {
+  assert.equal(spokenToCodes("seven kill"), "7k");
+  assert.equal(spokenToCodes("Twelve ace, their kill eleven"), "12ace ok11");
+  assert.equal(spokenToCodes("number 4 pass three, 1 assist, 7 kill"), "4p3 1ast 7k");
+  assert.equal(spokenToCodes("kill seven"), "7k");
+  assert.equal(spokenToCodes("twenty three solo block"), "23bs");
+  assert.equal(spokenToCodes("their error"), "oe");
+  assert.equal(spokenToCodes("8 serve error scratch that"), "8se u");
+  assert.equal(spokenToCodes("um nice"), "");
+  for (const s of ["7k", "12ace ok11", "4p3 1ast 7k", "23bs", "oe", "8se u"]) assert.equal(parseQuick(s).errors.length, 0, s);
+});

@@ -1,5 +1,5 @@
 /** Player portal: season numbers, trends, match log, goals, AI report card and a shareable report. */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
 import { Goal, GoalMetric, Match, Player, RecruitProfile } from "../../data/model";
 import { matchHead, playerTiles, sharePlayerGraphic } from "./playerGraphic";
@@ -12,9 +12,10 @@ import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { cloudAvailable, currentUser } from "../../cloud/client";
-import { isLinked, shareRecruit, unshareRecruit } from "../../cloud/sync";
+import { isLinked, recruitViews, shareRecruit, unshareRecruit } from "../../cloud/sync";
 import { LEGAL } from "../../app/legal";
 import { ClipPlayer } from "../../ui/ClipPlayer";
+import { ReelMaker } from "../../film/ReelMaker";
 import { highlightPick } from "../../film/clips";
 import { playerClips, recruitData } from "./recruitData";
 import { copyText } from "../../ui/kit";
@@ -177,7 +178,8 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
   const consented = !!pr.consentAt;
   const setUrl = (u: string) => patch("players", id, { profile: { ...(player(id)!.profile || {}), sharedUrl: u || undefined } });
   const canShare = cloudAvailable() && !!currentUser() && isLinked(t.id) && !t.sample;
-  const [preview, setPreview] = useState(false);
+  const [preview, setPreview] = useState(false), [reel, setReel] = useState(false), [views, setViews] = useState<{ views: number; last: string | null } | null>(null);
+  useEffect(() => { if (canShare && url) recruitViews(t.id, id).then(setViews).catch(() => {}); }, [id, url]);
   const allClips = playerClips(id), picked = highlightPick(allClips);
   const set = (k: keyof RecruitProfile, v: string) => patch("players", id, { profile: { ...(player(id)!.profile || {}), [k]: v } });
   return <Card title={<>Recruiting profile <span className="tag" style={{ verticalAlign: 2 }}>Preview</span></>} actions={<div className="row">
@@ -196,11 +198,13 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
         <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={!pr.clipsOff} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), clipsOff: e.target.checked ? undefined : true } })} /> Include clips on the shared profile</label>
         {preview && <div style={{ marginTop: 8 }}><ClipPlayer clips={picked} title={`${p.first} ${p.last} · highlights`} /></div>}
       </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
+      {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setReel(true)}>Make highlight video</button>}
     </div>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />
       <ConfirmButton className="btn sm ghost" confirmText="Take it down?" onConfirm={async () => { try { await unshareRecruit(t.id, id); setUrl(""); toast("Profile link taken down. It no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down. Check your connection."); } }}>Stop sharing</ConfirmButton></div>}
+    {url && views && <p className="small" style={{ margin: "6px 0 0" }}><b>{views.views === 0 ? "Not opened yet" : `Opened ${views.views} ${views.views === 1 ? "time" : "times"}`}</b>{views.last ? <span className="muted"> · last {new Date(views.last).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}<span className="muted"> · counts each visit to the profile link</span></p>}
   </Card>;
 }
 

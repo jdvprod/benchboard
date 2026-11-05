@@ -54,7 +54,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "13" "schema version is reported"
+check "select schema_version();" "14" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -99,4 +99,7 @@ q -c "update records set data = data || '{\"photo\":\"https://x.supabase.co/stor
 as $C "select admin_remove_picture('t1/player-p1.jpg');" >/dev/null
 expect "$(q -c "select data ? 'photo' from records where id = 'p1';")" "f" "taking a picture down removes it from the player"
 expect "$(asall $B "select admin_remove_picture('t1/x.jpg');" | grep -c 'Admins only')" "1" "coaches can't take pictures down"
+q -c "set role anon; select recruit_seen('r1r1r1'); select recruit_seen('r1r1r1');" >/dev/null
+expect "$(q -c "select views from recruit_shares where code = 'R1R1R1';")" "2" "profile views are counted"
+expect "$(q -c "set role anon; select count(*) from recruit_shares;" | tail -1)" "0" "visitors can't read view counts"
 echo "schema OK"

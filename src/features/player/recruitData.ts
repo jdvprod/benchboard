@@ -14,6 +14,29 @@ export interface RecruitData {
   season: { matches: number; sets: number; K: number; AE: number; TA: number; SA: number; SE: number; R: number; D: number; BS: number; BA: number; AST: number; hitting: number | null; kps: number | null; acesPs: number | null; serveIn: number | null; passAvg: number | null; dps: number | null; bps: number | null; aps: number | null };
   games: RecruitGame[];
   clips: Clip[];
+  /** Where the player ranks on the team (only top-3 spots, among teammates with enough sets to count). */
+  ranks?: { label: string; rank: number; of: number }[];
+}
+
+/** Rank on the team per set (or by percentage), counting teammates who played at least a third of the team's sets. Pure. */
+export function teamRanks(A: ReturnType<typeof aggregate>, id: string): { label: string; rank: number; of: number }[] {
+  const ids = Object.keys(A.ps), minSets = Math.max(3, Math.round(A.sets / 3));
+  const elig = ids.filter((x) => (A.setsPlayed[x] || 0) >= minSets);
+  if (!elig.includes(id) || elig.length < 3) return [];
+  const per = (f: (s: any) => number) => (x: string) => f(A.ps[x]) / (A.setsPlayed[x] || 1);
+  const cats: [string, (x: string) => number | null, (x: string) => boolean][] = [
+    ["kills per set", per((s) => s.K), (x) => A.ps[x].K > 0], ["hitting %", (x) => (A.ps[x].TA ? hitting(A.ps[x]) : null), (x) => A.ps[x].TA >= 20],
+    ["aces per set", per((s) => s.SA), (x) => A.ps[x].SA > 0], ["digs per set", per((s) => s.D), (x) => A.ps[x].D > 0], ["blocks per set", per((s) => blocks(s)), (x) => blocks(A.ps[x]) > 0],
+    ["assists per set", per((s) => s.AST), (x) => A.ps[x].AST > 0], ["pass average", (x) => (A.ps[x].R ? passAvg(A.ps[x]) : null), (x) => A.ps[x].R >= 20],
+  ];
+  const out: { label: string; rank: number; of: number }[] = [];
+  for (const [label, f, counts] of cats) {
+    const field = elig.filter(counts).map((x) => [x, f(x)] as [string, number | null]).filter((x) => x[1] != null) as [string, number][];
+    if (field.length < 3 || !field.some((x) => x[0] === id)) continue;
+    const mine = field.find((x) => x[0] === id)![1], rank = 1 + field.filter((x) => x[1] > mine).length;
+    if (rank <= 3) out.push({ label, rank, of: field.length });
+  }
+  return out.sort((a, b) => a.rank - b.rank).slice(0, 4);
 }
 
 /** Every clip of this player's plays from season matches whose video can be shared publicly. */
@@ -45,7 +68,7 @@ export function recruitData(id: string, opts: { clips?: Clip[] } = {}): RecruitD
     team: { name: t.name, level: t.level || "", season: seasonsOf().find((x) => x.id === t.activeSeasonId)?.name || "" },
     profile: keep({ club: pr.club, gpa: pr.gpa, email: pr.email, phone: pr.phone, reach: pr.reach, approach: pr.approach, block: pr.block, hand: pr.hand, video: pr.video, about: pr.about, coachContact: pr.coachContact }),
     season: { matches: games.length, sets: pm.sets, K: S.K, AE: S.AE, TA: S.TA, SA: S.SA, SE: S.SE + S.SEN + S.SEO, R: S.R, D: S.D, BS: S.BS, BA: S.BA, AST: S.AST, hitting: s ? hitting(s) : null, kps: pm.kps, acesPs: pm.acesPs, serveIn: pm.serveIn, passAvg: s ? passAvg(s) : null, dps: pm.dps, bps: s && pm.sets ? blocks(s) / pm.sets : null, aps: pm.aps },
-    games,
+    games, ranks: teamRanks(A, id),
     clips: (opts.clips ?? highlightPick(playerClips(id))).map(({ p: _p, ...c }) => c),
   };
 }

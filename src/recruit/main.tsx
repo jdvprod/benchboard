@@ -34,10 +34,14 @@ function useRpc<T>(fn: string, code: string, ok: (r: T) => boolean, missing: str
   return { d, err };
 }
 
+const ord = (n: number) => n + (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th");
+
 /* ---------- a player's profile ---------- */
 function Profile({ code }: { code: string }) {
   const { d, err } = useRpc<{ html: string; data: RecruitData | null; updated_at: string }>("recruit_view", code, (r) => !!(r.html || r.data), "This profile isn't shared right now. Ask the player's coach for a current link.");
   useEffect(() => { if (d?.data) document.title = `${d.data.player.first} ${d.data.player.last} · Class of ${d.data.player.grad || "—"} · Benchboard Recruit`; }, [d]);
+  // count the visit once per browser session, so the family and coach know when colleges look
+  useEffect(() => { if (!d) return; const k = "rc-seen-" + code; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* private window */ } rpc("recruit_seen", { share: code }, true).catch(() => {}); }, [!!d, code]);
   if (!d) return <Shell><p className="rc-empty">{err || "Loading the profile…"}</p></Shell>;
   if (!d.data) return <Shell><iframe className="recruit-frame" title="Recruiting profile" sandbox="allow-popups allow-popups-to-escape-sandbox" srcDoc={d.html.replace("<head>", '<head><base target="_blank">')} /></Shell>;
   const { player: p, team: t, profile: pr, season: s, games, clips } = d.data;
@@ -64,6 +68,7 @@ function Profile({ code }: { code: string }) {
         <p className="rc-meta">{[t.name, t.level, pr.club ? "Club: " + pr.club : ""].filter(Boolean).join(" · ")}</p></div>
       <div className="rc-acts">{contact && <a className="btn primary" href={contact}>Email {p.first}</a>}<button className="btn" onClick={() => print()}>Print or save PDF</button></div>
     </section>
+    {!!d.data.ranks?.length && <ul className="rc-ranks" aria-label="Team ranks">{d.data.ranks.map((r) => <li key={r.label}><b>{ord(r.rank)}</b> on the team in {r.label}<small> of {r.of}</small></li>)}</ul>}
     <p className="rc-verified"><b>✓ Verified stats</b> recorded live by {t.name}'s coaching staff{t.season ? ` · ${t.season}` : ""} · {s.matches} {s.matches === 1 ? "match" : "matches"}, {s.sets} sets · updated {day(d.data.updated)}</p>
     {(clips.length > 0 || fullVideo.length > 0) && <section className="rc-card"><h2>Highlights</h2>
       {clips.length > 0 && <ClipPlayer clips={clips} title={`${clips.length} plays from tracked matches`} />}

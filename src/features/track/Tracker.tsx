@@ -19,7 +19,7 @@ import { AiCard } from "../../ui/ai";
 import { timeoutPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { SplitEditor, SplitState } from "../practice/SplitEditor";
-import { parseQuick, QUICK_HELP } from "../../sports/volleyball/quickcodes";
+import { parseQuick, QUICK_HELP, spokenToCodes } from "../../sports/volleyball/quickcodes";
 import { PlanPanel } from "../matchup/MatchupPage";
 import { KEYMAP, useStatKeys } from "./keys";
 
@@ -210,10 +210,23 @@ function FocusToggle() {
 
 /* ---------- type-in codes ---------- */
 function QuickEntry({ m, record }: { m: Match; record: (k: ActionCode, o?: { p?: string | null; op?: string; quiet?: boolean }) => boolean }) {
-  const [v, setV] = useState(""), [help, setHelp] = useState(false), [msg, setMsg] = useState("");
+  const [v, setV] = useState(""), [help, setHelp] = useState(false), [msg, setMsg] = useState(""), [listening, setListening] = useState(false), rec = useRef<any>(null);
+  const SR: any = typeof window !== "undefined" ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition : null;
+  useEffect(() => () => { try { rec.current?.stop(); } catch { /* ignore */ } }, []);
   if (!state.prefs.quick) return null;
-  const submit = () => {
-    const r = parseQuick(v); if (!v.trim()) return;
+  /** Voice: say "seven kill", "their error", "four pass three"; clear phrases record right away, anything else waits in the box. */
+  const listen = () => {
+    if (listening) { rec.current?.stop(); return; }
+    const r = new SR(); r.lang = "en-US"; r.continuous = true; r.interimResults = false; rec.current = r;
+    r.onresult = (e: any) => { const said = String(e.results[e.results.length - 1][0].transcript || "").trim(), codes = spokenToCodes(said);
+      if (!codes) { setMsg(`Heard "${said}" but no stat in it.`); return; }
+      const ok = !parseQuick(codes).errors.length; setV(codes); if (ok) submit(codes, `Heard "${said}"`); else setMsg(`Heard "${said}": check the codes, then Record.`); };
+    r.onerror = (e: any) => { setMsg(e?.error === "not-allowed" ? "Microphone access is off for Benchboard. Allow it in the browser's site settings." : "Voice stopped: " + (e?.error || "unknown") + "."); };
+    r.onend = () => setListening(false);
+    try { r.start(); setListening(true); setMsg("Listening… say a number and a play, like “seven kill”."); } catch { setMsg("Couldn't start the microphone."); }
+  };
+  const submit = (line = v, heard = "") => {
+    const r = parseQuick(line); if (!line.trim()) return;
     const done: string[] = [], bad = r.errors.slice();
     for (let i = 0; i < r.undo; i++) { const e = undoLast(m.id); if (e) done.push("undo"); }
     for (const it of r.items) {
@@ -221,19 +234,20 @@ function QuickEntry({ m, record }: { m: Match; record: (k: ActionCode, o?: { p?:
       if (it.num) { const p = activePlayers().find((x) => x.num === it.num); if (!p) { bad.push(it.raw + " (no #" + it.num + ")"); continue; } pid = p.id; }
       if (record(it.code, { p: pid, op: it.op, quiet: true })) done.push(it.raw); else bad.push(it.raw);
     }
-    setMsg((done.length ? "Recorded: " + done.join(" ") : "") + (bad.length ? (done.length ? " · " : "") + "Didn't understand: " + bad.join(", ") : ""));
+    setMsg((heard ? heard + " → " : "") + (done.length ? "Recorded: " + done.join(" ") : "") + (bad.length ? (done.length ? " · " : "") + "Didn't understand: " + bad.join(", ") : ""));
     if (!bad.length) setV(""); else setV(bad.map((b) => b.split(" ")[0]).join(" "));
     setUi({ follow: null });
   };
   return <div className="quick">
     <div className="row" style={{ flexWrap: "nowrap" }}>
       <input className="input" value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") submit(); }} placeholder="Type codes: 7k  12ace  4p3  ok11  oe   (Enter to record)" aria-label="Type stat codes" autoComplete="off" autoCapitalize="off" spellCheck={false} />
-      <button className="btn sm" onClick={submit}>Record</button>
+      <button className="btn sm" onClick={() => submit()}>Record</button>
+      {SR && <button className={"btn sm" + (listening ? " primary" : "")} aria-pressed={listening} onClick={listen} title="Say stats out loud: “seven kill”, “twelve ace”, “their error”">{listening ? "● Listening" : "Voice"}</button>}
       <button className="btn sm ghost" aria-expanded={help} onClick={() => setHelp(!help)}>Codes</button>
     </div>
     {msg && <p className="small muted" style={{ margin: "4px 2px 0" }}>{msg}</p>}
     {help && <div className="tbl" style={{ marginTop: 6 }}><table><tbody>{QUICK_HELP.map(([c, d]) => <tr key={c}><td className="l"><code>{c}</code></td><td className="l small">{d}</td></tr>)}</tbody></table>
-      <p className="keys" style={{ marginTop: 6 }}>Number first for your players (7k), after the code for theirs (ok11). Several on one line work. Type-in entries skip the court-location prompt.</p></div>}
+      <p className="keys" style={{ marginTop: 6 }}>Number first for your players (7k), after the code for theirs (ok11). Several on one line work. Type-in entries skip the court-location prompt.{SR ? " Voice: say the number and the play (“seven kill”, “four pass three”, “their kill eleven”, “scratch that”)." : ""}</p></div>}
   </div>;
 }
 

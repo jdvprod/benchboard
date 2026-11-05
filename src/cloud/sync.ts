@@ -251,6 +251,11 @@ export async function shareBoard(teamId: string) {
   if (!existing[0]) await rest("recruit_boards", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId }) });
   return { code: c as string, url: siteUrl("recruit", "b/" + c) };
 }
+/** How many times the player's shared profile was opened, and when last. */
+export async function recruitViews(teamId: string, playerId: string): Promise<{ views: number; last: string | null } | null> {
+  const r: any[] = await rest(`recruit_shares?select=views,last_viewed&team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}&limit=1`);
+  return r[0] ? { views: r[0].views || 0, last: r[0].last_viewed || null } : null;
+}
 export async function unshareRecruit(teamId: string, playerId: string) {
   await rest(`recruit_shares?team_id=eq.${encodeURIComponent(teamId)}&player_id=eq.${encodeURIComponent(playerId)}`, { method: "DELETE" });
 }
