@@ -16,7 +16,7 @@ import { go } from "../../app/router";
 import { Clip, clipsFrom, clock, filmTiming, LOCAL, playName, videoKind, videoTime } from "../../film/clips";
 import { localFile, localVideo, setLocalVideo } from "../../film/localVideos";
 import { ClipQuery, matchQuery, parseQuery, aiQueryPrompt, cleanAiQuery, QueryPlayer } from "../../film/query";
-import { DECODE_LIMIT, findWhistles, Frame, frameFromAnalyser, ralliesFrom, scanFile } from "../../film/rallies";
+import { crossedEnd, DECODE_LIMIT, findWhistles, Frame, frameFromAnalyser, rallyCheck, ralliesFrom, scanFile } from "../../film/rallies";
 import { ReelMaker } from "../../film/ReelMaker";
 import { aiAvailable, askJson } from "../../ai/client";
 
@@ -91,7 +91,8 @@ function FilmWork({ m }: { m: Match }) {
   const [tab, setTab] = useState<Tab>(m.film ? "stat" : "find");
   const [skip, setSkip] = useState(true), [rate, setRate] = useState(1), [now, setNow] = useState(0), [dur, setDur] = useState(0);
   const [scan, setScan] = useState<{ text: string; f: number } | null>(null), stopScan = useRef<(() => void) | null>(null);
-  const userSeek = useRef(0);
+  const userSeek = useRef(0), lastT = useRef(0);
+  const [stopEach, setStopEach] = useState(true), [waiting, setWaiting] = useState(-1);
   const rallies = m.rallies || [];
   const statting = !!m.film;
 
@@ -107,7 +108,7 @@ function FilmWork({ m }: { m: Match }) {
     const onKey = (e: KeyboardEvent) => {
       const v = vid.current, el = e.target as HTMLElement; if (!v || e.metaKey || e.ctrlKey || e.altKey) return;
       if (el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT|VIDEO)$/.test(el.tagName))) return;
-      if (e.key === " ") { e.preventDefault(); v.paused ? v.play().catch(() => {}) : v.pause(); }
+      if (e.key === " ") { e.preventDefault(); playPause(); }
       else if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); seek(v.currentTime + (e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? 1 : 5)); }
       else if (e.key === "[" || e.key === "]") { e.preventDefault(); jumpRally(e.key === "]" ? 1 : -1); }
       else if (e.key === "ArrowUp" || e.key === "ArrowDown") { e.preventDefault(); const rs = [0.5, 0.75, 1, 1.25, 1.5, 2], i = rs.indexOf(rate); const n = rs[Math.max(0, Math.min(rs.length - 1, (i < 0 ? 2 : i) + (e.key === "ArrowUp" ? 1 : -1)))]; setRate(n); v.playbackRate = n; }
@@ -125,8 +126,17 @@ function FilmWork({ m }: { m: Match }) {
     const target = d > 0 ? rallies[cur] : rallies[Math.max(0, cur - 2)];
     if (target) seek(target.start);
   };
+  /** Space / Play: after the video stopped at a rally's end, go straight to the next rally's serve. */
+  const playPause = () => {
+    const v = vid.current; if (!v) return;
+    if (!v.paused) { v.pause(); return; }
+    if (waiting >= 0 && rallies[waiting + 1] && Math.abs(v.currentTime - rallies[waiting].end) < 1.5) { seek(rallies[waiting + 1].start); }
+    setWaiting(-1); v.play().catch(() => {});
+  };
   const onTime = () => {
     const v = vid.current; if (!v) return; setNow(v.currentTime);
+    const prev = lastT.current; lastT.current = v.currentTime;
+    if (statting && stopEach && rallies.length && !v.paused) { const i = crossedEnd(rallies, prev, v.currentTime); if (i >= 0) { v.pause(); setWaiting(i); return; } }
     if (!skip || !rallies.length || v.paused || Date.now() - userSeek.current < 1500) return;
     const t = v.currentTime, inside = rallies.some((r) => t >= r.start - 0.3 && t <= r.end);
     if (inside) return;
@@ -194,11 +204,12 @@ function FilmWork({ m }: { m: Match }) {
       <section className="fr-stage" aria-label="Game video">
         {src ? <>
           <video ref={vid} src={src} controls playsInline preload="auto" onTimeUpdate={onTime} onLoadedMetadata={(e) => setDur((e.target as HTMLVideoElement).duration || 0)} onSeeking={() => { userSeek.current = Date.now(); }} />
+          {waiting >= 0 && <div className="fr-wait" role="status"><b>Rally {waiting + 1} over.</b> Enter what happened, then press Space for rally {waiting + 2 <= rallies.length ? waiting + 2 : "…"}.</div>}
           <Timeline dur={dur} now={now} rallies={rallies} marks={marks} onSeek={seek} />
           <div className="fr-transport">
             <button className="btn sm" onClick={() => jumpRally(-1)} disabled={!rallies.length} title="Previous rally ( [ )">‹ Rally</button>
             <button className="btn sm" onClick={() => seek(now - 5)} title="Back 5 s (←)">−5 s</button>
-            <button className="btn sm primary fr-play" onClick={() => { const v = vid.current; if (v) v.paused ? v.play().catch(() => {}) : v.pause(); }} title="Play / pause (Space)">Play / pause</button>
+            <button className="btn sm primary fr-play" onClick={playPause} title="Play / pause (Space)">{waiting >= 0 ? "Next rally" : "Play / pause"}</button>
             <button className="btn sm" onClick={() => seek(now + 5)} title="Forward 5 s (→)">+5 s</button>
             <button className="btn sm" onClick={() => jumpRally(1)} disabled={!rallies.length} title="Next rally ( ] )">Rally ›</button>
             <select className="input fr-rate" value={rate} onChange={(e) => { const n = +e.target.value; setRate(n); if (vid.current) vid.current.playbackRate = n; }} aria-label="Speed">{[0.5, 0.75, 1, 1.25, 1.5, 2].map((r) => <option key={r} value={r}>{r}×</option>)}</select>
@@ -207,6 +218,7 @@ function FilmWork({ m }: { m: Match }) {
           <div className="fr-tools">
             {scan ? <div className="fr-scan"><div className="fr-bar"><i style={{ width: Math.round(scan.f * 100) + "%" }} /></div><span className="small">{scan.text}</span><button className="btn sm" onClick={() => stopScan.current?.()}>Stop</button></div>
               : <button className="btn sm" onClick={findRallies}>{rallies.length ? `Find rallies again (${rallies.length} found)` : "Find rallies from the whistle"}</button>}
+            {statting && <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={stopEach} onChange={(e) => setStopEach(e.target.checked)} disabled={!rallies.length} /> Pause after each rally</label>}
             <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={skip} onChange={(e) => setSkip(e.target.checked)} disabled={!rallies.length} /> Skip dead time</label>
             {!m.film && firstSet && <button className="btn sm" onClick={lineUp} title="Pause the video at the first serve of set 1, then tap">First serve is now</button>}
           </div>
@@ -318,13 +330,17 @@ function RallyList({ m, R, T, rallies, now, onSeek }: { m: Match; R: Replay; T: 
   const plays = R.log.filter((l) => l.kind === "stat").map((l) => ({ l: l as Extract<LogEntry, { kind: "stat" }>, t: videoTime(T, l.id) }));
   if (!rallies.length) return <div className="stack"><p className="empty">No rallies found yet. Tap “Find rallies from the whistle” under the video: Benchboard listens for the referee's whistle, marks every rally and skips the dead time between them.</p>
     {plays.length > 0 && <p className="small muted">{plural(plays.length, "play")} statted so far.</p>}</div>;
-  return <ol className="fr-rallies">{rallies.map((r, i) => {
+  const check = rallyCheck(rallies, plays.map((p) => ({ t: p.t, point: !!p.l.w })));
+  return <div className="stack">
+    {m.film && (check.missing.length ? <div className="banner warn"><p><b>{plural(check.missing.length, "rally", "rallies")} with no point statted yet.</b> {R.sets.reduce((a, s) => a + s.us + s.them, 0)} points statted, {rallies.length} rallies found.</p><button className="btn sm" onClick={() => onSeek(rallies[check.missing[0]].start)}>Go to rally {check.missing[0] + 1}</button></div>
+      : <p className="small muted">Every rally found has a point statted.</p>)}
+    <ol className="fr-rallies">{rallies.map((r, i) => {
     const inside = plays.filter((p) => p.t >= r.start - 1 && p.t <= r.end + 1), end = inside.find((p) => p.l.w);
     const on = now >= r.start && now <= r.end;
-    return <li key={i} className={on ? "on" : ""}><button onClick={() => onSeek(r.start)}>
+    return <li key={i} className={(on ? "on" : "") + (m.film && !check.scored[i] ? " gap" : "")}><button onClick={() => onSeek(r.start)}>
       <span className="num fr-time">{clock(r.start)}</span>
       <span className="fr-rl"><b>Rally {i + 1}</b> <span className="small muted">{Math.round(r.end - r.start)} s</span>
         {inside.length ? <span className="small">{inside.map((p) => label(p.l)).join(" → ")}</span> : <span className="small muted">{m.film ? "Not statted yet" : "No plays here"}</span>}</span>
-      {end && <span className={"small pt-" + end.l.w}>{end.l.us}–{end.l.them}</span>}
-    </button></li>; })}</ol>;
+      {end ? <span className={"small pt-" + end.l.w}>{end.l.us}–{end.l.them}</span> : m.film ? <span className="small fr-nopt">No point</span> : null}
+    </button></li>; })}</ol></div>;
 }

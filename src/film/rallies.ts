@@ -116,3 +116,19 @@ export function frameFromAnalyser(t: number, db: Float32Array, sr: number, fftSi
   for (let i = 0; i < db.length; i++) pw[i] = Number.isFinite(db[i]) ? Math.pow(10, db[i] / 10) : 0;
   return frameFrom(t, pw, sr, fftSize);
 }
+
+/** Which rallies have a point-ending play statted in them (a play inside the rally, or within `grace` seconds after
+ * its end, since plays are often entered once the video pauses at the whistle). Pure: unit tested. */
+export function rallyCheck(rallies: Rally[], plays: { t: number; point: boolean }[], grace = 4): { scored: boolean[]; missing: number[] } {
+  const scored = rallies.map((r, i) => {
+    const until = Math.min(r.end + grace, rallies[i + 1] ? rallies[i + 1].start : Infinity);
+    return plays.some((p) => p.point && p.t >= r.start - 0.5 && p.t <= until);
+  });
+  return { scored, missing: scored.map((s, i) => (s ? -1 : i)).filter((i) => i >= 0) };
+}
+
+/** The rally whose end the playhead just crossed (from `prev` to `t`), or -1. */
+export function crossedEnd(rallies: Rally[], prev: number, t: number): number {
+  if (t <= prev || t - prev > 2) return -1; // seeks don't count
+  return rallies.findIndex((r) => prev < r.end && t >= r.end);
+}

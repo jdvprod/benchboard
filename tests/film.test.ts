@@ -80,3 +80,13 @@ test("reel studio: best-of puts starred and strongest plays first and stays unde
   assert.deepEqual(pickReel(marks as any, null, 24).map((x) => x.id), ["d", "c", "e"]);
   assert.deepEqual(pickReel(marks as any, ["K"]).map((x) => x.id), ["c"]);
 });
+
+import { rallyCheck, crossedEnd } from "../src/film/rallies";
+test("rally check: finds rallies with no point statted, counting plays entered just after the whistle", () => {
+  const rs = [{ start: 2, end: 14 }, { start: 24, end: 35 }, { start: 50, end: 60 }];
+  const c = rallyCheck(rs, [{ t: 9, point: true }, { t: 30, point: false }, { t: 62, point: true }]);
+  assert.deepEqual(c.scored, [true, false, true]); assert.deepEqual(c.missing, [1]);
+  assert.equal(crossedEnd(rs, 13.8, 14.1), 0);
+  assert.equal(crossedEnd(rs, 5, 30), -1); // a seek
+  assert.equal(crossedEnd(rs, 20, 20.2), -1);
+});

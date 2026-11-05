@@ -771,6 +771,12 @@ const scenarios = {
     await p.waitForTimeout(1700); await p.locator(".fr-stage video").evaluate((v) => v.play()); await p.waitForTimeout(1200);
     const t = await p.locator(".fr-stage video").evaluate((v) => { v.pause(); return v.currentTime; });
     ok("film room: skips the dead time between rallies", t >= 23.5, String(t));
+    // stat mode: the video stops at each rally's whistle, Space goes to the next serve
+    await p.locator(".fr-stage video").evaluate((v) => { v.currentTime = 34.6; }); await p.waitForTimeout(1700);
+    await p.locator(".fr-stage video").evaluate((v) => v.play()); await p.waitForTimeout(2200);
+    ok("film room: pauses when a rally ends", await p.locator(".fr-stage video").evaluate((v) => v.paused && v.currentTime >= 35.3 && v.currentTime < 36.5) && /Rally 2 over/.test(await p.locator(".fr-wait").innerText()), String(await p.locator(".fr-stage video").evaluate((v) => v.currentTime)));
+    await p.getByRole("tab", { name: "Rallies" }).click();
+    ok("rally check: every rally found has a point", /Every rally found has a point statted/.test(await p.locator(".fr-side").innerText()), (await p.locator(".fr-side").innerText()).slice(0, 200));
     // ask for clips
     await p.getByRole("tab", { name: "Find clips" }).click();
     await p.getByLabel("Ask for clips").fill("Maya's kills"); await p.getByRole("button", { name: "Find", exact: true }).click(); await p.waitForTimeout(200);
@@ -839,6 +845,21 @@ const scenarios = {
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "recruit-studio.png"), fullPage: true });
     ok("athletes: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
+  },
+  async phones(browser) {
+    for (const dark of [false, true]) {
+      const p = await newPage(browser, { cloud: false, phone: true, dark });
+      await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Phone High"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
+      const pages = [["app", U + "#/film"], ["guide", U + "recruit/#/guide"], ["emails", U + "recruit/#/emails"], ["studio", U + "recruit/#/studio"], ["recruit", U + "recruit/"]];
+      for (const [name, url] of pages) {
+        await p.goto(url); await p.waitForTimeout(400);
+        const w = await p.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
+        ok(`phone${dark ? " dark" : ""}: ${name} fits the screen`, w[0] <= w[1] + 1, w.join(" > "));
+        if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, `phone-${dark ? "dark-" : ""}${name}.png`), fullPage: true });
+      }
+      ok("phones: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+      await p.context().close();
+    }
   },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });

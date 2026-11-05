@@ -754,3 +754,6 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .fr-rl{display:grid;gap:1px;min-width:0}
 .fr-rate{width:auto;min-height:0;padding:5px 8px;font-size:13px}
 @media (min-width:1240px){.fr-grid.stat{grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr)}}
+.fr-wait{border:1px solid var(--us);background:var(--us-soft);border-radius:8px;padding:7px 12px;font-size:14px}
+.fr-rallies li.gap button{box-shadow:inset 3px 0 0 var(--warn)}
+.fr-nopt{color:var(--muted);font-weight:600}
