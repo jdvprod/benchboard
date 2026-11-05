@@ -696,6 +696,15 @@ const scenarios = {
     await A.getByRole("button", { name: "Finish" }).click(); await A.waitForTimeout(300);
     await go(A, "track"); await A.getByRole("button", { name: "Text recap" }).click(); await A.waitForTimeout(400);
     { const txt = await A.evaluate(() => navigator.clipboard.readText()); ok("text recap has the result, set scores and the box score link", /^Final: Clovis North def\. Buchanan 3–0 \(25-0, 25-0, 25-0\)/.test(txt) && /Box score: http.*\/live\/#\/g\//.test(txt), txt); }
+    // history imported: the season reads as a story on Live, and as a graphic for the coach
+    await go(A, "team"); await A.locator("input[type=file][multiple]").setInputFiles(path.join(__dirname, "fixtures/game-log.csv")); await A.waitForTimeout(600);
+    await A.getByRole("button", { name: /^Import \d+ match/ }).click(); await A.waitForTimeout(400);
+    await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
+    await P.goto(teamUrl); await P.reload(); await P.waitForTimeout(1500);
+    { const rv = P.locator(".lv-review"); const t = await rv.innerText().catch(() => "");
+      ok("Live shows the season in review", /3–0/.test(t) && /Biggest win/i.test(t) && /vs Buchanan/.test(t) && /Kills\s*14/.test(t), t.replace(/\s+/g, " ").slice(0, 300)); }
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "season-review.png"), fullPage: true });
+    await go(A, "stats"); { const g = await download(A, () => A.getByRole("button", { name: "Season graphic" }).click(), 15000); ok("season graphic saves", g.name.endsWith(".png") && g.size > 20000, `${g.name} ${g.size}`); if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "season-graphic.png")); }
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close(); await ctx.close();
   },

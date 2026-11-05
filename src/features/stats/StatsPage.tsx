@@ -16,6 +16,7 @@ import { logText } from "../track/Tracker";
 import { matchReportHtml } from "./matchReport";
 import { maxprepsHtml } from "./maxpreps";
 import { shareFinalGraphic } from "./finalGraphic";
+import { shareSeasonGraphic } from "./seasonGraphic";
 import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
@@ -41,6 +42,7 @@ export function StatsPage() {
       <div className="row">
         <button className="btn sm" onClick={() => exportSheet(S, A)}>Download spreadsheet</button>
         {!single && S.kind === "games" && S.items.length > 0 && <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === ui.statsSeason); download(`${t.name} ${se?.name || "season"} report.html`.replace(/[^\w\- .]+/g, ""), seasonReportHtml(S.items, se), "text/html"); toast("Season report saved. Open it to print or share."); }}>Season report</button>}
+        {!single && S.kind === "games" && S.items.filter(({ R }) => R.matchOver).length >= 2 && <button className="btn sm" onClick={() => shareSeasonGraphic(S.items.filter(({ m }) => !m.imported?.season), seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "Season")}>Season graphic</button>}
         {single && !isScrim && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(single.m, single.R), "text/html"); toast("Match report saved. Open it to print or share."); }}>Match report</button>}
         {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => shareFinalGraphic(single.m, single.R)}>Share graphic</button>}
         {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps.html`.replace(/[^\w\- .]+/g, ""), maxprepsHtml(single.m, single.R), "text/html"); toast("MaxPreps sheet saved. Open it next to MaxPreps' stat entry."); }}>MaxPreps sheet</button>}

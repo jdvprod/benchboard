@@ -49,6 +49,7 @@ const ES: Record<string, string> = {
   "Set {n} · {team} serves first": "Set {n} · {team} saca primero", "Timeout {team}": "Tiempo fuera {team}", "Sub: {a} in for {b}": "Cambio: entra {a} por {b}", "player": "jugador", " (their #{n})": " (su #{n})",
   "W": "G", "L": "P",
   "On the court": "En la cancha", "Rotation {n}": "Rotación {n}", "{team} serving": "{team} al saque", "Net": "Red",
+  "Season in review": "La temporada", "{n} matches": "{n} partidos", "Longest win streak": "Mejor racha", "Won {n} straight": "{n} victorias seguidas", "Lost {n} straight": "{n} derrotas seguidas", "Biggest win": "Mejor victoria", "Best in a match": "Mejor marca en un partido",
   "Your teams": "Tus equipos", "Add to calendar": "Agregar al calendario", "Remove {team}": "Quitar {team}",
   // tournament
   "Working: {x}": "Arbitrando: {x}", "Court {n}": "Cancha {n}", "Ref duty": "Arbitraje", "Upcoming": "Próximo", "Bracket": "Llave", "Pool": "Grupo", "{pool} standings": "Tabla del {pool}", "Live now": "En vivo ahora",

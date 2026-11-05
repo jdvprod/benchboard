@@ -10,6 +10,7 @@ import { Avatar, TeamLogo } from "../ui/Logo";
 import { NotifyCard } from "./Notify";
 import { tr } from "../lib/i18n";
 import { icsFile, CalItem } from "../lib/ics";
+import { seasonSummary } from "../sports/volleyball/seasonSummary";
 
 type Tab = "home" | "schedule" | "stats" | "roster";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
@@ -53,9 +54,28 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
     </section>}
     {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
+    <SeasonReview games={games.filter(isResult)} P={P} code={code} />
     <NotifyCard code={code} team={team} players={d.players} />
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Season leaders")}</h2><a href={`#/t/${code}/stats`}>{tr("All stats ›")}</a></div><div className="lv-leads">{leaders}</div></section>}
   </>;
+}
+
+/** The season so far, once there are a few results: record, streak, biggest win and the best single-match lines. */
+function SeasonReview({ games, P, code }: { games: Game[]; P: Map<string, LPlayer>; code: string }) {
+  const S = seasonSummary(games.map((g) => ({ id: g.m.id, opp: g.m.opp, date: g.m.date, R: g.R })), (id) => !!P.get(id)?.first);
+  if (S.played < 3) return null;
+  const streak = S.streak.n >= 2 && !(S.streak.kind === "W" && S.streak.n === S.bestStreak) ? tr(S.streak.kind === "W" ? "Won {n} straight" : "Lost {n} straight", { n: S.streak.n }) : "";
+  return <section className="lv-card lv-review"><div className="lv-h"><h2>{tr("Season in review")}</h2><span className="lv-fresh">{tr("{n} matches", { n: S.played })}</span></div>
+    <div className="lv-review-k">
+      <div><b>{S.w}–{S.l}{S.t ? "–" + S.t : ""}</b><span>{tr("Record")}</span></div>
+      <div><b>{S.setsW}–{S.setsL}</b><span>{tr("Sets")}</span></div>
+      <div><b>{S.bestStreak || "—"}</b><span>{tr("Longest win streak")}</span></div>
+    </div>
+    {streak && <p className="lv-note" style={{ marginTop: 6 }}>{streak}</p>}
+    {S.biggestWin && <p className="lv-review-best"><span>{tr("Biggest win")}</span><a href={`#/t/${code}/m/${S.biggestWin.gameId}`}>vs {S.biggestWin.opp} · {S.biggestWin.sets}</a></p>}
+    {S.highs.length > 0 && <><h3 className="lv-sub">{tr("Best in a match")}</h3>
+      <ul className="lv-review-highs">{S.highs.map((h) => <li key={h.key}><span>{tr(h.label)}</span><b>{h.v}</b><a href={`#/t/${code}/p/${h.pid}`}>{pname(P.get(h.pid))}</a><small>vs {h.opp} · {fmtDay(h.date)}</small></li>)}</ul></>}
+  </section>;
 }
 
 /** Every upcoming match and tournament game as a calendar file the phone opens in its calendar app. */

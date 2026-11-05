@@ -454,3 +454,15 @@ test("calendar file: timed and all-day events, escaping, folding", () => {
   assert.ok(f.includes("SUMMARY:Clovis North · Fall Classic\\; Day 1"));
   assert.ok(f.split("\r\n").every((l) => l.length <= 75), "lines folded");
 });
+
+import { seasonSummary } from "../src/sports/volleyball/seasonSummary";
+test("season summary: record, streaks, biggest win and single-match highs", () => {
+  const ev = (sets: [number, number][], kills = 0) => { const out: any[] = []; let i = 0; for (const [a, b] of sets) { out.push({ id: "n" + i++, t: "NS", serve: "us", ts: i }); for (let k = 0; k < kills; k++) out.push({ id: "k" + i++, t: "K", p: "maya", ns: true, ts: i }); out.push({ id: "a" + i++, t: "ADJ", us: a, them: b, ts: i }); } return out; };
+  const g = (id: string, date: string, sets: [number, number][], kills = 0) => ({ id, opp: "Opp " + id, date, R: replay(ev(sets, kills), { bestOf: 3 }) });
+  const S = seasonSummary([g("a", "2026-09-01", [[25, 10], [25, 12]], 3), g("b", "2026-09-05", [[20, 25], [18, 25]]), g("c", "2026-09-08", [[25, 23], [25, 23]], 7), g("d", "2026-09-10", [[25, 20], [25, 21]])]);
+  assert.equal(`${S.w}-${S.l}`, "3-1"); assert.equal(`${S.setsW}-${S.setsL}`, "6-2");
+  assert.deepEqual(S.streak, { kind: "W", n: 2 }); assert.equal(S.bestStreak, 2);
+  assert.equal(S.biggestWin?.opp, "Opp a"); assert.equal(S.biggestWin?.diff, 28);
+  const k = S.highs.find((h) => h.key === "K")!; assert.equal(k.v, 14); assert.equal(k.opp, "Opp c", "7 kills a set × 2 sets");
+  assert.equal(seasonSummary([g("x", "2026-09-01", [[25, 10], [25, 12]], 3)], () => false).highs.length, 0, "players kept off public pages don't count");
+});
