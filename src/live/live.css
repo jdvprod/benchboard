@@ -142,3 +142,6 @@ html.ov-page body{overflow:hidden}
 .ov-logo.none{background:#1C1E22;color:#8C929B;font-size:.5em;width:2.6em;height:2.6em}
 .ov-box.logos .ov-row{grid-template-columns:.28em 1.7em minmax(0,1fr) .9em auto auto 2.1em}
 .ov-box.logos .ov-nm{padding-left:.35em}
+.lv-lang{display:flex;gap:4px;justify-content:center;margin-top:10px}
+.lv-lang button{background:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;font:600 13px var(--body);color:var(--muted);cursor:pointer}
+.lv-lang button[aria-pressed="true"]{border-color:var(--us);color:var(--ink)}

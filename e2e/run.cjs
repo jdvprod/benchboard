@@ -500,6 +500,20 @@ const scenarios = {
     ok("Live shows pool standings and the bracket path", (await card.locator("tbody tr").count()) === 4 && /Semifinal/.test(await card.innerText()));
     ok("Live tournament fits a phone", (await overflow(P)) <= 1);
     { const cx = await contrast(P); ok("Live tournament text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    // a Spanish-speaking family: the phone's language picks Spanish; the footer switches back
+    { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "es-MX", hasTouch: true });
+      await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
+      const E = await ctx.newPage(); const errs = []; E.on("pageerror", (e) => errs.push(e.message));
+      await E.goto(teamUrl); await E.waitForTimeout(1500);
+      const t = await E.locator("body").innerText();
+      ok("Live speaks Spanish on a Spanish phone", /Inicio/i.test(t) && /Récord/i.test(t) && /Cancha 3/.test(t) && /Arbitrando: Buchanan vs Central/.test(t) && /Resultados/i.test(t), t.slice(0, 300).replace(/\s+/g, " "));
+      await E.locator(".lv-res", { hasText: /G 2–0/ }).first().click(); await E.waitForTimeout(500);
+      await E.getByRole("button", { name: "Jugadas", exact: true }).click();
+      ok("play-by-play in Spanish", (await E.locator(".lv-pbp").first().innerText()).includes("Remate"), (await E.locator(".lv-pbp").first().innerText()).slice(0, 120));
+      if (process.env.SHOTS) await E.screenshot({ path: path.join(process.env.SHOTS, "live-es.png"), fullPage: true });
+      await E.getByRole("button", { name: "English" }).click(); await E.waitForTimeout(1200);
+      ok("the footer switches back to English", /Play-by-play/i.test(await E.locator("body").innerText()));
+      ok("Spanish pages: no errors", !errs.length, errs.join(" | ")); await ctx.close(); }
     for (const [n, pg] of [["coach", A], ["parent", P]]) ok(`tournament: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, P]) await pg.context().close();
   },
@@ -512,6 +526,11 @@ const scenarios = {
     await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
+    { const f = await download(A, () => A.getByRole("button", { name: "Printable flyer" }).click()); const html = f.text();
+      ok("printable flyer has the team, the code and a QR code", html.includes("Ping Club") && html.includes(season.split("/").pop()) && /<svg/.test(html) && /Turn on notifications/.test(html));
+      const pg = await A.context().newPage(); await pg.setContent(html); await pg.waitForTimeout(200); if (process.env.SHOTS) await pg.screenshot({ path: path.join(process.env.SHOTS, "flyer.png"), fullPage: true }); await pg.close();
+      const im = await download(A, () => A.getByRole("button", { name: "Flyer image" }).click(), 15000); ok("flyer image saves for group chats", im.name.endsWith(".png") && im.size > 20000, `${im.name} ${im.size}`);
+      if (process.env.SHOTS) fs.copyFileSync(im.path, path.join(process.env.SHOTS, "flyer-image.png")); }
     // a parent on the team page: browsers' push services aren't reachable from the test, so the subscription is stubbed
     const P = await newPage(browser, { phone: true });
     await P.context().grantPermissions(["notifications"], { origin: new URL(season).origin });

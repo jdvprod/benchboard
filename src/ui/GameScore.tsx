@@ -1,13 +1,14 @@
 /** ESPN-style scoreboard for the gamecast: one row per team (name, each set, current points), and a status line. */
 import { Replay, runOf } from "../sports/volleyball/engine";
 import { TeamLogo } from "./Logo";
+import { tr } from "../lib/i18n";
 
 export function gameStatus(R: Replay, liveMatch: boolean, unit = "Set"): { text: string; live: boolean } {
   const c = R.cur;
-  if (R.matchOver || !liveMatch) return { text: R.sets.length > 1 || R.matchOver ? "Final" : c && c.us + c.them ? "Final" : "Not started", live: false };
-  if (!c) return { text: "Starting soon", live: true };
-  if (c.over) return { text: `End of ${unit.toLowerCase()} ${c.n}`, live: true };
-  return { text: `${unit} ${c.n}`, live: true };
+  if (R.matchOver || !liveMatch) return { text: R.sets.length > 1 || R.matchOver ? tr("Final") : c && c.us + c.them ? tr("Final") : tr("Not started"), live: false };
+  if (!c) return { text: tr("Starting soon"), live: true };
+  if (c.over) return { text: unit === "Set" ? tr("End of set {n}", { n: c.n }) : `End of ${unit.toLowerCase()} ${c.n}`, live: true };
+  return { text: unit === "Set" ? tr("Set {n}", { n: c.n }) : `${unit} ${c.n}`, live: true };
 }
 
 export function GameScore({ R, us, them, live: liveMatch, server, unit = "Set", meta, logos }: { R: Replay; us: string; them: string; live: boolean; server?: string; unit?: string; meta?: string; logos?: { us?: string | null; them?: string | null } }) {
@@ -22,17 +23,17 @@ export function GameScore({ R, us, them, live: liveMatch, server, unit = "Set", 
     const name = side === "us" ? us : them, big = between ? (side === "us" ? R.wonUs : R.wonThem) : c ? c[side] : 0;
     const won = over && (side === "us" ? R.wonUs > R.wonThem : R.wonThem > R.wonUs);
     return <div className={`gs-row ${side}${won ? " won" : ""}`}>
-      <span className="gs-nm">{withLogos && <TeamLogo src={logos![side]} name={name} size={30} className="gs-logo" />}<span className="gs-tn">{name}</span>{serving === side && <span className="gs-srv" title="Serving" aria-label="serving">●</span>}</span>
+      <span className="gs-nm">{withLogos && <TeamLogo src={logos![side]} name={name} size={30} className="gs-logo" />}<span className="gs-tn">{name}</span>{serving === side && <span className="gs-srv" title={tr("Serving")} aria-label={tr("serving")}>●</span>}</span>
       <span className="gs-sets" aria-label={`${unit}s`}>{sets.map((s) => <span key={s.n} className={(s.winner === side ? "w" : "") + (s === c && !over && !c.over ? " cur" : "")}>{s === c && !over && !c.over ? "" : s[side]}</span>)}</span>
-      <span className="gs-big" aria-label={between ? `${unit}s won` : "Points this set"}>{big}</span>
+      <span className="gs-big" aria-label={between ? (unit === "Set" ? tr("Sets won") : `${unit}s won`) : tr("Points this set")}>{big}</span>
     </div>;
   };
-  return <section className="gs" aria-label="Score">
-    <div className="gs-top"><span className={"gs-status" + (st.live ? " live" : "")}>{st.live && <i aria-hidden="true" />}{st.live ? "Live · " : ""}{st.text}</span>
-      <span className="gs-meta">{!between && sets.length > 1 ? `${unit}s ${R.wonUs}–${R.wonThem}` : ""}{meta ? (sets.length > 1 && !between ? " · " : "") + meta : ""}</span></div>
-    <div className="gs-head" aria-hidden="true"><span />{<span className="gs-sets">{sets.map((s) => <span key={s.n}>{s.n}</span>)}</span>}<span className="gs-big-h">{between ? unit + "s" : "Pts"}</span></div>
+  return <section className="gs" aria-label={tr("Score")}>
+    <div className="gs-top"><span className={"gs-status" + (st.live ? " live" : "")}>{st.live && <i aria-hidden="true" />}{st.live ? tr("Live · ") : ""}{st.text}</span>
+      <span className="gs-meta">{!between && sets.length > 1 ? (unit === "Set" ? tr("Sets {a}–{b}", { a: R.wonUs, b: R.wonThem }) : `${unit}s ${R.wonUs}–${R.wonThem}`) : ""}{meta ? (sets.length > 1 && !between ? " · " : "") + meta : ""}</span></div>
+    <div className="gs-head" aria-hidden="true"><span />{<span className="gs-sets">{sets.map((s) => <span key={s.n}>{s.n}</span>)}</span>}<span className="gs-big-h">{between ? (unit === "Set" ? tr("Sets") : unit + "s") : tr("Pts")}</span></div>
     {row("us")}{row("them")}
-    {(srvText || run.n >= 3) && <div className="gs-foot">{srvText && <span><span className="k">Serving</span> {srvText}</span>}{run.n >= 3 && <span className={"gs-run " + run.side}>{run.n}-0 run · {run.side === "us" ? us : them}</span>}</div>}
+    {(srvText || run.n >= 3) && <div className="gs-foot">{srvText && <span><span className="k">{tr("Serving")}</span> {srvText}</span>}{run.n >= 3 && <span className={"gs-run " + run.side}>{tr("{n}-0 run · {team}", { n: run.n, team: run.side === "us" ? us : them })}</span>}</div>}
   </section>;
 }
 

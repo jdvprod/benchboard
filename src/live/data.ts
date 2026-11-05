@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { cloudAvailable, rpc } from "../cloud/client";
 import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";
+import { locale, tr } from "../lib/i18n";
 
 export interface LPlayer { id: string; num: string; first: string; last: string; pos: string; photo?: string | null }
 export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any; imported?: { season?: boolean } | null; tournamentId?: string | null; oppLogo?: string | null }
@@ -23,12 +24,12 @@ function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, f
     const load = async () => {
       try {
         const r: T | null = await rpc(fnName, { share: code }, true); if (stop) return;
-        if (!r || !isActive(r)) setErr(missing); else { live.current = (r as any).__live ?? false; setD(r); setGot(Date.now()); setErr(""); }
-      } catch { if (!stop) setErr((e) => e || "Reconnecting…"); }
+        if (!r || !isActive(r)) setErr(tr(missing)); else { live.current = (r as any).__live ?? false; setD(r); setGot(Date.now()); setErr(""); }
+      } catch { if (!stop) setErr((e) => e || tr("Reconnecting…")); }
       if (!stop) timer = setTimeout(load, (always || document.visibilityState === "visible") && live.current ? fast : slow);
     };
     if (!code) { setD(null); return () => {}; }
-    if (cloudAvailable()) load(); else setErr("Live links aren't set up for this site yet.");
+    if (cloudAvailable()) load(); else setErr(tr("Live links aren't set up for this site yet."));
     const wake = () => { if (document.visibilityState === "visible") { clearTimeout(timer); load(); } };
     document.addEventListener("visibilitychange", wake);
     return () => { stop = true; clearTimeout(timer); document.removeEventListener("visibilitychange", wake); };
@@ -50,7 +51,7 @@ export function seasonGames(d: SeasonData): Game[] {
     .sort((a, b) => b.m.date.localeCompare(a.m.date));
 }
 
-export const fmtDay = (d: string) => { const x = new Date(d + "T12:00:00"); return isNaN(+x) ? d : x.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); };
+export const fmtDay = (d: string) => { const x = new Date(d + "T12:00:00"); return isNaN(+x) ? d : x.toLocaleDateString(locale(), { weekday: "short", month: "short", day: "numeric" }); };
 export const fmtTime = (t: string) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 /** "#7 Maya C." (or "#7" for a player kept off public pages) */
 export const pname = (p?: LPlayer | null, full = true) => !p ? "" : p.first ? `#${p.num} ${p.first}${full && p.last ? " " + p.last + "." : ""}` : `#${p.num}`;

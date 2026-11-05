@@ -1,12 +1,13 @@
 /** Account, team sync, invites and joining, shown on the Team tab. */
 import { siteUrl } from "./links";
 import { useEffect, useState } from "react";
-import { team, toast } from "../data/store";
-import { Card, ConfirmButton, copyText } from "../ui/kit";
+import { seasonsOf, team, toast } from "../data/store";
+import { Card, ConfirmButton, copyText, download } from "../ui/kit";
 import { cloudAvailable, CloudError, currentUser, sendPasswordReset, signIn, signOut, signUp } from "./client";
 import { createInvite, isLinked, joinWithCode, linkTeam, members, pendingCount, removeMember, roleOn, shareLive, shareSeason, status, syncNow, unlinkTeam, shareBoard } from "./sync";
 import { go } from "../app/router";
 import { QrButton } from "../ui/QrButton";
+import { flyerHtml, flyerImage } from "../features/team/familyFlyer";
 
 const errText = (e: unknown) => (e instanceof CloudError ? e.message : "Something went wrong. Try again.");
 
@@ -76,6 +77,9 @@ export function CloudCard() {
               {seasonUrl && <QrButton url={seasonUrl} title="Scan to follow the team on Benchboard Live" label="QR code" />}
               {seasonUrl && <span className="small">Code <b style={{ fontFamily: "var(--display)", letterSpacing: ".12em" }}>{seasonUrl.split("/").pop()}</b></span>}
               {seasonUrl && <a className="small" href={seasonUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{seasonUrl}</a>}</div>
+            {seasonUrl && <div className="row"><span className="small muted">Get families following:</span>
+              <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; download(`${t.name} - follow us live.html`.replace(/[^\w\- .]+/g, ""), flyerHtml(t, seasonUrl, se), "text/html"); toast("Flyer saved. Open it to print for the gym or the team table."); }}>Printable flyer</button>
+              <button className="btn sm" onClick={async () => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; const b = await flyerImage(t, seasonUrl, se); if (!b) return; const name = `${t.name} - follow us live.png`.replace(/[^\w\- .]+/g, ""), file = new File([b], name, { type: "image/png" }), nav: any = navigator; if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: name }); return; } catch { /* save instead */ } } download(name, b, "image/png"); toast("Flyer image saved. Post it in the team group chat."); }}>Flyer image</button></div>}
             <div className="label">Recruiting board on Benchboard Recruit</div>
             <p className="small muted" style={{ margin: 0 }}>One link for college coaches listing every player whose recruiting profile you've shared (only with the family's permission, from each player's page), with verified stats and highlight clips.</p>
             <div className="row"><button className="btn sm" disabled={busy} onClick={() => act(async () => { const r = await shareBoard(t.id); setBoardUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Recruiting board link copied." : "Recruiting board: " + r.url); })}>Share recruiting board</button>

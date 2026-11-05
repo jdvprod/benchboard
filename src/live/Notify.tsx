@@ -1,6 +1,7 @@
 /** "Get notified": families follow a team and get a phone notification when a match starts and when it ends. */
 import { useEffect, useState } from "react";
 import { fn } from "../cloud/client";
+import { tr } from "../lib/i18n";
 
 type Saved = { endpoint: string; starts: boolean; finals: boolean };
 const KEY = (code: string) => "bbl-notify-" + code;
@@ -25,26 +26,26 @@ export function NotifyCard({ code, team }: { code: string; team: string }) {
   }, [code]);
 
   if (!pushSupported()) {
-    if (ios() && !standalone()) return <section className="lv-card lv-notify" aria-label="Get notified">
-      <div className="lv-h"><h2>Get notified</h2></div>
-      <p className="lv-note" style={{ marginTop: 0 }}>On iPhone and iPad, notifications work once this page is on your Home Screen: tap <b>Share</b>, then <b>Add to Home Screen</b>, open {team} from there and turn them on.</p>
+    if (ios() && !standalone()) return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
+      <div className="lv-h"><h2>{tr("Get notified")}</h2></div>
+      <p className="lv-note" style={{ marginTop: 0 }}>{tr("On iPhone and iPad, notifications work once this page is on your Home Screen: tap Share, then Add to Home Screen, open {team} from there and turn them on.", { team })}</p>
     </section>;
     return null;
   }
 
   const on = async () => {
-    if (!starts && !finals) { setMsg("Pick at least one: match starts or final scores."); return; }
+    if (!starts && !finals) { setMsg(tr("Pick at least one: match starts or final scores.")); return; }
     setBusy(true); setMsg("");
     try {
       const perm = Notification.permission === "granted" ? "granted" : await Notification.requestPermission();
-      if (perm !== "granted") { setMsg(perm === "denied" ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : "Notifications weren't allowed."); setBusy(false); return; }
+      if (perm !== "granted") { setMsg(perm === "denied" ? tr("Notifications are blocked for this site. Allow them in your browser's site settings, then try again.") : tr("Notifications weren't allowed.")); setBusy(false); return; }
       const reg = await registration();
       let sub = await reg.pushManager.getSubscription();
       if (!sub) { const { key } = await fn("notify", { action: "key" }); sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(key) }); }
       await fn("notify", { action: "subscribe", code, sub: sub.toJSON(), starts, finals });
       const v = { endpoint: sub.endpoint, starts, finals }; write(code, v); setSaved(v); setEditing(false);
     } catch (e: any) {
-      setMsg(e?.status === 404 || e?.status === 503 ? "Notifications aren't available for this team yet." : e?.status === 0 ? "Couldn't connect. Check your connection and try again." : "Couldn't turn on notifications: " + (e?.message || "unknown error") + ".");
+      setMsg(e?.status === 404 || e?.status === 503 ? tr("Notifications aren't available for this team yet.") : e?.status === 0 ? tr("Couldn't connect. Check your connection and try again.") : "Couldn't turn on notifications: " + (e?.message || "unknown error") + ".");
     }
     setBusy(false);
   };
@@ -60,20 +61,20 @@ export function NotifyCard({ code, team }: { code: string; team: string }) {
     write(code, null); setSaved(null); setBusy(false); setMsg("");
   };
 
-  const what = (s: Saved) => s.starts && s.finals ? "match starts and final scores" : s.starts ? "match starts" : "final scores";
-  return <section className="lv-card lv-notify" aria-label="Get notified">
-    <div className="lv-h"><h2>{saved ? "Notifications on" : "Get notified"}</h2>{saved && !editing && <button className="btn sm ghost" onClick={() => setEditing(true)}>Change</button>}</div>
-    {saved && !editing ? <p className="lv-note" style={{ marginTop: 0 }}>You'll get {team}'s {what(saved)} on this {ios() ? "phone" : "device"}.</p>
+  const what = (s: Saved) => tr(s.starts && s.finals ? "match starts and final scores" : s.starts ? "match starts" : "final scores");
+  return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
+    <div className="lv-h"><h2>{tr(saved ? "Notifications on" : "Get notified")}</h2>{saved && !editing && <button className="btn sm ghost" onClick={() => setEditing(true)}>{tr("Change")}</button>}</div>
+    {saved && !editing ? <p className="lv-note" style={{ marginTop: 0 }}>{tr("You'll get {team}'s {what} on this {device}.", { team, what: what(saved), device: tr(ios() ? "phone" : "device") })}</p>
       : <>
-        {!saved && <p className="lv-note" style={{ marginTop: 0 }}>Get a notification on this {ios() ? "phone" : "device"} when {team} starts a match and when it ends. No account needed.</p>}
+        {!saved && <p className="lv-note" style={{ marginTop: 0 }}>{tr("Get a notification on this {device} when {team} starts a match and when it ends. No account needed.", { device: tr(ios() ? "phone" : "device"), team })}</p>}
         <div className="lv-filters" style={{ margin: "10px 0" }}>
-          <label><input type="checkbox" checked={starts} onChange={(e) => setStarts(e.target.checked)} /> Match starts</label>
-          <label><input type="checkbox" checked={finals} onChange={(e) => setFinals(e.target.checked)} /> Final scores</label>
+          <label><input type="checkbox" checked={starts} onChange={(e) => setStarts(e.target.checked)} /> {tr("Match starts")}</label>
+          <label><input type="checkbox" checked={finals} onChange={(e) => setFinals(e.target.checked)} /> {tr("Final scores")}</label>
         </div>
         <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
-          <button className="btn primary" disabled={busy} onClick={on}>{busy ? "Turning on…" : saved ? "Save" : "Turn on notifications"}</button>
-          {saved && <button className="btn" disabled={busy} onClick={off}>Turn off</button>}
-          {saved && <button className="btn ghost" onClick={() => setEditing(false)}>Cancel</button>}
+          <button className="btn primary" disabled={busy} onClick={on}>{tr(busy ? "Turning on…" : saved ? "Save" : "Turn on notifications")}</button>
+          {saved && <button className="btn" disabled={busy} onClick={off}>{tr("Turn off")}</button>}
+          {saved && <button className="btn ghost" onClick={() => setEditing(false)}>{tr("Cancel")}</button>}
         </div>
       </>}
     {msg && <p className="lv-err" role="alert">{msg}</p>}

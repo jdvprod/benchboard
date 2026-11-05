@@ -424,3 +424,13 @@ test("notifications: the final names the standout", () => {
   assert.equal(starLine([{ name: "Lily T.", K: 0, SA: 0, BLK: 0, D: 1, AST: 0 }]), undefined);
   assert.equal(finalMessage("CN", "Buchanan", 2, 0, [[25, 20], [25, 18]], undefined, "Maya C. 14 kills").body, "25-20, 25-18 · Maya C. 14 kills · Box score on Benchboard Live");
 });
+
+import { setLang, tr, playName, oppPlay } from "../src/lib/i18n";
+test("Live in Spanish: text, blanks and plays", () => {
+  (globalThis as any).document ??= { documentElement: {} }; (globalThis as any).localStorage ??= { setItem() {}, getItem() { return null; } };
+  setLang("es");
+  assert.equal(tr("Set {n}", { n: 2 }), "Set 2"); assert.equal(tr("Box score"), "Estadísticas"); assert.equal(tr("Court {n}", { n: 3 }), "Cancha 3");
+  assert.equal(playName("K"), "Remate"); assert.equal(oppPlay("OA", "Buchanan"), "Ace de Buchanan"); assert.equal(tr("Not in the dictionary"), "Not in the dictionary");
+  setLang("en");
+  assert.equal(tr("Box score"), "Box score"); assert.equal(oppPlay("OK", "Buchanan"), "Buchanan kill");
+});
