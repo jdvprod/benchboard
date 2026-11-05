@@ -1,6 +1,7 @@
 /** "Get notified": families follow a team and get a phone notification when a match starts and when it ends. */
 import { useEffect, useState } from "react";
-import { fn } from "../cloud/client";
+import { cloudAvailable, currentUser, fn } from "../cloud/client";
+import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 import { tr } from "../lib/i18n";
 import { LPlayer } from "./data";
 
@@ -19,7 +20,7 @@ async function registration() { return navigator.serviceWorker.register("sw.js",
 export function NotifyCard({ code, team, players = [] }: { code: string; team: string; players?: LPlayer[] }) {
   const [saved, setSaved] = useState<Saved | null>(() => read(code)), [starts, setStarts] = useState(saved?.starts ?? true), [finals, setFinals] = useState(saved?.finals ?? true), [player, setPlayer] = useState(saved?.player || "");
   const named = players.filter((p) => p.first).sort((a, b) => (+a.num || 0) - (+b.num || 0)), followed = named.find((p) => p.id === saved?.player);
-  const [busy, setBusy] = useState(false), [msg, setMsg] = useState(""), [editing, setEditing] = useState(false);
+  const [busy, setBusy] = useState(false), [msg, setMsg] = useState(""), [editing, setEditing] = useState(false), [, signedIn] = useState(0);
   // the browser may have dropped the subscription (site data cleared, permission revoked): show the truth
   useEffect(() => {
     if (!saved || !pushSupported()) return;
@@ -64,12 +65,17 @@ export function NotifyCard({ code, team, players = [] }: { code: string; team: s
     write(code, null); setSaved(null); setBusy(false); setMsg("");
   };
 
+  // following a team needs a free account
+  if (cloudAvailable() && !currentUser() && !saved) return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
+    <MiniAuth kind="parent" title={tr("Get notified")} sub={tr("Create a free Benchboard account to get {team}'s match starts and final scores on this {device}.", { team, device: tr(ios() ? "phone" : "device") })} onIn={() => signedIn((x) => x + 1)} />
+  </section>;
   const what = (s: Saved) => tr(s.starts && s.finals ? "match starts and final scores" : s.starts ? "match starts" : "final scores");
   return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
     <div className="lv-h"><h2>{tr(saved ? "Notifications on" : "Get notified")}</h2>{saved && !editing && <button className="btn sm ghost" onClick={() => setEditing(true)}>{tr("Change")}</button>}</div>
     {saved && !editing ? <p className="lv-note" style={{ marginTop: 0 }}>{tr("You'll get {team}'s {what} on this {device}.", { team, what: what(saved), device: tr(ios() ? "phone" : "device") })}{followed ? " " + tr("Finals start with {name}'s numbers.", { name: followed.first }) : ""}</p>
       : <>
-        {!saved && <p className="lv-note" style={{ marginTop: 0 }}>{tr("Get a notification on this {device} when {team} starts a match and when it ends. No account needed.", { device: tr(ios() ? "phone" : "device"), team })}</p>}
+        {!saved && <p className="lv-note" style={{ marginTop: 0 }}>{tr("Get a notification on this {device} when {team} starts a match and when it ends.", { device: tr(ios() ? "phone" : "device"), team })}</p>}
+        {!saved && <SignedIn onOut={() => signedIn((x) => x + 1)} />}
         <div className="lv-filters" style={{ margin: "10px 0" }}>
           <label><input type="checkbox" checked={starts} onChange={(e) => setStarts(e.target.checked)} /> {tr("Match starts")}</label>
           <label><input type="checkbox" checked={finals} onChange={(e) => setFinals(e.target.checked)} /> {tr("Final scores")}</label>

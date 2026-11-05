@@ -107,6 +107,8 @@ export interface Match {
   oppLogo?: string;
   /** Statted from game film in Film Room (not live): never the current match, no family notifications. */
   film?: boolean;
+  /** Film sessions built in Film Room for the team (src/film/session.ts). */
+  sessions?: import("../film/session").FilmSession[];
   /** Rallies found from the referee's whistle, seconds into the video. */
   rallies?: { start: number; end: number }[];
 }

@@ -19,7 +19,7 @@ if (args.has("--test")) {
   rmSync(out, { recursive: true, force: true });
   const files = readdirSync(path.join(root, "tests")).filter((f) => f.endsWith(".test.ts"));
   await esbuild.build({ entryPoints: files.map((f) => path.join(root, "tests", f)), bundle: true, platform: "node", format: "esm", outdir: out, outExtension: { ".js": ".mjs" }, nodePaths, logLevel: "warning" });
-  try { execFileSync(process.execPath, ["--test", ...readdirSync(out).map((f) => path.join(out, f))], { stdio: "inherit" }); }
+  try { execFileSync(process.execPath, ["--test", ...readdirSync(out).filter((f) => f.endsWith(".mjs")).map((f) => path.join(out, f))], { stdio: "inherit" }); }
   finally { rmSync(out, { recursive: true, force: true }); }
   process.exit(0);
 }

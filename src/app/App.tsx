@@ -63,6 +63,8 @@ export function App() {
   }
   if (route.page === "account" && route.id === "new-password") return <><AuthPage initial="newpw" /><Toast /></>;
   if (user && needsTermsAgreement()) return <><TermsGate /><Toast /></>;
+  // an account is required (the sample season from the product page can be explored first)
+  if (!user && wantsAuthGate() && !(t && t.sample)) return <><AuthPage initial={all("teams").some((x) => !x.sample) ? "signin" : "signup"} onSkip={skipAccounts} /><Toast /></>;
   if (!t) {
     if (route.page === "join" && route.id && user) return <><div className="content"><JoinPage code={route.id} /></div><Toast /></>;
     return <>{wantsAuthGate() ? <AuthPage onSkip={skipAccounts} /> : <Welcome />}<Toast /></>;

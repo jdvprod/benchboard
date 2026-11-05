@@ -1,4 +1,5 @@
-/** Benchboard Live: the public site for families and fans. Separate from the coaching app: no accounts, nothing to edit.
+/** Benchboard Live: the public site for families and fans. Scores are open to anyone with the link; following a team
+ * (notifications, Your teams on every device) and team film sessions need a free account.
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
  *   #/                  enter a code from the coach */
@@ -8,7 +9,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { getLang, initLang, Lang, setLang, tr } from "../lib/i18n";
-import { cloudAvailable, rpc } from "../cloud/client";
+import { cloudAvailable, currentUser, rpc, updateMeta, userMeta } from "../cloud/client";
 import { applyTheme } from "../app/theme";
 import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
@@ -16,6 +17,7 @@ import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
 import { GameOverlay, TeamOverlay } from "./Overlay";
 import { TeamLogo } from "../ui/Logo";
+import { FilmSessionView } from "./FilmSession";
 
 const parse = () => (location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean));
 const query = () => location.hash.split("?")[1] || "";
@@ -54,13 +56,27 @@ function GameRoute({ code }: { code: string }) {
 /** Teams this phone has followed, most recent first (a family with kids on several teams sees them all on the home page). */
 type Followed = { code: string; name: string; logo?: string | null };
 const myTeams = (): Followed[] => { try { const a = JSON.parse(localStorage.getItem("bbl-teams") || "null"); if (Array.isArray(a)) return a; const l = JSON.parse(localStorage.getItem("bbl-last") || "null"); return l ? [l] : []; } catch { return []; } };
-function rememberTeam(t: Followed) { try { localStorage.setItem("bbl-teams", JSON.stringify([t, ...myTeams().filter((x) => x.code !== t.code)].slice(0, 8))); } catch { /* private window */ } }
-const forgetTeam = (code: string) => { try { localStorage.setItem("bbl-teams", JSON.stringify(myTeams().filter((x) => x.code !== code))); localStorage.removeItem("bbl-last"); } catch { /* private window */ } };
+function rememberTeam(t: Followed) {
+  try { localStorage.setItem("bbl-teams", JSON.stringify([t, ...myTeams().filter((x) => x.code !== t.code)].slice(0, 8))); } catch { /* private window */ }
+  // signed in: the team follows the account to every device
+  if (currentUser()) { const have = userMeta().teams || []; if (have[0] !== t.code) updateMeta({ teams: [t.code, ...have.filter((c) => c !== t.code)].slice(0, 12) }).catch(() => {}); }
+}
+const forgetTeam = (code: string) => {
+  try { localStorage.setItem("bbl-teams", JSON.stringify(myTeams().filter((x) => x.code !== code))); localStorage.removeItem("bbl-last"); } catch { /* private window */ }
+  if (currentUser() && (userMeta().teams || []).includes(code)) updateMeta({ teams: (userMeta().teams || []).filter((c) => c !== code) }).catch(() => {});
+};
 
 function Landing() {
   const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [mine, setMine] = useState(myTeams);
   // opened from the Home Screen with one team followed: straight to it
   useEffect(() => { if (mine.length === 1 && matchMedia("(display-mode: standalone)").matches) location.replace(`#/t/${mine[0].code}`); }, []);
+  // teams followed on another device with this account
+  useEffect(() => {
+    const missing = (currentUser() && userMeta().teams || []).filter((c) => !mine.some((t) => t.code === c)).slice(0, 8);
+    if (!missing.length || !cloudAvailable()) return;
+    Promise.all(missing.map((c) => rpc("season_view", { share: c }, true).then((v: any) => v?.team ? { code: c, name: v.team.name, logo: v.team.logo || null } : null).catch(() => null)))
+      .then((got) => { const add = got.filter(Boolean) as Followed[]; if (!add.length) return; try { localStorage.setItem("bbl-teams", JSON.stringify([...myTeams(), ...add].slice(0, 12))); } catch { /* private window */ } setMine(myTeams()); });
+  }, []);
   const go = async () => {
     const c = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length < 4) { setErr(tr("Codes are 6 letters and numbers, like K7Q2XM.")); return; }
     if (!cloudAvailable()) { setErr(tr("This site isn't connected yet.")); return; }
@@ -92,6 +108,7 @@ function LiveApp() {
   if (r[0] === "g" && r[1] && r[2] === "overlay") return <GameOverlay key={r[1]} code={r[1].toUpperCase()} q={query()} />;
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
+  if (r[0] === "film" && r[1]) return <FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} />;
   return <Landing />;
 }
 

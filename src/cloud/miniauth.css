@@ -1,0 +1,14 @@
+/* Inline sign-in for Benchboard Live and Recruit */
+.ma{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;max-width:460px;width:100%;margin:0 auto;text-align:left}
+.ma-hd b{font:700 19px var(--display)}.ma-hd p{margin:4px 0 0;color:var(--muted);font-size:14.5px}
+.ma-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ma-seg button{border:0;background:none;padding:8px;font-weight:600;color:var(--muted)}.ma-seg button[aria-pressed=true]{background:var(--us-soft);color:var(--us)}
+.ma label{display:grid;gap:3px;font-size:13px;font-weight:600;color:var(--muted)}
+.ma input:not([type=checkbox]),.ma select{font:inherit;font-size:16px;font-weight:400;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 10px;width:100%}
+.ma .ma-check{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:start;font-weight:400;font-size:13.5px}
+.ma-check input{width:17px;height:17px;margin-top:2px;accent-color:var(--us)}.ma-check a{color:var(--ink)}
+.ma-err{margin:0;color:var(--bad);font-size:14px}
+.ma-go{justify-content:center;min-height:44px}
+.ma-link{border:0;background:none;padding:0;color:var(--us);font:inherit;font-size:14px;font-weight:600;cursor:pointer;justify-self:start}
+.ma-done{gap:8px}.ma-done p{margin:0;color:var(--muted)}
+.ma-who{font-size:13.5px;color:var(--muted);margin:0}

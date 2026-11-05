@@ -339,6 +339,18 @@ do $do$ begin
     create policy "media change" on storage.objects for update to authenticated using (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
     drop policy if exists "media remove" on storage.objects;
     create policy "media remove" on storage.objects for delete to authenticated using (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
+    -- film sessions (version 16): short clips a coach shares with the team, at film/<team id>/<session>/<n>.webm
+    insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+      values ('film', 'film', true, 20000000, array['video/webm', 'video/mp4'])
+      on conflict (id) do update set public = true, file_size_limit = 20000000, allowed_mime_types = array['video/webm', 'video/mp4'];
+    drop policy if exists "film read" on storage.objects;
+    create policy "film read" on storage.objects for select using (bucket_id = 'film');
+    drop policy if exists "film add" on storage.objects;
+    create policy "film add" on storage.objects for insert to authenticated with check (bucket_id = 'film' and public.can_edit((storage.foldername(name))[1]));
+    drop policy if exists "film change" on storage.objects;
+    create policy "film change" on storage.objects for update to authenticated using (bucket_id = 'film' and public.can_edit((storage.foldername(name))[1]));
+    drop policy if exists "film remove" on storage.objects;
+    create policy "film remove" on storage.objects for delete to authenticated using (bucket_id = 'film' and public.can_edit((storage.foldername(name))[1]));
   end if;
 end $do$;
 
@@ -492,7 +504,107 @@ begin
 end $$;
 grant execute on function public.admin_decide_college(uuid, boolean) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 15 $$;
+-- ---------- accounts (version 16) ----------
+-- Everyone has an account now: coaches, athletes, families and fans. Name, who they are ("coach", "athlete", "parent",
+-- "fan") and whether they want Benchboard news by email are kept in auth.users.raw_user_meta_data (set at sign-up,
+-- changed in Account). Notifications are kept with the account that turned them on.
+alter table public.push_subs add column if not exists user_id uuid;
+-- Admins: everyone who said yes to news emails (for product updates; every email must have an unsubscribe link).
+create or replace function public.admin_email_list() returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('email', u.email, 'name', coalesce(u.raw_user_meta_data->>'name', ''), 'kind', coalesce(u.raw_user_meta_data->>'kind', ''), 'joined', u.created_at) order by u.created_at desc)
+    from auth.users u where coalesce(u.raw_user_meta_data->>'email_ok', '') = 'true'), '[]'::jsonb);
+end $$;
+create or replace function public.admin_accounts() returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  return jsonb_build_object(
+    'byKind', coalesce((select jsonb_object_agg(k, n) from (select coalesce(nullif(raw_user_meta_data->>'kind', ''), 'coach') k, count(*) n from auth.users group by 1) q), '{}'::jsonb),
+    'emailOk', (select count(*) from auth.users where coalesce(raw_user_meta_data->>'email_ok', '') = 'true'));
+end $$;
+revoke all on function public.admin_email_list() from public, anon;
+revoke all on function public.admin_accounts() from public, anon;
+grant execute on function public.admin_email_list() to authenticated;
+grant execute on function public.admin_accounts() to authenticated;
+
+-- ---------- film sessions (version 16) ----------
+-- A coach's film session from Film Room: clips (small videos in Storage at media/<team>/film/<session>/), each with the
+-- coach's note and drawing. Players and families open it on Benchboard Live by its code, signed in; the coach sees who watched.
+create table if not exists public.film_sessions (
+  code text primary key,
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  session_id text not null,
+  data jsonb not null,
+  created_by uuid,
+  updated_at timestamptz not null default now(),
+  unique (team_id, session_id)
+);
+alter table public.film_sessions enable row level security; -- through the functions below only
+create table if not exists public.film_views (
+  code text not null references public.film_sessions(code) on delete cascade,
+  user_id uuid not null,
+  watched int[] not null default '{}',
+  first_at timestamptz not null default now(),
+  last_at timestamptz not null default now(),
+  primary key (code, user_id)
+);
+alter table public.film_views enable row level security;
+
+create or replace function public.film_share(t text, sid text, d jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare c text;
+begin
+  if auth.uid() is null or not can_edit(t) then raise exception 'Only the team''s coaches can share film'; end if;
+  if length(d::text) > 200000 then raise exception 'That session is too big'; end if;
+  select code into c from film_sessions where team_id = t and session_id = sid;
+  if c is null then
+    c := upper(substr(md5(random()::text || clock_timestamp()::text || sid), 1, 8));
+    insert into film_sessions (code, team_id, session_id, data, created_by) values (c, t, sid, d, auth.uid());
+  else
+    update film_sessions set data = d, updated_at = now() where code = c;
+  end if;
+  return c;
+end $$;
+create or replace function public.film_open(c text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare d jsonb; w int[];
+begin
+  if auth.uid() is null then raise exception 'Sign in to watch'; end if;
+  select data into d from film_sessions where code = upper(c);
+  if d is null then return null; end if;
+  insert into film_views (code, user_id) values (upper(c), auth.uid()) on conflict (code, user_id) do update set last_at = now() returning watched into w;
+  return d || jsonb_build_object('watched', to_jsonb(coalesce(w, '{}')));
+end $$;
+create or replace function public.film_watched(c text, n int) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Sign in to watch'; end if;
+  update film_views set watched = (select array_agg(distinct x order by x) from unnest(watched || n) x), last_at = now() where code = upper(c) and user_id = auth.uid();
+end $$;
+create or replace function public.film_viewers(c text) returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+declare t text;
+begin
+  select team_id into t from film_sessions where code = upper(c);
+  if t is null or not can_edit(t) then raise exception 'Only the team''s coaches can see who watched'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('name', coalesce(nullif(u.raw_user_meta_data->>'name', ''), split_part(u.email, '@', 1)), 'watched', cardinality(v.watched), 'last', v.last_at) order by v.last_at desc)
+    from film_views v join auth.users u on u.id = v.user_id where v.code = upper(c)), '[]'::jsonb);
+end $$;
+create or replace function public.film_unshare(c text) returns void
+language plpgsql security definer set search_path = public as $$
+declare t text;
+begin
+  select team_id into t from film_sessions where code = upper(c);
+  if t is null or not can_edit(t) then raise exception 'Only the team''s coaches can take film down'; end if;
+  delete from film_sessions where code = upper(c);
+end $$;
+revoke all on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) from public, anon;
+grant execute on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 16 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

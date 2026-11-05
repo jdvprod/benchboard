@@ -2,7 +2,7 @@
 import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { setPrefs, state, team, toast } from "../data/store";
-import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmation, sendPasswordReset, signIn, signOut, signUp, updatePassword } from "./client";
+import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmation, sendPasswordReset, signIn, signOut, signUp, updateMeta, updatePassword, userMeta } from "./client";
 import { isLinked, linkTeam, pendingCount, restoreTeams, status, syncNow } from "./sync";
 import { go } from "../app/router";
 import { Card } from "../ui/kit";
@@ -62,8 +62,8 @@ type Mode = "signin" | "signup" | "check" | "forgot" | "sent" | "newpw";
 export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSkip?: () => void }) {
   const [mode, setMode] = useState<Mode>(initial);
   const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree"; text: string } | null>(null);
-  const [agree, setAgree] = useState(false);
+  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree" | "name"; text: string } | null>(null);
+  const [agree, setAgree] = useState(false), [name, setName] = useState(""), [news, setNews] = useState(true);
   const emailRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setErr(null); if (mode !== "newpw") emailRef.current?.focus(); }, [mode]);
 
@@ -78,11 +78,12 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     e.preventDefault(); setErr(null);
     if (mode !== "newpw" && !/^\S+@\S+\.\S+$/.test(email.trim())) return setErr({ field: "email", text: "Enter your email address." });
     if ((mode === "signin" || mode === "signup" || mode === "newpw") && pw.length < (mode === "signin" ? 1 : 8)) return setErr({ field: "pw", text: mode === "signin" ? "Enter your password." : "Use at least 8 characters." });
+    if (mode === "signup" && name.trim().length < 2) return setErr({ field: "name", text: "Enter your name." });
     if (mode === "signup" && !agree) return setErr({ field: "agree", text: "Please confirm you're 13 or older and agree to the Terms and Privacy Policy." });
     setBusy(true);
     try {
       if (mode === "signin") { await signIn(email.trim(), pw); await afterSignIn(); }
-      else if (mode === "signup") { const r = await signUp(email.trim(), pw); if (r === "confirm-email") setMode("check"); else await afterSignIn(); }
+      else if (mode === "signup") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: "coach", email_ok: news }); if (r === "confirm-email") setMode("check"); else await afterSignIn(); }
       else if (mode === "forgot") { await sendPasswordReset(email.trim()); setMode("sent"); }
       else if (mode === "newpw") { await updatePassword(pw); toast("Password updated"); go(team() ? "track" : "team"); }
     } catch (e2) {
@@ -105,13 +106,18 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
   </AuthShell>;
 
   const title = { signin: "Sign in to Benchboard", signup: "Create your account", forgot: "Reset your password", newpw: "Choose a new password" }[mode];
-  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff.", forgot: "Enter the email you use for Benchboard and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
+  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff, and families follow along live.", forgot: "Enter the email you use for Benchboard and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
   const cta = { signin: "Sign in", signup: "Create account", forgot: "Send reset link", newpw: "Save password" }[mode];
 
   return <AuthShell>
     <h1 className="auth-title">{title}</h1>
     <p className="auth-sub">{sub}</p>
     <form className="auth-form" onSubmit={submit} noValidate>
+      {mode === "signup" && <div className={"auth-field" + (err?.field === "name" ? " bad" : "")}>
+        <label htmlFor="auth-name">Your name</label>
+        <input id="auth-name" autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Coach Rivera" aria-invalid={err?.field === "name"} />
+        {err?.field === "name" && <p className="auth-err" role="alert">{err.text}</p>}
+      </div>}
       {mode !== "newpw" && <div className={"auth-field" + (err?.field === "email" ? " bad" : "")}>
         <label htmlFor="auth-email">Email</label>
         <input id="auth-email" ref={emailRef} type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@school.org" aria-invalid={err?.field === "email"} />
@@ -131,6 +137,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
           <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label>
         {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
+      {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send Benchboard news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
       {err && !err.field && <p className="auth-err box" role="alert">{err.text}</p>}
       <button className="auth-btn" type="submit" disabled={busy} aria-busy={busy}>{busy ? <span className="auth-spin" aria-label="Working" /> : cta}</button>
     </form>
@@ -138,7 +145,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
       {mode === "signin" && <p>New to Benchboard? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
       {mode === "signup" && <p>Already have an account? <button className="auth-link" onClick={() => setMode("signin")}>Sign in</button></p>}
       {mode === "forgot" && <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>}
-      {onSkip && (mode === "signin" || mode === "signup") && <div className="auth-skip"><button className="auth-btn alt" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></div>}
+      {onSkip && offlineAllowed() && (mode === "signin" || mode === "signup") && <div className="auth-skip"><button className="auth-btn alt" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></div>}
       <p className="auth-legal">By using Benchboard you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
   </AuthShell>;
@@ -163,6 +170,7 @@ export function AccountPage() {
         {!isLinked(t.id) && !t.sample && <button className="btn sm primary" onClick={() => linkTeam(t.id).then(() => toast("Team synced")).catch((e) => toast(errText(e)))}>Sync this team</button>}
         <button className="btn sm" onClick={() => go("team")}>Team & sharing</button></div>
     </Card>}
+    <EmailPrefs />
     <Card>
       <div className="row between"><div><b>Password</b><p className="small muted">Get a link by email to set a new one.</p></div>
         <button className="btn sm" onClick={async () => { try { await sendPasswordReset(u.email); toast("Reset link sent to " + u.email); } catch (e) { toast(errText(e)); } }}>Send reset link</button></div>
@@ -172,6 +180,18 @@ export function AccountPage() {
         <button className="btn sm" onClick={() => { signOut(); toast("Signed out"); go("track"); }}>Sign out</button></div>
     </Card>
   </div>;
+}
+
+/** Name and email updates, kept with the account. */
+function EmailPrefs() {
+  const m = userMeta(), [name, setName] = useState(m.name || ""), [, bump] = useState(0);
+  const save = async (p: Parameters<typeof updateMeta>[0], done: string) => { try { await updateMeta(p); bump((x) => x + 1); toast(done); } catch (e) { toast(errText(e)); } };
+  return <Card>
+    <div className="stack">
+      <label className="field"><span className="label">Your name</span><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name.trim() !== (m.name || "")) save({ name: name.trim() }, "Name saved"); }} /></label>
+      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get Benchboard news by email" : "No more news emails")} /> Send Benchboard news and new features to my inbox</label>
+    </div>
+  </Card>;
 }
 
 /** Sidebar account chip. */
@@ -192,7 +212,9 @@ export function syncDot() {
   return pendingCount() ? "dot-wait" : "dot-ok";
 }
 export const skipAccounts = () => setPrefs({ offline: true });
-export const wantsAuthGate = () => cloudAvailable() && !currentUser() && !state.prefs.offline;
+/** Accounts are required whenever the cloud is set up. Using the app with no account is only for development and tests. */
+export const offlineAllowed = () => { try { return localStorage.getItem("bs-allow-offline") === "1"; } catch { return false; } };
+export const wantsAuthGate = () => cloudAvailable() && !currentUser() && !(state.prefs.offline && offlineAllowed());
 
 /** Shown once to signed-in coaches who haven't agreed to the current Terms and Privacy Policy (older accounts, or after a change). */
 export function TermsGate() {

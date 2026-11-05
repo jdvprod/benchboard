@@ -1,7 +1,7 @@
 /** Admin console for the people who run Benchboard: sign-ups, active teams, what's live, and a review of every uploaded
  * photo and logo with a one-tap take-down. Only accounts listed in the admins table can open it (the database checks). */
 import { useEffect, useState } from "react";
-import { Card, ConfirmButton, Kpi } from "../../ui/kit";
+import { Card, ConfirmButton, download, Kpi } from "../../ui/kit";
 import { config, rpc } from "../../cloud/client";
 import { toast } from "../../data/store";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
@@ -18,9 +18,9 @@ let adminCache: Promise<boolean> | null = null;
 export const amAdmin = () => (adminCache ||= rpc("is_admin", {}).then((x) => x === true).catch(() => false));
 
 export function AdminPage() {
-  const [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]);
+  const [acc, setAcc] = useState<{ byKind: Record<string, number>; emailOk: number } | null>(null), [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]);
   const load = async () => {
-    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setErr(""); }
+    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
     catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Benchboard admin." : e?.message || "Couldn't load the admin console."); }
   };
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
@@ -37,6 +37,14 @@ export function AdminPage() {
       <Kpi label="Shared" value={String(o.teamPages)} sub={`team pages · ${o.gamecasts} gamecasts · ${o.recruitProfiles} recruit`} />
       <Kpi label="Family phones" value={String(o.notifyPhones)} sub="get match notifications" />
     </div>
+    {acc && <Card title="Accounts" actions={<button className="btn sm" onClick={async () => {
+      try { const rows: { email: string; name: string; kind: string; joined: string }[] = await rpc("admin_email_list", {}); const q = (x: string) => '"' + String(x || "").replace(/"/g, '""') + '"';
+        download("benchboard-news-list.csv", "email,name,kind,joined\n" + rows.map((x) => [q(x.email), q(x.name), q(x.kind), q(x.joined)].join(",")).join("\n"), "text/csv"); toast(`${rows.length} people on the news list`); }
+      catch (e: any) { toast(e?.message || "Couldn't get the list."); } }}>Download news email list</button>}>
+      <div className="row" style={{ gap: 18 }}>{(["coach", "athlete", "parent", "fan"] as const).map((k) => <span key={k}><b className="num" style={{ fontSize: 22 }}>{acc.byKind[k] || 0}</b> <span className="small muted">{k === "coach" ? "coaches" : k === "athlete" ? "athletes" : k === "parent" ? "parents" : "fans"}</span></span>)}
+        <span><b className="num" style={{ fontSize: 22 }}>{acc.emailOk}</b> <span className="small muted">said yes to news emails</span></span></div>
+      <p className="small muted" style={{ marginTop: 8 }}>Only people who said yes are on the list. Every news email needs an unsubscribe link and your mailing address (CAN-SPAM); send it from an email service such as Resend, Postmark or Mailchimp.</p>
+    </Card>}
     <div className="grid2" style={{ alignItems: "start" }}>
       <Card title="Most active teams"><div className="tbl"><table><thead><tr><th className="l">Team</th><th>Coaches</th><th>Matches</th><th>Last active</th></tr></thead>
         <tbody>{o.teamsList.map((t) => <tr key={t.id}><td className="l">{t.name || "(no name)"}</td><td>{t.members}</td><td>{t.matches}</td><td>{ago(t.last)}</td></tr>)}</tbody></table></div></Card>

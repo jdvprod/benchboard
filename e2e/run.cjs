@@ -23,7 +23,7 @@ function headersFor(urlPath) {
     if (!/^\s/.test(line)) { const pat = line.trim(); match = pat === urlPath || (pat.endsWith("*") && urlPath.startsWith(pat.slice(0, -1))); continue; }
     if (match) { const i = line.indexOf(":"); out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
   }
-  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*").replace("img-src 'self'", "img-src 'self' http://localhost:* http://127.0.0.1:*");
+  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*").replace("img-src 'self'", "img-src 'self' http://localhost:* http://127.0.0.1:*").replace("media-src 'self'", "media-src 'self' http://localhost:* http://127.0.0.1:*");
   return out;
 }
 
@@ -49,9 +49,10 @@ function serveDist() {
   });
 }
 
-async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0 } = {}) {
+async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0, strict = false } = {}) {
   const ctx = await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : tablet ? { width: 820, height: 1180 } : { width: 1360, height: 900 }, colorScheme: dark ? "dark" : "light", acceptDownloads: true, hasTouch: phone });
   if (cloud) await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch { /* sandboxed frame */ } }, `http://localhost:${MOCK_PORT}`);
+  if (!strict) await ctx.addInitScript(() => { try { localStorage.setItem("bs-allow-offline", "1"); } catch { /* sandboxed frame */ } }); // tests may use the app without an account; real visitors can't
   if (skew) await ctx.addInitScript((ms) => { const real = Date.now; Date.now = () => real() + ms; }, skew);
   const page = await ctx.newPage(); page.errors = []; OPEN.add(page); page.on("close", () => OPEN.delete(page));
   page.on("pageerror", (e) => page.errors.push(e.message));
@@ -232,8 +233,8 @@ const scenarios = {
 
   async offline(browser) {
     const A = await newPage(browser), SW = `http://127.0.0.1:${APP_PORT}/#/`; // the service worker is skipped on "localhost" (dev)
-    await A.goto(SW + "track"); await A.waitForTimeout(300); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("gym@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.goto(SW + "track"); await A.waitForTimeout(300); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("gym@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("No Wifi High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.goto(SW + "track"); await A.waitForTimeout(400); await A.reload(); await A.waitForTimeout(1500); // let the service worker install and cache the app
@@ -319,8 +320,8 @@ const scenarios = {
   async clockskew(browser) {
     // The assistant's phone clock is 90 seconds fast. Plays must still merge in the order they happened.
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("clock@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("clock@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clock High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
@@ -329,7 +330,7 @@ const scenarios = {
     await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true, skew: 90000 });
-    await go(B, "join/" + code); await B.getByLabel("Email").fill("fast@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator(".auth-agree input").check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
+    await go(B, "join/" + code); await B.getByLabel("Email").fill("fast@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator("#auth-name").fill("Test Coach"); await B.locator(".auth-agree input").first().check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1500);
     await go(B, "track"); await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
     await B.locator(".pl", { hasText: "Nia" }).first().click(); await B.locator(".actsheet button", { hasText: /^3$/ }).click(); await skipIfAsked(B); await B.waitForTimeout(2200);
@@ -356,12 +357,12 @@ const scenarios = {
       ok(`${f} page fits a phone`, (await overflow(p)) <= 1);
       { const cx = await contrast(p); ok(`${f} page text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
     }
-    await go(p, "track"); await p.getByRole("button", { name: "Create an account" }).click();
+    await go(p, "track"); { const ca = p.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
     await p.getByLabel("Email").fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123");
     { const ax = await a11y(p); ok("sign-up form controls all have names", !ax.length, ax.join(" | ")); }
     await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(300);
     ok("sign-up asks for agreement first", (await p.getByText("Please confirm you're 13 or older").count()) === 1);
-    await p.locator(".auth-agree input").check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
+    await p.locator("#auth-name").fill("Test Coach"); await p.locator(".auth-agree input").first().check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
     const users = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json();
     const me = users.find((u) => u.email === "legal@e2e.test");
     ok("the agreement is recorded with the account", me && me.meta && me.meta.terms_version === "1" && !!me.meta.terms_accepted_at, JSON.stringify(me && me.meta));
@@ -378,7 +379,7 @@ const scenarios = {
     ok("older accounts are asked to agree", (await q.getByText("Our Terms and Privacy Policy").count()) === 1);
     await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(200);
     ok("…and can't skip the checkbox", (await q.getByText("Check the box to agree.").count()) === 1);
-    await q.locator(".auth-agree input").check(); await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(1200);
+    await q.locator("#auth-name").fill("Test Coach"); await q.locator(".auth-agree input").first().check(); await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(1200);
     ok("agreeing opens the app", (await q.getByText("Our Terms and Privacy Policy").count()) === 0 && (await q.locator(".page, .content").count()) > 0);
     await q.context().close();
     // delete the account, then the same sign-in fails
@@ -459,8 +460,8 @@ const scenarios = {
 
   async tournament(browser) {
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("tn@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("tn@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("TN Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
     await go(A, "matchup"); await A.getByRole("button", { name: "New tournament" }).click();
@@ -520,8 +521,8 @@ const scenarios = {
 
   async notify(browser) {
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("notify@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("notify@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Ping Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
@@ -540,6 +541,13 @@ const scenarios = {
       if (self.PushManager) { PushManager.prototype.subscribe = async function () { localStorage.setItem("__sub", "1"); return fake; }; PushManager.prototype.getSubscription = async function () { return localStorage.getItem("__sub") ? fake : null; }; }
     });
     await P.goto(season); await P.waitForTimeout(1200);
+    ok("notifications ask for a free account first", (await P.locator(".lv-notify .ma").count()) === 1 && !(await P.getByRole("button", { name: "Turn on notifications" }).count()));
+    await P.locator(".lv-notify").getByLabel("Your name").fill("Dana Lopez"); await P.locator(".lv-notify").getByLabel("Email", { exact: true }).fill("dana@example.com"); await P.locator(".lv-notify").getByLabel("Password", { exact: true }).fill("family-pass-1");
+    await P.locator(".lv-notify").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(300);
+    ok("the account form says what's missing", /13 or older/.test(await P.locator(".lv-notify .ma-err").innerText().catch(() => "")));
+    await P.locator(".lv-notify .ma-check input").first().check(); await P.locator(".lv-notify").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(800);
+    { const us = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json(); const d = us.find((u) => u.email === "dana@example.com");
+      ok("a family account keeps their name, that they're a parent, and the news email choice", d && d.meta.name === "Dana Lopez" && d.meta.kind === "parent" && d.meta.email_ok === true, JSON.stringify(d)); }
     ok("team page offers notifications", (await P.getByRole("button", { name: "Turn on notifications" }).count()) === 1);
     if (process.env.SHOTS) await P.locator(".lv-notify").screenshot({ path: path.join(process.env.SHOTS, "notify-off.png") });
     await P.getByLabel("Your player (optional)").selectOption({ label: "#22 Nia L." });
@@ -589,8 +597,8 @@ const scenarios = {
       await ctx.route("https://upload.wikimedia.org/**", (r) => r.fulfill({ contentType: "image/png", headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(path.join(__dirname, "fixtures", /bb|bucks/.test(r.request().url()) ? "logo-bb.png" : "logo-cn.png")) }));
     };
     const A = await newPage(browser); await fakeWiki(A.context());
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("pics@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("pics@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
     // our logo: found by name
@@ -659,8 +667,8 @@ const scenarios = {
   },
   async gameday(browser) {
     const A = await newPage(browser); await A.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("gameday@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("gameday@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await go(A, "team"); await A.getByRole("button", { name: "Paste list" }).click();
     await A.locator("textarea").first().fill(["1 Ava Ramirez S", "3 Lily Torres L", "4 Jordan Lee OH", "7 Maya Chen OH", "8 Zoe Grant MB", "9 Riley Brooks MB", "12 Sofia Nguyen OPP"].join("\n")); await A.getByRole("button", { name: "Add players" }).click(); await A.waitForTimeout(300);
@@ -861,6 +869,102 @@ const scenarios = {
       await p.context().close();
     }
   },
+  async accounts(browser) {
+    // real visitors: an account is required for the coach app and the athlete tools
+    const A = await newPage(browser, { strict: true });
+    await go(A, "track");
+    ok("accounts: the coach app starts at Create your account", /Create your account/.test(await A.locator(".auth-title").innerText()));
+    ok("accounts: there's no way in without an account", !(await A.getByRole("button", { name: "Use without an account" }).count()));
+    await go(A, "sample"); await A.waitForTimeout(800);
+    ok("accounts: the sample season can still be explored first", (await A.locator(".auth-title").count()) === 0, await A.locator("body").innerText().then((x) => x.slice(0, 120)));
+    await A.context().clearCookies(); await A.evaluate(() => { localStorage.clear(); indexedDB.deleteDatabase("bench-stats"); }); await A.reload(); await A.waitForTimeout(600);
+    await A.getByLabel("Email", { exact: true }).fill("strict@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").first().check();
+    await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(300);
+    ok("accounts: a name is required", /Enter your name/.test(await A.locator(".auth-form").innerText()));
+    await A.locator("#auth-name").fill("Coach Rivera"); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(700);
+    { const us = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json(); const u = us.find((x) => x.email === "strict@e2e.test");
+      ok("accounts: a coach account keeps the name, kind and news choice", u && u.meta.name === "Coach Rivera" && u.meta.kind === "coach" && u.meta.email_ok === true, JSON.stringify(u)); }
+    ok("accounts: signed in, the coach sets up a team", (await A.getByLabel("Team name").count()) === 1);
+    await A.context().close();
+    // athletes on Benchboard Recruit
+    const R = await newPage(browser, { strict: true });
+    await R.goto(U + "recruit/#/emails"); await R.waitForTimeout(400);
+    ok("accounts: the athlete tools ask for a free account", (await R.locator(".ma").count()) === 1 && !(await R.locator(".rg-body").count()));
+    ok("accounts: athletes default to no news emails", !(await R.locator(".ma-check input").nth(1).isChecked()));
+    await R.getByLabel("Your name").fill("Maya Chen"); await R.getByLabel("Email", { exact: true }).fill("maya@e2e.test"); await R.getByLabel("Password", { exact: true }).fill("athlete-pass");
+    await R.locator(".ma-check input").first().check(); await R.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await R.waitForTimeout(700);
+    ok("accounts: signed in, the email writer opens", (await R.locator(".rg-body").count()) === 1);
+    await R.getByLabel("First name").fill("Maya"); await R.getByLabel("Grad year").fill("2028"); await R.waitForTimeout(1800);
+    await R.context().close();
+    const R2 = await newPage(browser, { strict: true, phone: true });
+    await R2.goto(U + "recruit/#/emails"); await R2.waitForTimeout(400);
+    await R2.locator(".ma").getByRole("button", { name: "Sign in" }).first().click(); await R2.getByLabel("Email", { exact: true }).fill("maya@e2e.test"); await R2.getByLabel("Password", { exact: true }).fill("athlete-pass");
+    await R2.locator(".ma").getByRole("button", { name: "Sign in" }).last().click(); await R2.waitForTimeout(800);
+    ok("accounts: an athlete's details follow them to another device", (await R2.getByLabel("First name").inputValue()) === "Maya" && (await R2.getByLabel("Grad year").inputValue()) === "2028");
+    { const ax = await a11y(R2); ok("accounts: sign-in controls all have names", !ax.length, ax.join(" | ")); }
+    ok("accounts: no page errors", !A.errors.length && !R.errors.length && !R2.errors.length, [...A.errors, ...R.errors, ...R2.errors].slice(0, 3).join(" | "));
+    await R2.context().close();
+  },
+  async filmsession(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email", { exact: true }).fill("film@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Coach Film"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Film High"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    await go(A, "team"); await A.getByRole("button", { name: "Paste list" }).click(); await A.locator("textarea").first().fill("7 Maya Chen OH\n8 Zoe Grant MB\n3 Lily Torres L"); await A.getByRole("button", { name: "Add players" }).click(); await A.waitForTimeout(300);
+    await go(A, "film");
+    await A.getByLabel("Game video file").setInputFiles(path.join(__dirname, "fixtures", "game.webm"));
+    await A.getByPlaceholder("e.g. Buchanan").fill("Central"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(600);
+    await A.locator(".fr-stage video").evaluate((v) => v.readyState >= 1 ? 0 : new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true })));
+    const at = async (t) => { await A.locator(".fr-stage video").evaluate((v, x) => { v.pause(); v.currentTime = x; }, t); await A.waitForTimeout(250); };
+    await A.locator(".fr-top h1").click();
+    await at(9); await A.keyboard.type("7"); await A.waitForTimeout(900); await A.keyboard.press("k"); await A.keyboard.press("Escape");
+    await at(30); await A.keyboard.type("8"); await A.waitForTimeout(900); await A.keyboard.press("b"); await A.keyboard.press("Escape");
+    await A.getByRole("tab", { name: "Find clips" }).click();
+    await A.getByLabel("Ask for clips").fill("points we won"); await A.getByRole("button", { name: "Find", exact: true }).click(); await A.waitForTimeout(200);
+    await A.getByRole("button", { name: /^Add 2 clips to a film session$/ }).click(); await A.waitForTimeout(300);
+    ok("film session: clips found by asking go into a new session", (await A.locator(".fr-items > li").count()) === 2, await A.locator(".fr-side").innerText().then((x) => x.slice(0, 300)));
+    await A.locator(".fr-items > li").first().getByLabel("Coach's note").fill("Watch Maya's approach: three steps, arms back early.");
+    await A.locator(".fr-items > li").first().getByRole("button", { name: "Draw on it" }).click(); await A.waitForTimeout(500);
+    const cv = A.locator(".fr-tele canvas"), bx = await cv.boundingBox();
+    await A.mouse.move(bx.x + bx.width * 0.2, bx.y + bx.height * 0.7); await A.mouse.down(); await A.mouse.move(bx.x + bx.width * 0.5, bx.y + bx.height * 0.4, { steps: 6 }); await A.mouse.up();
+    await A.getByRole("button", { name: "Circle" }).click(); await A.mouse.move(bx.x + bx.width * 0.55, bx.y + bx.height * 0.3); await A.mouse.down(); await A.mouse.move(bx.x + bx.width * 0.7, bx.y + bx.height * 0.5, { steps: 6 }); await A.mouse.up();
+    { const ax = await a11y(A); ok("telestrator controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "film-telestrator.png") });
+    await A.getByRole("button", { name: "Save drawing" }).click(); await A.waitForTimeout(200);
+    ok("film session: the drawing is saved with the clip", /Edit drawing \(2\)/.test(await A.locator(".fr-items > li").first().innerText()));
+    await A.getByLabel("Session title").fill("Points we won vs Central");
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "film-session.png"), fullPage: true });
+    await A.getByRole("button", { name: "Send to team" }).click();
+    await A.getByRole("button", { name: "Copy link" }).waitFor({ timeout: 90000 });
+    const link = await A.locator(".fr-sess a[href*='/live/#/film/']").getAttribute("href");
+    ok("film session: sent to the team with a Live link", /\/live\/#\/film\/[A-Z0-9]{8}$/.test(link || ""), link || "");
+    // a player watches, signed in
+    const P = await newPage(browser, { phone: true });
+    await P.goto(link); await P.waitForTimeout(500);
+    ok("team film needs a free account", (await P.locator(".lv-film-gate .ma").count()) === 1);
+    await P.getByLabel("Your name").fill("Maya Chen"); await P.getByLabel("Email", { exact: true }).fill("maya-film@e2e.test"); await P.getByLabel("Password", { exact: true }).fill("player-pass");
+    await P.locator(".ma-check input").first().check(); await P.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(900);
+    ok("team film: the session opens with the coach's notes", /Points we won vs Central/.test(await P.locator(".lv-film-hd").innerText()) && /three steps, arms back early/.test(await P.locator(".lv-film").innerText()), await P.locator("main").innerText().then((x) => x.slice(0, 300)));
+    ok("team film: both clips are listed", (await P.locator(".lv-film-list li").count()) === 2);
+    // how long the recorded clip really runs: play it fast to the end
+    const dur = await P.locator(".lv-film-player video").evaluate(async (v) => { v.muted = true; v.playbackRate = 8; const end = new Promise((r) => v.addEventListener("ended", r, { once: true })); await v.play().catch(() => {}); await Promise.race([end, new Promise((r) => setTimeout(r, 6000))]); return v.currentTime; });
+    if (process.env.KEEP_FILM) { const u = await P.locator(".lv-film-player video").getAttribute("src"); fs.writeFileSync("/tmp/claude-0/clip0.bin", Buffer.from(await (await fetch(u)).arrayBuffer())); }
+    await P.locator(".lv-film-list li").first().locator("button").click(); await P.waitForTimeout(300);
+    { const d0 = await P.evaluate(async (u) => { const v = document.createElement("video"); v.muted = true; v.src = URL.createObjectURL(await (await fetch(u)).blob()); await new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true })); return v.duration; }, await P.locator(".lv-film-player video").getAttribute("src"));
+      ok("team film: the clip knows its real length (players can scrub; the test server has no byte ranges, so read it whole)", d0 > 9 && d0 < 16, String(d0)); }
+    ok("team film: the first clip holds on the drawing (clip + 4 s freeze)", dur > 9 && dur < 16, String(dur));
+    await P.waitForTimeout(500);
+    ok("team film: a watched clip is ticked off", (await P.locator(".lv-film-list li.done").count()) >= 1, JSON.stringify(await P.locator(".lv-film-player video").evaluate((v) => [v.currentTime, v.duration, v.paused, v.ended, v.error && v.error.code])));
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "film-live.png"), fullPage: true });
+    // the coach sees who watched
+    await A.getByRole("button", { name: "‹ Sessions" }).click(); await A.locator(".fr-list button").first().click(); await A.waitForTimeout(800);
+    ok("film session: the coach sees who watched", /Watched by 1 person/.test(await A.locator(".fr-viewers").innerText()) && /Maya Chen/.test(await A.locator(".fr-viewers").innerText()), await A.locator(".fr-sess").innerText().then((x) => x.slice(-300)));
+    await A.getByRole("button", { name: "Take down" }).click(); await A.waitForTimeout(400);
+    await P.reload(); await P.waitForTimeout(800);
+    ok("film session: a taken-down session no longer opens", /isn't shared anymore/.test(await P.locator("main").innerText()));
+    ok("film session: no page errors", !A.errors.length && !P.errors.length, [...A.errors, ...P.errors].slice(0, 3).join(" | "));
+    await A.context().close(); await P.context().close();
+  },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });
     // a stand-in microphone: each start() "hears" the next phrase queued in window.__say
@@ -880,8 +984,8 @@ const scenarios = {
   /** paused feature: run with COLLEGE=1 after flipping src/recruit/flags.ts */
   async _college(browser) {
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("hs@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("hs@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Central"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
@@ -930,8 +1034,8 @@ const scenarios = {
   },
   async overlay(browser) {
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("stream@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("stream@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan Bears Volleyball Club"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
@@ -962,8 +1066,8 @@ const scenarios = {
   },
   async cloud(browser) {
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Cloud Club"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await A.locator("input[type=file][accept^='.csv']").setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(1200);
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
@@ -972,7 +1076,7 @@ const scenarios = {
     await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true });
-    await go(B, "join/" + code); await B.getByLabel("Email").fill("assistant@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator(".auth-agree input").check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
+    await go(B, "join/" + code); await B.getByLabel("Email").fill("assistant@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator("#auth-name").fill("Test Coach"); await B.locator(".auth-agree input").first().check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1200);
     await go(B, "track"); ok("assistant sees the live match", /CLOUD CLUB 0/.test(await score(B)));
     await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
@@ -1062,7 +1166,7 @@ const scenarios = {
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();
     const V = await newPage(browser, { phone: true });
-    await go(V, "join/" + vcode); await V.getByLabel("Email").fill("parent@e2e.test"); await V.locator("#auth-pw").fill("secret123"); await V.locator(".auth-agree input").check(); await V.getByRole("button", { name: "Create account" }).click(); await V.waitForTimeout(500);
+    await go(V, "join/" + vcode); await V.getByLabel("Email").fill("parent@e2e.test"); await V.locator("#auth-pw").fill("secret123"); await V.locator("#auth-name").fill("Test Coach"); await V.locator(".auth-agree input").first().check(); await V.getByRole("button", { name: "Create account" }).click(); await V.waitForTimeout(500);
     await V.getByRole("button", { name: "Join team" }).click(); await V.waitForTimeout(1500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     await go(V, "track"); ok("viewer sees the view-only note", (await V.locator(".banner", { hasText: "View-only." }).count()) === 1);
@@ -1079,8 +1183,8 @@ const scenarios = {
     const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore"); fs.mkdirSync(OUT, { recursive: true });
     let n = 0; const shot = async (pg, name, full = false) => { await pg.waitForTimeout(250); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("coach@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("coach@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await go(A, "team"); await A.getByRole("button", { name: "Paste a roster" }).click();
     await A.locator("textarea").first().fill(["1 Ava Ramirez S Sr 5'8\"", "3 Lily Torres L Jr", "4 Jordan Lee OH So 5'10\"", "7 Maya Chen OH Sr 5'11\"", "8 Zoe Grant MB Jr 6'1\"", "9 Riley Brooks MB So", "10 Emma Diaz DS Fr", "12 Sofia Nguyen OPP Jr 5'11\"", "14 Kenzie Park OH Sr", "15 Harper Kim S So"].join("\n"));
@@ -1203,8 +1307,8 @@ const scenarios = {
     const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore3"); fs.mkdirSync(OUT, { recursive: true });
     let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(300); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };
     const A = await newPage(browser);
-    await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
-    await A.getByLabel("Email").fill("coach3@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("coach3@explore.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(600);
     await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     await go(A, "team"); await A.getByRole("button", { name: "Paste a roster" }).click();
     await A.locator("textarea").first().fill(["1 Ava Ramirez S Sr 5'8\"", "3 Lily Torres L Jr", "4 Jordan Lee OH So 5'10\"", "7 Maya Chen OH Sr 5'11\"", "8 Zoe Grant MB Jr 6'1\"", "9 Riley Brooks MB So", "10 Emma Diaz DS Fr", "12 Sofia Nguyen OPP Jr 5'11\""].join("\n"));

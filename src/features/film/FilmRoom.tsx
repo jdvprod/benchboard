@@ -19,6 +19,8 @@ import { ClipQuery, matchQuery, parseQuery, aiQueryPrompt, cleanAiQuery, QueryPl
 import { crossedEnd, DECODE_LIMIT, findWhistles, Frame, frameFromAnalyser, rallyCheck, ralliesFrom, scanFile } from "../../film/rallies";
 import { ReelMaker } from "../../film/ReelMaker";
 import { aiAvailable, askJson } from "../../ai/client";
+import { addToSession, sessionsOf, SessionsPanel } from "./Sessions";
+import { itemFrom } from "../../film/session";
 
 const resolve = (c: Clip) => (c.url.startsWith(LOCAL) ? localVideo(c.matchId) : c.url);
 const srcOf = (m: Match) => (!m.video ? null : m.video.startsWith(LOCAL) ? localVideo(m.id) : videoKind(m.video) === "file" ? m.video : null);
@@ -83,7 +85,7 @@ function FilmHome() {
 }
 
 /* ---------- the workspace ---------- */
-type Tab = "stat" | "find" | "rallies";
+type Tab = "stat" | "find" | "rallies" | "sessions";
 function FilmWork({ m }: { m: Match }) {
   const R = replayOf(m)!, evs = eventsOf(m.id), T = filmTiming(m, R, evs);
   const vid = useRef<HTMLVideoElement>(null);
@@ -92,7 +94,7 @@ function FilmWork({ m }: { m: Match }) {
   const [skip, setSkip] = useState(true), [rate, setRate] = useState(1), [now, setNow] = useState(0), [dur, setDur] = useState(0);
   const [scan, setScan] = useState<{ text: string; f: number } | null>(null), stopScan = useRef<(() => void) | null>(null);
   const userSeek = useRef(0), lastT = useRef(0);
-  const [stopEach, setStopEach] = useState(true), [waiting, setWaiting] = useState(-1);
+  const [stopEach, setStopEach] = useState(true), [waiting, setWaiting] = useState(-1), [openSession, setOpenSession] = useState<string | null>(null);
   const rallies = m.rallies || [];
   const statting = !!m.film;
 
@@ -231,13 +233,14 @@ function FilmWork({ m }: { m: Match }) {
       </section>
       <section className="fr-side">
         <div className="fr-tabs" role="tablist">
-          {(statting ? [["stat", "Stat"], ["find", "Find clips"], ["rallies", "Rallies"]] : [["find", "Find clips"], ["rallies", "Rallies"]]).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k as Tab)}>{l}</button>)}
+          {(statting ? [["stat", "Stat"], ["find", "Find clips"], ["rallies", "Rallies"], ["sessions", "Film sessions"]] : [["find", "Find clips"], ["rallies", "Rallies"], ["sessions", "Film sessions"]]).map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? "on" : ""} onClick={() => setTab(k as Tab)}>{l}</button>)}
         </div>
         {tab === "stat" && statting && <div className="stack">
           <FilmNumbers R={R} />
           {src ? <Tracker m={m} /> : <p className="empty">Add the video to start statting.</p>}
         </div>}
-        {tab === "find" && <FindClips m={m} R={R} T={T} onSeek={(t) => { seek(t); vid.current?.play().catch(() => {}); }} />}
+        {tab === "find" && <FindClips m={m} R={R} T={T} onSeek={(t) => { seek(t); vid.current?.play().catch(() => {}); }} onAdded={(sid) => { setOpenSession(sid); setTab("sessions"); }} />}
+        {tab === "sessions" && <SessionsPanel m={m} src={src} open={openSession} setOpen={setOpenSession} nowAt={() => vid.current?.currentTime || 0} lead={m.film ? 5 : 8} />}
         {tab === "rallies" && <RallyList m={m} R={R} T={T} rallies={rallies} now={now} onSeek={(t) => { seek(t); vid.current?.play().catch(() => {}); }} />}
       </section>
     </div>
@@ -265,7 +268,8 @@ function FilmNumbers({ R }: { R: Replay }) {
 
 /* ---------- ask for clips ---------- */
 const EXAMPLES = ["All solo blocks", "Blocking reps", "Kills to area 1", "Aces", "Our errors", "Kills off perfect passes", "Shanked passes", "Their kills", "Serve errors at 20+", "Digs in set 2"];
-function FindClips({ m, R, T, onSeek }: { m: Match; R: Replay; T: ReturnType<typeof filmTiming>; onSeek: (t: number) => void }) {
+function FindClips({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T: ReturnType<typeof filmTiming>; onSeek: (t: number) => void; onAdded: (sessionId: string) => void }) {
+  const [to, setTo] = useState("new");
   const roster: QueryPlayer[] = teamPlayers(m.teamId).map((p) => ({ id: p.id, first: p.first, last: p.last, num: String(p.num) }));
   const [text, setText] = useState(""), [q, setQ] = useState<{ q: ClipQuery; chips: string[]; by?: "ai" } | null>(null), [busy, setBusy] = useState(false);
   const [lead, setLead] = useState(m.film ? 5 : 8), [tail, setTail] = useState(2), [play, setPlay] = useState(false), [reelFor, setReelFor] = useState<string | null>(null), [miss, setMiss] = useState("");
@@ -301,6 +305,10 @@ function FindClips({ m, R, T, onSeek }: { m: Match; R: Replay; T: ReturnType<typ
         {playable.length > 0 && <button className={"btn" + (play ? "" : " primary")} onClick={() => setPlay(!play)}>{play ? "Hide clips" : `Watch ${plural(playable.length, "clip")} back to back`}</button>}
         {onePlayer && playable.length > 0 && player(onePlayer) && <button className="btn" onClick={() => setReelFor(onePlayer)}>Make {player(onePlayer)!.first}'s highlight video</button>}
         {!m.video && <span className="small muted">Add the video to watch these as clips.</span>}
+      </div>}
+      {rows.length > 0 && m.video && <div className="row fr-add">
+        <select className="input" style={{ width: "auto" }} value={to} onChange={(e) => setTo(e.target.value)} aria-label="Film session"><option value="new">New film session</option>{sessionsOf(m).map((x) => <option key={x.id} value={x.id}>{x.title}</option>)}</select>
+        <button className="btn" onClick={() => { const s = addToSession(m, to, clips.map(itemFrom), title); toast(`Added to “${s.title}”`); onAdded(s.id); }}>Add {plural(clips.length, "clip")} to a film session</button>
       </div>}
       {play && <ClipPlayer key={text + lead + tail} clips={playable} resolve={resolve} allowSave title={`${title} · vs ${m.opp}`} fileName={(c) => `${title} vs ${m.opp}${c ? " " + c.label : ""}`.replace(/[^\w\- .#]+/g, "")} />}
       {reelFor && <ReelMaker id={reelFor} pool={playable} onClose={() => setReelFor(null)} />}

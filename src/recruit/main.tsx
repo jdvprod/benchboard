@@ -152,7 +152,7 @@ function Landing() {
       <a href="#/emails"><b>Emails to coaches</b><span>First emails, tournament schedules, follow-ups and thank-yous, written from your details.</span></a>
       <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
     </div>
-    <p className="rc-note">Free, no account. Your film and details stay on your device.</p>
+    <p className="rc-note">Free with a Benchboard account. Your film never leaves your device.</p>
   </section></Shell>;
 }
 

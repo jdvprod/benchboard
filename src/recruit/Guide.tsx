@@ -1,16 +1,34 @@
-/** Benchboard Recruit for athletes (no account): how to get recruited, what to have ready, emails to coaches,
+/** Benchboard Recruit for athletes (free account): how to get recruited, what to have ready, emails to coaches,
  * and Reel Studio, which turns your clips or a whole game into a batch of highlight videos. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Athlete, EmailKind, EMAIL_KINDS, emailGaps, Target, writeEmail } from "./emails";
 import { Clip, clock } from "../film/clips";
 import { canMakeReel, reelLength, renderReel } from "../film/reel";
+import { cloudAvailable, currentUser, updateMeta, userMeta } from "../cloud/client";
+import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
 const KEY = "bbr-athlete";
-const loadA = (): Athlete => { try { return { first: "", last: "", grad: "", pos: "", height: "", ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { first: "", last: "", grad: "", pos: "", height: "" }; } };
-const saveA = (a: Athlete) => { try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* private window */ } };
+const BLANK: Athlete = { first: "", last: "", grad: "", pos: "", height: "" };
+const loadA = (): Athlete => { const cloud = (currentUser() && userMeta().athlete) as Partial<Athlete> | undefined; if (cloud) return { ...BLANK, ...cloud }; try { return { ...BLANK, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { ...BLANK }; } };
+let syncTimer: any = 0;
+const saveA = (a: Athlete) => {
+  try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* private window */ }
+  // kept with the account so the details are there on every device
+  if (currentUser()) { clearTimeout(syncTimer); syncTimer = setTimeout(() => updateMeta({ athlete: { ...(userMeta().athlete || {}), ...a } as any }).catch(() => {}), 1200); }
+};
 function useAthlete(): [Athlete, (p: Partial<Athlete>) => void] {
   const [a, setA] = useState<Athlete>(loadA);
   return [a, (p) => setA((x) => { const n = { ...x, ...p }; saveA(n); return n; })];
+}
+
+/** The athlete tools need a free account. */
+function Gate({ Shell, crumb, on, children }: { Shell: any; crumb: string; on: string; children: () => any }) {
+  const [, bump] = useState(0);
+  if (cloudAvailable() && !currentUser()) return <Shell crumb={crumb}><GuideNav on={on} />
+    <section className="rg-head"><h1>{crumb}</h1><p>Free for athletes and families. Your details and checklist are saved to your account, so they're there on every device.</p></section>
+    <MiniAuth kind="athlete" title="Create your free account" sub="One account for the recruiting guide, emails to coaches and Reel Studio." onIn={() => bump((x) => x + 1)} />
+  </Shell>;
+  return children();
 }
 const copy = async (s: string) => { try { await navigator.clipboard.writeText(s); return true; } catch { return false; } };
 
@@ -39,17 +57,19 @@ const YEARS: [string, string[]][] = [
 const VIDEO_TIPS = ["Best five plays in the first 30 seconds. Many coaches decide there.", "Show every skill for your position: hitters hit and pass, setters set from bad passes too, liberos dig and serve-receive.", "Landscape, steady, filmed from behind the end line and up high if you can.", "Skip slow motion, long intros and loud music. Coaches watch on mute.", "Upload to YouTube (unlisted is fine) and send the link. Never attach a video file to an email."];
 const SAY_TIPS = ["You write it, not a parent. Coaches want to hear from you.", "Short: five or six sentences a coach can read between practices.", "One real reason you like their school. Generic emails get skipped.", "Grad year, position and club team in the subject line.", "Links, not attachments: highlight video, full film, stats profile.", "Follow up every four to six weeks with something new: a schedule, new film, a better GPA."];
 
-export function GuidePage({ Shell }: { Shell: any }) {
-  const [done, setDone] = useState<Record<string, boolean>>(() => { try { return JSON.parse(localStorage.getItem("bbr-ready") || "{}"); } catch { return {}; } });
-  const tick = (k: string) => setDone((d) => { const n = { ...d, [k]: !d[k] }; try { localStorage.setItem("bbr-ready", JSON.stringify(n)); } catch { /* ignore */ } return n; });
+export function GuidePage({ Shell }: { Shell: any }) { return <Gate Shell={Shell} crumb="Recruiting guide" on="guide">{() => <Guide Shell={Shell} />}</Gate>; }
+function Guide({ Shell }: { Shell: any }) {
+  const [done, setDone] = useState<Record<string, boolean>>(() => { const c = (userMeta().athlete as any)?.ready; if (c) return c; try { return JSON.parse(localStorage.getItem("bbr-ready") || "{}"); } catch { return {}; } });
+  const tick = (k: string) => setDone((d) => { const n = { ...d, [k]: !d[k] }; try { localStorage.setItem("bbr-ready", JSON.stringify(n)); } catch { /* ignore */ } if (currentUser()) updateMeta({ athlete: { ...(userMeta().athlete || {}), ready: n } }).catch(() => {}); return n; });
   const count = READY.filter(([k]) => done[k]).length;
   return <Shell crumb="Recruiting guide"><GuideNav on="guide" />
+    <SignedIn onOut={() => location.reload()} />
     <section className="rg-head"><h1>Getting recruited for college volleyball</h1>
       <p>What college coaches want to see, what to have ready before you email them, and what to do each year of high school.</p></section>
     <section className="rc-card"><div className="rg-row"><h2>What to have ready</h2><span className="rg-count">{count} of {READY.length} ready</span></div>
       <div className="rg-meter" aria-hidden="true"><i style={{ width: (count / READY.length) * 100 + "%" }} /></div>
       <ul className="rg-check">{READY.map(([k, d]) => <li key={k} className={done[k] ? "on" : ""}><label><input type="checkbox" checked={!!done[k]} onChange={() => tick(k)} /><span><b>{k}</b><small>{d}</small></span></label></li>)}</ul>
-      <p className="rc-note">Your checklist stays on this device.</p>
+      <p className="rc-note">Your checklist is saved to your account.</p>
     </section>
     <section className="rc-card"><h2>Year by year</h2>
       <ol className="rg-years">{YEARS.map(([y, items]) => <li key={y}><b>{y}</b><ul>{items.map((x) => <li key={x}>{x}</li>)}</ul></li>)}</ol>
@@ -63,7 +83,8 @@ export function GuidePage({ Shell }: { Shell: any }) {
 }
 
 /* ---------- email writer ---------- */
-export function EmailsPage({ Shell }: { Shell: any }) {
+export function EmailsPage({ Shell }: { Shell: any }) { return <Gate Shell={Shell} crumb="Emails to coaches" on="emails">{() => <Emails Shell={Shell} />}</Gate>; }
+function Emails({ Shell }: { Shell: any }) {
   const [a, setA] = useAthlete();
   const [kind, setKind] = useState<EmailKind>("intro"), [t, setTt] = useState<Target>({}), [copied, setCopied] = useState("");
   const setT = (p: Partial<Target>) => setTt((x) => ({ ...x, ...p }));
@@ -83,7 +104,7 @@ export function EmailsPage({ Shell }: { Shell: any }) {
           {(kind === "camp" || kind === "thanks") && g("camp", kind === "camp" ? "Which camp" : "Thank them for", kind === "camp" ? "your elite camp on June 14" : "the call on Tuesday")}
           {(kind === "intro" || kind === "schedule" || kind === "video") && g("events", kind === "video" ? "Where the new film is from" : "Tournaments (one per line)", "Las Vegas Classic · Apr 11–13 · Las Vegas Convention Center", true)}
         </div></section>
-        <section className="rc-card"><h2>About you <small className="muted">saved on this device</small></h2><div className="rg-form">
+        <section className="rc-card"><h2>About you <small className="muted">saved to your account</small></h2><div className="rg-form">
           {f("first", "First name")}{f("last", "Last name")}{f("grad", "Grad year", "2028")}{f("pos", "Position", "Outside hitter")}{f("height", "Height", "5'11\"")}
           {f("approach", "Approach jump", "9'10\"")}{f("block", "Block jump", "9'4\"")}{f("club", "Club team", "Club name 17 Elite")}{f("clubNum", "Jersey #", "7")}{f("school", "High school")}{f("city", "City, state")}{f("gpa", "GPA", "3.8")}{f("major", "What you want to study")}
           {f("stats", "Your numbers (one line)", "3.2 kills/set, .260 hitting, 2.4 digs/set", true)}
@@ -122,7 +143,8 @@ export function pickReel(marks: Mark[], cats: Cat[] | null, max = 180): Mark[] {
   return out;
 }
 
-export function StudioPage({ Shell }: { Shell: any }) {
+export function StudioPage({ Shell }: { Shell: any }) { return <Gate Shell={Shell} crumb="Reel Studio" on="studio">{() => <Studio Shell={Shell} />}</Gate>; }
+function Studio({ Shell }: { Shell: any }) {
   const [a, setA] = useAthlete();
   const [films, setFilms] = useState<Film[]>([]), [marks, setMarks] = useState<Mark[]>([]), [cur, setCur] = useState<string | null>(null);
   const [before, setBefore] = useState(6), [after, setAfter] = useState(2), [maxLen, setMaxLen] = useState(180);

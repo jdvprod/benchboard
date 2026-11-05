@@ -5,6 +5,7 @@ const tokens = new Map(); // token -> userId
 const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
 const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
+const films = new Map(), filmViews = new Map(); // film sessions by code; views by code:user
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
@@ -19,7 +20,7 @@ const val = (s) => s.replace(/^(eq|gte|gt|in)\./, "");
 module.exports = (port) => new Promise((ok) => { const srv = http.createServer((req, res) => {
   if (req.method === "OPTIONS") return send(res, 204);
   const chunks = []; req.on("data", (c) => chunks.push(c)); req.on("end", () => {
-    const raw = Buffer.concat(chunks), isJson = !/^image\//.test(req.headers["content-type"] || ""), body = isJson ? raw.toString() : "";
+    const raw = Buffer.concat(chunks), isJson = !/^(image|video)\//.test(req.headers["content-type"] || ""), body = isJson ? raw.toString() : "";
     const url = new URL(req.url, "http://x"), p = url.pathname, b = body ? JSON.parse(body) : null;
     // Storage: public pictures (no key needed, like Supabase's public buckets)
     if (p.startsWith("/storage/v1/object/public/")) { const f = files.get(p.slice("/storage/v1/object/public/".length)); if (!f) return send(res, 404, { message: "not found" }); res.writeHead(200, { "content-type": f.type, "access-control-allow-origin": "*" }); return res.end(f.data); }
@@ -56,7 +57,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 15);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 16);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -75,7 +76,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/__mock/errors") return send(res, 200, appErrors);
     if (p === "/functions/v1/notify") {
       if (b.action === "key") return send(res, 200, { key: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" });
-      if (b.action === "subscribe") { const s = seasonShares.get(String(b.code).toUpperCase()); if (!s) return send(res, 404, { error: "That team page isn't shared anymore." }); if (!b.sub?.endpoint) return send(res, 400, { error: "bad" }); pushSubs.set(b.sub.endpoint, { endpoint: b.sub.endpoint, team_id: s.team_id, starts: b.starts !== false, finals: b.finals !== false, player: b.player || null }); return send(res, 200, { ok: true }); }
+      if (b.action === "subscribe") { if (!me) return send(res, 401, { error: "Sign in to turn on notifications." }); const s = seasonShares.get(String(b.code).toUpperCase()); if (!s) return send(res, 404, { error: "That team page isn't shared anymore." }); if (!b.sub?.endpoint) return send(res, 400, { error: "bad" }); pushSubs.set(b.sub.endpoint, { endpoint: b.sub.endpoint, team_id: s.team_id, starts: b.starts !== false, finals: b.finals !== false, player: b.player || null, user_id: me }); return send(res, 200, { ok: true }); }
       if (b.action === "unsubscribe") { pushSubs.delete(b.endpoint); return send(res, 200, { ok: true }); }
       if (b.action === "send") {
         if (!me || !canEdit(b.team_id, me)) return send(res, 403, { error: "Only the team's coaches can send notifications." });
@@ -101,6 +102,13 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       return send(res, 200, out);
     }
     if (p === "/__mock/staff") return send(res, 200, [...staff.values()]);
+    if (p === "/rest/v1/rpc/film_share") { if (!canEdit(b.t, me)) return send(res, 400, { message: "Only the team's coaches can share film" }); let f = [...films.values()].find((x) => x.team_id === b.t && x.session_id === b.sid); if (!f) { f = { code: uid().slice(1, 9).toUpperCase().padEnd(8, "X"), team_id: b.t, session_id: b.sid }; films.set(f.code, f); } f.data = b.d; return send(res, 200, f.code); }
+    if (p === "/rest/v1/rpc/film_open") { const f = films.get(String(b.c).toUpperCase()); if (!f) return send(res, 200, null); const k = f.code + ":" + me; const v = filmViews.get(k) || { code: f.code, user: me, watched: [] }; v.last = now(); filmViews.set(k, v); return send(res, 200, { ...f.data, watched: v.watched }); }
+    if (p === "/rest/v1/rpc/film_watched") { const v = filmViews.get(String(b.c).toUpperCase() + ":" + me); if (v && !v.watched.includes(b.n)) v.watched.push(b.n); return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/film_viewers") { const f = films.get(String(b.c).toUpperCase()); if (!f || !canEdit(f.team_id, me)) return send(res, 400, { message: "Only the team's coaches can see who watched" }); return send(res, 200, [...filmViews.values()].filter((v) => v.code === f.code).map((v) => { const u = users.get(v.user); return { name: u?.meta?.name || (u?.email || "").split("@")[0], watched: v.watched.length, last: v.last }; })); }
+    if (p === "/rest/v1/rpc/film_unshare") { const f = films.get(String(b.c).toUpperCase()); if (!f || !canEdit(f.team_id, me)) return send(res, 400, { message: "Only the team's coaches can take film down" }); films.delete(f.code); return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/admin_email_list" && admins.has(me)) return send(res, 200, [...users.values()].filter((u) => u.meta?.email_ok === true).map((u) => ({ email: u.email, name: u.meta?.name || "", kind: u.meta?.kind || "", joined: now() })));
+    if (p === "/rest/v1/rpc/admin_accounts" && admins.has(me)) { const byKind = {}; for (const u of users.values()) { const k = u.meta?.kind || "coach"; byKind[k] = (byKind[k] || 0) + 1; } return send(res, 200, { byKind, emailOk: [...users.values()].filter((u) => u.meta?.email_ok === true).length }); }
     if (p === "/rest/v1/rpc/is_admin") return send(res, 200, admins.has(me));
     if (p.startsWith("/rest/v1/rpc/admin_") && !admins.has(me)) return send(res, 400, { message: "Admins only" });
     if (p === "/rest/v1/rpc/admin_college_staff") return send(res, 200, [...staff.values()]);

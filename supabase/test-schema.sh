@@ -10,7 +10,7 @@ trap '"$BIN/pg_ctl" -D "$DIR/data" stop -m fast >/dev/null 2>&1 || true; rm -rf 
 q() { psql -h "$DIR" -p "$PORT" -U "$(whoami)" -d postgres -v ON_ERROR_STOP=1 -qAt "$@"; }
 q <<'SQL'
 create schema auth;
-create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now());
+create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now(), raw_user_meta_data jsonb not null default '{}');
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create role anon; create role authenticated;
 SQL
@@ -54,7 +54,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "15" "schema version is reported"
+check "select schema_version();" "16" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -116,4 +116,24 @@ expect "$(as $D "select jsonb_array_length(recruit_search('{\"min\":{\"dps\":1}}
 q -c "update recruit_shares set listed = false where code = 'R1R1R1';" >/dev/null
 expect "$(as $D "select jsonb_array_length(recruit_search());")" "0" "unlisted profiles never show in search"
 expect "$(asall $B "select admin_decide_college('$E', true);" | grep -c 'Admins only')" "1" "only admins approve college staff"
+# accounts: the news email list is for admins only
+q -c "update auth.users set raw_user_meta_data = '{\"name\":\"Pat\",\"kind\":\"coach\",\"email_ok\":true}' where id = '$D';" >/dev/null
+expect "$(as $C "select jsonb_array_length(admin_email_list());")" "1" "admins get the news email list (only people who said yes)"
+expect "$(as $C "select admin_accounts()->'byKind'->>'coach' >= '1';")" "t" "admins see accounts by kind"
+expect "$(asall $B "select admin_email_list();" | grep -c 'Admins only')" "1" "coaches can't read the email list"
+# film sessions: coaches share, signed-in people watch, coaches see who watched
+FC=$(as $B "select film_share('t3', 's1', '{\"title\":\"Serve receive\",\"items\":[{\"label\":\"Pass\"},{\"label\":\"Kill\"}]}');")
+expect "${#FC}" "8" "a coach shares a film session and gets a code"
+expect "$(asall $E "select film_share('t3', 's2', '{}');" | grep -c "Only the team's coaches")" "1" "people who don't coach the team can't share film"
+expect "$(as $B "select film_share('t3', 's1', '{\"title\":\"Serve receive v2\",\"items\":[]}');")" "$FC" "sharing again keeps the same code"
+expect "$(q -c "set role anon; select film_open('$FC');" 2>&1 | grep -c 'permission denied')" "1" "film needs an account"
+expect "$(as $D "select film_open('$FC')->>'title';")" "Serve receive v2" "a signed-in player opens the session"
+as $D "select film_watched('$FC', 0); select film_watched('$FC', 0); select film_watched('$FC', 1);" >/dev/null
+expect "$(as $D "select film_open('$FC')->'watched';")" "[0, 1]" "watched clips are remembered"
+expect "$(as $B "select film_viewers('$FC')->0->>'name';")" "Pat" "the coach sees who watched"
+expect "$(as $B "select film_viewers('$FC')->0->>'watched';")" "2" "and how many clips"
+expect "$(asall $D "select film_viewers('$FC');" | grep -c "Only the team's coaches")" "1" "players can't see who else watched"
+expect "$(q -c "set role anon; select count(*) from film_views;" 2>&1 | grep -c 'permission denied\|^ *0$')" "1" "view records aren't readable directly"
+as $B "select film_unshare('$FC');" >/dev/null
+expect "$(as $D "select film_open('$FC');")" "" "a session taken down no longer opens"
 echo "schema OK"
