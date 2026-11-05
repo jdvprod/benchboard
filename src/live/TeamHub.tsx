@@ -22,7 +22,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
   const rec = recordOf(games.filter(isResult).map((g) => g.R));
   return <>
     <header className="lv-team">
-      {d.team?.logo && <img className="lv-team-logo" src={d.team.logo} alt="" referrerPolicy="no-referrer" />}
+      {d.team?.logo && <TeamLogo src={d.team.logo} name={team} size={72} className="lv-team-logo" />}
       <div className="grow"><h1>{team}</h1><p>{d.season || "Season"}{d.team?.level ? " · " + d.team.level : ""}</p></div>
       <div className="lv-rec"><b>{rec.text}</b><span>Record</span></div>
     </header>

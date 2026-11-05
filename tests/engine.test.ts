@@ -402,3 +402,18 @@ test("logos: matching names, regions, and the one-clear-school rule", async () =
   assert.equal(autoPick("Buchanan", hits, "California")?.url, "https://upload.wikimedia.org/bb.png", "the one in our region");
   assert.deepEqual(await findLogos("Nowhere Elite 17", { get }), []);
 });
+
+import { artBox, cropGeometry } from "../src/lib/image";
+test("pictures: logo artwork box and photo framing math", () => {
+  // 10×10 white square with a 4×2 red block at (3,5)
+  const w = 10, h = 10, px = new Uint8ClampedArray(w * h * 4).fill(255);
+  for (let y = 5; y < 7; y++) for (let x = 3; x < 7; x++) { const i = (y * w + x) * 4; px[i] = 200; px[i + 1] = 0; px[i + 2] = 0; }
+  assert.deepEqual(artBox(px, w, h), { x: 3, y: 5, w: 4, h: 2, whiteBg: true });
+  const clear = new Uint8ClampedArray(w * h * 4); clear[(2 * w + 2) * 4 + 3] = 255;
+  assert.deepEqual(artBox(clear, w, h), { x: 2, y: 2, w: 1, h: 1, whiteBg: false });
+  // a 600×800 portrait in a 260 frame: fills the frame, can't be dragged past its edges
+  const c = cropGeometry(600, 800, { zoom: 1, dx: 0, dy: 9999, frame: 260 });
+  assert.equal(Math.round(c.size), 600); assert.equal(c.sy, 0, "dragged all the way down shows the top");
+  const z = cropGeometry(600, 800, { zoom: 2, dx: 0, dy: 0, frame: 260 });
+  assert.equal(Math.round(z.size), 300); assert.equal(Math.round(z.sx), 150); assert.equal(Math.round(z.sy), 250);
+});

@@ -23,6 +23,7 @@ declare module "react" {
 }
 declare module "react/jsx-runtime" { export const jsx: any, jsxs: any, Fragment: any; }
 declare module "react-dom/client" { export function createRoot(el: any): { render(n: any): void }; }
+declare module "react-dom" { export function createPortal(node: any, el: any): any; }
 declare module "jszip" { const J: any; export default J; }
 declare namespace JSX { interface IntrinsicElements { [k: string]: any } interface Element {} interface ElementAttributesProperty { props: {} } interface IntrinsicAttributes { key?: any } }
 declare module "*.css";

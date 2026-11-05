@@ -22,6 +22,8 @@ Volleyball stats, lineups, rotations and practice planning for coaches. Works of
 - **Import stats**: bring history over from Hudl or SoloStats (each match's MaxPreps .txt export), MaxPreps, or any .csv/.xlsx spreadsheet: one match, season totals, or a game log with one row per match. Columns are matched automatically and can be changed; players are matched to the roster by number and name.
 - **Tournament days**: on Matchup → Tournaments, list pool games (with work-team duties), bracket rounds, courts and times. Pool standings update as matches finish, each game starts tracking with the right format, and Home shows today's next game. Families see the day on Benchboard Live.
 
+**Going live:** follow [LAUNCH.md](LAUNCH.md) and run `npm run launch-check` first.
+
 ## Run it
 
 You need Node.js 18+.

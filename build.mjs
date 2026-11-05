@@ -54,9 +54,13 @@ for (const f of readdirSync(path.join(dist, "legal"))) {
   writeFileSync(path.join(dist, "legal", f), t);
 }
 
-const html = readFileSync(path.join(root, "index.html"), "utf8").replaceAll("%VERSION%", version);
-writeFileSync(path.join(dist, "index.html"), html);
-for (const site of ["live", "recruit"]) { const f = path.join(dist, site, "index.html"); if (existsSync(f)) writeFileSync(f, readFileSync(f, "utf8").replaceAll("%VERSION%", version)); }
+// The site's address (package.json "site.url", or SITE_URL) makes link previews absolute; without it they stay relative.
+const pkgSite = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).site || {};
+const site = String(process.env.SITE_URL || pkgSite.url || "").replace(/\/*$/, "") + "/";
+const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site);
+writeFileSync(path.join(dist, "index.html"), fill(readFileSync(path.join(root, "index.html"), "utf8")));
+for (const f of ["about.html", "live/index.html", "recruit/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
+if (!legal.email) console.warn("\n⚠  package.json legal.email is empty: the Privacy Policy and Terms have no contact address. Add it before launch.\n");
 const sw = readFileSync(path.join(root, "public/sw.js"), "utf8").replace("%VERSION%", version + "-" + Date.now().toString(36));
 writeFileSync(path.join(dist, "sw.js"), sw);
 

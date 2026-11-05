@@ -1,0 +1,6 @@
+# Team pages, gamecasts and recruiting profiles are shared by link only: keep them out of search results.
+User-agent: *
+Disallow: /live/
+Disallow: /recruit/
+Disallow: /legal/consent-form.html
+Allow: /

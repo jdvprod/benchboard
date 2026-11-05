@@ -1,6 +1,6 @@
 {
   "name": "benchboard",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Volleyball stat tracking, lineups and practice planning for coaches",
   "type": "module",
@@ -10,7 +10,9 @@
     "test": "node build.mjs --test",
     "typecheck": "tsc --noEmit",
     "typecheck:ci": "tsc --noEmit -p tsconfig.ci.json",
-    "e2e": "node e2e/run.cjs"
+    "e2e": "node e2e/run.cjs",
+    "launch-check": "node build.mjs && node scripts/launch-check.mjs",
+    "og-cards": "node scripts/og-cards.cjs"
   },
   "dependencies": {
     "jszip": "^3.10.1",
@@ -23,6 +25,9 @@
     "esbuild": "^0.25.0",
     "typescript": "^5.9.0",
     "playwright": "^1.56.0"
+  },
+  "site": {
+    "url": ""
   },
   "legal": {
     "owner": "the Benchboard team",

@@ -1,0 +1,23 @@
+// Before going live: checks the things that are easy to forget. Run: npm run launch-check
+import { readFileSync, existsSync } from "node:fs";
+const read = (f) => readFileSync(new URL("../" + f, import.meta.url), "utf8");
+const pkg = JSON.parse(read("package.json")), out = [];
+const check = (ok, level, msg) => out.push([ok ? "ok  " : level === "fail" ? "FIX " : "warn", msg]);
+check(!!pkg.legal?.email, "fail", pkg.legal?.email ? `Privacy contact: ${pkg.legal.email}` : 'package.json legal.email is empty (the Privacy Policy and Terms need a contact address)');
+check(pkg.legal?.owner && pkg.legal.owner !== "the Benchboard team", "warn", `Legal owner: ${pkg.legal?.owner} (your name or business name)`);
+check(!!pkg.legal?.state, "warn", `Governing state: ${pkg.legal?.state || "(none)"}`);
+check(!!pkg.site?.url, "warn", pkg.site?.url ? `Site address: ${pkg.site.url}` : "package.json site.url is empty: link previews use relative image links (set it once you have the domain)");
+const cfg = read("src/cloud/config.ts");
+check(/url:\s*"https:\/\/[^"]+supabase\.co"/.test(cfg) && /key:\s*"[^"]{20,}"/.test(cfg), "fail", "Supabase project URL and anon key are in src/cloud/config.ts");
+const v = (re, f) => +(re.exec(read(f)) || [])[1];
+const sv = v(/schema_version\(\)[^$]*\$\$ select (\d+) \$\$/, "supabase/schema.sql"), av = v(/SCHEMA_VERSION = (\d+)/, "src/features/settings/SettingsPage.tsx"), mv = v(/schema_version"\) return send\(res, 200, (\d+)\)/, "e2e/mock-supabase.cjs");
+check(sv === av && av === mv, "fail", `Database version matches everywhere (schema ${sv}, app ${av}, test mock ${mv})`);
+check(existsSync(new URL("../supabase/functions/ai/index.ts", import.meta.url)) && existsSync(new URL("../supabase/functions/notify/index.ts", import.meta.url)), "fail", "Edge Functions ai and notify are in supabase/functions");
+for (const f of ["index.html", "live/index.html", "recruit/index.html", "og.png", "robots.txt", "404.html", "_headers", "sw.js"]) check(existsSync(new URL("../dist/" + f, import.meta.url)), "fail", `dist/${f} built`);
+const live = existsSync(new URL("../dist/live/index.html", import.meta.url)) ? read("dist/live/index.html") : "";
+check(/noindex/.test(live), "fail", "Benchboard Live pages ask search engines not to index them");
+console.log(`Benchboard ${pkg.version} launch check\n`);
+for (const [s, m] of out) console.log(`  ${s} ${m}`);
+const bad = out.filter(([s]) => s === "FIX ").length;
+console.log(bad ? `\n${bad} to fix before launch. Then follow LAUNCH.md.` : "\nReady. Follow LAUNCH.md for the deploy and the smoke test.");
+process.exit(bad ? 1 : 0);

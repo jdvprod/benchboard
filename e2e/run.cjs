@@ -343,6 +343,10 @@ const scenarios = {
   },
 
   async legal(browser) {
+    { const get = async (u) => (await fetch(U + u)).text();
+      const [app, live, rec, robots] = await Promise.all([get(""), get("live/"), get("recruit/"), get("robots.txt")]);
+      ok("link previews: every site has a title, description and 1200×630 image", [app, live, rec].every((h) => /og:title/.test(h) && /og:image" content="[^"]*og\.png"/.test(h)));
+      ok("team pages and recruiting profiles stay out of search engines", /noindex/.test(live) && /noindex/.test(rec) && !/noindex/.test(app) && /Disallow: \/live\//.test(robots) && /Disallow: \/recruit\//.test(robots)); }
     const p = await newPage(browser, { phone: true });
     { const h = (await p.goto(U)).headers(); ok("pages are served with a content security policy", /script-src 'self'/.test(h["content-security-policy"] || "") && h["x-content-type-options"] === "nosniff"); }
     for (const f of ["privacy", "terms", "schools", "accessibility", "consent-form"]) {
@@ -573,18 +577,24 @@ const scenarios = {
     ok("logo search shows the school's logo first", (await teamCard.locator(".logo-hit").first().getAttribute("aria-label")) === "Use Clovis North High School · logo", await teamCard.locator(".logo-find").innerText().catch(() => ""));
     { const ax = await a11y(A); ok("logo picker controls all have names", !ax.length, ax.join(" | ")); }
     await teamCard.locator(".logo-hit").first().click(); await A.waitForTimeout(300);
-    ok("picking a logo sets it", (await teamCard.locator("img.tlogo").getAttribute("src")) === "https://upload.wikimedia.org/cn.png");
+    await A.waitForTimeout(800); const ourLogo = await teamCard.locator(".logo-pick > .row .tlogo img").first().getAttribute("src").catch(() => "");
+    ok("a picked logo is cleaned up and saved as the team's own copy", /\/storage\/v1\/object\/public\/media\/.+\/team-.+\.png/.test(ourLogo || ""), ourLogo || "(none)");
+    ok("the cleaned logo is a square with its artwork filling the tile", await A.evaluate(async (u) => { const i = new Image(); i.crossOrigin = "anonymous"; i.src = u; await i.decode(); const c = document.createElement("canvas"); c.width = i.width; c.height = i.height; const g = c.getContext("2d"); g.drawImage(i, 0, 0); const d = g.getImageData(0, 0, c.width, c.height).data; let x0 = c.width, x1 = 0; for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 24) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); } return i.width === i.height && (x1 - x0) / i.width > 0.8; }, ourLogo));
     // a player's photo: uploaded for the team
     const row = A.locator(".roster-tbl tr", { has: A.locator("input[value=Nia]") });
-    await row.locator("input[type=file][accept='image/*']").setInputFiles(path.join(__dirname, "fixtures/photo.jpg")); await A.waitForTimeout(1200);
+    await row.locator("input[type=file][accept='image/*']").setInputFiles(path.join(__dirname, "fixtures/photo.jpg")); await A.waitForTimeout(500);
+    ok("a photo opens the framing step", (await A.getByRole("dialog", { name: /Frame the photo/ }).count()) === 1);
+    { const ax = await a11y(A); ok("photo framing controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "photo-framing.png") });
+    await A.getByLabel("Zoom").fill("1.3"); await A.getByRole("button", { name: "Save photo" }).click(); await A.waitForTimeout(1200);
     const photo = await row.locator("img.avatar").getAttribute("src").catch(() => "");
     ok("a player photo uploads to the team's pictures", /\/storage\/v1\/object\/public\/media\/.+\/player-.+\.jpg\?v=/.test(photo || ""), photo || "(none)");
-    ok("the photo is a small square", await A.evaluate(async (u) => { const i = new Image(); i.src = u; await i.decode(); return i.naturalWidth === 360 && i.naturalHeight === 360; }, photo));
+    ok("the photo is a small square", await A.evaluate(async (u) => { const i = new Image(); i.src = u; await i.decode(); return i.naturalWidth === 400 && i.naturalHeight === 400; }, photo));
     // a new opponent gets its logo by itself: two Buchanan High Schools, one in our state
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(1500);
-    const logos = async () => (await A.locator(".board .tlogo, .gs .tlogo").evaluateAll((els) => els.map((e) => e.getAttribute("src") || "initials"))).join(" ");
+    const logos = async () => (await A.locator(".gs .tlogo").evaluateAll((els) => els.map((e) => e.querySelector("img")?.getAttribute("src") || "initials"))).join(" ");
     await go(A, "live"); await A.waitForTimeout(400);
-    ok("the opponent's logo is found automatically (the school in our state)", /cn\.png .*bb\.png/.test(await logos()), await logos());
+    ok("the opponent's logo is found automatically (the school in our state)", /team-.+\.png.* .*opp-.+\.png/.test(await logos()), await logos());
     for (let i = 0; i < 3; i++) { await go(A, "track"); await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); }
     await A.locator(".pl", { hasText: "Nia" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape");
     // families see them
@@ -593,8 +603,8 @@ const scenarios = {
     const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
     const P = await newPage(browser, { phone: true }); await fakeWiki(P.context());
     await P.goto(teamUrl); await P.waitForTimeout(1500);
-    ok("team page shows the team logo", (await P.locator(".lv-team-logo").getAttribute("src")) === "https://upload.wikimedia.org/cn.png");
-    ok("live score on the team page shows both logos", (await P.locator(".lv-livecard img.tlogo").count()) === 2);
+    ok("team page shows the team logo", /team-.+\.png/.test(await P.locator(".lv-team-logo img").getAttribute("src") || ""));
+    ok("live score on the team page shows both logos", (await P.locator(".lv-livecard .tlogo img").count()) === 2);
     await P.goto(teamUrl + "/roster"); await P.waitForTimeout(800);
     ok("roster shows the player's photo", (await P.locator(".lv-rp", { hasText: "Nia" }).locator("img.avatar").count()) === 1);
     { const loaded = await P.locator(".lv-rp img.avatar").first().evaluate((i) => i.complete && i.naturalWidth > 0); ok("the photo loads on the public site", loaded); }

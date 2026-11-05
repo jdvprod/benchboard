@@ -4,7 +4,7 @@ import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
 import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
-import { authSettings, cloudAvailable, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
+import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
 import { deleteAccount, isLinked } from "../../cloud/sync";
 import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
@@ -114,6 +114,11 @@ function SetupCheck() {
       out.push(e?.status === 0 ? { label: "Database", state: "warn", detail: "Couldn't reach Supabase. Check your connection, or that the project isn't paused (free projects pause after a week without use)." }
         : { label: "Database", state: "todo", detail: "The tables aren't set up yet (or are from an older version). Run supabase/schema.sql in Supabase → SQL Editor." });
     }
+    try {
+      const c = config(), r = c ? await fetch(`${c.url}/storage/v1/object/public/media/setup-check.png`, { headers: { apikey: c.key } }) : null, txt = r ? await r.text() : "";
+      if (r) out.push(/bucket not found/i.test(txt) ? { label: "Photos and logos", state: "todo", detail: "The media storage for player photos and team logos isn't there yet. Run the latest supabase/schema.sql (version 12) in the SQL Editor." }
+        : { label: "Photos and logos", state: "ok", detail: "Photos and logos upload to your project's media storage." });
+    } catch { /* offline: the Database row already says so */ }
     try {
       const st = await authSettings();
       out.push(st.disable_signup ? { label: "Sign-up emails", state: "warn", detail: "New sign-ups are turned off in Supabase (Authentication → Sign In / Providers). Coaches can't create accounts until you turn them back on." }
