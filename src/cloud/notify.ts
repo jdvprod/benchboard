@@ -14,7 +14,7 @@ export async function announce(roleOn: (teamId: string) => string | null, linked
   if (off) return;
   const today = todayISO(), yesterday = localISO(new Date(Date.now() - 86400_000));
   for (const m of all("matches")) {
-    if (m.kind !== "match" || m.scrim || m.sample || m.imported || !linked(m.teamId)) continue;
+    if (m.kind !== "match" || m.scrim || m.sample || m.imported || m.film || !linked(m.teamId)) continue;
     const role = roleOn(m.teamId); if (role !== "owner" && role !== "coach") continue;
     const t = all("teams").find((x) => x.id === m.teamId); if (!t) continue;
     const R = replayOf(m); if (!R) continue;

@@ -16,6 +16,7 @@ import { isLinked, recruitViews, setRecruitListed, shareRecruit, unshareRecruit 
 import { LEGAL } from "../../app/legal";
 import { ClipPlayer } from "../../ui/ClipPlayer";
 import { ReelMaker } from "../../film/ReelMaker";
+import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { highlightPick } from "../../film/clips";
 import { playerClips, recruitData } from "./recruitData";
 import { copyText } from "../../ui/kit";
@@ -200,9 +201,10 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
       </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
       {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setReel(true)}>Make highlight video</button>}
     </div>
+    <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">Benchboard's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free, no account.</p>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
-    {canShare && consented && <label className="consent-check"><input type="checkbox" checked={!!pr.listed} onChange={async (e) => { const on = e.target.checked; patch("players", id, { profile: { ...(player(id)!.profile || {}), listed: on || undefined } }); if (url) { try { await setRecruitListed(t.id, id, on); toast(on ? "Listed in college coach search." : "Taken out of college coach search."); } catch { toast("Couldn't update the listing. Check your connection."); } } }} />
+    {COLLEGE_SEARCH && canShare && consented && <label className="consent-check"><input type="checkbox" checked={!!pr.listed} onChange={async (e) => { const on = e.target.checked; patch("players", id, { profile: { ...(player(id)!.profile || {}), listed: on || undefined } }); if (url) { try { await setRecruitListed(t.id, id, on); toast(on ? "Listed in college coach search." : "Taken out of college coach search."); } catch { toast("Couldn't update the listing. Check your connection."); } } }} />
       <span>List {p.first || "this player"} in <b>college coach search</b> on Benchboard Recruit. Only college staff Benchboard has verified can search; they see the same profile as the link.</span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />
       <ConfirmButton className="btn sm ghost" confirmText="Take it down?" onConfirm={async () => { try { await unshareRecruit(t.id, id); setUrl(""); toast("Profile link taken down. It no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down. Check your connection."); } }}>Stop sharing</ConfirmButton></div>}

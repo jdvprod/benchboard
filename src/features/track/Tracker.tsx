@@ -161,7 +161,7 @@ function Banners({ m, R }: { m: Match; R: Replay }) {
     {m.sample && <div className="banner"><p><b>Sample team.</b> Everything here is example data so you can explore. Create your own team from the Team tab.</p><button className="btn sm" onClick={() => go("team")}>Go to Team</button></div>}
     {ui.panel === "timeout" && !m.scrim && <div ref={toRef}><AiCard title="Timeout card" desc="Three talking points from the live stats." button="Get talking points" tier="quick" prompt={() => timeoutPrompt(m)} /></div>}
     {R.matchOver ? <div className="banner accent" ref={endRef}><p><b>{m.scrim ? "Scrimmage" : "Match"} over.</b> {R.wonUs === R.wonThem ? `Split ${R.wonUs}–${R.wonThem}.` : `${R.wonUs > R.wonThem ? names.us : names.them} win ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.`}</p>
-      <div className="row"><button className="btn" onClick={() => { setUi({ statsScope: "match" }); go("stats"); }}>See stats and report</button><button className="btn primary" onClick={() => { patch("matches", m.id, { status: "done" }); save("teams", { ...t, currentMatchId: null }); }}>Finish</button></div></div>
+      <div className="row"><button className="btn" onClick={() => { setUi({ statsScope: "match" }); go("stats"); }}>See stats and report</button><button className="btn primary" onClick={() => { patch("matches", m.id, { status: "done" }); if (t.currentMatchId === m.id) save("teams", { ...t, currentMatchId: null }); }}>Finish</button></div></div>
       : c.over && <div className="banner accent" ref={endRef}><p><b>{unit} {c.n} to {c.winner === "us" ? names.us : names.them}, {c.us}–{c.them}.</b> Who serves first in {unit.toLowerCase()} {c.n + 1}?{!m.scrim && (m.nextLu ? " Your queued lineup starts it." : c.startLu ? " The starting lineup carries over." : "")}</p>
         <div className="row"><button className="btn primary" onClick={() => startNext("us")}>{names.us} serve</button><button className="btn" onClick={() => startNext("them")}>{names.them} serve</button></div></div>}
   </>;
@@ -199,7 +199,7 @@ function ControlBar({ m, c, names }: { m: Match; c: SetState; names: { us: strin
 
 function EndMatch({ m }: { m: Match }) {
   const [arm, setArm] = useState(false);
-  return <button className="ctrl" onClick={() => { if (!arm) { setArm(true); setTimeout(() => setArm(false), 3000); return; } patch("matches", m.id, { status: "done" }); setTeamPatch({ currentMatchId: null }); toast("Match saved"); }}>{arm ? "Tap again" : "End match"}<small>{arm ? "to save and close" : "save & close"}</small></button>;
+  return <button className="ctrl" onClick={() => { if (!arm) { setArm(true); setTimeout(() => setArm(false), 3000); return; } patch("matches", m.id, { status: "done" }); if (team()?.currentMatchId === m.id) setTeamPatch({ currentMatchId: null }); toast("Match saved"); }}>{arm ? "Tap again" : "End match"}<small>{arm ? "to save and close" : "save & close"}</small></button>;
 }
 
 function FocusToggle() {

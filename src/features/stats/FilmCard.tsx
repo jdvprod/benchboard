@@ -6,7 +6,7 @@ import { Replay, LogEntry } from "../../sports/volleyball/engine";
 import { ACTIONS } from "../../sports/volleyball/actions";
 import { Card, copyText, download } from "../../ui/kit";
 import { ClipPlayer } from "../../ui/ClipPlayer";
-import { clipsFrom, filmTiming, LOCAL } from "../../film/clips";
+import { clipsFrom, filmTiming, LOCAL, videoTime } from "../../film/clips";
 import { localVideo, setLocalVideo } from "../../film/localVideos";
 
 type Filter = "points" | "kills" | "errors" | "serve" | "pass" | "defense" | "theirs" | "tags" | "all";
@@ -49,7 +49,7 @@ export function FilmCard({ m, R }: { m: Match; R: Replay }) {
   const evs = eventsOf(m.id), ts = new Map(evs.map((e) => [e.id, e.ts]));
   const base = m.filmStart || R.firstTs || evs[0]?.ts || 0;
   const offset = m.videoOffset || 0; // seconds into the video when the clock base happened
-  const at = (id: string) => (((ts.get(id) || base) - base) / 1000) + offset;
+  const T = filmTiming(m, R, evs), at = (id: string) => videoTime(T, id);
   const rows = R.log.filter((l) => match(f, l) && (!who || ((l.kind === "stat" || l.kind === "tag") && l.p === who)));
   const label = (l: LogEntry) => {
     if (l.kind === "set") return `Set ${l.set} starts`;
@@ -62,10 +62,10 @@ export function FilmCard({ m, R }: { m: Match; R: Replay }) {
   const firstSet = R.log.find((l) => l.kind === "set");
   const [first, setFirst] = useState(firstSet ? clock(at(firstSet.id)) : "0:00");
   const isLocal = !!m.video && m.video.startsWith(LOCAL), localReady = isLocal && !!localVideo(m.id);
-  const clips = clipsFrom(m, filmTiming(m, R, evs), rows, () => true, label, lead, 2);
+  const clips = clipsFrom(m, T, rows, () => true, label, lead, 2);
   const pickFile = (file?: File) => { if (!file) return; setLocalVideo(m.id, file); patch("matches", m.id, { video: LOCAL + file.name }); bump((x) => x + 1); toast("Video ready. It stays on this device."); };
 
-  return <Card title="Film" actions={<span className="small muted">{rows.length} plays</span>}>
+  return <Card title="Film" actions={<span className="row small"><span className="muted">{rows.length} plays</span><a className="btn sm" href={"#/film/" + m.id}>Open in Film Room</a></span>}>
     <div className="stack">
       <div className="row">
         <input key={m.video || ""} className="input grow" style={{ flexBasis: 260 }} placeholder="Paste the match video link (YouTube, Vimeo, Hudl, file)" defaultValue={isLocal ? "" : m.video || ""} onBlur={(e) => { const v = e.target.value.trim(); if (v !== (m.video || "")) { patch("matches", m.id, { video: v }); toast(v ? "Video linked" : "Video link removed"); } }} aria-label="Video link" />

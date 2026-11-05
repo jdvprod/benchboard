@@ -737,6 +737,109 @@ const scenarios = {
     ok("reel: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
+  async film(browser) {
+    const p = await newPage(browser, { cloud: false });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill(["1 Ava Ramirez S", "3 Lily Torres L", "4 Jordan Lee OH", "7 Maya Chen OH 2027", "8 Zoe Grant MB", "12 Sofia Nguyen OPP"].join("\n")); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
+    await go(p, "film");
+    ok("film room: explains itself", /Stat a whole game from its video/.test(await p.locator(".fr-hero").innerText()));
+    await p.getByLabel("Game video file").setInputFiles(path.join(__dirname, "fixtures", "game.webm"));
+    await p.getByPlaceholder("e.g. Buchanan").fill("Central"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(600);
+    ok("film room: opens the game with its video", /#\/film\/m/.test(p.url()) && (await p.locator(".fr-stage video").count()) === 1, p.url());
+    await p.locator(".fr-stage video").evaluate((v) => v.readyState >= 1 ? 0 : new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true })));
+    await p.getByRole("button", { name: "Find rallies from the whistle" }).click();
+    await p.waitForFunction(() => /found\)/.test(document.querySelector(".fr-tools")?.textContent || ""), null, { timeout: 30000 }).catch(() => {});
+    ok("film room: finds both rallies from the referee's whistle", /Find rallies again \(2 found\)/.test(await p.locator(".fr-tools").innerText()), await p.locator(".fr-tools").innerText());
+    ok("film room: rallies shade the timeline", (await p.locator(".fr-rally").count()) === 2);
+    // stat from film: the play keeps the video time
+    const at = async (t) => { await p.locator(".fr-stage video").evaluate((v, x) => { v.pause(); v.currentTime = x; }, t); await p.waitForTimeout(250); };
+    await p.locator(".fr-top h1").click();
+    await at(9); await p.keyboard.type("7"); await p.waitForTimeout(900); await p.keyboard.press("k"); await p.keyboard.press("Escape");
+    await at(30); await p.keyboard.type("8"); await p.waitForTimeout(900); await p.keyboard.press("b"); await p.keyboard.press("Escape");
+    await at(31); await p.keyboard.type("3"); await p.waitForTimeout(900); await p.keyboard.press("d"); await p.keyboard.press("Escape");
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-stat.png"), fullPage: true });
+    ok("film room: stats count as they're entered", /2–0|2-0/.test(await p.locator(".fr-side").innerText()) || (await p.locator(".fr-nums").count()) === 1, (await p.locator(".fr-side").innerText()).slice(0, 200));
+    await p.waitForTimeout(1200);
+    const vts = await p.evaluate(async () => { const db = await new Promise((r) => { const q = indexedDB.open("bench-stats"); q.onsuccess = () => r(q.result); }); const tx = db.transaction("logs"); const all = await new Promise((r) => { const q = tx.objectStore("logs").getAll(); q.onsuccess = () => r(q.result); }); return all.flatMap((l) => l.events).filter((e) => e.t !== "NS").map((e) => e.t + "@" + e.vt); }).catch((e) => ["err " + e]);
+    ok("film room: every stat carries its moment in the video", vts.join(" ") === "K@9 BS@30 D@31", vts.join(" "));
+    // Space plays and pauses
+    await p.locator(".fr-top h1").click(); await p.keyboard.press(" "); await p.waitForTimeout(400);
+    ok("film room: Space plays the video", !(await p.locator(".fr-stage video").evaluate((v) => v.paused)));
+    await p.keyboard.press(" ");
+    // skip dead time: playing at 15 s jumps to the next rally (24 s)
+    await p.locator(".fr-stage video").evaluate((v) => { v.currentTime = 15.5; });
+    await p.waitForTimeout(1700); await p.locator(".fr-stage video").evaluate((v) => v.play()); await p.waitForTimeout(1200);
+    const t = await p.locator(".fr-stage video").evaluate((v) => { v.pause(); return v.currentTime; });
+    ok("film room: skips the dead time between rallies", t >= 23.5, String(t));
+    // ask for clips
+    await p.getByRole("tab", { name: "Find clips" }).click();
+    await p.getByLabel("Ask for clips").fill("Maya's kills"); await p.getByRole("button", { name: "Find", exact: true }).click(); await p.waitForTimeout(200);
+    ok("clip search: understands a player and a play", /Kills/.test(await p.locator(".fr-understood").innerText()) && /#7 Maya/.test(await p.locator(".fr-understood").innerText()), await p.locator(".fr-understood").innerText());
+    ok("clip search: finds the kill at its moment", (await p.locator(".fr-rows li").count()) === 1 && /^0:04/.test(await p.locator(".fr-rows li").first().innerText()), await p.locator(".fr-find").innerText());
+    await p.getByRole("button", { name: "All solo blocks" }).click(); await p.waitForTimeout(200);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-find.png"), fullPage: true });
+    ok("clip search: one tap examples", (await p.locator(".fr-rows li").count()) === 1 && /Zoe/.test(await p.locator(".fr-rows").innerText()));
+    await p.getByRole("button", { name: /Watch 1 clip back to back/ }).click(); await p.waitForTimeout(500);
+    ok("clip search: results play as clips", (await p.locator(".fr-find video").count()) >= 1);
+    await p.getByLabel("Ask for clips").fill("purple monkey dishwasher"); await p.getByRole("button", { name: "Find", exact: true }).click(); await p.waitForTimeout(200);
+    ok("clip search: says what it can find when the words make no sense", /Try naming a play/.test(await p.locator(".fr-find").innerText()));
+    await p.getByRole("tab", { name: "Rallies" }).click();
+    ok("rallies: each rally lists its plays", (await p.locator(".fr-rallies li").count()) === 2 && /Zoe/.test(await p.locator(".fr-rallies li").nth(1).innerText()), await p.locator(".fr-rallies").innerText());
+    { const ax = await a11y(p); ok("film room controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-room.png"), fullPage: true });
+    await go(p, "track");
+    ok("film room: a film game never becomes the live match", (await p.locator(".fr-stage").count()) === 0 && !(await p.getByRole("button", { name: "End match" }).count()));
+    await go(p, "film");
+    ok("film room: the game is listed under Your film", /vs Central/.test(await p.locator(".fr-list").first().innerText()) && /2 rallies/.test(await p.locator(".fr-list").first().innerText()));
+    ok("film: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
+  async athletes(browser) {
+    const p = await newPage(browser, { cloud: false });
+    await p.goto(U + "recruit/"); await p.waitForTimeout(500);
+    ok("recruit landing points athletes to the guide, emails and Reel Studio", (await p.locator(".rg-tiles a").count()) === 3 && !(await p.getByText("College coach?").count()));
+    await p.goto(U + "recruit/#/college"); await p.waitForTimeout(300);
+    ok("college coach search is paused (no page)", !(await p.locator(".rc-auth").count()) && (await p.locator(".rg-tiles").count()) === 1);
+    await p.goto(U + "recruit/#/guide"); await p.waitForTimeout(300);
+    await p.locator(".rg-check input").first().check(); await p.locator(".rg-check input").nth(2).check();
+    ok("guide: the ready checklist counts", /2 of 9 ready/.test(await p.locator(".rg-count").innerText()));
+    await p.reload(); await p.waitForTimeout(300);
+    ok("guide: the checklist is remembered on this device", /2 of 9 ready/.test(await p.locator(".rg-count").innerText()));
+    ok("guide: year-by-year plan", (await p.locator(".rg-years > li").count()) === 4);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "recruit-guide.png"), fullPage: true });
+    await p.getByRole("link", { name: "Emails to coaches" }).click(); await p.waitForTimeout(300);
+    await p.getByLabel("Coach's name").fill("Rivera"); await p.getByLabel("School", { exact: true }).fill("Fresno State");
+    await p.getByLabel("Why this school (one real reason)").fill("your fast offense");
+    await p.getByLabel("First name").fill("Maya"); await p.getByLabel("Last name").fill("Chen"); await p.getByLabel("Grad year").fill("2028"); await p.getByLabel("Position").fill("Outside hitter");
+    await p.getByLabel("Highlight video link").fill("https://youtu.be/abc");
+    const body = await p.locator(".rg-body").innerText();
+    ok("emails: written from the details", /^Dear Coach Rivera,/.test(body) && /interested in Fresno State because your fast offense/.test(body) && /youtu\.be\/abc/.test(body), body.slice(0, 300));
+    ok("emails: says what's still missing", /your email/.test(await p.locator(".rg-gaps").innerText()));
+    await p.getByRole("tab", { name: /Tournament schedule/ }).click();
+    ok("emails: switching email keeps the details", /Maya Chen \(2028/.test(await p.locator(".rg-subj").innerText()));
+    { const ax = await a11y(p); ok("emails page controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "recruit-emails.png"), fullPage: true });
+    await p.getByRole("link", { name: "Reel Studio" }).click(); await p.waitForTimeout(300);
+    await p.getByLabel("Add video files").setInputFiles([path.join(__dirname, "fixtures", "long.webm"), path.join(__dirname, "fixtures", "match.webm")]);
+    await p.waitForTimeout(1200);
+    ok("studio: a long video opens as a game to mark", /Mark your plays in long\.webm/i.test(await p.locator("main").innerText()));
+    const v = p.locator(".rg-mark video");
+    await v.evaluate((x) => { x.currentTime = 20; }); await p.waitForTimeout(200); await p.getByRole("button", { name: /^Kill/ }).click();
+    await v.evaluate((x) => { x.currentTime = 50; }); await p.waitForTimeout(200); await p.locator("h1").click(); await p.keyboard.press("k");
+    await v.evaluate((x) => { x.currentTime = 70; }); await p.waitForTimeout(200); await p.getByRole("button", { name: /^Dig/ }).click();
+    ok("studio: plays marked by button and key", (await p.locator(".rg-marks li").count()) >= 3, String(await p.locator(".rg-marks li").count()));
+    ok("studio: a marked play runs 6 s before to 2 s after", /0:14–0:22/.test(await p.locator(".rg-marks").innerText()), await p.locator(".rg-marks").innerText());
+    ok("studio: hitting reel available, defense needs more plays", /Hitting/.test(await p.locator(".rg-reels li:not(.off)").allInnerTexts().then((x) => x.join("|"))) && (await p.locator(".rg-reels li.off", { hasText: "Defense" }).count()) === 1);
+    { const ax = await a11y(p); ok("studio controls all have names", !ax.length, ax.join(" | ")); }
+    await p.locator(".rg-reels li", { hasText: "Hitting" }).locator("input").check();
+    await p.locator(".rg-reels li", { hasText: "Best of" }).locator("input").uncheck();
+    await p.getByRole("button", { name: /^Make 1 video$/ }).click();
+    await p.locator(".rg-jobs video").waitFor({ timeout: 90000 });
+    ok("studio: makes the hitting video", (await p.locator(".rg-jobs li").first().innerText()).includes("Ready"));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "recruit-studio.png"), fullPage: true });
+    ok("athletes: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });
     // a stand-in microphone: each start() "hears" the next phrase queued in window.__say
@@ -753,7 +856,8 @@ const scenarios = {
     ok("voice: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
-  async college(browser) {
+  /** paused feature: run with COLLEGE=1 after flipping src/recruit/flags.ts */
+  async _college(browser) {
     const A = await newPage(browser);
     await go(A, "track"); await A.getByRole("button", { name: "Create an account" }).click();
     await A.getByLabel("Email").fill("hs@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator(".auth-agree input").check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);

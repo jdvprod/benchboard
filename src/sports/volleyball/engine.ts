@@ -9,7 +9,7 @@ import { ACTIONS, ActionCode, AttackContext, isAction, OPP_NUMBER, Side } from "
 
 /* ---------- events ---------- */
 
-export interface BaseEvent { id: string; ts: number; t: string }
+export interface BaseEvent { id: string; ts: number; t: string; vt?: number /* seconds into the match video, when statted from film */ }
 export interface StatEvent extends BaseEvent {
   t: ActionCode;
   p?: string; // player id
@@ -108,7 +108,7 @@ export interface CtxLine { K: number; E: number; TA: number }
 export interface OppPlayerLine { K: number; A: number; E: number; P: number; z: Record<string, number> }
 
 export type LogEntry =
-  | { id: string; set: number; kind: "stat"; t: ActionCode; p?: string; op?: string; w: Side | null; us: number; them: number }
+  | { id: string; set: number; kind: "stat"; t: ActionCode; p?: string; op?: string; w: Side | null; us: number; them: number; /** rotation, who served and attack context when the play happened; where the ball went */ rot?: number; sv?: Side; cx?: AttackContext; z?: Zone | null }
   | { id: string; set: number; kind: "set"; serve: Side }
   | { id: string; set: number; kind: "rot"; v: number }
   | { id: string; set: number; kind: "srv"; v: Side }
@@ -211,6 +211,7 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
     if (!isAction(e.t)) continue;
     // Tools count as kills and blocked attacks as attack errors everywhere below; the detail stays on the player's line and in the log.
     const ev = e as StatEvent, raw = ev.t, t: ActionCode = raw === "KT" ? "K" : raw === "AB" ? "AE" : raw, a: any = ACTIONS[raw];
+    const rotNow = cur.rot, svNow = cur.serve, cxNow: AttackContext | undefined = ev.imp ? undefined : rally.ctx;
 
     if (ev.p) {
       bump(cur.ps[ev.p] || (cur.ps[ev.p] = blank()), raw);
@@ -263,7 +264,7 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       else if (wn === "them" && cur.serve === "us") { cur.serve = "them"; cur.rotB = (cur.rotB % 6) + 1; }
       startRally();
     }
-    log.push({ id: e.id, set: cur.n, kind: "stat", t: raw, p: ev.p, op: ev.op, w: wn, us: cur.us, them: cur.them });
+    log.push({ id: e.id, set: cur.n, kind: "stat", t: raw, p: ev.p, op: ev.op, w: wn, us: cur.us, them: cur.them, ...(ev.imp ? {} : { rot: rotNow, sv: svNow, cx: cxNow }), ...(ev.x != null ? { z: zoneOf(ev.x, ev.y) } : {}) });
   }
 
   let wonUs = 0, wonThem = 0;

@@ -56,7 +56,8 @@ export function setPrefs(p: Partial<Prefs>) {
 export function all<K extends StoreName>(s: K): StoreTypes[K][] { return Array.from(state.tables[s].values()) as StoreTypes[K][]; }
 export function get<K extends StoreName>(s: K, id: string | null | undefined): StoreTypes[K] | undefined { return id ? (state.tables[s].get(id) as StoreTypes[K] | undefined) : undefined; }
 /** Cloud sync listens here: every local change (not ones that came from the cloud). */
-export const hooks = { who: null as null | (() => string | null), change: null as null | ((s: StoreName, v: any, deleted: boolean) => void), paused: false, teamRemoved: null as null | ((teamId: string) => void), newOpponent: null as null | ((o: Opponent) => void) };
+export const hooks = { who: null as null | (() => string | null), change: null as null | ((s: StoreName, v: any, deleted: boolean) => void), paused: false, teamRemoved: null as null | ((teamId: string) => void), newOpponent: null as null | ((o: Opponent) => void),
+  /** Film Room: extra fields for every new event of a match, e.g. { vt } the video time of the play */ extra: null as null | ((matchId: string) => Partial<MatchEvent> | null) };
 
 export function save<K extends StoreName>(s: K, v: StoreTypes[K], silent = false, fromCloud = false) {
   if (!fromCloud) (v as any)._u = Math.max(now(), ((state.tables[s].get((v as any).id) as any)?._u || 0) + 1);
@@ -138,7 +139,8 @@ export function appendEvents(matchId: string, evs: Partial<MatchEvent>[]): Match
   let ts = now();
   const lastTs = log.events.length ? log.events[log.events.length - 1].ts : 0;
   if (ts <= lastTs) ts = lastTs + 1;
-  const added = evs.map((e) => ({ ...e, id: e.id || eventId(), ts: e.ts || ts++ }) as MatchEvent);
+  const more = hooks.extra ? hooks.extra(matchId) : null;
+  const added = evs.map((e) => ({ ...more, ...e, id: e.id || eventId(), ts: e.ts || ts++ }) as MatchEvent);
   save("logs", { ...log, events: log.events.concat(added) });
   return added[added.length - 1] || null;
 }
@@ -232,16 +234,16 @@ export function importMatch(o: { opp: string; date: string; bestOf: number; setT
 }
 export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: MatchEvent[]; lineup?: Lineup | null }): Match {
   const t = team()!;
-  const prev = currentMatch();
+  const prev = o.film ? undefined : currentMatch();
   if (prev && prev.status !== "done") save("matches", { ...prev, status: "done" }, true);
   const m: Match = {
     id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: o.kind || "match", opp: o.opp || (o.kind === "match" || !o.kind ? "Opponent" : "Practice"),
     date: o.date || todayISO(), bestOf: o.bestOf || t.settings.bestOf, setTo: o.setTo, cap: o.cap ?? null, status: "live", site: o.site || "", event: o.event || "", notes: o.notes || "",
-    oppPlayers: o.oppPlayers || [], scrim: o.scrim || null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: o.planId || null, createdAt: Date.now(), sample: o.sample,
+    oppPlayers: o.oppPlayers || [], scrim: o.scrim || null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: o.planId || null, createdAt: Date.now(), sample: o.sample, ...(o.film ? { film: true, video: o.video } : {}),
   };
   if (m.kind === "match") { const op = ensureOpponent(m.opp); if (op.logo) m.oppLogo = op.logo; else hooks.newOpponent?.(op); }
   save("matches", m, true);
-  save("teams", { ...t, currentMatchId: m.id }, true);
+  if (!o.film) save("teams", { ...t, currentMatchId: m.id }, true);
   const lu = o.lineup !== undefined ? o.lineup : m.kind === "match" ? t.defLineup : null;
   const first: any = { t: "NS", serve: o.serve || "us" };
   if (lu && lu.lu.length === 6) Object.assign(first, { lu: lu.lu.slice(), lib: lu.lib, libSrv: lu.libSrv });

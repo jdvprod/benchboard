@@ -105,6 +105,10 @@ export interface Match {
   notified?: { start?: boolean; final?: boolean };
   /** The opponent's logo when the match was played (copied from Opponent.logo so public pages can show it). */
   oppLogo?: string;
+  /** Statted from game film in Film Room (not live): never the current match, no family notifications. */
+  film?: boolean;
+  /** Rallies found from the referee's whistle, seconds into the video. */
+  rallies?: { start: number; end: number }[];
 }
 
 /** Events recorded on one device for one match. Several devices can record the same match. */

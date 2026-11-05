@@ -6,7 +6,7 @@
 import type { Clip } from "./clips";
 
 export interface ReelPlayer { first: string; last: string; num: string; pos: string; grad: number | null; height: string; photo?: string | null }
-export interface ReelInfo { player: ReelPlayer; team: { name: string; logo?: string | null; level?: string }; stats: { label: string; value: string }[]; link?: string; accent?: string }
+export interface ReelInfo { player: ReelPlayer; team: { name: string; logo?: string | null; level?: string }; stats: { label: string; value: string }[]; link?: string; accent?: string; /** false for reels an athlete makes from their own clips: no "recorded by the staff" line */ verified?: boolean; /** contact lines for the closing card (email, club team, GPA) */ lines?: string[] }
 export interface ReelOptions { width?: number; height?: number; fps?: number; intro?: number; outro?: number; onProgress?: (text: string, frac: number) => void; preview?: HTMLCanvasElement | null; signal?: AbortSignal }
 
 export const reelMime = () => (typeof MediaRecorder === "undefined" ? "" : ["video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || "");
@@ -58,7 +58,9 @@ export async function renderReel(clips: Clip[], resolve: (c: Clip) => string | n
     text(name, W / 2, 150, fit(name, W - 160, 70), "#fff", { align: "center", alpha: a });
     const st = info.stats.slice(0, 4), cw = Math.min(250, (W - 160) / Math.max(1, st.length)), x0 = W / 2 - (cw * st.length) / 2;
     st.forEach((s, i) => { const x = x0 + cw * i + cw / 2, al = ease((t - 0.2 - i * 0.12) / 0.5); text(s.value, x, 330, 84, "#fff", { align: "center", alpha: al }); text(s.label.toUpperCase(), x, 375, 22, "#8A9099", { align: "center", spacing: 4, alpha: al }); });
-    text("✓ Stats recorded live by " + info.team.name + "'s coaching staff", W / 2, 480, 26, BLUE, { align: "center", font: body, weight: 700, alpha: ease((t - 0.8) / 0.6) });
+    const lines = (info.lines || []).filter(Boolean).slice(0, 4);
+    lines.forEach((l, i) => text(l, W / 2, (st.length ? 430 : 270) + i * 46, fit(l, W - 220, 32, 600), i ? "#C7CCD3" : "#fff", { align: "center", font: body, weight: 600, alpha: ease((t - 0.4 - i * 0.12) / 0.5) }));
+    if (info.verified !== false) text("✓ Stats recorded live by " + info.team.name + "'s coaching staff", W / 2, 480, 26, BLUE, { align: "center", font: body, weight: 700, alpha: ease((t - 0.8) / 0.6) });
     if (info.link) text(info.link, W / 2, 540, fit(info.link, W - 200, 26, 600), "#C7CCD3", { align: "center", font: body, weight: 600, alpha: ease((t - 1) / 0.6) });
     text("BENCHBOARD", W / 2, H - 50, 20, "#8A9099", { align: "center", spacing: 8 });
   };
@@ -72,7 +74,7 @@ export async function renderReel(clips: Clip[], resolve: (c: Clip) => string | n
     text(label, 80, y + 50, 44, "#fff", { alpha: a }); text(sub, 80, y + 84, 24, "#C7CCD3", { font: body, weight: 600, alpha: a });
   };
   const bug = () => {
-    const label = `#${info.player.num} ${name}`; g.font = `700 26px ${disp}`; const w = g.measureText(label).width + (photo ? 76 : 36);
+    const label = info.player.num ? `#${info.player.num} ${name}` : name; g.font = `700 26px ${disp}`; const w = g.measureText(label).width + (photo ? 76 : 36);
     g.fillStyle = "rgba(0,0,0,.72)"; rr(40, 36, w, 52, 26); g.fill();
     if (photo) { g.save(); g.beginPath(); g.arc(66, 62, 20, 0, Math.PI * 2); g.clip(); const k = Math.max(40 / photo.naturalWidth, 40 / photo.naturalHeight); g.drawImage(photo, 66 - (photo.naturalWidth * k) / 2, 62 - (photo.naturalHeight * k) / 2, photo.naturalWidth * k, photo.naturalHeight * k); g.restore(); }
     text(label, photo ? 96 : 58, 71, 26, "#fff");

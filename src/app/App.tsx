@@ -19,6 +19,7 @@ import { needsTermsAgreement, currentUser } from "../cloud/client";
 // Pages other than Track and Team load on first visit (then stay cached for offline use), so the app opens fast on gym wifi.
 const LineupPage = lazy(() => import("../features/lineup/LineupPage").then((m) => ({ default: m.LineupPage })));
 const FormationsPage = lazy(() => import("../features/formations/FormationsPage").then((m) => ({ default: m.FormationsPage })));
+const FilmRoom = lazy(() => import("../features/film/FilmRoom").then((m) => ({ default: m.FilmRoom })));
 const LabsPage = lazy(() => import("../features/labs/LabsPage").then((m) => ({ default: m.LabsPage })));
 const TournamentPage = lazy(() => import("../features/tournament/TournamentPage").then((m) => ({ default: m.TournamentPage })));
 const MatchupPage = lazy(() => import("../features/matchup/MatchupPage").then((m) => ({ default: m.MatchupPage })));
@@ -33,7 +34,7 @@ const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ d
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
-const NAV: [string, string, string?][] = [["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
+const NAV: [string, string, string?][] = [["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
 
 export function App() {
   useVersion();
@@ -83,6 +84,7 @@ export function App() {
     case "lineup": body = <LineupPage />; break;
     case "formations": body = <FormationsPage />; break;
     case "labs": body = <LabsPage />; break;
+    case "film": body = <FilmRoom id={route.id} />; break;
     case "matchup": body = <MatchupPage id={route.id} />; break;
     case "tournament": body = <TournamentPage id={route.id} />; break;
     case "join": body = <JoinPage code={route.id || ""} />; break;

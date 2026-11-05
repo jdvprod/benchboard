@@ -22,10 +22,10 @@ export function reelClips(id: string): { clips: Clip[]; elsewhere: number } {
 }
 const resolve = (c: Clip) => (c.url.startsWith(LOCAL) ? localVideo(c.matchId) : c.url);
 
-export function ReelMaker({ id, onClose }: { id: string; onClose: () => void }) {
+export function ReelMaker({ id, onClose, pool: given }: { id: string; onClose: () => void; pool?: Clip[] }) {
   const p = player(id)!, t = team()!;
-  const { clips, elsewhere } = useMemo(() => reelClips(id), [id]);
-  const pool = useMemo(() => highlightPick(clips, 40), [clips]);
+  const { clips, elsewhere } = useMemo(() => (given ? { clips: given, elsewhere: 0 } : reelClips(id)), [id, given]);
+  const pool = useMemo(() => (given ? given.slice(0, 40) : highlightPick(clips, 40)), [clips]);
   const [order, setOrder] = useState<string[]>(() => pool.slice(0, 10).map((c) => c.id)), [len, setLen] = useState<5 | 7 | 10>(7);
   const [busy, setBusy] = useState(""), [frac, setFrac] = useState(0), [out, setOut] = useState<{ url: string; blob: Blob } | null>(null);
   const preview = useRef<HTMLCanvasElement>(null), abort = useRef<AbortController | null>(null);

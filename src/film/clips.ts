@@ -29,13 +29,15 @@ export function vimeoId(url: string): string | null { const m = url.match(/vimeo
 /** Clips from this video can be shared on a public profile (a local file can't). */
 export const shareable = (url: string) => ["youtube", "vimeo", "file"].includes(videoKind(url));
 
-export interface FilmTiming { base: number; offset: number; ts: Map<string, number> }
+export interface FilmTiming { base: number; offset: number; ts: Map<string, number>; vt?: Map<string, number> }
 export function filmTiming(m: { filmStart?: number | null; videoOffset?: number }, R: Replay, events: MatchEvent[]): FilmTiming {
   const ts = new Map(events.map((e) => [e.id, e.ts]));
-  return { base: m.filmStart || R.firstTs || events[0]?.ts || 0, offset: m.videoOffset || 0, ts };
+  const vt = new Map(events.filter((e) => typeof e.vt === "number").map((e) => [e.id, e.vt as number]));
+  return { base: m.filmStart || R.firstTs || events[0]?.ts || 0, offset: m.videoOffset || 0, ts, vt };
 }
 /** Seconds into the video for a play. */
-export const videoTime = (T: FilmTiming, id: string) => ((T.ts.get(id) ?? T.base) - T.base) / 1000 + T.offset;
+/** Plays statted in Film Room carry their exact video time; others are timed from when they were entered. */
+export const videoTime = (T: FilmTiming, id: string) => T.vt?.get(id) ?? ((T.ts.get(id) ?? T.base) - T.base) / 1000 + T.offset;
 
 const HIGHLIGHT: Record<string, number> = { K: 5, KT: 5, SA: 5, BS: 5, BA: 4, D: 2, AST: 1, P3: 1 };
 const NAMES: Record<string, string> = { K: "Kill", KT: "Kill off the block", SA: "Ace", BS: "Solo block", BA: "Block", D: "Dig", AST: "Set for a kill", P3: "Perfect pass", AE: "Attack error", AB: "Blocked", SEN: "Serve error", SEO: "Serve error", P0: "Shanked pass", DE: "Dig error", OK: "Their kill", OA: "Their ace", OE: "Their error" };

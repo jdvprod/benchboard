@@ -4,6 +4,7 @@ const P: Record<string, string> = {
   lineup: '<circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="12" cy="16" r="2"/><path d="M3 3h18v18H3z"/>',
   practice: '<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2.5v3M16 2.5v3M4 9h16M8 13h5M8 17h8"/>',
   formations: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 9h18"/><circle cx="7.5" cy="13" r="1.6"/><circle cx="16.5" cy="13" r="1.6"/><circle cx="12" cy="17.5" r="1.6"/><path d="M9 13.5l2 3" stroke-dasharray="1.5 1.5"/>',
+  film: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9.5h4M3 14.5h4M17 9.5h4M17 14.5h4"/><path d="M10.5 10l3.5 2-3.5 2z"/>',
   labs: '<path d="M9 3h6M10 3v6l-5.5 9.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/>',
   matchup: '<path d="M4 4l6 6M4 10l6-6"/><circle cx="17" cy="7" r="3"/><path d="M3 20c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><path d="M14.5 15.5c.8-.3 1.6-.5 2.5-.5 3 0 4.5 2 4.5 5"/>',
   stats: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',

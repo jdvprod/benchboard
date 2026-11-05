@@ -1,5 +1,6 @@
 /** Benchboard Recruit: player profiles and team recruiting boards for college coaches. Separate from the coaching app.
  *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
+ *   #/guide  #/emails  #/studio  for athletes: recruiting guide, emails to coaches, Reel Studio
  *   #/  what this is, enter a code */
 import "../styles/app.css";
 import "./recruit.css";
@@ -12,6 +13,8 @@ import { Clip, videoKind } from "../film/clips";
 import { fmtAvg, fmtHit, fmtNum, fmtPct } from "../sports/volleyball/metrics";
 import type { RecruitData } from "../features/player/recruitData";
 import { College } from "./College";
+import { COLLEGE_SEARCH } from "./flags";
+import { EmailsPage, GuidePage, StudioPage } from "./Guide";
 
 const parse = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
 function useRoute() { const [r, setR] = useState(parse()); useEffect(() => { const f = () => { setR(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []); return r; }
@@ -141,7 +144,15 @@ function Landing() {
     <form className="rc-code" onSubmit={(e) => { e.preventDefault(); go(); }}><label htmlFor="rc-code">Profile or board code</label>
       <div><input id="rc-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" maxLength={12} autoComplete="off" spellCheck={false} /><button className="btn primary" disabled={busy}>{busy ? "Finding…" : "Open"}</button></div>
       {err && <p className="rc-err" role="alert">{err}</p>}</form>
-    <p className="rc-college-cta">College coach? <a href="#/college">Search players whose families chose to be found ›</a></p>
+  </section>
+  <section className="rg-athletes" aria-labelledby="rg-ath">
+    <h2 id="rg-ath">Getting recruited? Start here.</h2>
+    <div className="rg-tiles">
+      <a href="#/guide"><b>Recruiting guide</b><span>What coaches look for, what to have ready, and what to do each year of high school.</span></a>
+      <a href="#/emails"><b>Emails to coaches</b><span>First emails, tournament schedules, follow-ups and thank-yous, written from your details.</span></a>
+      <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
+    </div>
+    <p className="rc-note">Free, no account. Your film and details stay on your device.</p>
   </section></Shell>;
 }
 
@@ -149,10 +160,13 @@ function RecruitApp() {
   const r = useRoute();
   if (r[0] === "p" && r[1]) return <Profile key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "b" && r[1]) return <Board key={r[1]} code={r[1].toUpperCase()} />;
-  if (r[0] === "college") return <College Shell={Shell} />;
+  if (r[0] === "college" && COLLEGE_SEARCH) return <College Shell={Shell} />;
+  if (r[0] === "guide") return <GuidePage Shell={Shell} />;
+  if (r[0] === "emails") return <EmailsPage Shell={Shell} />;
+  if (r[0] === "studio") return <StudioPage Shell={Shell} />;
   return <Landing />;
 }
 watchErrors();
 // back from a "confirm your email" link: finish signing in, then the college coach page
-if (/access_token=|error_description=/.test(location.hash)) consumeAuthRedirect().catch(() => null).finally(() => { location.hash = "#/college"; });
+if (COLLEGE_SEARCH && /access_token=|error_description=/.test(location.hash)) consumeAuthRedirect().catch(() => null).finally(() => { location.hash = "#/college"; });
 createRoot(document.getElementById("root")!).render(<RecruitApp />);
