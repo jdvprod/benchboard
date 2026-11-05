@@ -16,3 +16,10 @@ export function starLine(lines: { name: string; K: number; SA: number; BLK: numb
   }
   return undefined;
 }
+
+/** One player's night for families who follow them: "Maya C.: 14 kills, 8 digs, 2 aces" (their three biggest numbers). */
+export function playerLine(name: string, s: { K: number; SA: number; BLK: number; D: number; AST: number }) {
+  const parts = ([["K", "kill", "kills"], ["AST", "assist", "assists"], ["D", "dig", "digs"], ["SA", "ace", "aces"], ["BLK", "block", "blocks"]] as const)
+    .map(([k, one, many]) => ({ n: +(s as any)[k].toFixed(1), one, many })).filter((x) => x.n > 0).sort((a, b) => b.n - a.n).slice(0, 3);
+  return parts.length ? `${name}: ${parts.map((x) => `${x.n} ${x.n === 1 ? x.one : x.many}`).join(", ")}` : "";
+}

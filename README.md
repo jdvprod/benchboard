@@ -73,7 +73,7 @@ The build makes two more sites beside the coaching app, from the same code and d
 
 **Family flyer.** After **Share team page**, the Team tab makes a printable "Follow us live" flyer (QR code, team code, how to turn on notifications) and the same as an image for group chats.
 
-**Notifications.** On Benchboard Live a family taps **Turn on notifications** on the team page (on iPhone, after adding the page to the Home Screen) and gets a phone notification when a match starts and the final score when it ends, with a tap through to the game. The coach's app sends them automatically after it syncs, once per match however many coaches are tracking. Setting it up:
+**Notifications.** On Benchboard Live a family taps **Turn on notifications** on the team page (on iPhone, after adding the page to the Home Screen) and gets a phone notification when a match starts and the final score when it ends, with a tap through to the game. A family can also pick their player: finals then start with that player's line ("Nia L.: 14 kills, 8 digs"). The coach's app sends them automatically after it syncs, once per match however many coaches are tracking. Setting it up:
 
 1. In Supabase → Edge Functions, create a function named `notify` and paste in `supabase/functions/notify/index.ts` (or `supabase functions deploy notify --no-verify-jwt`). Turn off **Verify JWT** for it: families following a team aren't signed in, and the function checks coaches itself.
 2. In the app, Settings → Setup check → **Make notification keys**. In Edge Functions → Secrets add `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` (`mailto:` plus your contact email).

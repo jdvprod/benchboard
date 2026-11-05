@@ -7,9 +7,11 @@
 //
 // Actions (POST JSON):
 //   { action: "key" }                                     → { key } public key for subscribing (anyone)
-//   { action: "subscribe", code, sub, starts, finals }    → follow a team by its Benchboard Live team code (anyone)
+//   { action: "subscribe", code, sub, starts, finals, player? } → follow a team by its Benchboard Live team code (anyone);
+//                                                          with a player id, finals start with that player's line
 //   { action: "unsubscribe", endpoint }                   → stop (anyone with the subscription)
-//   { action: "send", team_id, match_id, kind, title, body, base }  → a coach of that team announces a start or a final
+//   { action: "send", team_id, match_id, kind, title, body, base, lines? } → a coach of that team announces a start or a final
+//                                                          (lines: { playerId: "Maya C.: 14 kills, 8 digs" } for followed players)
 import webpush from "npm:web-push@3.6.7";
 
 const cors = { "access-control-allow-origin": "*", "access-control-allow-headers": "authorization, apikey, content-type", "access-control-allow-methods": "POST, OPTIONS" };
@@ -33,7 +35,7 @@ Deno.serve(async (req) => {
     if (!/^[A-Z0-9]{4,12}$/.test(code) || !/^https:\/\//.test(sub.endpoint || "") || !sub.keys?.p256dh || !sub.keys?.auth) return json(400, { error: "That subscription isn't valid." });
     const share = await rest(`season_shares?select=team_id&code=eq.${code}&limit=1`).then((r) => r.json()).catch(() => []);
     if (!share?.[0]) return json(404, { error: "That team page isn't shared anymore." });
-    const row = { endpoint: sub.endpoint, team_id: share[0].team_id, p256dh: sub.keys.p256dh, auth: sub.keys.auth, starts: b.starts !== false, finals: b.finals !== false };
+    const row = { endpoint: sub.endpoint, team_id: share[0].team_id, p256dh: sub.keys.p256dh, auth: sub.keys.auth, starts: b.starts !== false, finals: b.finals !== false, player: /^[\w-]{1,40}$/.test(String(b.player || "")) ? String(b.player) : null };
     const r = await rest("push_subs?on_conflict=endpoint", { method: "POST", headers: { prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
     return r.ok ? json(200, { ok: true }) : json(500, { error: "Couldn't save the subscription." });
   }
@@ -57,11 +59,12 @@ Deno.serve(async (req) => {
     const code = (await rest(`season_shares?select=code&team_id=eq.${encodeURIComponent(team)}&order=created_at.desc&limit=1`).then((r) => r.json()).catch(() => []))?.[0]?.code;
     const base = /^https?:\/\//.test(b.base || "") ? String(b.base) : "";
     const url = code && base ? `${base}#/t/${code}/m/${match}` : base || "/";
-    const subs: any[] = await rest(`push_subs?select=endpoint,p256dh,auth&team_id=eq.${encodeURIComponent(team)}&${kind === "start" ? "starts" : "finals"}=is.true`).then((r) => r.json()).catch(() => []);
-    const payload = JSON.stringify({ title: String(b.title || "").slice(0, 120), body: String(b.body || "").slice(0, 240), url, tag: match + ":" + kind });
+    const subs: any[] = await rest(`push_subs?select=endpoint,p256dh,auth,player&team_id=eq.${encodeURIComponent(team)}&${kind === "start" ? "starts" : "finals"}=is.true`).then((r) => r.json()).catch(() => []);
+    const lines: Record<string, string> = b.lines && typeof b.lines === "object" ? b.lines : {};
+    const payload = (s: any) => { const mine = s.player && typeof lines[s.player] === "string" ? String(lines[s.player]).slice(0, 80) : ""; return JSON.stringify({ title: String(b.title || "").slice(0, 120), body: ((mine ? mine + " · " : "") + String(b.body || "")).slice(0, 240), url, tag: match + ":" + kind }); };
     let sent = 0;
     await Promise.all(subs.map(async (s) => {
-      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: kind === "start" ? 3600 : 86400 }); sent++; }
+      try { await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload(s), { TTL: kind === "start" ? 3600 : 86400 }); sent++; }
       catch (e: any) { if (e?.statusCode === 404 || e?.statusCode === 410) await rest(`push_subs?endpoint=eq.${encodeURIComponent(s.endpoint)}`, { method: "DELETE" }); }
     }));
     return json(200, { sent });

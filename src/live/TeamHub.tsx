@@ -52,7 +52,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
     </section>}
     {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
-    <NotifyCard code={code} team={team} />
+    <NotifyCard code={code} team={team} players={d.players} />
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Season leaders")}</h2><a href={`#/t/${code}/stats`}>{tr("All stats ›")}</a></div><div className="lv-leads">{leaders}</div></section>}
   </>;
 }

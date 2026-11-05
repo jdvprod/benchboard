@@ -303,6 +303,7 @@ create table if not exists public.push_subs (
   finals boolean not null default true,
   created_at timestamptz not null default now()
 );
+alter table public.push_subs add column if not exists player text;  -- a player the family follows: their line goes on top of the final
 alter table public.push_subs enable row level security; -- no policies: only the notify function (service role) touches it
 create table if not exists public.push_sent (
   match_id text not null,
@@ -321,6 +322,9 @@ do $do$ begin
     insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
       values ('media', 'media', true, 400000, array['image/jpeg', 'image/png', 'image/webp'])
       on conflict (id) do update set public = true, file_size_limit = 400000, allowed_mime_types = array['image/jpeg', 'image/png', 'image/webp'];
+    -- uploads replace a file at the same path (upsert), which Storage only allows with read access too
+    drop policy if exists "media read" on storage.objects;
+    create policy "media read" on storage.objects for select using (bucket_id = 'media');
     drop policy if exists "media add" on storage.objects;
     create policy "media add" on storage.objects for insert to authenticated with check (bucket_id = 'media' and public.can_edit((storage.foldername(name))[1]));
     drop policy if exists "media change" on storage.objects;

@@ -355,7 +355,7 @@ test("tournament: pool standings by match record, then set %, then point %; next
   assert.equal(nextGame(t, (id) => id === "m1")?.id, "b");
 });
 
-import { finalMessage, startMessage, starLine } from "../src/notify/messages";
+import { finalMessage, playerLine, startMessage, starLine } from "../src/notify/messages";
 test("notifications: start and final messages read naturally", () => {
   assert.deepEqual(startMessage("Clovis North", "Buchanan", { event: "Fall Classic · Pool", court: "3" }), { title: "Clovis North vs Buchanan is starting", body: "Fall Classic · Pool · Court 3 · Follow it live on Benchboard Live" });
   assert.equal(finalMessage("Clovis North", "Buchanan", 2, 1, [[25, 20], [22, 25], [15, 12]]).title, "Final: Clovis North beat Buchanan 2–1");
@@ -433,4 +433,10 @@ test("Live in Spanish: text, blanks and plays", () => {
   assert.equal(playName("K"), "Remate"); assert.equal(oppPlay("OA", "Buchanan"), "Ace de Buchanan"); assert.equal(tr("Not in the dictionary"), "Not in the dictionary");
   setLang("en");
   assert.equal(tr("Box score"), "Box score"); assert.equal(oppPlay("OK", "Buchanan"), "Buchanan kill");
+});
+
+test("notifications: a followed player's line", () => {
+  assert.equal(playerLine("Maya C.", { K: 14, SA: 2, BLK: 0, D: 8, AST: 0 }), "Maya C.: 14 kills, 8 digs, 2 aces");
+  assert.equal(playerLine("Ava R.", { K: 1, SA: 0, BLK: 0.5, D: 4, AST: 31 }), "Ava R.: 31 assists, 4 digs, 1 kill");
+  assert.equal(playerLine("Lily T.", { K: 0, SA: 0, BLK: 0, D: 0, AST: 0 }), "");
 });

@@ -51,7 +51,7 @@ const ES: Record<string, string> = {
   // tournament
   "Working: {x}": "Arbitrando: {x}", "Court {n}": "Cancha {n}", "Ref duty": "Arbitraje", "Upcoming": "Próximo", "Bracket": "Llave", "Pool": "Grupo", "{pool} standings": "Tabla del {pool}", "Live now": "En vivo ahora",
   // notifications
-  "Get notified": "Recibir avisos", "Notifications on": "Avisos activados", "Change": "Cambiar", "Match starts": "Inicio del partido", "Final scores": "Resultado final", "Turn on notifications": "Activar avisos", "Turning on…": "Activando…", "Save": "Guardar", "Turn off": "Desactivar", "Cancel": "Cancelar",
+  "Get notified": "Recibir avisos", "Your player (optional)": "Tu jugador (opcional)", "No one in particular": "Nadie en particular", "Their kills, digs and more come with every final.": "Sus remates, defensas y más llegan con cada resultado final.", "Finals start with {name}'s numbers.": "Los resultados finales empiezan con los números de {name}.", "Notifications on": "Avisos activados", "Change": "Cambiar", "Match starts": "Inicio del partido", "Final scores": "Resultado final", "Turn on notifications": "Activar avisos", "Turning on…": "Activando…", "Save": "Guardar", "Turn off": "Desactivar", "Cancel": "Cancelar",
   "Get a notification on this {device} when {team} starts a match and when it ends. No account needed.": "Recibe un aviso en este {device} cuando {team} empiece un partido y cuando termine. No necesitas cuenta.",
   "You'll get {team}'s {what} on this {device}.": "Recibirás avisos de {team} ({what}) en este {device}.", "phone": "teléfono", "device": "dispositivo",
   "match starts and final scores": "inicio y resultado final", "match starts": "inicio de partidos", "final scores": "resultados finales",

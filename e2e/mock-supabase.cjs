@@ -74,13 +74,13 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/__mock/errors") return send(res, 200, appErrors);
     if (p === "/functions/v1/notify") {
       if (b.action === "key") return send(res, 200, { key: "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U" });
-      if (b.action === "subscribe") { const s = seasonShares.get(String(b.code).toUpperCase()); if (!s) return send(res, 404, { error: "That team page isn't shared anymore." }); if (!b.sub?.endpoint) return send(res, 400, { error: "bad" }); pushSubs.set(b.sub.endpoint, { endpoint: b.sub.endpoint, team_id: s.team_id, starts: b.starts !== false, finals: b.finals !== false }); return send(res, 200, { ok: true }); }
+      if (b.action === "subscribe") { const s = seasonShares.get(String(b.code).toUpperCase()); if (!s) return send(res, 404, { error: "That team page isn't shared anymore." }); if (!b.sub?.endpoint) return send(res, 400, { error: "bad" }); pushSubs.set(b.sub.endpoint, { endpoint: b.sub.endpoint, team_id: s.team_id, starts: b.starts !== false, finals: b.finals !== false, player: b.player || null }); return send(res, 200, { ok: true }); }
       if (b.action === "unsubscribe") { pushSubs.delete(b.endpoint); return send(res, 200, { ok: true }); }
       if (b.action === "send") {
         if (!me || !canEdit(b.team_id, me)) return send(res, 403, { error: "Only the team's coaches can send notifications." });
         const k = b.match_id + ":" + b.kind; if (pushSent.has(k)) return send(res, 200, { sent: 0, duplicate: true }); pushSent.add(k);
         const to = [...pushSubs.values()].filter((x) => x.team_id === b.team_id && (b.kind === "start" ? x.starts : x.finals));
-        pushes.push({ kind: b.kind, title: b.title, body: b.body, base: b.base, match_id: b.match_id, to: to.length });
+        pushes.push({ kind: b.kind, title: b.title, body: b.body, base: b.base, match_id: b.match_id, to: to.length, bodies: to.map((x) => (x.player && b.lines?.[x.player] ? b.lines[x.player] + " · " : "") + b.body) });
         return send(res, 200, { sent: to.length });
       }
       return send(res, 400, { error: "Unknown action." });
