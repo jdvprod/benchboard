@@ -20,7 +20,7 @@ export function FilmSessionView({ code, Shell }: { code: string; Shell: any }) {
   if (!cloudAvailable()) return <Shell><p className="lv-empty">{tr("This site isn't connected yet.")}</p></Shell>;
   if (!signed) return <Shell><section className="lv-film-gate">
     <h1>{tr("Team film")}</h1><p>{tr("Your coach shared film with the team. Sign in or create a free account to watch.")}</p>
-    <MiniAuth kind="athlete" title={tr("Watch the film")} onIn={() => bump((x) => x + 1)} />
+    <MiniAuth kind="athlete" title={tr("Watch the film")} onIn={() => bump((x) => x + 1)} t={tr} />
   </section></Shell>;
   if (s === undefined) return <Shell><p className="lv-empty">{tr("Loading…")}</p></Shell>;
   if (!s) return <Shell><p className="lv-empty">{err || tr("This film isn't shared anymore. Ask your coach for a new link.")}</p></Shell>;
@@ -37,6 +37,6 @@ export function FilmSessionView({ code, Shell }: { code: string; Shell: any }) {
     </div>}
     <ol className="lv-film-list">{s.items.map((x, n) => <li key={n} className={(n === i ? "on " : "") + (watched.has(n) ? "done" : "")}><button onClick={() => setI(n)}>
       <span className="lv-film-n">{watched.has(n) ? "✓" : n + 1}</span><span><b>{x.label}</b>{x.note && <small>{x.note}</small>}</span><span className="lv-note">{x.secs}s</span></button></li>)}</ol>
-    <SignedIn onOut={() => location.reload()} />
+    <SignedIn onOut={() => location.reload()} t={tr} />
   </section></Shell>;
 }

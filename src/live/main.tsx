@@ -18,6 +18,8 @@ import { TeamHub } from "./TeamHub";
 import { GameOverlay, TeamOverlay } from "./Overlay";
 import { TeamLogo } from "../ui/Logo";
 import { FilmSessionView } from "./FilmSession";
+import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
+import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
 const parse = () => (location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean));
 const query = () => location.hash.split("?")[1] || "";
@@ -53,21 +55,8 @@ function GameRoute({ code }: { code: string }) {
   return <Shell team={d.team?.name}><GameView g={g} team={d.team?.name || "Us"} players={d.players} fresh={freshText(got, err)} logo={d.team?.logo} /></Shell>;
 }
 
-/** Teams this phone has followed, most recent first (a family with kids on several teams sees them all on the home page). */
-type Followed = { code: string; name: string; logo?: string | null };
-const myTeams = (): Followed[] => { try { const a = JSON.parse(localStorage.getItem("bbl-teams") || "null"); if (Array.isArray(a)) return a; const l = JSON.parse(localStorage.getItem("bbl-last") || "null"); return l ? [l] : []; } catch { return []; } };
-function rememberTeam(t: Followed) {
-  try { localStorage.setItem("bbl-teams", JSON.stringify([t, ...myTeams().filter((x) => x.code !== t.code)].slice(0, 8))); } catch { /* private window */ }
-  // signed in: the team follows the account to every device
-  if (currentUser()) { const have = userMeta().teams || []; if (have[0] !== t.code) updateMeta({ teams: [t.code, ...have.filter((c) => c !== t.code)].slice(0, 12) }).catch(() => {}); }
-}
-const forgetTeam = (code: string) => {
-  try { localStorage.setItem("bbl-teams", JSON.stringify(myTeams().filter((x) => x.code !== code))); localStorage.removeItem("bbl-last"); } catch { /* private window */ }
-  if (currentUser() && (userMeta().teams || []).includes(code)) updateMeta({ teams: (userMeta().teams || []).filter((c) => c !== code) }).catch(() => {});
-};
-
 function Landing() {
-  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [mine, setMine] = useState(myTeams);
+  const [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [mine, setMine] = useState(myTeams), [signin, setSignin] = useState(false);
   // opened from the Home Screen with one team followed: straight to it
   useEffect(() => { if (mine.length === 1 && matchMedia("(display-mode: standalone)").matches) location.replace(`#/t/${mine[0].code}`); }, []);
   // teams followed on another device with this account
@@ -96,6 +85,9 @@ function Landing() {
       <div><input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} /><button className="btn primary" disabled={busy}>{tr(busy ? "Finding…" : "Follow")}</button></div>
       {err && <p className="lv-err" role="alert">{err}</p>}
     </form>
+    {cloudAvailable() && (currentUser() ? <SignedIn t={tr} onOut={() => location.reload()} />
+      : signin ? <MiniAuth kind="parent" title={tr("Sign in to see your teams on this phone")} sub={tr("Your teams follow your account to every phone.")} t={tr} onIn={() => location.reload()} />
+      : <button className="ma-link lv-signin" onClick={() => setSignin(true)}>{tr("Sign in to see your teams on this phone")}</button>)}
     {mine.length > 0 && <section className="lv-mine" aria-label={tr("Your teams")}><h2>{tr("Your teams")}</h2>
       <ul>{mine.map((t) => <li key={t.code}><a href={`#/t/${t.code}`}><TeamLogo src={t.logo} name={t.name} size={40} /><b>{t.name}</b><span aria-hidden="true">›</span></a>
         <button className="lv-x" aria-label={tr("Remove {team}", { team: t.name })} onClick={() => { forgetTeam(t.code); setMine(myTeams()); }}>×</button></li>)}</ul></section>}
@@ -114,4 +106,5 @@ function LiveApp() {
 
 watchErrors();
 initLang();
+syncFollowed();
 createRoot(document.getElementById("root")!).render(<LiveApp />);

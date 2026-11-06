@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, fn } from "../cloud/client";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
+import { syncFollowed } from "./follow";
 import { tr } from "../lib/i18n";
 import { LPlayer } from "./data";
 
@@ -67,7 +68,7 @@ export function NotifyCard({ code, team, players = [] }: { code: string; team: s
 
   // following a team needs a free account
   if (cloudAvailable() && !currentUser() && !saved) return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
-    <MiniAuth kind="parent" title={tr("Get notified")} sub={tr("Create a free Benchboard account to get {team}'s match starts and final scores on this {device}.", { team, device: tr(ios() ? "phone" : "device") })} onIn={() => signedIn((x) => x + 1)} />
+    <MiniAuth kind="parent" title={tr("Get notified")} sub={tr("Create a free Benchboard account to get {team}'s match starts and final scores on this {device}.", { team, device: tr(ios() ? "phone" : "device") })} onIn={() => { syncFollowed(); signedIn((x) => x + 1); }} t={tr} />
   </section>;
   const what = (s: Saved) => tr(s.starts && s.finals ? "match starts and final scores" : s.starts ? "match starts" : "final scores");
   return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
@@ -75,7 +76,7 @@ export function NotifyCard({ code, team, players = [] }: { code: string; team: s
     {saved && !editing ? <p className="lv-note" style={{ marginTop: 0 }}>{tr("You'll get {team}'s {what} on this {device}.", { team, what: what(saved), device: tr(ios() ? "phone" : "device") })}{followed ? " " + tr("Finals start with {name}'s numbers.", { name: followed.first }) : ""}</p>
       : <>
         {!saved && <p className="lv-note" style={{ marginTop: 0 }}>{tr("Get a notification on this {device} when {team} starts a match and when it ends.", { device: tr(ios() ? "phone" : "device"), team })}</p>}
-        {!saved && <SignedIn onOut={() => signedIn((x) => x + 1)} />}
+        {!saved && <SignedIn onOut={() => signedIn((x) => x + 1)} t={tr} />}
         <div className="lv-filters" style={{ margin: "10px 0" }}>
           <label><input type="checkbox" checked={starts} onChange={(e) => setStarts(e.target.checked)} /> {tr("Match starts")}</label>
           <label><input type="checkbox" checked={finals} onChange={(e) => setFinals(e.target.checked)} /> {tr("Final scores")}</label>

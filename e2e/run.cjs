@@ -553,6 +553,16 @@ const scenarios = {
     await P.getByLabel("Your player (optional)").selectOption({ label: "#22 Nia L." });
     await P.getByRole("button", { name: "Turn on notifications" }).click(); await P.waitForTimeout(1500);
     ok("notifications turn on", (await P.locator(".lv-notify h2", { hasText: "Notifications on" }).count()) === 1, await P.locator(".lv-notify").innerText().catch(() => ""));
+    { // the same family on a new phone, in Spanish: signing in brings back the team they follow
+      const N = await newPage(browser, { phone: true }); await N.context().addInitScript(() => { try { localStorage.setItem("bbl-lang", "es"); } catch { /* ignore */ } });
+      await N.goto(new URL(season).origin + "/live/"); await N.waitForTimeout(500);
+      await N.locator(".lv-signin").click();
+      ok("Live sign-in speaks Spanish", /Crear cuenta gratis/.test(await N.locator(".ma").innerText()), await N.locator(".ma").innerText().catch(() => ""));
+      await N.locator(".ma-seg button").nth(1).click(); await N.getByLabel("Correo electrónico", { exact: true }).fill("dana@example.com"); await N.getByLabel("Contraseña", { exact: true }).fill("family-pass-1");
+      await N.locator(".ma .ma-go").click(); await N.waitForTimeout(1500);
+      ok("signed in on a new phone, the teams they follow are there", /Ping Club/.test(await N.locator(".lv-mine").innerText().catch(() => "")), await N.locator("main").innerText().then((x) => x.slice(0, 300)));
+      await N.context().close();
+    }
     ok("the live site's service worker is registered", await P.evaluate(async () => !!(await navigator.serviceWorker.getRegistration("./"))));
     let M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("the phone is subscribed to the team for starts and finals, following Nia", M.subs.length === 1 && M.subs[0].starts && M.subs[0].finals && !!M.subs[0].player, JSON.stringify(M.subs));
@@ -902,6 +912,8 @@ const scenarios = {
     await R2.goto(U + "recruit/#/emails"); await R2.waitForTimeout(400);
     await R2.locator(".ma").getByRole("button", { name: "Sign in" }).first().click(); await R2.getByLabel("Email", { exact: true }).fill("maya@e2e.test"); await R2.getByLabel("Password", { exact: true }).fill("athlete-pass");
     await R2.locator(".ma").getByRole("button", { name: "Sign in" }).last().click(); await R2.waitForTimeout(800);
+    if (process.env.SHOTS) await R2.screenshot({ path: path.join(process.env.SHOTS, "phone-emails-signed-in.png"), fullPage: true });
+    ok("accounts: on a phone, the email comes right after the coach and school", await R2.evaluate(() => { const a = document.querySelector(".rg-preview").getBoundingClientRect().top, b = document.querySelector(".rg-you").getBoundingClientRect().top, c = document.querySelector(".rg-this").getBoundingClientRect().top; return c < a && a < b; }));
     ok("accounts: an athlete's details follow them to another device", (await R2.getByLabel("First name").inputValue()) === "Maya" && (await R2.getByLabel("Grad year").inputValue()) === "2028");
     { const ax = await a11y(R2); ok("accounts: sign-in controls all have names", !ax.length, ax.join(" | ")); }
     ok("accounts: no page errors", !A.errors.length && !R.errors.length && !R2.errors.length, [...A.errors, ...R.errors, ...R2.errors].slice(0, 3).join(" | "));

@@ -9,7 +9,8 @@ import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
 const KEY = "bbr-athlete";
 const BLANK: Athlete = { first: "", last: "", grad: "", pos: "", height: "" };
-const loadA = (): Athlete => { const cloud = (currentUser() && userMeta().athlete) as Partial<Athlete> | undefined; if (cloud) return { ...BLANK, ...cloud }; try { return { ...BLANK, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { ...BLANK }; } };
+const fromName = (): Partial<Athlete> => { const n = (currentUser() && userMeta().name || "").trim().split(/\s+/); return n[0] ? { first: n[0], last: n.slice(1).join(" ") } : {}; };
+const loadA = (): Athlete => { const cloud = (currentUser() && userMeta().athlete) as Partial<Athlete> | undefined; if (cloud) return { ...BLANK, ...fromName(), ...cloud }; if (currentUser()) { try { const local = JSON.parse(localStorage.getItem(KEY) || "{}"); return { ...BLANK, ...fromName(), ...local }; } catch { return { ...BLANK, ...fromName() }; } } try { return { ...BLANK, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { ...BLANK }; } };
 let syncTimer: any = 0;
 const saveA = (a: Athlete) => {
   try { localStorage.setItem(KEY, JSON.stringify(a)); } catch { /* private window */ }
@@ -98,13 +99,13 @@ function Emails({ Shell }: { Shell: any }) {
     <div className="rg-kinds" role="tablist">{EMAIL_KINDS.map(([k, l, d]) => <button key={k} role="tab" aria-selected={kind === k} className={kind === k ? "on" : ""} onClick={() => setKind(k)}><b>{l}</b><small>{d}</small></button>)}</div>
     <div className="rg-mail">
       <div className="stack">
-        <section className="rc-card"><h2>This email</h2><div className="rg-form">
+        <section className="rc-card rg-this"><h2>This email</h2><div className="rg-form">
           {g("coach", "Coach's name", "Coach Rivera")}{g("school", "School", "University of …")}
           {(kind === "intro" || kind === "camp" || kind === "thanks") && g("why", kind === "intro" ? "Why this school (one real reason)" : "One thing that stood out", kind === "intro" ? "your fast offense and the nursing program" : "the serve-receive session with your libero", true)}
           {(kind === "camp" || kind === "thanks") && g("camp", kind === "camp" ? "Which camp" : "Thank them for", kind === "camp" ? "your elite camp on June 14" : "the call on Tuesday")}
           {(kind === "intro" || kind === "schedule" || kind === "video") && g("events", kind === "video" ? "Where the new film is from" : "Tournaments (one per line)", "Las Vegas Classic · Apr 11–13 · Las Vegas Convention Center", true)}
         </div></section>
-        <section className="rc-card"><h2>About you <small className="muted">saved to your account</small></h2><div className="rg-form">
+        <section className="rc-card rg-you"><h2>About you <small className="muted">saved to your account</small></h2><div className="rg-form">
           {f("first", "First name")}{f("last", "Last name")}{f("grad", "Grad year", "2028")}{f("pos", "Position", "Outside hitter")}{f("height", "Height", "5'11\"")}
           {f("approach", "Approach jump", "9'10\"")}{f("block", "Block jump", "9'4\"")}{f("club", "Club team", "Club name 17 Elite")}{f("clubNum", "Jersey #", "7")}{f("school", "High school")}{f("city", "City, state")}{f("gpa", "GPA", "3.8")}{f("major", "What you want to study")}
           {f("stats", "Your numbers (one line)", "3.2 kills/set, .260 hitting, 2.4 digs/set", true)}

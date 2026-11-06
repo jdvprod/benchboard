@@ -193,3 +193,4 @@ html.ov-page body{overflow:hidden}
 .lv-film-list span:nth-child(2){display:grid}.lv-film-list small{color:var(--muted)}
 .lv-film-n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--surface-2);font-weight:700}
 .lv-film-list li.done .lv-film-n{background:var(--us);color:var(--accent-ink)}
+.lv-signin{margin-top:14px;display:block}.lv-hero .ma{margin-top:14px}.lv-hero .ma-who{margin-top:14px}

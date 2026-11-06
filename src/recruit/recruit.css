@@ -129,3 +129,5 @@ body{padding-left:0}
 .rg-reels input{margin-top:3px;accent-color:var(--us)}
 .rg-jobs li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:8px}
 @media (max-width:560px){.rg-cats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* phones: the email right after "This email", your details after */
+@media (max-width:899px){.rg-mail>.stack{display:contents}.rg-this{order:1}.rg-preview{order:2}.rg-you{order:3}.rg-mail .rc-card{margin-bottom:0}}
