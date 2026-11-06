@@ -19,8 +19,8 @@ export interface ImportResult { ok: boolean; message: string }
 
 export function importBackup(text: string): ImportResult {
   let d: any;
-  try { d = JSON.parse(text); } catch { return { ok: false, message: "That file isn't a Benchboard backup." }; }
-  if (!d || d.app !== "bench-stats") return { ok: false, message: "That file isn't a Benchboard backup." };
+  try { d = JSON.parse(text); } catch { return { ok: false, message: "That file isn't a Jumpset backup." }; }
+  if (!d || d.app !== "bench-stats") return { ok: false, message: "That file isn't a Jumpset backup." };
   if (d.version === 1 || (!d.version && d.cfg)) return importV1(d);
   let added = 0, skipped = 0, firstTeam: string | null = null;
   for (const s of TABLES) for (const v of d[s] || []) { if (s === "teams" && !firstTeam) firstTeam = v.id; if (get(s, v.id)) { skipped++; continue; } save(s, v, true); added++; }

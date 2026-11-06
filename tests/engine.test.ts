@@ -332,7 +332,7 @@ test("import: pass average turns into 3-2-1-0 passes with the same average; game
   assert.deepEqual(formatFrom([[25, 20], [25, 18]]), { bestOf: 3, setTo: 25 }); assert.deepEqual(formatFrom([[25, 20], [20, 25]]), { bestOf: 2, setTo: 25 });
 });
 
-test("import: Benchboard's own spreadsheet export comes back in with the same numbers", () => {
+test("import: Jumpset's own spreadsheet export comes back in with the same numbers", () => {
   const head = ["#", "Player", "Pos", "Sets", "Kills", "Attack att", "Attack err", "Hit %", "Set att", "Assists", "Set err", "Serve att", "Aces", "Serve in", "Serve err net", "Serve err out", "Serve eff", "Pass avg", "Receptions", "Perfect passes", "Pass 0s", "Digs", "Dig err", "Solo blocks", "Block assists", "Block/net err", "Comm err", "Effort err", "Position err", "+/-", "Net points"];
   const t = readText(head.join(",") + "\n7,Maya Chen,OH,3,12,30,3,.300,0,0,0,15,2,12,1,0,.067,2.20,20,8,2,8,1,0,1,0,0,0,0,5,9");
   const f = guessFields(t.header), F = (h: string) => f[head.indexOf(h)];
@@ -357,10 +357,10 @@ test("tournament: pool standings by match record, then set %, then point %; next
 
 import { finalMessage, playerLine, startMessage, starLine } from "../src/notify/messages";
 test("notifications: start and final messages read naturally", () => {
-  assert.deepEqual(startMessage("Clovis North", "Buchanan", { event: "Fall Classic · Pool", court: "3" }), { title: "Clovis North vs Buchanan is starting", body: "Fall Classic · Pool · Court 3 · Follow it live on Benchboard Live" });
+  assert.deepEqual(startMessage("Clovis North", "Buchanan", { event: "Fall Classic · Pool", court: "3" }), { title: "Clovis North vs Buchanan is starting", body: "Fall Classic · Pool · Court 3 · Follow it live on Jumpset Live" });
   assert.equal(finalMessage("Clovis North", "Buchanan", 2, 1, [[25, 20], [22, 25], [15, 12]]).title, "Final: Clovis North beat Buchanan 2–1");
   assert.equal(finalMessage("Clovis North", "Buchanan", 0, 2, [[20, 25], [18, 25]]).title, "Final: Buchanan beat Clovis North 2–0");
-  assert.equal(finalMessage("Clovis North", "Buchanan", 2, 0, [[25, 20], [25, 18]], "League").body, "25-20, 25-18 · League · Box score on Benchboard Live");
+  assert.equal(finalMessage("Clovis North", "Buchanan", 2, 0, [[25, 20], [25, 18]], "League").body, "25-20, 25-18 · League · Box score on Jumpset Live");
   assert.equal(finalMessage("Clovis North", "Buchanan", 1, 1, [[25, 20], [18, 25]]).title, "Final: Clovis North and Buchanan split 1–1");
 });
 
@@ -422,7 +422,7 @@ test("notifications: the final names the standout", () => {
   assert.equal(starLine([{ name: "Maya C.", K: 14, SA: 1, BLK: 0, D: 6, AST: 0 }, { name: "Ava R.", K: 1, SA: 0, BLK: 0, D: 4, AST: 31 }]), "Maya C. 14 kills");
   assert.equal(starLine([{ name: "Zoe G.", K: 2, SA: 0, BLK: 3.5, D: 0, AST: 0 }]), "Zoe G. 3.5 blocks");
   assert.equal(starLine([{ name: "Lily T.", K: 0, SA: 0, BLK: 0, D: 1, AST: 0 }]), undefined);
-  assert.equal(finalMessage("CN", "Buchanan", 2, 0, [[25, 20], [25, 18]], undefined, "Maya C. 14 kills").body, "25-20, 25-18 · Maya C. 14 kills · Box score on Benchboard Live");
+  assert.equal(finalMessage("CN", "Buchanan", 2, 0, [[25, 20], [25, 18]], undefined, "Maya C. 14 kills").body, "25-20, 25-18 · Maya C. 14 kills · Box score on Jumpset Live");
 });
 
 import { setLang, tr, playName, oppPlay } from "../src/lib/i18n";

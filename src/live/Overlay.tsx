@@ -68,7 +68,7 @@ export function ScoreBug({ R, m, us, them, o, logo, players = [] }: { R: Replay;
   const tag = final ? "Final" : between ? `End of set ${c!.n}` : c ? `Set ${c.n}` : "Starting soon";
   return <div className={`ov ov-${o.size} ov-${o.pos}`} role="img" aria-label={`${us} ${R.wonUs}, ${them} ${R.wonThem}${c && live ? `, set ${c.n} ${c.us}–${c.them}` : ""}`}>
     <div className={"ov-box" + (withLogos ? " logos" : "")}>{side("us")}{side("them")}</div>
-    <div className="ov-tag"><span className={live && !between ? "on" : ""}>{tag}</span><small>Benchboard Live</small></div>
+    <div className="ov-tag"><span className={live && !between ? "on" : ""}>{tag}</span><small>Jumpset Live</small></div>
     {cap && <div key={cap.id} className={"ov-cap " + cap.side} role="status">{cap.text}</div>}
   </div>;
 }

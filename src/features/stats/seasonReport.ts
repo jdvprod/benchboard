@@ -65,7 +65,7 @@ ${(() => { const X = situations(items.flatMap((x) => x.R.sets)), p = (x: { w: nu
 ${awards ? `<section><h2>Season awards</h2><div class="awards">${awards}</div></section>` : ""}
 <section><h2>Match by match</h2><table><thead><tr><th>Date</th><th>Opponent</th><th>Result</th><th>Hit %</th><th>Side-out</th><th>Pass</th><th>Serve in</th></tr></thead><tbody>${log}</tbody></table></section>
 <section><h2>Players</h2><table><thead><tr><th>#</th><th>Player</th><th>Sets</th><th>K</th><th>Hit %</th><th>Ace</th><th>SE</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th></tr></thead><tbody>${ids.map(prow).join("")}</tbody></table></section>
-<footer>Made with Benchboard · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
+<footer>Made with Jumpset · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
 }
 
 export type { Agg };

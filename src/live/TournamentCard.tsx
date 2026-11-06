@@ -1,4 +1,4 @@
-/** Benchboard Live: a tournament day on the team page — our games with times, courts and results, pool standings, bracket path. */
+/** Jumpset Live: a tournament day on the team page — our games with times, courts and results, pool standings, bracket path. */
 import { standings, sortGames, TGame, Tournament, OurResult } from "../tournament/model";
 import { Game, isLive } from "./data";
 import { locale, tr } from "../lib/i18n";

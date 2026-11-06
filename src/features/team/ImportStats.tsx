@@ -99,7 +99,7 @@ export function ImportStats() {
     {files.length > 0 && <div className="stack" style={{ marginTop: 10 }}>
       {preview.some((p) => p.fresh.length) && <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={addNew} onChange={(e) => setAddNew(e.target.checked)} /> Add players who aren't on the roster yet</label>}
       <div className="row"><button className="btn primary" disabled={!total} onClick={run}>Import {total} {total === 1 ? "match" : "matches"}</button><button className="btn" onClick={() => setFiles([])}>Cancel</button></div>
-      <p className="keys">Imported matches count for players' stats, reports, Benchboard Live and Recruit. They don't have rally-by-rally detail, so side-out, rotation and situation numbers only come from matches you track. Delete one from Matches & practices if it went wrong.</p>
+      <p className="keys">Imported matches count for players' stats, reports, Jumpset Live and Recruit. They don't have rally-by-rally detail, so side-out, rotation and situation numbers only come from matches you track. Delete one from Matches & practices if it went wrong.</p>
     </div>}
   </Card>;
 }

@@ -1,5 +1,5 @@
-/* Benchboard offline support: the app keeps working in gyms with no Wi-Fi. */
-const CACHE = "benchboard-%VERSION%";
+/* Jumpset offline support: the app keeps working in gyms with no Wi-Fi. */
+const CACHE = "jumpset-%VERSION%";
 const CORE = ["./", "./index.html", "./app.js", "./app.css", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./apple-touch-icon.png", "./favicon.png"];
 self.addEventListener("install", (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", (e) => {

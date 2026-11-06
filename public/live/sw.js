@@ -1,9 +1,9 @@
-/* Benchboard Live: shows match notifications for teams a family follows. Caches nothing; the pages always come fresh. */
+/* Jumpset Live: shows match notifications for teams a family follows. Caches nothing; the pages always come fresh. */
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("push", (e) => {
-  let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { title: "Benchboard Live", body: e.data ? e.data.text() : "" }; }
-  e.waitUntil(self.registration.showNotification(d.title || "Benchboard Live", { body: d.body || "", tag: d.tag, renotify: !!d.tag, icon: "../icon-192.png", badge: "../favicon.png", data: { url: d.url || "./" } }));
+  let d = {}; try { d = e.data ? e.data.json() : {}; } catch { d = { title: "Jumpset Live", body: e.data ? e.data.text() : "" }; }
+  e.waitUntil(self.registration.showNotification(d.title || "Jumpset Live", { body: d.body || "", tag: d.tag, renotify: !!d.tag, icon: "../icon-192.png", badge: "../favicon.png", data: { url: d.url || "./" } }));
 });
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();

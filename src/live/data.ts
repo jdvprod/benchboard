@@ -1,4 +1,4 @@
-/** Data for Benchboard Live: the public season hub and single-game links, polled while a match is live. */
+/** Data for Jumpset Live: the public season hub and single-game links, polled while a match is live. */
 import { useEffect, useRef, useState } from "react";
 import { cloudAvailable, rpc } from "../cloud/client";
 import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";

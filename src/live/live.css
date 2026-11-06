@@ -1,4 +1,4 @@
-/* Benchboard Live: a broadcast look for families and fans. Red is only for "live"; Columbia blue is the team. */
+/* Jumpset Live: a broadcast look for families and fans. Red is only for "live"; Columbia blue is the team. */
 .lv{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
 .lv-top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#000;color:#fff;padding:10px max(16px,env(safe-area-inset-left,0px));border-bottom:3px solid var(--us-bright)}
 .lv-brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:var(--display);text-transform:uppercase;letter-spacing:.06em;font-size:18px}

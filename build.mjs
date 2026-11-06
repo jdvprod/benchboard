@@ -41,7 +41,7 @@ const options = {
 
 // Legal pages: owner, contact email, state and dates come from package.json "legal".
 const legalTokens = {
-  "%LEGAL_OWNER%": legal.owner || "the Benchboard team",
+  "%LEGAL_OWNER%": legal.owner || "the Jumpset team",
   "%LEGAL_EMAIL%": legal.email || "[add a contact email in package.json]",
   "%LEGAL_STATE%": legal.state || "California",
   "%LEGAL_EFFECTIVE%": legal.effective || "",
@@ -68,7 +68,7 @@ if (args.has("--watch")) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
   const { port } = await ctx.serve({ servedir: dist, port: 5173 });
-  console.log(`Benchboard running at http://localhost:${port}`);
+  console.log(`Jumpset running at http://localhost:${port}`);
 } else {
   await esbuild.build(options);
   if (!existsSync(path.join(dist, "app.js"))) throw new Error("build failed");

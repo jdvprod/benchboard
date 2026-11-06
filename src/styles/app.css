@@ -1,4 +1,4 @@
-/* Benchboard design system. Layout: dark sidebar on wide screens, bottom tab bar on phones. */
+/* Jumpset design system. Layout: dark sidebar on wide screens, bottom tab bar on phones. */
 :root{
   /* Palette: white, black, grey and Columbia blue. Red is used only for errors and destructive actions. */
   --bg:#F3F4F6; --surface:#FFFFFF; --surface-2:#F6F7F8; --ink:#0B0C0E; --muted:#686E77; --line:#E2E4E8;
@@ -624,7 +624,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .gs-run.us{color:var(--us-bright)}.gs-run.them{color:var(--them-bright)}
 /* scrollable tables show a soft shadow on the side that has more columns */
 .tbl{background:linear-gradient(to right,var(--surface) 30%,rgba(255,255,255,0)) left center/32px 100% no-repeat local,linear-gradient(to left,var(--surface) 30%,rgba(255,255,255,0)) right center/32px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) left center/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) right center/12px 100% no-repeat scroll}
-/* clip player (coaching app and Benchboard Recruit) */
+/* clip player (coaching app and Jumpset Recruit) */
 .clips{display:grid;gap:8px;min-width:0}
 .clip-title{font:700 15px var(--display);letter-spacing:.05em;text-transform:uppercase}
 .clip-stage{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}

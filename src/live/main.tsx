@@ -1,4 +1,4 @@
-/** Benchboard Live: the public site for families and fans. Scores are open to anyone with the link; following a team
+/** Jumpset Live: the public site for families and fans. Scores are open to anyone with the link; following a team
  * (notifications, Your teams on every device) and team film sessions need a free account.
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
@@ -29,16 +29,16 @@ function useTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { con
 
 function Shell({ team, children, home }: { team?: string; children: any; home?: string }) {
   return <div className="lv">
-    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Benchboard Live home"><i aria-hidden="true" /><b>Benchboard</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}</header>
+    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Jumpset Live home"><i aria-hidden="true" /><b>Jumpset</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}</header>
     <main className="lv-main">{children}</main>
-    <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Benchboard")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a>
+    <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Jumpset")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a>
       <div className="lv-lang" role="group" aria-label="Language / Idioma">{([["en", "English"], ["es", "Español"]] as [Lang, string][]).map(([k, l]) => <button key={k} aria-pressed={getLang() === k} onClick={() => { setLang(k); location.reload(); }}>{l}</button>)}</div></footer>
   </div>;
 }
 
 function TeamRoute({ code, rest }: { code: string; rest: string[] }) {
   const { d, err, got } = useSeason(code); useTick();
-  useEffect(() => { if (d?.team) { document.title = `${d.team.name} · Benchboard Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.team?.color]);
+  useEffect(() => { if (d?.team) { document.title = `${d.team.name} · Jumpset Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.team?.color]);
   useWakeLock(!!d?.matches.some((m) => m.status === "live") && rest[0] === "m");
   useEffect(() => { if (d?.team) rememberTeam({ code, name: d.team.name, logo: d.team.logo || null }); }, [code, d?.team?.name, d?.team?.logo]);
   if (!d) return <Shell><p className="lv-empty">{err || tr("Loading…")}</p></Shell>;
@@ -48,7 +48,7 @@ function TeamRoute({ code, rest }: { code: string; rest: string[] }) {
 
 function GameRoute({ code }: { code: string }) {
   const { d, err, got } = useWatch(code); useTick();
-  useEffect(() => { if (d?.team) { document.title = `${d.team.name} vs ${d.match.opp} · Benchboard Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.match?.opp]);
+  useEffect(() => { if (d?.team) { document.title = `${d.team.name} vs ${d.match.opp} · Jumpset Live`; if (d.team.color) applyTheme(d.team.color, "system", "normal", null); } }, [d?.team?.name, d?.match?.opp]);
   useWakeLock(d?.match?.status === "live");
   if (!d) return <Shell><p className="lv-empty">{err || tr("Loading the game…")}</p></Shell>;
   const g: Game = { m: d.match, R: replayOf(d.match, d.logs || []) };

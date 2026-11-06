@@ -55,7 +55,7 @@ export async function playerGraphic(p: Player, s: Stat, head: string, sub: strin
   const logo = await canvasImage(t.logo);
   if (logo) drawLogo(g, logo, 80, H - 104, 64);
   text(t.name.toUpperCase(), logo ? 164 : 80, H - 56, 26, "#fff", { spacing: 3 });
-  text("BENCHBOARD", W - 80, H - 56, 22, GREY, { align: "right", spacing: 6 });
+  text("JUMPSET", W - 80, H - 56, 22, GREY, { align: "right", spacing: 6 });
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

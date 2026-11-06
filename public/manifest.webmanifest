@@ -1,6 +1,6 @@
 {
-  "name": "Benchboard",
-  "short_name": "Benchboard",
+  "name": "Jumpset",
+  "short_name": "Jumpset",
   "description": "Volleyball stat tracking, lineups and practice planning for coaches",
   "start_url": "./#/track",
   "scope": "./",

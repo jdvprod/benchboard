@@ -1,4 +1,4 @@
--- Benchboard cloud schema for Supabase.
+-- Jumpset cloud schema for Supabase.
 -- Paste this whole file into Supabase → SQL Editor → New query → Run. Safe to run again.
 --
 -- Model: the app is local-first. Every record (team, player, match, event log, plan...) is stored as JSON
@@ -255,7 +255,7 @@ drop policy if exists "recruit update" on public.recruit_shares;
 create policy "recruit update" on public.recruit_shares for update using (can_edit(team_id));
 drop policy if exists "recruit delete" on public.recruit_shares;
 create policy "recruit delete" on public.recruit_shares for delete using (can_edit(team_id));
--- the profile as data (stats, game log, highlight clips) for Benchboard Recruit; html stays as the printable sheet
+-- the profile as data (stats, game log, highlight clips) for Jumpset Recruit; html stays as the printable sheet
 alter table public.recruit_shares add column if not exists data jsonb;
 create or replace function public.recruit_view(share text) returns jsonb
 language sql stable security definer set search_path = public as $$
@@ -301,7 +301,7 @@ end $$;
 grant execute on function public.recruit_board(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
--- ---------- match notifications for families (Benchboard Live), used only by the "notify" edge function ----------
+-- ---------- match notifications for families (Jumpset Live), used only by the "notify" edge function ----------
 create table if not exists public.push_subs (
   endpoint text primary key,
   team_id text not null references public.teams_cloud(id) on delete cascade,
@@ -354,7 +354,7 @@ do $do$ begin
   end if;
 end $do$;
 
--- ---------- admin console (the people who run Benchboard) ----------
+-- ---------- admin console (the people who run Jumpset) ----------
 -- Add yourself once, in the SQL Editor:  insert into public.admins select id from auth.users where email = 'you@example.com';
 create table if not exists public.admins (user_id uuid primary key references auth.users(id) on delete cascade, added_at timestamptz not null default now());
 alter table public.admins enable row level security;   -- no policies: only these functions read it
@@ -375,7 +375,7 @@ grant insert on public.app_errors to anon, authenticated;
 grant usage on sequence public.app_errors_id_seq to anon, authenticated;
 create index if not exists app_errors_at on public.app_errors (at);
 
--- How Benchboard is doing: accounts, teams, matches, what's live now, and the most active teams.
+-- How Jumpset is doing: accounts, teams, matches, what's live now, and the most active teams.
 create or replace function public.admin_overview() returns jsonb
 language plpgsql stable security definer set search_path = public, auth as $$
 declare out jsonb;
@@ -431,7 +431,7 @@ begin
 end $$;
 grant execute on function public.admin_remove_picture(text) to authenticated;
 
--- ---------- college coach search (Benchboard Recruit) ----------
+-- ---------- college coach search (Jumpset Recruit) ----------
 -- A profile appears in search only when its team lists it (on top of the family's consent to share it), and only
 -- college staff an admin approved (school .edu email) can search. Search returns summaries; the profile link has the rest.
 alter table public.recruit_shares add column if not exists listed boolean not null default false;
@@ -506,7 +506,7 @@ grant execute on function public.admin_decide_college(uuid, boolean) to authenti
 
 -- ---------- accounts (version 16) ----------
 -- Everyone has an account now: coaches, athletes, families and fans. Name, who they are ("coach", "athlete", "parent",
--- "fan") and whether they want Benchboard news by email are kept in auth.users.raw_user_meta_data (set at sign-up,
+-- "fan") and whether they want Jumpset news by email are kept in auth.users.raw_user_meta_data (set at sign-up,
 -- changed in Account). Notifications are kept with the account that turned them on.
 alter table public.push_subs add column if not exists user_id uuid;
 -- Admins: everyone who said yes to news emails (for product updates; every email must have an unsubscribe link).
@@ -532,7 +532,7 @@ grant execute on function public.admin_accounts() to authenticated;
 
 -- ---------- film sessions (version 16) ----------
 -- A coach's film session from Film Room: clips (small videos in Storage at media/<team>/film/<session>/), each with the
--- coach's note and drawing. Players and families open it on Benchboard Live by its code, signed in; the coach sees who watched.
+-- coach's note and drawing. Players and families open it on Jumpset Live by its code, signed in; the coach sees who watched.
 create table if not exists public.film_sessions (
   code text primary key,
   team_id text not null references public.teams_cloud(id) on delete cascade,

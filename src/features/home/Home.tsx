@@ -114,7 +114,7 @@ async function shareRecap(m: import("../../data/model").Match, R: import("../../
   const ok = await copyText(text); toast(ok ? "Recap copied. Paste it in the team group chat." : text);
 }
 
-/* Getting started: the five things that make Benchboard useful, checked off automatically. */
+/* Getting started: the five things that make Jumpset useful, checked off automatically. */
 function Setup() {
   const t = team()!;
   if (t.sample || t.setupDone) return null;

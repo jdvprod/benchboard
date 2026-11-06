@@ -1,4 +1,4 @@
-/** Everything Benchboard saves. Each record belongs to a team, so one coach can run many teams. */
+/** Everything Jumpset saves. Each record belongs to a team, so one coach can run many teams. */
 import type { MatchEvent } from "../sports/volleyball/engine";
 
 export interface TeamSettings {
@@ -70,7 +70,7 @@ export interface Player {
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }
-export interface RecruitProfile { clipsOff?: boolean; /** Shown to verified college staff in Benchboard Recruit search (needs consent too). */ listed?: boolean; consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
+export interface RecruitProfile { clipsOff?: boolean; /** Shown to verified college staff in Jumpset Recruit search (needs consent too). */ listed?: boolean; consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
 
 export type MatchKind = "match" | "scrimmage" | "drills";
 export interface ScrimSetup { a: { name: string; ids: string[] }; b: { name: string; ids: string[] }; to: number }
@@ -101,7 +101,7 @@ export interface Match {
   imported?: { source: string; file: string; at: number; season?: boolean };
   /** Part of a tournament day (Team.tournaments). */
   tournamentId?: string;
-  /** Families were told this match started / finished (Benchboard Live notifications). */
+  /** Families were told this match started / finished (Jumpset Live notifications). */
   notified?: { start?: boolean; final?: boolean };
   /** The opponent's logo when the match was played (copied from Opponent.logo so public pages can show it). */
   oppLogo?: string;

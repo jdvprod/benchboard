@@ -1,6 +1,6 @@
 {
-  "name": "Benchboard Live",
-  "short_name": "BB Live",
+  "name": "Jumpset Live",
+  "short_name": "Jumpset Live",
   "description": "Live volleyball scores, box scores and player stats from the team's bench.",
   "start_url": "./",
   "scope": "./",

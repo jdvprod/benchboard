@@ -36,7 +36,7 @@ export async function seasonGraphic(items: { m: Match; R: Replay }[], seasonName
     const nmP = `#${p.num} ${p.first} ${p.last}`.trim(); g.font = `700 44px ${body}`; let z = 44; while (z > 26 && g.measureText(nmP).width > 600) { z -= 2; g.font = `700 ${z}px ${body}`; }
     text(nmP, 80, y, z, "#fff", { font: body }); text(String(l.v), W - 250, y, 54, "#fff", { align: "right" }); text(l.label, W - 80, y, 24, GREY, { align: "right", spacing: 3 }); });
   if (S.biggestWin) { const y = 715 + L.length * 100 + 60; text("BIGGEST WIN", 80, y, 24, GREY, { spacing: 4 }); text(`vs ${S.biggestWin.opp}  ·  ${S.biggestWin.sets}`, 80, y + 50, fit(`vs ${S.biggestWin.opp}  ·  ${S.biggestWin.sets}`, W - 160, 38), "#fff"); }
-  text("BENCHBOARD", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
+  text("JUMPSET", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

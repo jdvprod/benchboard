@@ -161,7 +161,7 @@ table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{padding:6px;tex
 <body><main><div class="hero"><div class="n">${esc(p.num)}</div><div><h1>${esc(p.first + " " + p.last)}</h1><div class="sub">${esc([p.pos, p.height, p.grad ? "Class of " + p.grad : ""].filter(Boolean).join(" · "))}</div><div class="sub">${esc(t.name)}${t.level ? " · " + esc(t.level) : ""}</div></div></div>
 <div class="ks">${ks}</div>${goals ? `<section><h3 style="margin:0 0 6px">Goals</h3><ul>${goals}</ul></section>` : ""}
 <section><h3 style="margin:0 0 6px">Match by match</h3><table><thead><tr><th>Date</th><th>Opponent</th><th>K</th><th>Hit %</th><th>Ace</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th></tr></thead><tbody>${log}</tbody></table></section>
-<footer>Made with Benchboard · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
+<footer>Made with Jumpset · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
   download(`${p.first} ${p.last} - ${t.name}.html`, html, "text/html");
   toast("Report saved. Text or email the file to share it.");
 }
@@ -201,11 +201,11 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
       </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
       {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setReel(true)}>Make highlight video</button>}
     </div>
-    <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">Benchboard's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free with an account.</p>
+    <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">Jumpset's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free with an account.</p>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
     {COLLEGE_SEARCH && canShare && consented && <label className="consent-check"><input type="checkbox" checked={!!pr.listed} onChange={async (e) => { const on = e.target.checked; patch("players", id, { profile: { ...(player(id)!.profile || {}), listed: on || undefined } }); if (url) { try { await setRecruitListed(t.id, id, on); toast(on ? "Listed in college coach search." : "Taken out of college coach search."); } catch { toast("Couldn't update the listing. Check your connection."); } } }} />
-      <span>List {p.first || "this player"} in <b>college coach search</b> on Benchboard Recruit. Only college staff Benchboard has verified can search; they see the same profile as the link.</span></label>}
+      <span>List {p.first || "this player"} in <b>college coach search</b> on Jumpset Recruit. Only college staff Jumpset has verified can search; they see the same profile as the link.</span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />
       <ConfirmButton className="btn sm ghost" confirmText="Take it down?" onConfirm={async () => { try { await unshareRecruit(t.id, id); setUrl(""); toast("Profile link taken down. It no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down. Check your connection."); } }}>Stop sharing</ConfirmButton></div>}
     {url && views && <p className="small" style={{ margin: "6px 0 0" }}><b>{views.views === 0 ? "Not opened yet" : `Opened ${views.views} ${views.views === 1 ? "time" : "times"}`}</b>{views.last ? <span className="muted"> · last {new Date(views.last).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}<span className="muted"> · counts each visit to the profile link</span></p>}
@@ -218,7 +218,7 @@ export function safeUrl(u?: string): string {
   try { const x = new URL(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v); return x.protocol === "https:" || x.protocol === "http:" ? x.href : ""; } catch { return ""; }
 }
 
-/** Everything Benchboard holds about one player, as a file a family can keep (access requests). */
+/** Everything Jumpset holds about one player, as a file a family can keep (access requests). */
 export function playerExport(id: string) {
   const p = player(id)!, t = team()!;
   const matches = matchesOf().filter((m) => m.teamId === t.id).map((m) => {
@@ -230,7 +230,7 @@ export function playerExport(id: string) {
   const practices = plansOf().filter((pl) => pl.attendance?.[id]).map((pl) => ({ date: pl.date, title: pl.title, attendance: pl.attendance![id] }));
   const { teamId: _t, ...rest } = p;
   return { exported: new Date().toISOString(), team: t.name, player: rest, matches, practices,
-    note: "Stat codes: K kills, KT tool kills, AE attack errors, AB attacks blocked, TA attempts, SA aces, SE serve errors, R passes (R3/R2/R1 by grade, RS shanked), D digs, BS solo blocks, BA block assists, AST assists. Generated by Benchboard." };
+    note: "Stat codes: K kills, KT tool kills, AE attack errors, AB attacks blocked, TA attempts, SA aces, SE serve errors, R passes (R3/R2/R1 by grade, RS shanked), D digs, BS solo blocks, BA block assists, AST assists. Generated by Jumpset." };
 }
 
 function PlayerData({ id }: { id: string }) {
@@ -280,7 +280,7 @@ ${p.height || pr.reach || pr.approach || pr.block || pr.hand || pr.gpa ? `<h2>Me
 ${best.length ? `<h2>Best matches</h2><table><thead><tr><th>Date</th><th>Opponent</th><th>Kills</th><th>Digs</th><th>Assists</th><th>Aces</th></tr></thead><tbody>${best.map(({ r }) => `<tr><td>${esc(r.m.date)}</td><td>${esc(r.m.opp)}</td><td>${r.s?.K ?? 0}</td><td>${r.s?.D ?? 0}</td><td>${r.s?.AST ?? 0}</td><td>${r.s?.SA ?? 0}</td></tr>`).join("")}</tbody></table>` : ""}
 ${safeUrl(pr.video) ? `<h2>Highlights</h2><p><a href="${esc(safeUrl(pr.video))}">${esc(pr.video)}</a></p>` : ""}
 ${pr.email || pr.phone || pr.coachContact ? `<h2>Contact</h2><div class="g">${item("Player email", pr.email)}${item("Player phone", pr.phone)}${item("Coach", pr.coachContact)}</div>` : ""}
-<footer>Stats recorded with Benchboard · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
+<footer>Stats recorded with Jumpset · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
 }
 
 /** Where this player's attacks land, plus hitting and passing by rotation. */

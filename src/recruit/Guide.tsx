@@ -1,4 +1,4 @@
-/** Benchboard Recruit for athletes (free account): how to get recruited, what to have ready, emails to coaches,
+/** Jumpset Recruit for athletes (free account): how to get recruited, what to have ready, emails to coaches,
  * and Reel Studio, which turns your clips or a whole game into a batch of highlight videos. */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Athlete, EmailKind, EMAIL_KINDS, emailGaps, Target, writeEmail } from "./emails";
@@ -41,7 +41,7 @@ export function GuideNav({ on }: { on: string }) {
 const READY: [string, string][] = [
   ["Highlight video", "Two to four minutes, best plays first. Mark yourself before each play (your number on screen, or a freeze with an arrow). Reel Studio makes this for you."],
   ["Full match film", "One whole, unedited set or match. Coaches who like your highlights ask for it next, to see how you move between plays."],
-  ["Verified stats", "A Benchboard Recruit profile from your coach: numbers recorded live, match by match, with clips behind them. Ask your coach to share yours."],
+  ["Verified stats", "A Jumpset Recruit profile from your coach: numbers recorded live, match by match, with clips behind them. Ask your coach to share yours."],
   ["Measurables", "Height, standing reach, approach jump and block jump, measured in the last few months. Round honestly; coaches re-measure at camps."],
   ["Grades", "Unofficial transcript and GPA, plus test scores if you have them. Academics open doors to more schools and to academic aid."],
   ["Schedule", "Your club and high school schedule with your jersey number, updated before every tournament."],
@@ -110,7 +110,7 @@ function Emails({ Shell }: { Shell: any }) {
           {f("first", "First name")}{f("last", "Last name")}{f("grad", "Grad year", "2028")}{f("pos", "Position", "Outside hitter")}{f("height", "Height", "5'11\"")}
           {f("approach", "Approach jump", "9'10\"")}{f("block", "Block jump", "9'4\"")}{f("club", "Club team", "Club name 17 Elite")}{f("clubNum", "Jersey #", "7")}{f("school", "High school")}{f("city", "City, state")}{f("gpa", "GPA", "3.8")}{f("major", "What you want to study")}
           {f("stats", "Your numbers (one line)", "3.2 kills/set, .260 hitting, 2.4 digs/set", true)}
-          {f("video", "Highlight video link", "https://youtu.be/…", true)}{f("profile", "Benchboard profile link", "", true)}
+          {f("video", "Highlight video link", "https://youtu.be/…", true)}{f("profile", "Jumpset profile link", "", true)}
           {f("email", "Your email")}{f("phone", "Your phone")}{f("clubCoach", "Club coach")}{f("clubCoachEmail", "Club coach email")}
         </div></section>
       </div>

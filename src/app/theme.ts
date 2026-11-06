@@ -18,7 +18,7 @@ export function applyTheme(color: string, theme: "system" | "light" | "dark", si
   if (theme === "system") { if (hostTheme) r.setAttribute("data-theme", hostTheme); else r.removeAttribute("data-theme"); }
   else r.setAttribute("data-theme", theme);
   document.body.classList.toggle("big", size === "large");
-  // The app always uses the Benchboard palette (white, black, grey, Columbia blue); team colors no longer recolor it.
+  // The app always uses the Jumpset palette (white, black, grey, Columbia blue); team colors no longer recolor it.
   void color; const css = "";
   let el = document.getElementById("team-theme");
   if (!el) { el = document.createElement("style"); el.id = "team-theme"; document.head.appendChild(el); }

@@ -33,7 +33,7 @@ function StatSheet() {
 export function AuthShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return <div className="auth">
     <aside className="auth-board">
-      <div className="auth-brand"><i><Icon name="brand" /></i><b>Benchboard</b></div>
+      <div className="auth-brand"><i><Icon name="brand" /></i><b>Jumpset</b></div>
       <div className="auth-hero">
         <h2 className="auth-head">Live stats and advanced metrics for volleyball coaches.</h2>
         <StatSheet />
@@ -46,8 +46,8 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
           <li>Assistants track together. Parents follow live.</li>
         </ul>
         <ul className="soon">
-          <li><a href="about.html" style={{ color: "#9BD3F2" }}>See everything Benchboard does</a><span style={{ border: 0 }} /></li>
-          <li>Benchboard Recruit profiles and clips <span>Early access</span></li>
+          <li><a href="about.html" style={{ color: "#9BD3F2" }}>See everything Jumpset does</a><span style={{ border: 0 }} /></li>
+          <li>Jumpset Recruit profiles and clips <span>Early access</span></li>
           <li>College coach search <span>Coming soon</span></li>
         </ul>
       </div>
@@ -93,7 +93,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     setBusy(false);
   };
 
-  if (!cloudAvailable()) return <AuthShell><h1 className="auth-title">Accounts aren't set up</h1><p className="auth-sub">This version of Benchboard runs on this device only.</p>{onSkip && <button className="auth-btn" onClick={onSkip}>Continue</button>}</AuthShell>;
+  if (!cloudAvailable()) return <AuthShell><h1 className="auth-title">Accounts aren't set up</h1><p className="auth-sub">This version of Jumpset runs on this device only.</p>{onSkip && <button className="auth-btn" onClick={onSkip}>Continue</button>}</AuthShell>;
 
   if (mode === "check" || mode === "sent") return <AuthShell>
     <div className="auth-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 6.5l8.5 6.5 8.5-6.5" /></svg></div>
@@ -105,8 +105,8 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     </div>
   </AuthShell>;
 
-  const title = { signin: "Sign in to Benchboard", signup: "Create your account", forgot: "Reset your password", newpw: "Choose a new password" }[mode];
-  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff, and families follow along live.", forgot: "Enter the email you use for Benchboard and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
+  const title = { signin: "Sign in to Jumpset", signup: "Create your account", forgot: "Reset your password", newpw: "Choose a new password" }[mode];
+  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff, and families follow along live.", forgot: "Enter the email you use for Jumpset and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
   const cta = { signin: "Sign in", signup: "Create account", forgot: "Send reset link", newpw: "Save password" }[mode];
 
   return <AuthShell>
@@ -138,16 +138,16 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
           <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label>
         {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
-      {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send Benchboard news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
+      {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send Jumpset news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
       {err && !err.field && <p className="auth-err box" role="alert">{err.text}</p>}
       <button className="auth-btn" type="submit" disabled={busy} aria-busy={busy}>{busy ? <span className="auth-spin" aria-label="Working" /> : cta}</button>
     </form>
     <div className="auth-foot">
-      {mode === "signin" && <p>New to Benchboard? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
+      {mode === "signin" && <p>New to Jumpset? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
       {mode === "signup" && <p>Already have an account? <button className="auth-link" onClick={() => setMode("signin")}>Sign in</button></p>}
       {mode === "forgot" && <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>}
       {onSkip && offlineAllowed() && (mode === "signin" || mode === "signup") && <div className="auth-skip"><button className="auth-btn alt" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></div>}
-      <p className="auth-legal">By using Benchboard you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
+      <p className="auth-legal">By using Jumpset you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
   </AuthShell>;
 }
@@ -190,7 +190,7 @@ function EmailPrefs() {
   return <Card>
     <div className="stack">
       <label className="field"><span className="label">Your name</span><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name.trim() !== (m.name || "")) save({ name: name.trim() }, "Name saved"); }} /></label>
-      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get Benchboard news by email" : "No more news emails")} /> Send Benchboard news and new features to my inbox</label>
+      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get Jumpset news by email" : "No more news emails")} /> Send Jumpset news and new features to my inbox</label>
     </div>
   </Card>;
 }

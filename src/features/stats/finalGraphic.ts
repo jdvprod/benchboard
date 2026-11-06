@@ -53,7 +53,7 @@ export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
     text(String(+l.v.toFixed(1)), W - 230, y, 54, "#fff", { align: "right" });
     text(l.label, W - 80, y, 24, GREY, { align: "right", spacing: 3 });
   });
-  text("BENCHBOARD", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
+  text("JUMPSET", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

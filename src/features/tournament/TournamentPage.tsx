@@ -168,6 +168,6 @@ export function TournamentList() {
   const list = tournamentsOf();
   return <Card title="Tournaments" actions={<button className="btn sm" onClick={() => go("tournament", "new")}>New tournament</button>}>
     {list.length ? <ul className="tn-list">{list.map((t) => { const played = t.games.filter((g) => g.matchId).length; return <li key={t.id}><button className="linkish" onClick={() => go("tournament", t.id)}><b>{t.name}</b></button><span className="small muted">{fmtDay(t.start)}{t.end ? " – " + fmtDay(t.end) : ""} · {t.games.filter((g) => g.stage !== "work").length} games{played ? `, ${played} played` : ""}</span></li>; })}</ul>
-      : <p className="small muted" style={{ margin: 0 }}>Plan a tournament day: pool games with times and courts, work duties, standings and your bracket path, with one-tap starts. Families see it on Benchboard Live.</p>}
+      : <p className="small muted" style={{ margin: 0 }}>Plan a tournament day: pool games with times and courts, work duties, standings and your bracket path, with one-tap starts. Families see it on Jumpset Live.</p>}
   </Card>;
 }

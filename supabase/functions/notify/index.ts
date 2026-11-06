@@ -1,4 +1,4 @@
-// Supabase Edge Function: match notifications for families who follow a team on Benchboard Live.
+// Supabase Edge Function: match notifications for families who follow a team on Jumpset Live.
 // Deploy: Dashboard → Edge Functions → Deploy a new function → Via Editor, name it "notify", paste this file.
 //         (or: supabase functions deploy notify)
 // Secrets (Edge Functions → Secrets): VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY (make them in the app: Settings → Setup check →
@@ -7,7 +7,7 @@
 //
 // Actions (POST JSON):
 //   { action: "key" }                                     → { key } public key for subscribing (anyone)
-//   { action: "subscribe", code, sub, starts, finals, player? } → follow a team by its Benchboard Live team code (signed-in accounts);
+//   { action: "subscribe", code, sub, starts, finals, player? } → follow a team by its Jumpset Live team code (signed-in accounts);
 //                                                          with a player id, finals start with that player's line
 //   { action: "unsubscribe", endpoint }                   → stop (anyone with the subscription)
 //   { action: "send", team_id, match_id, kind, title, body, base, lines? } → a coach of that team announces a start or a final
@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
   if (b.action === "subscribe") {
     const code = String(b.code || "").toUpperCase().trim(), sub = b.sub || {};
     if (!/^[A-Z0-9]{4,12}$/.test(code) || !/^https:\/\//.test(sub.endpoint || "") || !sub.keys?.p256dh || !sub.keys?.auth) return json(400, { error: "That subscription isn't valid." });
-    // following a team needs a free Benchboard account: the subscription is kept with it
+    // following a team needs a free Jumpset account: the subscription is kept with it
     const who = await fetch(`${URL_}/auth/v1/user`, { headers: { apikey: ANON, authorization: req.headers.get("authorization") || "" } }).then((r) => r.ok ? r.json() : null).catch(() => null);
     if (!who?.id) return json(401, { error: "Sign in to turn on notifications." });
     const share = await rest(`season_shares?select=team_id&code=eq.${code}&limit=1`).then((r) => r.json()).catch(() => []);

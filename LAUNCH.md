@@ -1,4 +1,4 @@
-# Launching Benchboard
+# Launching Jumpset
 
 Do these in order. Each step says how to know it worked. About an hour the first time.
 
@@ -9,7 +9,7 @@ In `package.json`:
 - `legal.email`: the address families and schools write to about their data (for example support@yourdomain.com). **Required.**
 - `legal.owner`: your name or business name, as it should appear in the Privacy Policy and Terms.
 - `legal.state`: the state whose law governs the Terms.
-- `site.url`: the site's address once you have it (for example https://benchboard.app). Link previews in texts and social posts use it.
+- `site.url`: the site's address once you have it (for example https://jumpset.app). Link previews in texts and social posts use it.
 
 Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line can stay a warning until the domain is set up).
 
@@ -28,10 +28,10 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 2. Cloudflare (the website)
 
-1. **Workers & Pages → Create → Import a repository** → `benchboard`.
+1. **Workers & Pages → Create → Import a repository** → `jumpset`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
 3. Add your domain under the Worker's **Settings → Domains & Routes**.
-4. Releases: `git push origin main:live` (the app, Benchboard Live at `/live/` and Benchboard Recruit at `/recruit/` all go out together).
+4. Releases: `git push origin main:live` (the app, Jumpset Live at `/live/` and Jumpset Recruit at `/recruit/` all go out together).
 
 Worked when: the site opens, `/live/` shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
 

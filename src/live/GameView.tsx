@@ -1,4 +1,4 @@
-/** One game on Benchboard Live: scoreboard, then Gamecast · Box score · Play-by-play · Team stats. */
+/** One game on Jumpset Live: scoreboard, then Gamecast · Box score · Play-by-play · Team stats. */
 import { Avatar } from "../ui/Logo";
 import { useState } from "react";
 import { aggregate, LogEntry, momentum, serverOf, Stat } from "../sports/volleyball/engine";

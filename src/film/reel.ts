@@ -62,7 +62,7 @@ export async function renderReel(clips: Clip[], resolve: (c: Clip) => string | n
     lines.forEach((l, i) => text(l, W / 2, (st.length ? 430 : 270) + i * 46, fit(l, W - 220, 32, 600), i ? "#C7CCD3" : "#fff", { align: "center", font: body, weight: 600, alpha: ease((t - 0.4 - i * 0.12) / 0.5) }));
     if (info.verified !== false) text("✓ Stats recorded live by " + info.team.name + "'s coaching staff", W / 2, 480, 26, BLUE, { align: "center", font: body, weight: 700, alpha: ease((t - 0.8) / 0.6) });
     if (info.link) text(info.link, W / 2, 540, fit(info.link, W - 200, 26, 600), "#C7CCD3", { align: "center", font: body, weight: 600, alpha: ease((t - 1) / 0.6) });
-    text("BENCHBOARD", W / 2, H - 50, 20, "#8A9099", { align: "center", spacing: 8 });
+    text("JUMPSET", W / 2, H - 50, 20, "#8A9099", { align: "center", spacing: 8 });
   };
   // ---- a play: the video, a player bug top-left, the lower third sliding in
   const lowerThird = (c: Clip, t: number) => {

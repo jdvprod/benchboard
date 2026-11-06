@@ -1,5 +1,5 @@
 {
-  "name": "benchboard",
+  "name": "jumpset",
   "version": "2.1.0",
   "private": true,
   "description": "Volleyball stat tracking, lineups and practice planning for coaches",
@@ -30,7 +30,7 @@
     "url": ""
   },
   "legal": {
-    "owner": "the Benchboard team",
+    "owner": "the Jumpset team",
     "email": "",
     "state": "California",
     "effective": "October 26, 2026",

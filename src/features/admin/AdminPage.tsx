@@ -1,4 +1,4 @@
-/** Admin console for the people who run Benchboard: sign-ups, active teams, what's live, and a review of every uploaded
+/** Admin console for the people who run Jumpset: sign-ups, active teams, what's live, and a review of every uploaded
  * photo and logo with a one-tap take-down. Only accounts listed in the admins table can open it (the database checks). */
 import { useEffect, useState } from "react";
 import { Card, ConfirmButton, download, Kpi } from "../../ui/kit";
@@ -13,7 +13,7 @@ interface Staff { user_id: string; email: string; name: string; school: string; 
 
 const ago = (iso?: string | null) => { if (!iso) return "never"; const m = Math.round((Date.now() - +new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 
-/** True when the signed-in account is a Benchboard admin (cached for the session). */
+/** True when the signed-in account is a Jumpset admin (cached for the session). */
 let adminCache: Promise<boolean> | null = null;
 export const amAdmin = () => (adminCache ||= rpc("is_admin", {}).then((x) => x === true).catch(() => false));
 
@@ -21,7 +21,7 @@ export function AdminPage() {
   const [acc, setAcc] = useState<{ byKind: Record<string, number>; emailOk: number } | null>(null), [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]);
   const load = async () => {
     try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
-    catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Benchboard admin." : e?.message || "Couldn't load the admin console."); }
+    catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Jumpset admin." : e?.message || "Couldn't load the admin console."); }
   };
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
   const base = config()?.url + "/storage/v1/object/public/media/";
@@ -39,7 +39,7 @@ export function AdminPage() {
     </div>
     {acc && <Card title="Accounts" actions={<button className="btn sm" onClick={async () => {
       try { const rows: { email: string; name: string; kind: string; joined: string }[] = await rpc("admin_email_list", {}); const q = (x: string) => '"' + String(x || "").replace(/"/g, '""') + '"';
-        download("benchboard-news-list.csv", "email,name,kind,joined\n" + rows.map((x) => [q(x.email), q(x.name), q(x.kind), q(x.joined)].join(",")).join("\n"), "text/csv"); toast(`${rows.length} people on the news list`); }
+        download("jumpset-news-list.csv", "email,name,kind,joined\n" + rows.map((x) => [q(x.email), q(x.name), q(x.kind), q(x.joined)].join(",")).join("\n"), "text/csv"); toast(`${rows.length} people on the news list`); }
       catch (e: any) { toast(e?.message || "Couldn't get the list."); } }}>Download news email list</button>}>
       <div className="row" style={{ gap: 18 }}>{(["coach", "athlete", "parent", "fan"] as const).map((k) => <span key={k}><b className="num" style={{ fontSize: 22 }}>{acc.byKind[k] || 0}</b> <span className="small muted">{k === "coach" ? "coaches" : k === "athlete" ? "athletes" : k === "parent" ? "parents" : "fans"}</span></span>)}
         <span><b className="num" style={{ fontSize: 22 }}>{acc.emailOk}</b> <span className="small muted">said yes to news emails</span></span></div>
@@ -50,7 +50,7 @@ export function AdminPage() {
         <tbody>{o.teamsList.map((t) => <tr key={t.id}><td className="l">{t.name || "(no name)"}</td><td>{t.members}</td><td>{t.matches}</td><td>{ago(t.last)}</td></tr>)}</tbody></table></div></Card>
       <Card title="New accounts"><ul className="log">{o.recentUsers.map((u) => <li key={u.email + u.at} style={{ gridTemplateColumns: "1fr auto" }}><span>{u.email}</span><span className="small muted">{ago(u.at)}</span></li>)}</ul></Card>
     </div>
-    {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Benchboard Recruit. Check the school's staff directory first.</span>}>
+    {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Jumpset Recruit. Check the school's staff directory first.</span>}>
       {!staff.length ? <p className="empty">No requests yet.</p> : <div className="tbl"><table><thead><tr><th className="l">Name</th><th className="l">School</th><th className="l">Email</th><th>Status</th><th></th></tr></thead>
         <tbody>{staff.map((s) => <tr key={s.user_id}><td className="l">{s.name}{s.title ? <div className="small muted">{s.title}</div> : null}</td><td className="l">{s.school}</td><td className="l small">{s.email}</td><td>{s.status === "pending" ? <b>Waiting</b> : s.status === "approved" ? "Approved" : "Turned down"}</td>
           <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{s.status !== "approved" && <button className="btn sm primary" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: true }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "approved" } : y))); }}>Approve</button>}

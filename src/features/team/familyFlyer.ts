@@ -1,5 +1,5 @@
 /** "Follow us live" flyer for families: a printable page for the gym wall and a 1080×1350 image for team group chats.
- * The QR code opens the team on Benchboard Live; the steps explain notifications (and the iPhone Home Screen step). */
+ * The QR code opens the team on Jumpset Live; the steps explain notifications (and the iPhone Home Screen step). */
 import { qrSvg } from "../../lib/qr";
 import { canvasImage, drawLogo } from "../../lib/image";
 import { Team } from "../../data/model";
@@ -10,7 +10,7 @@ export const codeOf = (url: string) => url.split("/").pop() || "";
 /** A one-page flyer to print (letter or A4). */
 export function flyerHtml(t: Team, url: string, season = "") {
   const code = codeOf(url);
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(t.name)} on Benchboard Live</title>
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${esc(t.name)} on Jumpset Live</title>
 <style>@page{size:letter;margin:0}*{box-sizing:border-box}body{margin:0;display:flex;justify-content:center;background:#E9EBEE;font-family:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
 .p{width:8.5in;height:11in;background:#fff;display:flex;flex-direction:column;align-items:center;padding:.7in .7in .5in;text-align:center}
 .top{width:100%;background:#000;color:#fff;border-radius:22px;padding:34px 28px 30px;border-bottom:10px solid #9BD3F2}
@@ -22,9 +22,9 @@ ol{margin:24px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:
 li{border:2px solid #000;border-radius:14px;padding:14px 16px;font-size:16px;line-height:1.35}li b{display:block;font-size:20px;margin-bottom:4px;font-family:"Barlow Semi Condensed","Arial Narrow",sans-serif}
 .f{margin-top:auto;font:14px system-ui,sans-serif;color:#555}.btn{position:fixed;top:12px;right:12px;font:600 15px system-ui;padding:10px 16px;border-radius:10px;border:0;background:#000;color:#fff;cursor:pointer}@media print{.btn{display:none}body{background:none}}</style></head>
 <body><button class="btn" onclick="print()">Print</button><div class="p"><div class="top">${t.logo && /^(https:|data:)/.test(t.logo) ? `<img src="${esc(t.logo)}" alt="">` : ""}<div class="k">Follow us live</div><h1>${esc(t.name)}</h1><div class="s">${esc([t.level, season].filter(Boolean).join(" · "))}</div></div>
-<div class="qr">${qrSvg(url)}</div><div class="code">Or go to Benchboard Live and enter<b>${esc(code)}</b></div>
+<div class="qr">${qrSvg(url)}</div><div class="code">Or go to Jumpset Live and enter<b>${esc(code)}</b></div>
 <ol><li><b>1. Scan</b>Point your phone's camera at the code and open the link.</li><li><b>2. Follow every point</b>Live scores, box scores and player stats from our bench.</li><li><b>3. Get notified</b>Tap <i>Turn on notifications</i> for match starts and finals. iPhone: Share → Add to Home Screen first.</li></ol>
-<div class="f">${esc(url)} · Stats recorded by our coaches with Benchboard</div></div></body></html>`;
+<div class="f">${esc(url)} · Stats recorded by our coaches with Jumpset</div></div></body></html>`;
 }
 
 /** The same flyer as an image for group chats and social posts. */
@@ -47,7 +47,7 @@ export async function flyerImage(t: Team, url: string, season = ""): Promise<Blo
   const svg = new Blob([qrSvg(url)], { type: "image/svg+xml" }), su = URL.createObjectURL(svg);
   await new Promise<void>((ok) => { const i = new Image(); i.onload = () => { g.drawImage(i, W / 2 - qs / 2, qy + 30, qs, qs); ok(); }; i.onerror = () => ok(); i.src = su; });
   URL.revokeObjectURL(su);
-  text("Scan, or enter this code at Benchboard Live", W / 2, qy + qs + 130, 32, "#C7CCD3", { font: body, weight: 600 });
+  text("Scan, or enter this code at Jumpset Live", W / 2, qy + qs + 130, 32, "#C7CCD3", { font: body, weight: 600 });
   text(codeOf(url), W / 2, qy + qs + 225, 88, BLUE, { spacing: 18 });
   text("Live scores · box scores · notifications for match starts and finals", W / 2, H - 70, 28, "#8A9099", { font: body, weight: 600 });
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
