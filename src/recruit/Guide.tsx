@@ -60,8 +60,9 @@ const SAY_TIPS = ["You write it, not a parent. Coaches want to hear from you.", 
 
 export function GuidePage({ Shell }: { Shell: any }) { return <Gate Shell={Shell} crumb="Recruiting guide" on="guide">{() => <Guide Shell={Shell} />}</Gate>; }
 function Guide({ Shell }: { Shell: any }) {
-  const [done, setDone] = useState<Record<string, boolean>>(() => { const c = (userMeta().athlete as any)?.ready; if (c) return c; try { return JSON.parse(localStorage.getItem("bbr-ready") || "{}"); } catch { return {}; } });
-  const tick = (k: string) => setDone((d) => { const n = { ...d, [k]: !d[k] }; try { localStorage.setItem("bbr-ready", JSON.stringify(n)); } catch { /* ignore */ } if (currentUser()) updateMeta({ athlete: { ...(userMeta().athlete || {}), ready: n } }).catch(() => {}); return n; });
+  // the newest checklist wins: this device's copy or the account's (saved from another device, or still on its way up)
+  const [done, setDone] = useState<Record<string, boolean>>(() => { const c = (userMeta().athlete as any)?.ready, cAt = +((userMeta().athlete as any)?.readyAt || 0); let l: any = null, lAt = 0; try { l = JSON.parse(localStorage.getItem("bbr-ready") || "null"); lAt = +(localStorage.getItem("bbr-ready-at") || 0); } catch { /* private window */ } return (c && cAt >= lAt ? c : l || c) || {}; });
+  const tick = (k: string) => setDone((d) => { const n = { ...d, [k]: !d[k] }, at = Date.now(); try { localStorage.setItem("bbr-ready", JSON.stringify(n)); localStorage.setItem("bbr-ready-at", String(at)); } catch { /* ignore */ } if (currentUser()) updateMeta({ athlete: { ...(userMeta().athlete || {}), ready: n, readyAt: at } }).catch(() => {}); return n; });
   const count = READY.filter(([k]) => done[k]).length;
   return <Shell crumb="Recruiting guide"><GuideNav on="guide" />
     <SignedIn onOut={() => location.reload()} />
