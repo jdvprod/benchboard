@@ -358,7 +358,7 @@ const scenarios = {
       { const cx = await contrast(p); ok(`${f} page text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }
     }
     await go(p, "track"); { const ca = p.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
-    await p.getByLabel("Email").fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123");
+    await p.getByLabel("Email", { exact: true }).fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123"); await p.locator("#auth-name").fill("Legal Coach");
     { const ax = await a11y(p); ok("sign-up form controls all have names", !ax.length, ax.join(" | ")); }
     await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(300);
     ok("sign-up asks for agreement first", (await p.getByText("Please confirm you're 13 or older").count()) === 1);
@@ -379,7 +379,7 @@ const scenarios = {
     ok("older accounts are asked to agree", (await q.getByText("Our Terms and Privacy Policy").count()) === 1);
     await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(200);
     ok("…and can't skip the checkbox", (await q.getByText("Check the box to agree.").count()) === 1);
-    await q.locator("#auth-name").fill("Test Coach"); await q.locator(".auth-agree input").first().check(); await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(1200);
+    await q.locator(".auth-agree input").first().check(); await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(1200);
     ok("agreeing opens the app", (await q.getByText("Our Terms and Privacy Policy").count()) === 0 && (await q.locator(".page, .content").count()) > 0);
     await q.context().close();
     // delete the account, then the same sign-in fails
@@ -809,12 +809,14 @@ const scenarios = {
     await p.context().close();
   },
   async athletes(browser) {
-    const p = await newPage(browser, { cloud: false });
+    const p = await newPage(browser);
     await p.goto(U + "recruit/"); await p.waitForTimeout(500);
     ok("recruit landing points athletes to the guide, emails and Reel Studio", (await p.locator(".rg-tiles a").count()) === 3 && !(await p.getByText("College coach?").count()));
     await p.goto(U + "recruit/#/college"); await p.waitForTimeout(300);
     ok("college coach search is paused (no page)", !(await p.locator(".rc-auth").count()) && (await p.locator(".rg-tiles").count()) === 1);
     await p.goto(U + "recruit/#/guide"); await p.waitForTimeout(300);
+    if (await p.locator(".ma").count()) { await p.getByLabel("Your name").fill("Maya Chen"); await p.getByLabel("Email", { exact: true }).fill("athlete@e2e.test"); await p.getByLabel("Password", { exact: true }).fill("athlete-pass");
+    await p.locator(".ma-check input").first().check(); await p.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await p.waitForTimeout(700); }
     await p.locator(".rg-check input").first().check(); await p.locator(".rg-check input").nth(2).check();
     ok("guide: the ready checklist counts", /2 of 9 ready/.test(await p.locator(".rg-count").innerText()));
     await p.reload(); await p.waitForTimeout(300);

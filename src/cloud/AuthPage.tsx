@@ -112,6 +112,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
   return <AuthShell>
     <h1 className="auth-title">{title}</h1>
     <p className="auth-sub">{sub}</p>
+    {(() => { try { return sessionStorage.getItem("bs-deleted"); } catch { return null; } })() && <p className="auth-err box" role="status">Your account and the teams you owned are deleted, and this device is cleared.</p>}
     <form className="auth-form" onSubmit={submit} noValidate>
       {mode === "signup" && <div className={"auth-field" + (err?.field === "name" ? " bad" : "")}>
         <label htmlFor="auth-name">Your name</label>

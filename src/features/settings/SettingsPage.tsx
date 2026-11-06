@@ -8,6 +8,7 @@ import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, 
 import { deleteAccount, isLinked } from "../../cloud/sync";
 import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
+import { offlineAllowed, skipAccounts } from "../../cloud/AuthPage";
 import { go } from "../../app/router";
 
 export function SettingsPage() {
@@ -223,7 +224,7 @@ function PrivacyCard() {
         {step === "confirm" && <div className="banner warn" style={{ display: "block" }}>
           <p><b>This can't be undone.</b> Cloud teams you own are deleted for every coach and viewer on them, along with their share links. Save a backup first if you might want the data. Type <b>DELETE</b> to confirm.</p>
           <div className="row" style={{ marginTop: 8 }}><input className="input" style={{ width: 140 }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Type DELETE to confirm" />
-            <button className="btn sm danger" disabled={typed.trim() !== "DELETE"} onClick={async () => { setStep("busy"); setErr(""); try { await deleteAccount(); signOut(); setStep("deleted"); toast("Account deleted"); } catch (e: any) { setErr(e?.message || "Couldn't delete the account. Check your connection and try again."); setStep("confirm"); } }}>Delete my account</button>
+            <button className="btn sm danger" disabled={typed.trim() !== "DELETE"} onClick={async () => { setStep("busy"); setErr(""); try { await deleteAccount(); signOut(); if (!offlineAllowed()) { try { sessionStorage.setItem("bs-deleted", "1"); } catch { /* ignore */ } await eraseDevice(); location.replace(location.pathname); return; } skipAccounts(); setStep("deleted"); toast("Account deleted"); } catch (e: any) { setErr(e?.message || "Couldn't delete the account. Check your connection and try again."); setStep("confirm"); } }}>Delete my account</button>
             <button className="btn sm" onClick={() => { setStep("idle"); setTyped(""); }}>Cancel</button></div>
           {err && <p className="hint warn">{err}</p>}
         </div>}
