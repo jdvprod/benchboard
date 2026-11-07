@@ -1,5 +1,5 @@
 /** After each sync, a coach's device announces matches that started or finished to families following the team
- * (Benchboard Live notifications). The server sends each announcement once, however many coaches' devices ask. */
+ * (Floorcall Live notifications). The server sends each announcement once, however many coaches' devices ask. */
 import { all, localISO, patch, replayOf, todayISO } from "../data/store";
 import { fn, CloudError } from "./client";
 import { siteUrl } from "./links";

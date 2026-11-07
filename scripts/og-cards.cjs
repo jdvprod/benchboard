@@ -1,4 +1,4 @@
-// Makes the link-preview images (1200×630) shown when someone shares a Benchboard link in a text, Slack or social post.
+// Makes the link-preview images (1200×630) shown when someone shares a Floorcall link in a text, Slack or social post.
 // Run: node scripts/og-cards.cjs   (writes public/og.png, public/live/og.png, public/recruit/og.png)
 const { chromium } = require("playwright"), path = require("path");
 const card = (kicker, title, sub, right) => `<!doctype html><html><head><style>
@@ -26,7 +26,7 @@ const card = (kicker, title, sub, right) => `<!doctype html><html><head><style>
   .tiles{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:22px}.tiles div{background:#1A1C20;border-radius:10px;padding:12px 14px;border-left:4px solid #9BD3F2}
   .tiles b{display:block;font-size:30px}.tiles span{color:#8A9099;font-size:14px;letter-spacing:.1em;text-transform:uppercase}
   .ok{margin-top:18px;color:#9BD3F2;font-size:18px;font-weight:700}
-</style></head><body><div class="l"><div class="brand"><i><span><b style="height:12px"></b><b style="height:20px"></b><b style="height:16px"></b></span></i>BENCHBOARD</div>
+</style></head><body><div class="l"><div class="brand"><i><span><b style="height:12px"></b><b style="height:20px"></b><b style="height:16px"></b></span></i>FLOORCALL</div>
 <div class="k">${kicker}</div><h1>${title}</h1><p>${sub}</p></div><div class="r">${right}</div><div class="bar"></div></body></html>`;
 const scoreboard = `<div class="sb"><div class="st"><span>Live · Set 3</span><span>Sets 1–1</span></div>
   <div class="row us"><span class="n">CLOVIS NORTH</span><em>23</em></div><div class="row them"><span class="n">BUCHANAN</span><em>21</em></div>
@@ -38,8 +38,8 @@ const profile = `<div class="prof"><div class="ph"></div><h2>Maya Chen</h2><smal
   const out = (f) => path.join(__dirname, "..", "public", f);
   for (const [f, html] of [
     ["og.png", card("Volleyball stats", "Every point, tracked from the bench.", "Live stats, lineups, practice plans and scouting for coaches. Gamecasts for families.", scoreboard)],
-    ["live/og.png", card("Benchboard Live", "Follow the game, point by point.", "Live scores, box scores and player stats, straight from the team's bench.", scoreboard)],
-    ["recruit/og.png", card("Benchboard Recruit", "Verified stats for college coaches.", "Numbers recorded live by the player's own coaching staff, with highlight clips.", profile)],
+    ["live/og.png", card("Floorcall Live", "Follow the game, point by point.", "Live scores, box scores and player stats, straight from the team's bench.", scoreboard)],
+    ["recruit/og.png", card("Floorcall Recruit", "Verified stats for college coaches.", "Numbers recorded live by the player's own coaching staff, with highlight clips.", profile)],
   ]) { await p.setContent(html); await p.waitForTimeout(150); await p.screenshot({ path: out(f) }); console.log("wrote", f); }
   await b.close();
 })();

@@ -68,7 +68,7 @@ export function NotifyCard({ code, team, players = [] }: { code: string; team: s
 
   // following a team needs a free account
   if (cloudAvailable() && !currentUser() && !saved) return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>
-    <MiniAuth kind="parent" title={tr("Get notified")} sub={tr("Create a free Benchboard account to get {team}'s match starts and final scores on this {device}.", { team, device: tr(ios() ? "phone" : "device") })} onIn={() => { syncFollowed(); signedIn((x) => x + 1); }} t={tr} />
+    <MiniAuth kind="parent" title={tr("Get notified")} sub={tr("Create a free Floorcall account to get {team}'s match starts and final scores on this {device}.", { team, device: tr(ios() ? "phone" : "device") })} onIn={() => { syncFollowed(); signedIn((x) => x + 1); }} t={tr} />
   </section>;
   const what = (s: Saved) => tr(s.starts && s.finals ? "match starts and final scores" : s.starts ? "match starts" : "final scores");
   return <section className="lv-card lv-notify" aria-label={tr("Get notified")}>

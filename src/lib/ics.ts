@@ -9,9 +9,9 @@ const addMin = (date: string, time: string, min: number) => { const d = new Date
 const nextDay = (iso: string) => { const d = new Date(iso + "T12:00:00"); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10).replace(/-/g, ""); };
 
 export function icsFile(calName: string, items: CalItem[], now = new Date()): string {
-  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Benchboard//Live//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:" + esc(calName)];
+  const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Floorcall//Live//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:" + esc(calName)];
   for (const it of items) {
-    L.push("BEGIN:VEVENT", "UID:" + it.uid + "@benchboard", "DTSTAMP:" + stamp(now));
+    L.push("BEGIN:VEVENT", "UID:" + it.uid + "@floorcall", "DTSTAMP:" + stamp(now));
     if (it.time && /^\d{1,2}:\d{2}$/.test(it.time)) { const t = it.time.padStart(5, "0"); L.push("DTSTART:" + ymd(it.date) + "T" + t.replace(":", "") + "00", "DTEND:" + addMin(it.date, t, it.minutes || 90)); }
     else L.push("DTSTART;VALUE=DATE:" + ymd(it.date), "DTEND;VALUE=DATE:" + nextDay(it.date));
     L.push("SUMMARY:" + esc(it.title));

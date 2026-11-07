@@ -1,4 +1,4 @@
-/** The data behind a Benchboard Recruit profile: a snapshot of the player's details, season stats, game log and highlight clips. */
+/** The data behind a Floorcall Recruit profile: a snapshot of the player's details, season stats, game log and highlight clips. */
 import { eventsOf, matchesOf, player, replayOf, seasonsOf, team } from "../../data/store";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
 import { ACTIONS } from "../../sports/volleyball/actions";

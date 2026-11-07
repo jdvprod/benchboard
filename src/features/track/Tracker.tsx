@@ -221,7 +221,7 @@ function QuickEntry({ m, record }: { m: Match; record: (k: ActionCode, o?: { p?:
     r.onresult = (e: any) => { const said = String(e.results[e.results.length - 1][0].transcript || "").trim(), codes = spokenToCodes(said);
       if (!codes) { setMsg(`Heard "${said}" but no stat in it.`); return; }
       const ok = !parseQuick(codes).errors.length; setV(codes); if (ok) submit(codes, `Heard "${said}"`); else setMsg(`Heard "${said}": check the codes, then Record.`); };
-    r.onerror = (e: any) => { setMsg(e?.error === "not-allowed" ? "Microphone access is off for Benchboard. Allow it in the browser's site settings." : "Voice stopped: " + (e?.error || "unknown") + "."); };
+    r.onerror = (e: any) => { setMsg(e?.error === "not-allowed" ? "Microphone access is off for Floorcall. Allow it in the browser's site settings." : "Voice stopped: " + (e?.error || "unknown") + "."); };
     r.onend = () => setListening(false);
     try { r.start(); setListening(true); setMsg("Listening… say a number and a play, like “seven kill”."); } catch { setMsg("Couldn't start the microphone."); }
   };

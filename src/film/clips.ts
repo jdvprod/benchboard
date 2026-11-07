@@ -1,5 +1,5 @@
 /** Clips: every tracked play is a few seconds of the match video. Times come from when the play was entered,
- * lined up with "First serve at" on the Film card. Pure functions, so the app and Benchboard Recruit share them. */
+ * lined up with "First serve at" on the Film card. Pure functions, so the app and Floorcall Recruit share them. */
 import type { LogEntry, MatchEvent, Replay } from "../sports/volleyball/engine";
 
 export interface Clip { id: string; matchId: string; url: string; start: number; end: number; label: string; t: string; p?: string; date: string; opp: string; score?: string; set?: number }

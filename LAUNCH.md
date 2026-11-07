@@ -1,4 +1,4 @@
-# Launching Benchboard
+# Launching Floorcall
 
 Do these in order. Each step says how to know it worked. About an hour the first time.
 
@@ -6,17 +6,17 @@ Do these in order. Each step says how to know it worked. About an hour the first
 
 In `package.json`:
 
-- `legal.email`: the address families and schools write to about their data (for example support@yourdomain.com). **Required.**
+- `legal.email`: the address families and schools write to about their data (for example hello@getfloorcall.com). **Required.**
 - `legal.owner`: your name or business name, as it should appear in the Privacy Policy and Terms.
 - `legal.state`: the state whose law governs the Terms.
-- `site.url`: the site's address once you have it (for example https://benchboard.app). Link previews in texts and social posts use it.
+- `site.url`: set to https://getfloorcall.com. Link previews in texts and social posts use it.
 
 Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line can stay a warning until the domain is set up).
 
 ## 1. Supabase (the database and accounts)
 
 1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 16: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
-2. **Authentication → URL Configuration**: Site URL = your site address. Redirect URLs: add `https://YOUR-SITE/**`.
+2. **Authentication → URL Configuration**: Site URL = your site address. Redirect URLs: add `https://getfloorcall.com/**`.
 3. **Authentication → Emails**: either turn off **Confirm email** (Sign In / Providers), or connect an email provider under **SMTP Settings** (Resend, Postmark, SendGrid). Supabase's built-in email only reaches your own team and a few emails an hour. Now that everyone needs an account (coaches, athletes, families), connect an email provider before launch, or confirmation and password-reset emails won't arrive.
 4. **Edge Functions → Deploy a new function → Via Editor**:
    - `ai`: paste `supabase/functions/ai/index.ts`. Secret: `ANTHROPIC_API_KEY`.
@@ -28,10 +28,10 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 2. Cloudflare (the website)
 
-1. **Workers & Pages → Create → Import a repository** → `benchboard`.
+1. **Workers & Pages → Create → Import a repository** → `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
 3. Add your domain under the Worker's **Settings → Domains & Routes**.
-4. Releases: `git push origin main:live` (the app, Benchboard Live at `/live/` and Benchboard Recruit at `/recruit/` all go out together).
+4. Releases: `git push origin main:live` (the app, Floorcall Live at `/live/` and Floorcall Recruit at `/recruit/` all go out together).
 
 Worked when: the site opens, `/live/` shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
 

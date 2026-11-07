@@ -1,6 +1,6 @@
 {
-  "name": "Benchboard",
-  "short_name": "Benchboard",
+  "name": "Floorcall",
+  "short_name": "Floorcall",
   "description": "Volleyball stat tracking, lineups and practice planning for coaches",
   "start_url": "./#/track",
   "scope": "./",

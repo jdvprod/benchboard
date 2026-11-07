@@ -1,4 +1,4 @@
-/* Inline sign-in for Benchboard Live and Recruit */
+/* Inline sign-in for Floorcall Live and Recruit */
 .ma{display:grid;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;max-width:460px;width:100%;margin:0 auto;text-align:left}
 .ma-hd b{font:700 19px var(--display)}.ma-hd p{margin:4px 0 0;color:var(--muted);font-size:14.5px}
 .ma-seg{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:8px;overflow:hidden}

@@ -19,6 +19,6 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http") && loca
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.register("sw.js").catch(() => {});
     // a new version took over: say so once (pages already load network-first, so it's in use after this reload)
-    navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) toast("Benchboard updated to the latest version"); });
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) toast("Floorcall updated to the latest version"); });
   });
 }

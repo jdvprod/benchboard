@@ -1,4 +1,4 @@
-/** Benchboard Recruit for college coaches: sign in with a school (.edu) email, get approved by Benchboard, then search
+/** Floorcall Recruit for college coaches: sign in with a school (.edu) email, get approved by Floorcall, then search
  * players whose teams listed them (families agreed to share). Results are summaries; each opens the full profile. */
 import { useEffect, useMemo, useState } from "react";
 import { acceptTerms, cloudAvailable, currentUser, needsTermsAgreement, rpc, signIn, signOut, signUp } from "../cloud/client";
@@ -40,7 +40,7 @@ function Auth({ onIn }: { onIn: () => void }) {
 function Request({ onDone }: { onDone: (s: Status) => void }) {
   const [name, setName] = useState(""), [school, setSchool] = useState(""), [title, setTitle] = useState(""), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
   return <form className="rc-auth" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setMsg(""); try { const st = await rpc("college_request", { name, school, title }); onDone({ status: st, name, school }); } catch (x: any) { setMsg(x?.message || "Couldn't send the request."); } setBusy(false); }}>
-    <p style={{ margin: 0 }}>Signed in as <b>{currentUser()?.email}</b>. Tell us who you are; Benchboard checks every request by hand.</p>
+    <p style={{ margin: 0 }}>Signed in as <b>{currentUser()?.email}</b>. Tell us who you are; Floorcall checks every request by hand.</p>
     <label>Your name<input className="input" value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" /></label>
     <label>College or university<input className="input" value={school} onChange={(e) => setSchool(e.target.value)} required autoComplete="organization" /></label>
     <label>Title<input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Head coach, assistant coach, recruiting coordinator…" autoComplete="organization-title" /></label>
@@ -97,19 +97,19 @@ function Search({ me }: { me: Status }) {
 
 export function College({ Shell }: { Shell: (p: { children: any; crumb?: string }) => any }) {
   const [me, setMe] = useState<Status | null>(null), [signed, setSigned] = useState(!!currentUser());
-  useEffect(() => { document.title = "College coaches · Benchboard Recruit"; }, []);
+  useEffect(() => { document.title = "College coaches · Floorcall Recruit"; }, []);
   useEffect(() => { if (signed) rpc("college_status", {}).then(setMe).catch(() => setMe({ status: "none" })); }, [signed]);
   if (!cloudAvailable()) return <Shell><p className="rc-empty">This site isn't connected yet.</p></Shell>;
   return <Shell crumb="College coaches">
     {!signed ? <section className="rc-landing"><h1>Search verified players.</h1>
-      <p>Benchboard Recruit lists players whose families chose to be found, with stats recorded live by their own coaching staff and clips of the plays. Search is for college coaching staff: sign in with your school email (.edu), and Benchboard approves each account by hand.</p>
+      <p>Floorcall Recruit lists players whose families chose to be found, with stats recorded live by their own coaching staff and clips of the plays. Search is for college coaching staff: sign in with your school email (.edu), and Floorcall approves each account by hand.</p>
       <Auth onIn={() => setSigned(true)} /></section>
       : !me ? <p className="rc-empty">Loading…</p>
       : me.status === "approved" ? <Search me={me} />
       : <section className="rc-landing">
         {me.status === "none" && <><h1>Request access</h1><Request onDone={setMe} /></>}
-        {me.status === "pending" && <><h1>Thanks, {me.name?.split(" ")[0] || "coach"}.</h1><p>Your request for {me.school} is in. Benchboard checks it by hand, usually within a day; you'll see the search here once it's approved.</p></>}
-        {me.status === "denied" && <><h1>Access wasn't approved.</h1><p>If you coach at a college, reply to Benchboard from your school email and we'll take another look.</p></>}
+        {me.status === "pending" && <><h1>Thanks, {me.name?.split(" ")[0] || "coach"}.</h1><p>Your request for {me.school} is in. Floorcall checks it by hand, usually within a day; you'll see the search here once it's approved.</p></>}
+        {me.status === "denied" && <><h1>Access wasn't approved.</h1><p>If you coach at a college, reply to Floorcall from your school email and we'll take another look.</p></>}
         <p><button className="rc-link" onClick={() => { signOut(); location.reload(); }}>Sign out</button></p>
       </section>}
   </Shell>;

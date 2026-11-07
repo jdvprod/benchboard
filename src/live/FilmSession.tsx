@@ -1,4 +1,4 @@
-/** Benchboard Live #/film/CODE: a film session the coach sent the team. Signed in: watch each clip with the coach's
+/** Floorcall Live #/film/CODE: a film session the coach sent the team. Signed in: watch each clip with the coach's
  * note and drawing; watched clips are ticked off (and the coach sees who watched). */
 import { useEffect, useRef, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../cloud/client";

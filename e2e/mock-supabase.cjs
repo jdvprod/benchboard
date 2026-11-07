@@ -1,4 +1,4 @@
-// Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints Benchboard uses, mirroring schema.sql rules.
+// Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints Floorcall uses, mirroring schema.sql rules.
 const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId

@@ -1,5 +1,5 @@
 {
-  "name": "benchboard",
+  "name": "floorcall",
   "version": "2.1.0",
   "private": true,
   "description": "Volleyball stat tracking, lineups and practice planning for coaches",
@@ -27,10 +27,10 @@
     "playwright": "^1.56.0"
   },
   "site": {
-    "url": ""
+    "url": "https://getfloorcall.com"
   },
   "legal": {
-    "owner": "the Benchboard team",
+    "owner": "the Floorcall team",
     "email": "",
     "state": "California",
     "effective": "October 26, 2026",

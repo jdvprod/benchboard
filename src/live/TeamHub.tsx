@@ -1,4 +1,4 @@
-/** A team on Benchboard Live: live game up top, schedule and results, season stats, roster and player pages. */
+/** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
 import { GameScore } from "../ui/GameScore";

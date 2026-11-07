@@ -50,7 +50,7 @@ function FilmHome() {
   return <div className="page film-home">
     <header className="fr-hero">
       <h1>Film Room</h1>
-      <p>Stat a whole game from its video. Benchboard finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
+      <p>Stat a whole game from its video. Floorcall finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
     </header>
     <div className="grid2" style={{ alignItems: "start" }}>
       <Card title="Stat a game from film">
@@ -336,7 +336,7 @@ function describe(q: ClipQuery, roster: QueryPlayer[]): string[] {
 /* ---------- rallies ---------- */
 function RallyList({ m, R, T, rallies, now, onSeek }: { m: Match; R: Replay; T: ReturnType<typeof filmTiming>; rallies: { start: number; end: number }[]; now: number; onSeek: (t: number) => void }) {
   const plays = R.log.filter((l) => l.kind === "stat").map((l) => ({ l: l as Extract<LogEntry, { kind: "stat" }>, t: videoTime(T, l.id) }));
-  if (!rallies.length) return <div className="stack"><p className="empty">No rallies found yet. Tap “Find rallies from the whistle” under the video: Benchboard listens for the referee's whistle, marks every rally and skips the dead time between them.</p>
+  if (!rallies.length) return <div className="stack"><p className="empty">No rallies found yet. Tap “Find rallies from the whistle” under the video: Floorcall listens for the referee's whistle, marks every rally and skips the dead time between them.</p>
     {plays.length > 0 && <p className="small muted">{plural(plays.length, "play")} statted so far.</p>}</div>;
   const check = rallyCheck(rallies, plays.map((p) => ({ t: p.t, point: !!p.l.w })));
   return <div className="stack">

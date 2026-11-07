@@ -57,5 +57,5 @@ ${(() => { const X = situations(R.sets), p = (x: { w: number; n: number }) => x.
 <section><h3>Leaders</h3><div class="ks">${lead((s) => s.K, "Kills")}${lead((s) => s.SA, "Aces")}${lead((s) => s.D, "Digs")}${lead((s) => blocks(s), "Blocks")}${lead((s) => s.AST, "Assists")}</div></section>
 <section><h3>Box score</h3><table><thead><tr><th>#</th><th>Player</th><th>K</th><th>E</th><th>TA</th><th>Hit %</th><th>Ast</th><th>Ace</th><th>SE</th><th>Pass</th><th>Dig</th><th>Blk</th></tr></thead><tbody>${ids.map(row).join("")}</tbody></table></section>
 ${report}
-<footer>${esc(t.name)}${t.level ? " · " + esc(t.level) : ""} · Made with Benchboard</footer></main></body></html>`;
+<footer>${esc(t.name)}${t.level ? " · " + esc(t.level) : ""} · Made with Floorcall</footer></main></body></html>`;
 }

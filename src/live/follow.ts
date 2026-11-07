@@ -1,4 +1,4 @@
-/** Teams this phone follows on Benchboard Live; signed in, the list is kept with the account so every phone has it. */
+/** Teams this phone follows on Floorcall Live; signed in, the list is kept with the account so every phone has it. */
 import { currentUser, updateMeta, userMeta } from "../cloud/client";
 
 /** Teams this phone has followed, most recent first (a family with kids on several teams sees them all on the home page). */

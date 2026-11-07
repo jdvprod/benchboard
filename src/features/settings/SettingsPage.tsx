@@ -64,7 +64,7 @@ export function SettingsPage() {
     </Card>
     <HelpCard />
     <PrivacyCard />
-    <p className="small muted" style={{ textAlign: "center" }}>Benchboard {APP_VERSION} · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
+    <p className="small muted" style={{ textAlign: "center" }}>Floorcall {APP_VERSION} · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
   </div>;
 }
 
@@ -92,14 +92,14 @@ function InstallCard() {
   useEffect(() => onInstallChange(() => setN((x) => x + 1)), []);
   if (installed()) return null;
   return <Card title="Install the app">
-    <p className="small muted">Put Benchboard on your home screen. It opens full screen, works without signal in the gym, and keeps your data on the device.</p>
-    {canPrompt() ? <button className="btn primary" onClick={async () => { if (await promptInstall()) toast("Installed"); }}>Install Benchboard</button>
+    <p className="small muted">Put Floorcall on your home screen. It opens full screen, works without signal in the gym, and keeps your data on the device.</p>
+    {canPrompt() ? <button className="btn primary" onClick={async () => { if (await promptInstall()) toast("Installed"); }}>Install Floorcall</button>
       : isIOS() ? <p className="small">On iPhone or iPad: tap <b>Share</b> in Safari, then <b>Add to Home Screen</b>.</p>
-      : <p className="small">In Chrome or Edge, use the install icon in the address bar, or the browser menu → <b>Install Benchboard</b>.</p>}
+      : <p className="small">In Chrome or Edge, use the install icon in the address bar, or the browser menu → <b>Install Floorcall</b>.</p>}
   </Card>;
 }
 
-/** Shown only to Benchboard admins. */
+/** Shown only to Floorcall admins. */
 function AdminLink() {
   const [ok, setOk] = useState(false);
   useEffect(() => { if (currentUser()) import("../admin/AdminPage").then((m) => m.amAdmin()).then(setOk); }, []);
@@ -187,7 +187,7 @@ function NotifyKeys() {
 /** What a coach needs to report a problem: version, device and app state. No names, stats or email. */
 export function diagnostics(): string {
   const u = currentUser(), t = team();
-  return [`Benchboard ${APP_VERSION}`, `Browser: ${navigator.userAgent}`, `Screen: ${screen.width}×${screen.height} (window ${innerWidth}×${innerHeight})`,
+  return [`Floorcall ${APP_VERSION}`, `Browser: ${navigator.userAgent}`, `Screen: ${screen.width}×${screen.height} (window ${innerWidth}×${innerHeight})`,
     `Installed: ${matchMedia("(display-mode: standalone)").matches ? "yes" : "no"} · Online: ${navigator.onLine ? "yes" : "no"} · Signed in: ${u ? "yes" : "no"}`,
     `Teams on this device: ${all("teams").length} · This team synced: ${t && isLinked(t.id) ? "yes" : "no"}`, `Page: ${location.hash || "#/"}`].join("\n");
 }
@@ -195,15 +195,15 @@ export function diagnostics(): string {
 function HelpCard() {
   const report = () => {
     const body = "What happened (and what you tapped just before):\n\n\n---\n" + diagnostics();
-    if (LEGAL_EMAIL) location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Benchboard problem")}&body=${encodeURIComponent(body)}`;
+    if (LEGAL_EMAIL) location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Floorcall problem")}&body=${encodeURIComponent(body)}`;
     else copyText(diagnostics()).then((ok) => toast(ok ? "Problem details copied. Paste them into your message." : "Couldn't copy."));
   };
   return <Card title="Help and feedback">
     <div className="row">
-      <a className="btn sm" href="about.html" target="_blank" rel="noopener">Everything Benchboard does</a>
+      <a className="btn sm" href="about.html" target="_blank" rel="noopener">Everything Floorcall does</a>
       <a className="btn sm" href={LEGAL.accessibility} target="_blank" rel="noopener">Accessibility</a>
       <button className="btn sm" onClick={report}>{LEGAL_EMAIL ? "Report a problem" : "Copy problem details"}</button>
-      {LEGAL_EMAIL && <a className="btn sm" href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Benchboard idea")}`}>Suggest a feature</a>}
+      {LEGAL_EMAIL && <a className="btn sm" href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Floorcall idea")}`}>Suggest a feature</a>}
     </div>
     <p className="small muted" style={{ margin: "8px 0 0" }}>Problem reports include the app version, your browser and screen size, so we can reproduce it. No player names or stats.</p>
   </Card>;
@@ -218,7 +218,7 @@ function PrivacyCard() {
       <div className="row"><a className="btn sm" href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a><a className="btn sm" href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a>
         <a className="btn sm" href={LEGAL.consent + (t ? "#team=" + encodeURIComponent(t.name) : "")} target="_blank" rel="noopener">Parent and guardian form</a>
         <a className="btn sm" href={LEGAL.schools} target="_blank" rel="noopener">For schools</a></div>
-      <p className="small muted" style={{ margin: 0 }}>Benchboard doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
+      <p className="small muted" style={{ margin: 0 }}>Floorcall doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
       {user ? <>
         {step === "idle" && <SetRow title="Delete your account" sub="Removes your account and every cloud team you own (for everyone on it), and takes you off other teams. Data on this device stays unless you erase it too."><button className="btn sm" onClick={() => setStep("confirm")}>Delete account</button></SetRow>}
         {step === "confirm" && <div className="banner warn" style={{ display: "block" }}>
@@ -231,7 +231,7 @@ function PrivacyCard() {
         {step === "busy" && <p className="small">Deleting…</p>}
       </> : step === "deleted" ? null : <p className="small muted" style={{ margin: 0 }}>You're not signed in, so everything is stored only on this device.</p>}
       {step === "deleted" && <p className="hint">Your account is deleted. Your teams are still saved on this device; erase them below if you want them gone here too.</p>}
-      <SetRow title="Erase this device" sub="Deletes every team, match and setting Benchboard stored in this browser. Synced teams stay in the cloud for their other coaches.">
+      <SetRow title="Erase this device" sub="Deletes every team, match and setting Floorcall stored in this browser. Synced teams stay in the cloud for their other coaches.">
         <ConfirmButton className="btn sm" confirmText="Erase everything here?" onConfirm={erase}>Erase this device</ConfirmButton></SetRow>
     </div>
   </Card>;

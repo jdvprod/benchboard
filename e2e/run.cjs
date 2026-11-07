@@ -438,7 +438,7 @@ const scenarios = {
     await go(p, "team"); await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt")]); await p.waitForTimeout(300);
     await card.locator(".imp-file").first().getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
     ok("a file already imported is skipped", (await card.getByRole("button", { name: "Import 0 matches" }).isDisabled()) && (await card.getByText("already imported").count()) === 1);
-    // Benchboard's own spreadsheet comes back in as season totals
+    // Floorcall's own spreadsheet comes back in as season totals
     await card.getByRole("button", { name: "Cancel" }).click();
     await go(p, "stats"); const xl = await download(p, () => p.getByRole("button", { name: "Download spreadsheet" }).click());
     ok("own spreadsheet export downloads", xl.size > 3000);
@@ -490,7 +490,7 @@ const scenarios = {
     ok("up next moves to the following game", (await A.locator(".tn-next", { hasText: "vs Central" }).count()) === 1);
     const st = (await A.locator(".card", { hasText: "standings" }).locator("tbody tr").allInnerTexts()).map((r) => r.split("\t")[0].trim());
     ok("pool standings rank by record, then sets, then points", st.join("|") === "TN Club|Central|Fresno Elite|Buchanan", st.join("|"));
-    // families see it on Benchboard Live
+    // families see it on Floorcall Live
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
     await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
     const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
@@ -656,7 +656,7 @@ const scenarios = {
     { await A.getByRole("button", { name: "Stat graphic" }).click();
       const g = await download(A, () => A.getByRole("button", { name: /^Last match: vs / }).click(), 15000); ok("stat graphic with a photo saves", g.size > 20000, String(g.size));
       if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic-photo.png")); }
-    // the people who run Benchboard review uploads and take one down
+    // the people who run Floorcall review uploads and take one down
     await go(A, "settings"); await A.waitForTimeout(600); ok("the admin console is hidden from coaches", (await A.getByRole("button", { name: "Open admin" }).count()) === 0);
     await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=pics%40e2e.test`, { headers: { apikey: "anon" } });
     await A.reload(); await go(A, "settings"); await A.waitForTimeout(800);
@@ -898,7 +898,7 @@ const scenarios = {
       ok("accounts: a coach account keeps the name, kind and news choice", u && u.meta.name === "Coach Rivera" && u.meta.kind === "coach" && u.meta.email_ok === true, JSON.stringify(u)); }
     ok("accounts: signed in, the coach sets up a team", (await A.getByLabel("Team name").count()) === 1);
     await A.context().close();
-    // athletes on Benchboard Recruit
+    // athletes on Floorcall Recruit
     const R = await newPage(browser, { strict: true });
     await R.goto(U + "recruit/#/emails"); await R.waitForTimeout(400);
     ok("accounts: the athlete tools ask for a free account", (await R.locator(".ma").count()) === 1 && !(await R.locator(".rg-body").count()));
@@ -1024,7 +1024,7 @@ const scenarios = {
     await C.getByLabel("Your name").fill("Pat Coach"); await C.getByLabel("College or university").fill("State University"); await C.getByLabel("Title").fill("Assistant coach"); await C.getByRole("button", { name: "Request access" }).click(); await C.waitForTimeout(500);
     ok("the request waits for approval", /Your request for State University is in/.test(await C.locator("main").innerText()));
     { const ax = await a11y(C); ok("college sign-up controls all have names", !ax.length, ax.join(" | ")); }
-    // Benchboard approves
+    // Floorcall approves
     await go(A, "settings"); await A.waitForTimeout(800); await A.getByRole("button", { name: "Open admin" }).click(); await A.waitForTimeout(800);
     const row = A.locator("tr", { hasText: "pat@state.edu" }); ok("admin sees the college request", (await row.count()) === 1 && /Waiting/.test(await row.innerText()));
     await row.getByRole("button", { name: "Approve" }).click(); await A.waitForTimeout(300);
@@ -1116,7 +1116,7 @@ const scenarios = {
     // season page + recruiting link
     await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
-    await P.goto(season); await P.waitForTimeout(1200); ok("team page on Benchboard Live loads", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
+    await P.goto(season); await P.waitForTimeout(1200); ok("team page on Floorcall Live loads", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
     await P.goto(season + "/roster"); await P.waitForTimeout(800); ok("team roster shows first names", (await P.locator("body").innerText()).includes("Nia")); await P.goto(season); await P.waitForTimeout(800);
     ok("team page shows the live match with a link to the gamecast", (await P.locator(".lv-livecard .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the gamecast" }).count()) === 1);
     // the game from the team page: ESPN-style tabs
@@ -1152,7 +1152,7 @@ const scenarios = {
     await A.locator(".consent-check input").check();
     await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
     const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href");
-    await P.goto(rec); await P.waitForTimeout(1200); ok("Benchboard Recruit shows the profile with her full name", (await P.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
+    await P.goto(rec); await P.waitForTimeout(1200); ok("Floorcall Recruit shows the profile with her full name", (await P.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
     ok("profile says the stats are verified by the coaching staff", (await P.locator(".rc-verified").innerText()).includes("Cloud Club"));
     ok("profile plays her highlight clips", (await P.locator(".rc-card .clip-stage video").count()) === 1 && (await P.locator(".clip-list li").count()) >= 1);
     ok("Recruit profile fits a phone", (await overflow(P)) <= 1);
@@ -1316,7 +1316,7 @@ const scenarios = {
     if (p.errors.length) console.log(`    errors: ${p.errors.slice(0, 5).join(" | ")}`);
     console.log("    screenshots: " + OUT);
   },
-  /** Benchboard Live and Recruit with screenshots (node e2e/run.cjs _explore3). */
+  /** Floorcall Live and Recruit with screenshots (node e2e/run.cjs _explore3). */
   async _explore3(browser) {
     const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore3"); fs.mkdirSync(OUT, { recursive: true });
     let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(300); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };

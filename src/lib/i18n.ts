@@ -1,4 +1,4 @@
-/** English / Spanish for the public sites (Benchboard Live). The coaching app stays English: it never calls setLang.
+/** English / Spanish for the public sites (Floorcall Live). The coaching app stays English: it never calls setLang.
  * tr("Set {n}", { n: 2 }) looks the English text up and fills in the blanks. */
 import { ACTIONS } from "../sports/volleyball/actions";
 
@@ -25,7 +25,7 @@ const ES: Record<string, string> = {
   "Team or game code": "Código del equipo o del partido", "Follow": "Seguir", "Finding…": "Buscando…", "Codes are 6 letters and numbers, like K7Q2XM.": "Los códigos tienen 6 letras y números, como K7Q2XM.",
   "No team or game uses that code. Check it with the coach.": "Ningún equipo o partido usa ese código. Confírmalo con el entrenador.", "Couldn't check the code. Check your connection.": "No se pudo revisar el código. Revisa tu conexión.",
   "This site isn't connected yet.": "Este sitio aún no está conectado.", "Back to {team}": "Volver a {team}", "Loading…": "Cargando…", "Loading the game…": "Cargando el partido…",
-  "Stats recorded by the team's coaches with Benchboard": "Estadísticas registradas por los entrenadores del equipo con Benchboard", "Privacy": "Privacidad", "Terms": "Términos",
+  "Stats recorded by the team's coaches with Floorcall": "Estadísticas registradas por los entrenadores del equipo con Floorcall", "Privacy": "Privacidad", "Terms": "Términos",
   "Updated just now": "Actualizado hace un momento", "Updated {n}s ago": "Actualizado hace {n} s", "Reconnecting…": "Reconectando…",
   "We couldn't find that team. Check the link or code with the coach.": "No encontramos ese equipo. Confirma el enlace o el código con el entrenador.",
   "This game link isn't active. Ask the coach for a new one.": "Este enlace ya no está activo. Pide uno nuevo al entrenador.", "Live links aren't set up for this site yet.": "Los enlaces en vivo aún no están listos en este sitio.",
@@ -75,7 +75,7 @@ const ES: Record<string, string> = {
   "Email": "Correo electrónico",
   "Password": "Contraseña",
   "At least 8 characters": "Al menos 8 caracteres",
-  "Send Benchboard news and new features to my inbox.": "Envíame noticias y novedades de Benchboard por correo.",
+  "Send Floorcall news and new features to my inbox.": "Envíame noticias y novedades de Floorcall por correo.",
   "One moment…": "Un momento…",
   "Send reset link": "Enviar enlace",
   "Forgot password?": "¿Olvidaste tu contraseña?",
@@ -100,7 +100,7 @@ const ES: Record<string, string> = {
   "{n} of {all} watched": "{n} de {all} vistos",
   "Previous": "Anterior",
   "Next clip": "Siguiente clip",
-  "Create a free Benchboard account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de Benchboard para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
+  "Create a free Floorcall account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de Floorcall para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
   "You'll get {team}'s {what} on this {device}.": "Recibirás avisos de {team} ({what}) en este {device}.", "phone": "teléfono", "device": "dispositivo",
   "match starts and final scores": "inicio y resultado final", "match starts": "inicio de partidos", "final scores": "resultados finales",
   "Pick at least one: match starts or final scores.": "Elige al menos uno: inicio del partido o resultado final.",

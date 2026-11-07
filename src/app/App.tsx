@@ -40,7 +40,7 @@ export function App() {
   useVersion();
   const route = useRoute(), t = team();
   useEffect(() => { applyTheme(t?.color || "#2A78AE", state.prefs.theme, state.prefs.size, HOST_THEME); }, [t?.color, state.prefs.theme, state.prefs.size]);
-  // public pages moved to their own sites: Benchboard Live and Benchboard Recruit (old links keep working)
+  // public pages moved to their own sites: Floorcall Live and Floorcall Recruit (old links keep working)
   if ((route.page === "watch" || route.page === "season" || route.page === "recruit") && route.id) {
     location.replace(siteUrl(route.page === "recruit" ? "recruit" : "live", (route.page === "watch" ? "g/" : route.page === "season" ? "t/" : "p/") + route.id));
     return <Wait />;
@@ -103,16 +103,16 @@ export function App() {
   }
   return <>
     <nav className="nav" aria-label="Sections">
-      <div className="brand"><i><Icon name="brand" /></i><b>Benchboard</b></div>
+      <div className="brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
       <div className="teamswitch">{switcher("")}</div>
       {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <AccountChip />
       <a className="tab" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
     </nav>
     <div className="content">
-      <div className="mobilebar"><b>Benchboard</b>{switcher("")}{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
+      <div className="mobilebar"><b>Floorcall</b>{switcher("")}{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
-      {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Benchboard save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
+      {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Floorcall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
       <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{body}</Suspense></ErrorBoundary>
     </div>
     <Toast />

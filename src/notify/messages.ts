@@ -1,10 +1,10 @@
 /** What families see on their lock screen when a match starts and when it ends. Pure: unit tested. */
 export function startMessage(team: string, opp: string, o: { event?: string; court?: string; time?: string } = {}) {
-  return { title: `${team} vs ${opp} is starting`, body: [o.event, o.court ? "Court " + o.court : "", "Follow it live on Benchboard Live"].filter(Boolean).join(" · ") };
+  return { title: `${team} vs ${opp} is starting`, body: [o.event, o.court ? "Court " + o.court : "", "Follow it live on Floorcall Live"].filter(Boolean).join(" · ") };
 }
 export function finalMessage(team: string, opp: string, wonUs: number, wonThem: number, sets: [number, number][], event?: string, star?: string) {
   const head = wonUs > wonThem ? `${team} beat ${opp} ${wonUs}–${wonThem}` : wonThem > wonUs ? `${opp} beat ${team} ${wonThem}–${wonUs}` : `${team} and ${opp} split ${wonUs}–${wonThem}`;
-  return { title: "Final: " + head, body: [sets.map(([a, b]) => `${a}-${b}`).join(", "), star, event, "Box score on Benchboard Live"].filter(Boolean).join(" · ") };
+  return { title: "Final: " + head, body: [sets.map(([a, b]) => `${a}-${b}`).join(", "), star, event, "Box score on Floorcall Live"].filter(Boolean).join(" · ") };
 }
 
 /** The match's standout for the final notification: "Maya C. 14 kills" (the most kills, aces or blocks; digs or assists if nothing else). */

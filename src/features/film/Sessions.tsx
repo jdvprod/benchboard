@@ -1,6 +1,6 @@
 /** Virtual Film Room, coach side: film sessions built from Film Room clips. Each clip gets a note and a drawing on a
  * frozen frame (telestrator); "Send to team" records every clip as a small video, uploads it and shares the session on
- * Benchboard Live, where players and families watch signed in and the coach sees who watched. */
+ * Floorcall Live, where players and families watch signed in and the coach sees who watched. */
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import { patch, team, toast } from "../../data/store";
 import { Match } from "../../data/model";
@@ -93,7 +93,7 @@ function SessionEditor({ m, s, src, onBack, nowAt, lead }: { m: Match; s: FilmSe
         : !canSend ? <p className="small muted">Only the team's coaches can send film.</p>
         : send ? <div className="fr-scan"><div className="fr-bar"><i style={{ width: Math.round(send.f * 100) + "%" }} /></div><span className="small">{send.text}</span><button className="btn sm" onClick={() => stop.current?.abort()}>Stop</button></div>
         : <div className="stack">
-          <p className="small muted">Each clip is recorded with your note and drawing, about {clock(sessionLength(s))} in all, then uploaded. Players and families open it on Benchboard Live with a free account.</p>
+          <p className="small muted">Each clip is recorded with your note and drawing, about {clock(sessionLength(s))} in all, then uploaded. Players and families open it on Floorcall Live with a free account.</p>
           <div className="row"><button className="btn primary" disabled={!src || !s.items.length} onClick={sendIt}>{s.code ? "Send the updated session" : "Send to team"}</button>
             {link && <><button className="btn sm" onClick={() => copyText(link).then((ok) => toast(ok ? "Link copied. Paste it in the team chat." : "Couldn't copy here"))}>Copy link</button><QrButton url={link} title={s.title} label="QR code" />
               <button className="btn sm ghost" onClick={async () => { try { await rpc("film_unshare", { c: s.code }); set({ code: undefined, sharedAt: undefined }); setViewers(null); toast("Taken down. The link no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down."); } }}>Take down</button></>}</div>

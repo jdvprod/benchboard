@@ -1,4 +1,4 @@
-/** Crash reports for the people who run Benchboard (Admin → Problems): the error, the app version and which screen.
+/** Crash reports for the people who run Floorcall (Admin → Problems): the error, the app version and which screen.
  * Never team data, names or stats. At most five a session, each message once. */
 import { cloudAvailable, rest } from "../cloud/client";
 import { APP_VERSION } from "./legal";

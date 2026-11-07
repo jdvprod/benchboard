@@ -1,4 +1,4 @@
-/** Sign in / create a free account, inline, for Benchboard Live (families and fans) and Benchboard Recruit (athletes).
+/** Sign in / create a free account, inline, for Floorcall Live (families and fans) and Floorcall Recruit (athletes).
  * One account works everywhere: the coach app, Live and Recruit. */
 import "./miniauth.css";
 import { FormEvent, useState } from "react";
@@ -42,7 +42,7 @@ export function MiniAuth({ kind = "fan", title, sub, onIn, legalBase = "../legal
     {mode !== "forgot" && <label>{t("Password")}<input type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={mode === "up" ? t("At least 8 characters") : ""} /></label>}
     {mode === "up" && <>
       <label className="ma-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>{t("I'm 13 or older and agree to the")} <a href={legalBase + "terms.html"} target="_blank" rel="noopener">{t("Terms")}</a> {t("and")} <a href={legalBase + "privacy.html"} target="_blank" rel="noopener">{t("Privacy Policy")}</a>. {t("If I'm under 18, a parent or guardian agrees too.")}</span></label>
-      <label className="ma-check"><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>{t("Send Benchboard news and new features to my inbox.")}</span></label>
+      <label className="ma-check"><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>{t("Send Floorcall news and new features to my inbox.")}</span></label>
     </>}
     {msg && <p className="ma-err" role="alert">{msg}</p>}
     <button className="btn primary ma-go" disabled={busy}>{t(busy ? "One moment…" : mode === "up" ? "Create free account" : mode === "in" ? "Sign in" : "Send reset link")}</button>

@@ -265,7 +265,7 @@ h1{margin:0;font-size:26px}h2{font-size:12px;letter-spacing:.06em;color:var(--mu
 <div class="cols"><div><h2>Their attack</h2><ul>${recs("theirAttack")}</ul></div><div><h2>Their serve</h2><ul>${recs("theirServe")}</ul></div></div>
 ${o.notes ? `<h2>Notes</h2><p>${esc(o.notes)}</p>` : ""}
 <h2>Past results</h2><table><tbody>${games.map(({ m, R }) => `<tr><td>${esc(m.date)}</td><td>${R.wonUs}–${R.wonThem}</td><td>${R.sets.map((s) => s.us + "-" + s.them).join(", ")}</td></tr>`).join("")}</tbody></table>
-<p style="color:var(--mut);margin-top:18px;font-size:12px">Made with Benchboard</p></main></body></html>`;
+<p style="color:var(--mut);margin-top:18px;font-size:12px">Made with Floorcall</p></main></body></html>`;
 }
 
 /* ---------- in-match panel on the Track screen ---------- */
@@ -297,7 +297,7 @@ function scheduleIcs(items: ScheduleItem[], teamName: string): string {
     let when: string;
     if (s.time) { const [h, m] = s.time.split(":").map(Number); const start = `${d(s.date)}T${String(h).padStart(2, "0")}${String(m).padStart(2, "0")}00`; const endH = h + 2; const end = `${d(s.date)}T${String(Math.min(endH, 23)).padStart(2, "0")}${String(m).padStart(2, "0")}00`; when = `DTSTART:${start}\r\nDTEND:${end}`; }
     else { const nd = new Date(s.date + "T12:00"); nd.setDate(nd.getDate() + 1); when = `DTSTART;VALUE=DATE:${d(s.date)}\r\nDTEND;VALUE=DATE:${nd.toISOString().slice(0, 10).replace(/-/g, "")}`; }
-    return `BEGIN:VEVENT\r\nUID:${s.id}@benchboard\r\nDTSTAMP:${stamp}\r\n${when}\r\nSUMMARY:${esc(title)}\r\n${s.event ? "DESCRIPTION:" + esc(s.event) + "\r\n" : ""}END:VEVENT`;
+    return `BEGIN:VEVENT\r\nUID:${s.id}@floorcall\r\nDTSTAMP:${stamp}\r\n${when}\r\nSUMMARY:${esc(title)}\r\n${s.event ? "DESCRIPTION:" + esc(s.event) + "\r\n" : ""}END:VEVENT`;
   }).join("\r\n");
-  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Benchboard//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n${ev}\r\nEND:VCALENDAR\r\n`;
+  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Floorcall//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n${ev}\r\nEND:VCALENDAR\r\n`;
 }

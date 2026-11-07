@@ -1,4 +1,4 @@
-/* Benchboard Recruit: a clean, printable profile for college coaches. */
+/* Floorcall Recruit: a clean, printable profile for college coaches. */
 .rc{min-height:100vh;display:flex;flex-direction:column;background:var(--bg)}
 .rc-top{display:flex;justify-content:space-between;align-items:center;gap:12px;background:#000;color:#fff;padding:12px max(16px,env(safe-area-inset-left,0px))}
 .rc-brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:var(--display);font-size:18px;letter-spacing:.04em}
