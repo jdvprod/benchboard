@@ -24,6 +24,12 @@ export function SettingsPage() {
   const counts = { teams: all("teams").length, players: all("players").length, matches: all("matches").length, events: all("logs").reduce((n, l) => n + l.events.length, 0) };
   return <div className="page" style={{ maxWidth: 820 }}>
     <div className="pagehead"><h1>Settings</h1></div>
+    <Card title="Floorcall sites">
+      <div className="sites-grid">
+        <a href={placeUrl("live")} target="_blank" rel="noopener"><b>Floorcall Live</b><span>What families and fans see: scores, box scores, notifications, team film.</span></a>
+        <a href={placeUrl("recruit")} target="_blank" rel="noopener"><b>Floorcall Recruit</b><span>Recruiting profiles, the athlete guide, emails to coaches and Reel Studio.</span></a>
+      </div>
+    </Card>
     <Card title="Look">
       <SetRow title="Theme" sub="System follows your device's light or dark mode."><Seg value={p.theme} onChange={(v) => setPrefs({ theme: v })} options={[["system", "System"], ["light", "Light"], ["dark", "Dark"]]} label="Theme" /></SetRow>
       <SetRow title="Text and button size" sub="Large is easier to hit on a tablet courtside."><Seg value={p.size} onChange={(v) => setPrefs({ size: v })} options={[["normal", "Normal"], ["large", "Large"]]} label="Size" /></SetRow>
