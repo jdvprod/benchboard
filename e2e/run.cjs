@@ -401,7 +401,8 @@ const scenarios = {
     const cards = await download(p, () => p.getByRole("button", { name: "Lineup cards" }).click()); ok("lineup cards for 5 sets", (cards.text().match(/class="card"/g) || []).length === 5);
     ok("start-rotation advice shows", (await p.locator(".card", { hasText: "Which rotation to start in" }).count()) === 1);
     await go(p, "matchup"); await p.getByRole("button", { name: "Paste schedule" }).click();
-    await p.locator('textarea[placeholder*="Buchanan 6:00"]').fill("Tue 11/3 vs Buchanan 6:00 PM\n11/7 @ Clovis West 5:30pm (League)\nnot a game");
+    { const md = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getMonth() + 1}/${d.getDate()}`; }; // always upcoming, whatever day the tests run
+      await p.locator('textarea[placeholder*="Buchanan 6:00"]').fill(`${md(3)} vs Buchanan 6:00 PM\n${md(7)} @ Clovis West 5:30pm (League)\nnot a game`); }
     await p.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await p.waitForTimeout(150);
     ok("pasted schedule adds 2 games", (await p.locator(".mu-sched li", { hasText: "Clovis West" }).count()) >= 1);
     const ics = await download(p, () => p.getByRole("button", { name: "Calendar" }).click()); ok("calendar file", ics.text().includes("BEGIN:VCALENDAR") && ics.text().includes("Clovis West"));
