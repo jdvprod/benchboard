@@ -20,6 +20,7 @@ import { TeamLogo } from "../ui/Logo";
 import { FilmSessionView } from "./FilmSession";
 import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
+import { SiteSwitch } from "../ui/SiteSwitch";
 
 const parse = () => (location.hash.replace(/^#\/?/, "").split("?")[0].split("/").filter(Boolean));
 const query = () => location.hash.split("?")[1] || "";
@@ -29,7 +30,7 @@ function useTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { con
 
 function Shell({ team, children, home }: { team?: string; children: any; home?: string }) {
   return <div className="lv">
-    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Floorcall Live home"><i aria-hidden="true" /><b>Floorcall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}</header>
+    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Floorcall Live home"><i aria-hidden="true" /><b>Floorcall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /></header>
     <main className="lv-main">{children}</main>
     <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Floorcall")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a>
       <div className="lv-lang" role="group" aria-label="Language / Idioma">{([["en", "English"], ["es", "Español"]] as [Lang, string][]).map(([k, l]) => <button key={k} aria-pressed={getLang() === k} onClick={() => { setLang(k); location.reload(); }}>{l}</button>)}</div></footer>

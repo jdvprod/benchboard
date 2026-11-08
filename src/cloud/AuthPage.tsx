@@ -2,6 +2,7 @@
 import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { setPrefs, state, team, toast } from "../data/store";
+import { placeUrl } from "./links";
 import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmation, sendPasswordReset, signIn, signOut, signUp, updateMeta, updatePassword, userMeta } from "./client";
 import { isLinked, linkTeam, pendingCount, restoreTeams, status, syncNow } from "./sync";
 import { go } from "../app/router";
@@ -46,7 +47,7 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
           <li>Assistants track together. Parents follow live.</li>
         </ul>
         <ul className="soon">
-          <li><a href="about.html" style={{ color: "#9BD3F2" }}>See everything Floorcall does</a><span style={{ border: 0 }} /></li>
+          <li><a href={placeUrl("home")} style={{ color: "#9BD3F2" }}>See everything Floorcall does</a><span style={{ border: 0 }} /></li>
           <li>Floorcall Recruit profiles and clips <span>Early access</span></li>
           <li>College coach search <span>Coming soon</span></li>
         </ul>

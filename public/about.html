@@ -11,7 +11,7 @@
 <meta property="og:description" content="Live volleyball stat tracking and advanced metrics for coaches, with gamecasts for families and verified recruiting profiles.">
 <meta property="og:image" content="%SITE%og.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
-<meta property="og:url" content="%SITE%about.html">
+<meta property="og:url" content="%SITE%">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="favicon.png">
@@ -69,11 +69,12 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}foot
 @media (prefers-reduced-motion:no-preference){.frame{animation:rise .8s cubic-bezier(.2,.7,.2,1) both}.phone{animation:rise 1s .15s cubic-bezier(.2,.7,.2,1) both}}
 @keyframes rise{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
 </style>
+<script>/* old app links like getfloorcall.com/#/track: the app has its own address now */(function(){var a="%APP%";if(/^https:/.test(a)&&/^#\//.test(location.hash))location.replace(a+location.hash);})();</script>
 </head>
 <body>
 <header><div class="wrap">
   <a class="brand" href="#top"><i><svg viewBox="0 0 24 24"><path d="M5 19V11M10 19V6M15 19v-6"/><circle cx="18.5" cy="6.5" r="2.5"/></svg></i>Floorcall</a>
-  <a class="btn sky sm" href="./#/track">Open Floorcall</a>
+  <a class="btn sky sm" href="%APP%#/track">Open Floorcall</a>
 </div></header>
 
 <main id="top">
@@ -81,7 +82,7 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}foot
   <div>
     <h1>The stat sheet that coaches from the bench.</h1>
     <p class="lead">Floorcall tracks every touch as it happens and turns it into the numbers that decide matches: side-out by pass grade, rotation results, setter distribution and where their kills land.</p>
-    <div class="ctas"><a class="btn sky" href="./#/account/signup">Create a free account</a><a class="btn line" href="./#/sample">Try it with a sample team</a></div>
+    <div class="ctas"><a class="btn sky" href="%APP%#/account/signup">Create a free account</a><a class="btn line" href="%APP%#/sample">Try it with a sample team</a></div>
   </div>
   <div class="shots">
     <div class="frame"><img src="shots/track.webp" alt="Floorcall's Track screen during a match: scoreboard, court with players in their rotation, stat buttons and coach alerts" width="1600" height="1000"></div>
@@ -177,10 +178,10 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}foot
 <section class="cta"><div class="wrap">
   <h2>Track your next match with it.</h2>
   <p>Free while in beta. Set up your roster in a couple of minutes, or explore a full sample season first.</p>
-  <div class="ctas"><a class="btn blue" href="./#/account/signup">Create a free account</a><a class="btn ghost" href="./#/sample">Try the sample team</a></div>
+  <div class="ctas"><a class="btn blue" href="%APP%#/account/signup">Create a free account</a><a class="btn ghost" href="%APP%#/sample">Try the sample team</a></div>
 </div></section>
 </main>
 
-<footer><div class="wrap"><span>Floorcall · built by a coach for coaches</span><span style="display:flex;gap:16px;flex-wrap:wrap"><a href="legal/privacy.html">Privacy</a><a href="legal/terms.html">Terms</a><a href="legal/schools.html">For schools</a><a href="legal/accessibility.html">Accessibility</a><a href="legal/consent-form.html">Parent form</a><a href="./#/track">Open the app</a></span></div></footer>
+<footer><div class="wrap"><span>Floorcall · built by a coach for coaches</span><span style="display:flex;gap:16px;flex-wrap:wrap"><a href="legal/privacy.html">Privacy</a><a href="legal/terms.html">Terms</a><a href="legal/schools.html">For schools</a><a href="legal/accessibility.html">Accessibility</a><a href="legal/consent-form.html">Parent form</a><a href="%APP%#/track">Open the app</a></span></div></footer>
 </body>
 </html>

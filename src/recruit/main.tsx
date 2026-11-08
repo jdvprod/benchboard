@@ -15,6 +15,7 @@ import type { RecruitData } from "../features/player/recruitData";
 import { College } from "./College";
 import { COLLEGE_SEARCH } from "./flags";
 import { EmailsPage, GuidePage, StudioPage } from "./Guide";
+import { SiteSwitch } from "../ui/SiteSwitch";
 
 const parse = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
 function useRoute() { const [r, setR] = useState(parse()); useEffect(() => { const f = () => { setR(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []); return r; }
@@ -24,7 +25,7 @@ const mail = (e?: string) => (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()) ?
 
 function Shell({ children, crumb }: { children: any; crumb?: string }) {
   return <div className="rc">
-    <header className="rc-top"><a className="rc-brand" href="#/"><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}</header>
+    <header className="rc-top"><a className="rc-brand" href="#/"><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
     <main className="rc-main">{children}</main>
     <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with Floorcall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
   </div>;

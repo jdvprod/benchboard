@@ -1,0 +1,9 @@
+.site-switch{display:inline-flex;gap:2px;padding:2px;border-radius:999px;background:color-mix(in srgb,var(--ink) 7%,transparent);font-size:13px;font-weight:600}
+.site-switch a{padding:4px 11px;border-radius:999px;color:var(--muted);text-decoration:none;white-space:nowrap}
+.site-switch a:hover{color:var(--ink)}
+.site-switch a[aria-current=page]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.nav .site-switch{display:flex;flex-direction:column;align-items:stretch;border-radius:10px;margin:8px 0;background:none;padding:0}
+.nav .site-switch a{border-radius:8px;padding:6px 10px}
+.nav .site-switch a[aria-current=page]{display:none}
+.nav .site-switch::before{content:"Other Floorcall sites";font-size:11.5px;color:var(--muted);padding:0 10px 2px;font-weight:600}
+@media (max-width:560px){.site-switch{font-size:12px}.site-switch a{padding:4px 8px}}

@@ -1,7 +1,8 @@
-// Cloudflare Workers static hosting: serves the built app from dist/ (no server code).
-// The Worker name must match the project name in the Cloudflare dashboard.
+// Cloudflare Workers: serves the built site from dist/. worker/index.js sends each address to its site
+// (getfloorcall.com, app., live., recruit.). The Worker name must match the project name in the Cloudflare dashboard.
 {
   "name": "floorcall",
+  "main": "worker/index.js",
   "compatibility_date": "2025-10-01",
-  "assets": { "directory": "./dist", "not_found_handling": "404-page" }
+  "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": true }
 }

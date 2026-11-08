@@ -16,7 +16,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 ## 1. Supabase (the database and accounts)
 
 1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 16: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
-2. **Authentication → URL Configuration**: Site URL = your site address. Redirect URLs: add `https://getfloorcall.com/**`.
+2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**` and `https://recruit.getfloorcall.com/**`.
 3. **Authentication → Emails**: either turn off **Confirm email** (Sign In / Providers), or connect an email provider under **SMTP Settings** (Resend, Postmark, SendGrid). Supabase's built-in email only reaches your own team and a few emails an hour. Now that everyone needs an account (coaches, athletes, families), connect an email provider before launch, or confirmation and password-reset emails won't arrive.
 4. **Edge Functions → Deploy a new function → Via Editor**:
    - `ai`: paste `supabase/functions/ai/index.ts`. Secret: `ANTHROPIC_API_KEY`.
@@ -28,12 +28,12 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 2. Cloudflare (the website)
 
-1. **Workers & Pages → Create → Import a repository** → `floorcall`.
+1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
-3. Add your domain under the Worker's **Settings → Domains & Routes**.
-4. Releases: `git push origin main:live` (the app, Floorcall Live at `/live/` and Floorcall Recruit at `/recruit/` all go out together).
+3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all five: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live and Floorcall Recruit.
+4. Releases: `git push origin main:live` (the app, Floorcall Live and Floorcall Recruit all go out together).
 
-Worked when: the site opens, `/live/` shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
+Worked when: getfloorcall.com shows the product page, app.getfloorcall.com opens the app, live.getfloorcall.com shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
 
 ## 3. Setup check
 

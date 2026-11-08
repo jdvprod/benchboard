@@ -6,6 +6,9 @@ import { createRequire } from "node:module";
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+const pkgSite = JSON.parse(readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "package.json"), "utf8")).site || {};
+const siteHost = (() => { try { return new URL(process.env.SITE_URL || pkgSite.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
+const sites = siteHost && !/workers\.dev$/.test(siteHost) ? { home: `https://${siteHost}/`, app: `https://app.${siteHost}/`, live: `https://live.${siteHost}/`, recruit: `https://recruit.${siteHost}/` } : null;
 
 const require = createRequire(import.meta.url);
 const esbuild = require("esbuild");
@@ -35,7 +38,7 @@ const options = {
   entryPoints: { app: path.join(root, "src/main.tsx"), "live/live": path.join(root, "src/live/main.tsx"), ...(existsSync(path.join(root, "src/recruit/main.tsx")) ? { "recruit/recruit": path.join(root, "src/recruit/main.tsx") } : {}) },
   bundle: true, format: "esm", target: "es2020", outdir: dist, jsx: "automatic", splitting: true, chunkNames: "chunks/[name]-[hash]",
   minify: !args.has("--watch"), sourcemap: args.has("--watch") ? "inline" : false,
-  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || "") },
+  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || ""), __SITES__: JSON.stringify(sites) },
   loader: { ".css": "css" }, nodePaths, logLevel: "info",
 };
 
@@ -55,9 +58,10 @@ for (const f of readdirSync(path.join(dist, "legal"))) {
 }
 
 // The site's address (package.json "site.url", or SITE_URL) makes link previews absolute; without it they stay relative.
-const pkgSite = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).site || {};
+
 const site = String(process.env.SITE_URL || pkgSite.url || "").replace(/\/*$/, "") + "/";
-const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site);
+// With a real domain, each site gets its own address: app., live., recruit. (see worker/index.js)
+const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site).replaceAll("%APP%", sites ? sites.app : "./").replaceAll("%LIVE%", sites ? sites.live : site + "live/").replaceAll("%RECRUIT%", sites ? sites.recruit : site + "recruit/");
 writeFileSync(path.join(dist, "index.html"), fill(readFileSync(path.join(root, "index.html"), "utf8")));
 for (const f of ["about.html", "live/index.html", "recruit/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
 if (!legal.email) console.warn("\n⚠  package.json legal.email is empty: the Privacy Policy and Terms have no contact address. Add it before launch.\n");

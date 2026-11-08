@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { all, currentMatch, setPrefs, state, team, useVersion } from "../data/store";
 import { useRoute } from "./router";
 import { siteUrl } from "../cloud/links";
+import { SiteSwitch } from "../ui/SiteSwitch";
 import { applyTheme } from "./theme";
 import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
@@ -106,6 +107,7 @@ export function App() {
       <div className="brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
       <div className="teamswitch">{switcher("")}</div>
       {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
+      <SiteSwitch here="app" />
       <AccountChip />
       <a className="tab" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
     </nav>
