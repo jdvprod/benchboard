@@ -1,7 +1,7 @@
 // Cloudflare Workers: serves the built site from dist/. worker/index.js sends each address to its site
-// (getfloorcall.com, app., live., recruit.). The Worker name must match the project name in the Cloudflare dashboard.
+// (getfloorcall.com, app., live., recruit.). The Worker name must match the project name in the Cloudflare dashboard ("benchboard", from the repo); users never see it.
 {
-  "name": "floorcall",
+  "name": "benchboard",
   "main": "worker/index.js",
   "compatibility_date": "2025-10-01",
   "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "404-page", "run_worker_first": true }
