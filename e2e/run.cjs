@@ -49,8 +49,8 @@ function serveDist() {
   });
 }
 
-async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0, strict = false } = {}) {
-  const ctx = await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : tablet ? { width: 820, height: 1180 } : { width: 1360, height: 900 }, colorScheme: dark ? "dark" : "light", acceptDownloads: true, hasTouch: phone });
+async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0, strict = false, scale = 1, size = null } = {}) {
+  const ctx = await browser.newContext({ viewport: size || (phone ? { width: 390, height: 844 } : tablet ? { width: 820, height: 1180 } : { width: 1360, height: 900 }), deviceScaleFactor: scale, colorScheme: dark ? "dark" : "light", acceptDownloads: true, hasTouch: phone });
   if (cloud) await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch { /* sandboxed frame */ } }, `http://localhost:${MOCK_PORT}`);
   if (!strict) await ctx.addInitScript(() => { try { localStorage.setItem("bs-allow-offline", "1"); } catch { /* sandboxed frame */ } }); // tests may use the app without an account; real visitors can't
   if (skew) await ctx.addInitScript((ms) => { const real = Date.now; Date.now = () => real() + ms; }, skew);
@@ -979,6 +979,53 @@ const scenarios = {
     ok("film session: a taken-down session no longer opens", /isn't shared anymore/.test(await P.locator("main").innerText()));
     ok("film session: no page errors", !A.errors.length && !P.errors.length, [...A.errors, ...P.errors].slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
+  },
+  /** Product-page pictures (run with MKT=dir): a believable team, shot crisp on a laptop and a phone. Not a test. */
+  async _marketing(browser) {
+    const out = process.env.MKT || "/tmp/mkt"; fs.mkdirSync(out, { recursive: true });
+    const shot = async (pg, name, o = {}) => { await pg.addStyleTag({ content: ".toast{display:none!important}" }).catch(() => {}); await pg.waitForTimeout(700); await pg.screenshot({ path: path.join(out, name + ".png"), ...o }); console.log("    shot " + name); };
+    const A = await newPage(browser, { scale: 2, size: { width: 1440, height: 900 } });
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email", { exact: true }).fill("coach@westbrook.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Coach Rivera"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(800);
+    await go(A, "sample"); await A.waitForTimeout(2500);
+    await go(A, "team"); await A.getByLabel("Team name").fill("Westbrook"); await A.getByLabel("Team name").press("Tab"); await A.waitForTimeout(800);
+    // pictures only: treat the sample season as a real team so it syncs and shares like one
+    await A.evaluate(async () => { const db = await new Promise((r) => { const q = indexedDB.open("bench-stats"); q.onsuccess = () => r(q.result); });
+      for (const store of ["teams", "matches"]) { const all = await new Promise((r) => { const q = db.transaction(store).objectStore(store).getAll(); q.onsuccess = () => r(q.result); });
+        const tx = db.transaction(store, "readwrite"); for (const x of all) if (x.sample) { delete x.sample; tx.objectStore(store).put(x); } await new Promise((r) => (tx.oncomplete = r)); } });
+    await A.reload(); await A.waitForTimeout(1200);
+    await go(A, "team"); { const sy = A.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.first().click(); await A.waitForTimeout(2500); } }
+    { const ok2 = A.getByRole("button", { name: "I have permission" }); if (await ok2.count()) { await ok2.click(); await A.waitForTimeout(500); } }
+    await go(A, "track"); await shot(A, "app-track");
+    await go(A, "stats"); await A.waitForTimeout(800); await shot(A, "app-stats");
+    await go(A, "matchup"); await A.waitForTimeout(800); await shot(A, "app-matchup");
+    await go(A, "lineup"); await A.waitForTimeout(800); await shot(A, "app-lineup");
+    // the phone: tracking courtside
+    const M = await newPage(browser, { phone: true, scale: 3 });
+    await M.context().addCookies([]); await go(M, "track");
+    // reuse the same browser data: copy local storage from A
+    const ls = await A.evaluate(() => JSON.stringify(Object.assign({}, localStorage)));
+    await M.evaluate((d) => { const o = JSON.parse(d); for (const k in o) localStorage.setItem(k, o[k]); }, ls);
+    // families: share the team page
+    await go(A, "team"); const sync = A.getByRole("button", { name: "Sync now" }); if (await sync.count()) { await sync.click(); await A.waitForTimeout(1500); }
+    const share = A.getByRole("button", { name: "Share team page" }); if (await share.count()) { await share.click(); await A.waitForTimeout(1500); }
+    const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href").catch(() => null);
+    console.log("    team page: " + season);
+    const P = await newPage(browser, { phone: true, scale: 3 });
+    if (season) {
+      await P.goto(season); await P.waitForTimeout(2000); await shot(P, "live-team");
+      const gc = P.getByRole("link", { name: "Open the gamecast" }); if (await gc.count()) { await gc.click(); await P.waitForTimeout(1500); await shot(P, "live-game");
+        const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); } }
+    }
+    // athletes: a recruiting profile
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click").first().click(); await A.waitForTimeout(600);
+    await shot(A, "app-player");
+    const consent = A.locator(".consent-check input").first(); if (await consent.count()) { await consent.check(); await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1500); }
+    const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href").catch(() => null);
+    console.log("    profile: " + rec);
+    if (rec) { await P.goto(rec); await P.waitForTimeout(2000); await shot(P, "recruit-profile"); }
+    await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(1200); await shot(P, "recruit-guide");
+    await A.context().close(); await M.context().close(); await P.context().close();
   },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });
