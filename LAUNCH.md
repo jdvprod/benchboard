@@ -19,7 +19,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**` and `https://recruit.getfloorcall.com/**`.
 3. **Authentication → Emails**: either turn off **Confirm email** (Sign In / Providers), or connect an email provider under **SMTP Settings** (Resend, Postmark, SendGrid). Supabase's built-in email only reaches your own team and a few emails an hour. Now that everyone needs an account (coaches, athletes, families), connect an email provider before launch, or confirmation and password-reset emails won't arrive.
 4. **Edge Functions → Deploy a new function → Via Editor**:
-   - `ai`: paste `supabase/functions/ai/index.ts`. Secret: `ANTHROPIC_API_KEY`.
+   - `ai`: paste `supabase/functions/ai/index.ts` and turn **off** "Verify JWT" (the function checks the sign-in itself). Secret: `ANTHROPIC_API_KEY`.
    - `notify`: paste `supabase/functions/notify/index.ts`, and turn **off** "Verify JWT" for it. Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (make them in the app: Settings → Setup check → Make notification keys) and `VAPID_SUBJECT` (`mailto:` + your contact email).
 
 5. **Make yourself an admin** (SQL Editor, after you've created your account in the app):

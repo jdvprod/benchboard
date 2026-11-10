@@ -14,10 +14,12 @@ Deno.serve(async (req) => {
   const key = Deno.env.get("ANTHROPIC_API_KEY");
   if (!key) return json(503, { error: "AI isn't set up on the server yet." });
 
-  // who is calling (the JWT was already verified by Supabase; we read the user id from it)
+  // who is calling: Supabase Auth checks the sign-in token itself, so this works with "Verify JWT" on or off
+  // (projects on the new API keys need it off; the gateway can't check their tokens)
   const auth = req.headers.get("authorization") || "";
-  let uid = "";
-  try { uid = JSON.parse(atob(auth.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).sub || ""; } catch { /* no user */ }
+  const base = Deno.env.get("SUPABASE_URL")!, anon = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_PUBLISHABLE_KEY") || "";
+  const who = auth.startsWith("Bearer ") ? await fetch(`${base}/auth/v1/user`, { headers: { apikey: anon, authorization: auth } }).then((r) => (r.ok ? r.json() : null)).catch(() => null) : null;
+  const uid: string = who?.id || "";
   if (!uid) return json(403, { error: "Sign in to use AI features." });
 
   let body: any;
