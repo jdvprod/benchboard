@@ -28,7 +28,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 2. Cloudflare (the website)
 
-1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `benchboard`.
+1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
 3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all five: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live and Floorcall Recruit.
 4. Releases: `git push origin main:live` (the app, Floorcall Live and Floorcall Recruit all go out together).
