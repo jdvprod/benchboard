@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Player } from "../data/model";
 import { patch, team, toast } from "../data/store";
-import { canvasImage, cleanLogo, cropGeometry, framedPhoto, imageSize } from "../lib/image";
+import { canvasImage, cleanLogo, cropGeometry, framedPhoto, imageSize, isLogoPicture } from "../lib/image";
 import { findLogos, LogoHit, regionOf } from "../lib/logoSearch";
 import { storePicture, PicKind } from "../cloud/media";
 import { isLinked, roleOn } from "../cloud/sync";
@@ -72,7 +72,13 @@ export function LogoPicker({ kind, id, name, value, onPick, region }: { kind: Pi
   if (!canEditPictures(t.id)) return <TeamLogo src={value} name={name} size={48} />;
   const search = async (text = q) => {
     setBusy(true); setErr(""); setHits(null); setSmall(new Set());
-    try { const h = await findLogos(text, { region }); setHits(h); if (!h.length) setErr("No logos found. Try the school's full name, or upload one."); }
+    try {
+      const found = await findLogos(text, { region });
+      // drop anything that turns out to be a photo (campus, building, people); keep what we can't check, like website icons
+      const checks = await Promise.all(found.map((h) => (h.source === "Website" ? Promise.resolve(null) : isLogoPicture(h.url))));
+      const h = found.filter((_, i) => checks[i] !== false);
+      setHits(h); if (!h.length) setErr("No logo found for that name. Try the school's full name, or upload the logo (the school's website or athletics page usually has it).");
+    }
     catch { setErr("Couldn't search right now. Check your connection, or upload a logo."); }
     setBusy(false);
   };

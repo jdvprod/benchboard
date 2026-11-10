@@ -86,3 +86,15 @@ export async function cleanLogo(src: Blob | HTMLImageElement, size = 320, pad = 
   return blobOf(cv, "image/png");
 }
 export const imageSize = async (src: Blob) => { const i = await load(src); return { w: i.naturalWidth, h: i.naturalHeight }; };
+
+/** Is the picture at `url` a logo rather than a photo? Reads its pixels (sites that allow it, like Wikipedia's);
+ * null when the site doesn't let us look. */
+export async function isLogoPicture(url: string): Promise<boolean | null> {
+  const img = await canvasImage(url); if (!img || !img.naturalWidth) return null;
+  try {
+    const c = document.createElement("canvas"); c.width = 64; c.height = 64; const g = c.getContext("2d")!;
+    g.drawImage(img, 0, 0, 64, 64);
+    const { looksLikeLogo } = await import("./logoSearch");
+    return looksLikeLogo(g.getImageData(0, 0, 64, 64).data);
+  } catch { return null; } // the site didn't allow reading its pixels
+}

@@ -403,6 +403,36 @@ test("logos: matching names, regions, and the one-clear-school rule", async () =
   assert.deepEqual(await findLogos("Nowhere Elite 17", { get }), []);
 });
 
+import { logoFileScore, looksLikeLogo } from "../src/lib/logoSearch";
+test("logos: campus photos are never offered as logos", async () => {
+  assert.equal(logoFileScore("File:Clovis North Broncos logo.svg"), 2);
+  assert.equal(logoFileScore("File:CNHS_seal.png"), 2);
+  assert.equal(logoFileScore("File:Buchanan HS.png"), 1);
+  assert.equal(logoFileScore("File:Clovis North High School campus.png"), 0);
+  assert.equal(logoFileScore("File:Front entrance 2019.jpg"), 0);
+  assert.equal(logoFileScore("https://upload.wikimedia.org/thumb/a/ab/School.JPG/256px-School.JPG"), 0);
+  // pixels: two flat colors = logo; a cut-out = logo; a noisy photo = not
+  const flat = new Uint8ClampedArray(64 * 64 * 4); for (let i = 0; i < flat.length; i += 4) { const b = (i / 4) % 64 < 32; flat.set(b ? [0, 51, 102, 255] : [255, 255, 255, 255], i); }
+  assert.equal(looksLikeLogo(flat), true);
+  const cut = new Uint8ClampedArray(64 * 64 * 4); for (let i = 0; i < cut.length; i += 4) cut.set((i / 4) % 3 ? [0, 0, 0, 0] : [Math.random() * 255, Math.random() * 255, 99, 255], i);
+  assert.equal(looksLikeLogo(cut), true);
+  let seed = 3; const rnd = () => (seed = (seed * 16807) % 2147483647) % 256;
+  const photo = new Uint8ClampedArray(64 * 64 * 4); for (let i = 0; i < photo.length; i += 4) photo.set([rnd(), rnd(), rnd(), 255], i);
+  assert.equal(looksLikeLogo(photo), false);
+  // a school whose logo is only on its article (no Wikidata logo), with a campus photo as its main picture
+  const get = async (url: string) => {
+    const u = new URL(url), q = u.searchParams;
+    if (u.host === "en.wikipedia.org" && q.get("gsrsearch")) return { query: { pages: /clovis west/i.test(q.get("gsrsearch")!) ? [{ title: "Clovis West High School", index: 1, pageimage: "Clovis_West_campus.jpg", pageprops: { wikibase_item: "Q7" }, thumbnail: { source: "https://upload.wikimedia.org/cw-campus.jpg" } }] : [] } };
+    if (u.host === "en.wikipedia.org" && q.get("prop") === "images") return { query: { pages: [{ title: "Clovis West High School", images: [{ title: "File:Clovis West campus.jpg" }, { title: "File:Clovis West Golden Eagles logo.png" }, { title: "File:Commons-logo.svg" }] }] } };
+    if (u.host === "en.wikipedia.org" && q.get("prop") === "imageinfo") return { query: { pages: [{ title: "File:Clovis West Golden Eagles logo.png", imageinfo: [{ thumburl: "https://upload.wikimedia.org/cw-logo.png" }] }] } };
+    if (u.host === "www.wikidata.org") return { entities: { Q7: { claims: {} } } };
+    throw new Error("unexpected " + url);
+  };
+  const hits = await findLogos("Clovis West", { get });
+  assert.deepEqual(hits.map((h) => h.url), ["https://upload.wikimedia.org/cw-logo.png"], "the article's logo, not the campus photo or Wikipedia's own icons");
+  assert.equal(autoPick("Clovis West", hits)?.url, "https://upload.wikimedia.org/cw-logo.png", "filled in by itself");
+});
+
 import { artBox, cropGeometry } from "../src/lib/image";
 test("pictures: logo artwork box and photo framing math", () => {
   // 10×10 white square with a 4×2 red block at (3,5)
