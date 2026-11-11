@@ -367,6 +367,7 @@ body:has(.auth){padding-left:0;padding-bottom:0}
 .auth-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .auth-field input:not([type=color]),.auth-join input{height:48px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:0 14px;font-size:16px;width:100%;transition:border-color .12s,box-shadow .12s}
 .auth-field input:focus,.auth-join input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.auth-field input.auth-code{font-size:24px;font-weight:600;letter-spacing:.3em;text-align:center;font-variant-numeric:tabular-nums}
 .auth-field.bad input{border-color:var(--bad)}.auth-field.bad input:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--bad) 20%,transparent)}
 .auth-pw{position:relative}.auth-pw input{padding-right:70px!important}
 .auth-eye{position:absolute;right:6px;top:6px;height:36px;padding:0 10px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-weight:600;font-size:13.5px}

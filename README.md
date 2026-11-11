@@ -109,9 +109,11 @@ Supabase's built-in email only sends to members of your Supabase organization, a
 1. Sign up with an email provider that has a free plan (Resend, Brevo, SendGrid and others work) and verify a domain you own.
 2. In Supabase, go to **Authentication → Emails → SMTP Settings**, turn on **Custom SMTP** and paste the provider's host, port, user and password. Use a sender like `Floorcall <no-reply@yourdomain.com>`.
 3. In **Authentication → Rate Limits**, raise the email limit if you expect many sign-ups at once (it starts at 30 an hour).
-4. In **Authentication → Emails → Templates**, paste the branded templates from `supabase/email-templates/` (subjects: "Confirm your Floorcall email", "Reset your Floorcall password", "Your Floorcall sign-in link", "Confirm your new Floorcall email").
+4. In **Authentication → Emails → Templates**, paste the branded templates from `supabase/email-templates/` (subjects: "Confirm your Floorcall email", "Reset your Floorcall password", "Your Floorcall sign-in code", "Confirm your new Floorcall email").
 
-Until then, keep **Confirm email** off (Authentication → Sign In / Providers → Email) so coaches can sign up without an email; only password resets need the provider.
+Then turn on **Confirm email** (Authentication → Sign In / Providers → Email) so every new account proves its email.
+
+**New-device check.** Signing in with a password on a browser that account hasn't used before also needs a 6-digit code (or the link) from an email, sent with the **Magic Link** template, so that template must include `{{ .Token }}` (the one in `supabase/email-templates/magic-link.html` does). The device is remembered after that; on getfloorcall.com one check covers the app, Live and Recruit on that browser. Email links (confirming an account, resetting a password) count as a check too. Expect one extra email per new phone or computer; the email provider's free plan covers it at this size.
 
 ## AI features
 

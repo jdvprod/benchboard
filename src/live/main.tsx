@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { getLang, initLang, Lang, setLang, tr } from "../lib/i18n";
-import { cloudAvailable, currentUser, rpc, updateMeta, userMeta } from "../cloud/client";
+import { cloudAvailable, consumeAuthRedirect, currentUser, rpc, updateMeta, userMeta } from "../cloud/client";
 import { applyTheme } from "../app/theme";
 import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
@@ -108,4 +108,6 @@ function LiveApp() {
 watchErrors();
 initLang();
 syncFollowed();
-createRoot(document.getElementById("root")!).render(<LiveApp />);
+// a sign-in link from an email (new-device check) lands here with #access_token=…
+const start = () => createRoot(document.getElementById("root")!).render(<LiveApp />);
+if (/access_token=|error_description=/.test(location.hash)) consumeAuthRedirect("#/").catch(() => null).finally(start); else start();

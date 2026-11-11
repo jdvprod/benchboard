@@ -5,7 +5,7 @@ import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
 import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
-import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, signOut } from "../../cloud/client";
+import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, signOut, forgetDevices } from "../../cloud/client";
 import { deleteAccount, isLinked } from "../../cloud/sync";
 import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
@@ -138,7 +138,7 @@ function SetupCheck() {
     try {
       const st = await authSettings();
       out.push(st.disable_signup ? { label: "Sign-up emails", state: "warn", detail: "New sign-ups are turned off in Supabase (Authentication → Sign In / Providers). Coaches can't create accounts until you turn them back on." }
-        : st.mailer_autoconfirm ? { label: "Sign-up emails", state: "warn", detail: "Coaches sign up without confirming their email. Password-reset emails need an email provider: Supabase's built-in email only reaches your own team (README: Sign-up and password emails)." }
+        : st.mailer_autoconfirm ? { label: "Sign-up emails", state: "warn", detail: "New accounts aren't email-verified yet. Connect an email provider, then turn on Confirm email (README: Sign-up and password emails). Signing in on a new device already emails a code, so that needs the provider too." }
         : { label: "Sign-up emails", state: "warn", detail: "New accounts must confirm their email. Supabase's built-in email only reaches your own team, so connect an email provider (Authentication → Emails → SMTP Settings) or turn off Confirm email. Skip this if you already did." });
     } catch { /* older projects: nothing to report */ }
     const user = currentUser();
@@ -231,7 +231,7 @@ function PrivacyCard() {
         {step === "confirm" && <div className="banner warn" style={{ display: "block" }}>
           <p><b>This can't be undone.</b> Cloud teams you own are deleted for every coach and viewer on them, along with their share links. Save a backup first if you might want the data. Type <b>DELETE</b> to confirm.</p>
           <div className="row" style={{ marginTop: 8 }}><input className="input" style={{ width: 140 }} value={typed} onChange={(e) => setTyped(e.target.value)} aria-label="Type DELETE to confirm" />
-            <button className="btn sm danger" disabled={typed.trim() !== "DELETE"} onClick={async () => { setStep("busy"); setErr(""); try { await deleteAccount(); signOut(); if (!offlineAllowed()) { try { sessionStorage.setItem("bs-deleted", "1"); } catch { /* ignore */ } await eraseDevice(); location.replace(location.pathname); return; } skipAccounts(); setStep("deleted"); toast("Account deleted"); } catch (e: any) { setErr(e?.message || "Couldn't delete the account. Check your connection and try again."); setStep("confirm"); } }}>Delete my account</button>
+            <button className="btn sm danger" disabled={typed.trim() !== "DELETE"} onClick={async () => { setStep("busy"); setErr(""); try { await deleteAccount(); signOut(); forgetDevices(); if (!offlineAllowed()) { try { sessionStorage.setItem("bs-deleted", "1"); } catch { /* ignore */ } await eraseDevice(); location.replace(location.pathname); return; } skipAccounts(); setStep("deleted"); toast("Account deleted"); } catch (e: any) { setErr(e?.message || "Couldn't delete the account. Check your connection and try again."); setStep("confirm"); } }}>Delete my account</button>
             <button className="btn sm" onClick={() => { setStep("idle"); setTyped(""); }}>Cancel</button></div>
           {err && <p className="hint warn">{err}</p>}
         </div>}

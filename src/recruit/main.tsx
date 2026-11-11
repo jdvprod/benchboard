@@ -169,5 +169,6 @@ function RecruitApp() {
 }
 watchErrors();
 // back from a "confirm your email" link: finish signing in, then the college coach page
-if (COLLEGE_SEARCH && /access_token=|error_description=/.test(location.hash)) consumeAuthRedirect().catch(() => null).finally(() => { location.hash = "#/college"; });
-createRoot(document.getElementById("root")!).render(<RecruitApp />);
+// a sign-in link from an email (new-device check, or the college coach sign-up) lands here with #access_token=…
+const start = () => createRoot(document.getElementById("root")!).render(<RecruitApp />);
+if (/access_token=|error_description=/.test(location.hash)) consumeAuthRedirect(COLLEGE_SEARCH ? "#/college" : "#/").catch(() => null).finally(start); else start();

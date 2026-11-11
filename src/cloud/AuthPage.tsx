@@ -3,7 +3,7 @@ import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { setPrefs, state, team, toast } from "../data/store";
 import { placeUrl } from "./links";
-import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmation, sendPasswordReset, signIn, signOut, signUp, updateMeta, updatePassword, userMeta } from "./client";
+import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmation, sendDeviceCode, sendPasswordReset, signIn, verifyDeviceCode, signOut, signUp, updateMeta, updatePassword, userMeta } from "./client";
 import { isLinked, linkTeam, pendingCount, restoreTeams, status, syncNow } from "./sync";
 import { go } from "../app/router";
 import { Card } from "../ui/kit";
@@ -58,15 +58,15 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
 }
 
 const errText = (e: unknown) => (e instanceof CloudError ? e.message : "Something went wrong. Try again.");
-type Mode = "signin" | "signup" | "check" | "forgot" | "sent" | "newpw";
+type Mode = "signin" | "signup" | "check" | "forgot" | "sent" | "newpw" | "device";
 
 export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSkip?: () => void }) {
   const [mode, setMode] = useState<Mode>(initial);
   const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree" | "name"; text: string } | null>(null);
-  const [agree, setAgree] = useState(false), [name, setName] = useState(""), [news, setNews] = useState(true);
+  const [agree, setAgree] = useState(false), [name, setName] = useState(""), [news, setNews] = useState(true), [code, setCode] = useState("");
   const emailRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { setErr(null); if (mode !== "newpw") emailRef.current?.focus(); }, [mode]);
+  useEffect(() => { setErr(null); if (mode !== "newpw" && mode !== "device") emailRef.current?.focus(); }, [mode]);
 
   const afterSignIn = async () => {
     toast("Signed in");
@@ -83,7 +83,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     if (mode === "signup" && !agree) return setErr({ field: "agree", text: "Please confirm you're 13 or older and agree to the Terms and Privacy Policy." });
     setBusy(true);
     try {
-      if (mode === "signin") { await signIn(email.trim(), pw); await afterSignIn(); }
+      if (mode === "signin") { if (await signIn(email.trim(), pw) === "check-device") { setPw(""); setCode(""); setMode("device"); } else await afterSignIn(); }
       else if (mode === "signup") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: "coach", email_ok: news }); if (r === "confirm-email") setMode("check"); else await afterSignIn(); }
       else if (mode === "forgot") { await sendPasswordReset(email.trim()); setMode("sent"); }
       else if (mode === "newpw") { await updatePassword(pw); toast("Password updated"); go(team() ? "track" : "team"); }
@@ -103,6 +103,28 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     <div className="auth-actions">
       <button className="auth-btn" onClick={() => setMode("signin")}>Back to sign in</button>
       {mode === "check" && <button className="auth-link" disabled={busy} onClick={async () => { setBusy(true); try { await resendConfirmation(email); toast("Sent again"); } catch (e) { toast(errText(e)); } setBusy(false); }}>Didn't get it? Send again</button>}
+    </div>
+  </AuthShell>;
+
+  if (mode === "device") return <AuthShell>
+    <div className="auth-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 6.5l8.5 6.5 8.5-6.5" /></svg></div>
+    <h1 className="auth-title">Check your email</h1>
+    <p className="auth-sub">This device hasn't signed in to your account before, so we sent a code to <b>{email}</b>. Enter it here, or open the link in that email on this device.</p>
+    <form className="auth-form" noValidate onSubmit={async (e) => {
+      e.preventDefault(); setErr(null);
+      if (code.replace(/\D/g, "").length < 6) return setErr({ text: "Enter the code from the email." });
+      setBusy(true); try { await verifyDeviceCode(email.trim(), code); await afterSignIn(); } catch (e2) { setErr({ text: errText(e2) }); } setBusy(false);
+    }}>
+      <div className="auth-field">
+        <label htmlFor="auth-code">Code</label>
+        <input id="auth-code" className="auth-code" inputMode="numeric" autoComplete="one-time-code" maxLength={12} autoFocus value={code} onChange={(e) => setCode(e.target.value.replace(/[^\d ]/g, ""))} />
+      </div>
+      {err && <p className="auth-err box" role="alert">{err.text}</p>}
+      <button className="auth-btn" type="submit" disabled={busy} aria-busy={busy}>{busy ? <span className="auth-spin" aria-label="Working" /> : "Verify and sign in"}</button>
+    </form>
+    <div className="auth-foot">
+      <p>No email? Check spam, or <button className="auth-link" disabled={busy} onClick={async () => { setBusy(true); setErr(null); try { await sendDeviceCode(email.trim()); toast("New code sent"); } catch (e2) { setErr({ text: errText(e2) }); } setBusy(false); }}>send a new code</button></p>
+      <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>
     </div>
   </AuthShell>;
 

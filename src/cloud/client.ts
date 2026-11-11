@@ -37,6 +37,8 @@ function msg(body: any, fallback: string) {
   if (/password should be/i.test(m)) return "Use a password with at least 6 characters.";
   // Supabase's built-in email only reaches the project's own team and a couple of emails an hour; real use needs custom SMTP (see README)
   if (/email address not authorized|error sending (confirmation|recovery|magic link)? ?(email|mail)|smtp/i.test(m)) return "We couldn't send the email. The app's email service isn't fully set up yet; tell the person who runs your Floorcall.";
+  if (/token has expired|otp.*(expired|invalid)|invalid.*(otp|token)/i.test(m)) return "That code didn't work. Use the code in the newest email, or send a new one.";
+  if (/signups not allowed for otp|user not found/i.test(m)) return "Wrong email or password.";
   if (/rate limit|too many|over_email_send_rate|for security purposes, you can only request/i.test(m)) return "Too many emails were requested. Wait a few minutes and try again.";
   return String(m);
 }
@@ -70,12 +72,59 @@ export async function updateMeta(p: Partial<UserMeta>) {
 export async function signUp(email: string, password: string, about: { name?: string; kind?: AccountKind; email_ok?: boolean } = {}): Promise<"signed-in" | "confirm-email"> {
   // the agreement is recorded with the account: which version of the terms, and when
   const b = await call("/auth/v1/signup?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ email, password, data: { terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString(), ...about } }) });
+  await trustDevice(email); // the device that made the account; with Confirm email on, the account still can't sign in until the inbox is proven
   if (b && b.access_token) { setSession(fromAuth(b)); return "signed-in"; }
   return "confirm-email";
 }
-export async function signIn(email: string, password: string) {
-  setSession(fromAuth(await call("/auth/v1/token?grant_type=password", { method: "POST", auth: false, body: JSON.stringify({ email, password }) })));
+/**
+ * Password sign-in. On a device (browser) this account has used before, that's it. Anywhere else the right password isn't
+ * enough: Floorcall throws that sign-in away and emails a one-time code (and a sign-in link) to prove the person also has the inbox.
+ */
+export async function signIn(email: string, password: string): Promise<"signed-in" | "check-device"> {
+  const s = fromAuth(await call("/auth/v1/token?grant_type=password", { method: "POST", auth: false, body: JSON.stringify({ email, password }) }));
+  if (await deviceTrusted(s.user.email || email)) { setSession(s); return "signed-in"; }
+  call("/auth/v1/logout?scope=local", { method: "POST", headers: { authorization: "Bearer " + s.access_token } as any, auth: false }).catch(() => {});
+  await sendDeviceCode(s.user.email || email);
+  return "check-device";
 }
+/** Email a one-time sign-in code (the same email has a sign-in link). Never creates an account. */
+export async function sendDeviceCode(email: string) {
+  try { sessionStorage.setItem("fc-return", location.hash); } catch { /* ignore */ }
+  await call("/auth/v1/otp?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ email, create_user: false }) });
+}
+export async function verifyDeviceCode(email: string, code: string) {
+  const b = await call("/auth/v1/verify", { method: "POST", auth: false, body: JSON.stringify({ type: "email", email, token: code.replace(/\D/g, "") }) });
+  setSession(fromAuth(b)); await trustDevice(b?.user?.email || email);
+}
+
+/* Devices this account has proven its email on: a short hash of the email (never the email itself), kept on this browser and,
+   on the live domain, in a cookie shared by the app, Live and Recruit, so one check covers all three on that device. */
+const TRUST_KEY = "fc-trusted";
+declare const __SITES__: { home: string } | null;
+async function deviceTag(email: string) {
+  const text = "floorcall:" + email.trim().toLowerCase();
+  try { const h = new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))); return [...h.slice(0, 12)].map((x) => x.toString(16).padStart(2, "0")).join(""); }
+  catch { let a = 0x811c9dc5, b = 0x01000193; for (const ch of text) { a = Math.imul(a ^ ch.charCodeAt(0), 16777619) >>> 0; b = Math.imul(b ^ a, 2654435761) >>> 0; } return a.toString(16) + b.toString(16); }
+}
+function trusted(): string[] {
+  const own = read<string[]>(TRUST_KEY) || [];
+  let shared: string[] = []; try { shared = (document.cookie.match(/(?:^|; )fc-trusted=([^;]*)/)?.[1] || "").split(".").filter(Boolean); } catch { /* ignore */ }
+  return [...new Set([...own, ...shared])];
+}
+function sharedDomain() {
+  try { const home = new URL((typeof __SITES__ !== "undefined" && __SITES__?.home) || "").hostname; return home && (location.hostname === home || location.hostname.endsWith("." + home)) ? home : ""; } catch { return ""; }
+}
+export async function trustDevice(email: string) {
+  if (!email) return;
+  const tag = await deviceTag(email), all = [tag, ...trusted().filter((x) => x !== tag)].slice(0, 8);
+  write(TRUST_KEY, all);
+  try { const d = sharedDomain(); document.cookie = `fc-trusted=${all.join(".")}; path=/; max-age=${400 * 86400}; samesite=lax${location.protocol === "https:" ? "; secure" : ""}${d ? "; domain=" + d : ""}`; } catch { /* ignore */ }
+}
+export const deviceTrusted = async (email: string) => trusted().includes(await deviceTag(email));
+/** Forget this device (account deleted): the next sign-in here needs an email code again. */
+export function forgetDevices() { write(TRUST_KEY, null); try { const d = sharedDomain(); document.cookie = `fc-trusted=; path=/; max-age=0${d ? "; domain=" + d : ""}`; } catch { /* ignore */ } }
+// people already signed in when this check arrived keep this device
+if (session && !(read<string[]>(TRUST_KEY) || []).length) trustDevice(session.user.email).catch(() => {});
 let refreshing: Promise<void> | null = null;
 async function refresh() {
   if (!session) return;
@@ -108,20 +157,22 @@ export async function acceptTerms() {
 /** Signed in but hasn't agreed to the current version of the terms (older accounts, or after the terms change). */
 export const needsTermsAgreement = () => !!session && session.user.terms !== LEGAL_VERSION;
 
-export async function consumeAuthRedirect(): Promise<string | null> {
+export async function consumeAuthRedirect(fallback = "#/account"): Promise<string | null> {
   const h = location.hash.replace(/^#/, "");
   if (!/(^|&)(access_token|error_description)=/.test(h)) return null;
   const p = new URLSearchParams(h);
   history.replaceState(null, "", location.pathname + location.search);
-  if (p.get("error_description")) { location.hash = "#/account"; return "error:" + p.get("error_description"); }
+  if (p.get("error_description")) { location.hash = fallback; return "error:" + p.get("error_description"); }
   const access = p.get("access_token")!, type = p.get("type") || "signup";
   try {
     const c = config(); if (!c) return null;
     const res = await fetch(c.url + "/auth/v1/user", { headers: { apikey: c.key, authorization: "Bearer " + access } });
     const u = await res.json();
-    setSession({ access_token: access, refresh_token: p.get("refresh_token") || "", expires_at: +(p.get("expires_at") || 0) || Math.floor(Date.now() / 1000) + +(p.get("expires_in") || 3600), user: { id: u.id, email: u.email, terms: u.user_metadata?.terms_version } });
+    setSession({ access_token: access, refresh_token: p.get("refresh_token") || "", expires_at: +(p.get("expires_at") || 0) || Math.floor(Date.now() / 1000) + +(p.get("expires_in") || 3600), user: { id: u.id, email: u.email, terms: u.user_metadata?.terms_version, meta: pickMeta(u.user_metadata) } });
+    await trustDevice(u.email); // every email link proves the inbox on this device
   } catch { return null; }
-  location.hash = type === "recovery" ? "#/account/new-password" : "#/account";
+  let back = ""; try { back = sessionStorage.getItem("fc-return") || ""; sessionStorage.removeItem("fc-return"); } catch { /* ignore */ }
+  location.hash = type === "recovery" ? "#/account/new-password" : type === "magiclink" && back ? back : fallback;
   return type;
 }
 export function signOut() { const s = session; setSession(null); if (s) call("/auth/v1/logout", { method: "POST", headers: { authorization: "Bearer " + s.access_token } as any, auth: false }).catch(() => {}); }

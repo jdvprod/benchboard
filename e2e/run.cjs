@@ -60,6 +60,16 @@ async function newPage(browser, { phone = false, tablet = false, dark = false, c
   page.setDefaultTimeout(8000);
   return page;
 }
+/** New-device check: sign-in on a device the account hasn't used asks for the emailed code. Reads the code from the mock's "inbox". */
+async function deviceCode(pg, email, { expect = true } = {}) {
+  const box = pg.locator("#auth-code, .ma-code").first();
+  const shown = await box.waitFor({ timeout: 4000 }).then(() => true).catch(() => false);
+  if (!expect) return shown;
+  if (!shown) { ok("a new device asks for the emailed code (" + email + ")", false); return false; }
+  const { code } = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/otp?email=${encodeURIComponent(email)}`)).json();
+  await box.fill(code || ""); await pg.locator(".auth-form .auth-btn, .ma .ma-go").first().click(); await pg.waitForTimeout(900);
+  return true;
+}
 const go = async (p, hash) => { await p.goto(U + "#/" + hash); await p.waitForTimeout(350); };
 const score = async (p) => { const t = (await p.locator(".board").first().innerText()).replace(/\s+/g, " "); const n = t.match(/(\d+) SET (\d) .* (\d+) (?:Rotation|Our)/); return t; };
 const download = async (p, click, timeout = 8000) => { const [d] = await Promise.all([p.waitForEvent("download", { timeout }), click()]); const f = await d.path(); return { name: d.suggestedFilename(), path: f, size: fs.statSync(f).size, text: () => fs.readFileSync(f, "utf8") }; };
@@ -257,7 +267,13 @@ const scenarios = {
     await A.context().setOffline(false); NO_WIFI = false; await A.waitForTimeout(500);
     await A.goto(SW + "team"); await A.waitForTimeout(300); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
     const N = await newPage(browser, { phone: true });
-    await go(N, "account"); await N.getByLabel("Email").fill("gym@e2e.test"); await N.locator("#auth-pw").fill("secret123"); await N.getByRole("button", { name: "Sign in" }).click(); await N.waitForTimeout(2500);
+    await go(N, "account"); await N.getByLabel("Email").fill("gym@e2e.test"); await N.locator("#auth-pw").fill("secret123"); await N.getByRole("button", { name: "Sign in" }).click();
+    ok("the right password on a new device isn't enough: it asks for an emailed code", await deviceCode(N, "gym@e2e.test", { expect: false }));
+    ok("nothing is signed in before the code", !(await N.evaluate(() => localStorage.getItem("bs-session"))));
+    await N.locator("#auth-code").fill("000000"); await N.locator(".auth-form .auth-btn").click(); await N.waitForTimeout(600);
+    ok("a wrong code is turned away", /code didn't work/i.test(await N.locator(".auth-err").innerText().catch(() => "")));
+    await deviceCode(N, "gym@e2e.test"); await N.waitForTimeout(1600);
+    ok("the right code signs in and remembers the device", !!(await N.evaluate(() => localStorage.getItem("bs-session"))) && !!(await N.evaluate(() => localStorage.getItem("fc-trusted"))));
     await go(N, "track"); await N.waitForTimeout(500);
     ok("offline plays reach another device after reconnecting", /NO WIFI HIGH 3/.test(await score(N).catch(() => "")), await score(N).catch(() => "no board"));
     for (const [n, pg] of [["gym", A], ["second device", N]]) ok(`offline: no page errors (${n})`, !pg.errors.filter((e) => !/fetch|network|Failed/i.test(e)).length, pg.errors.slice(0, 3).join(" | "));
@@ -375,7 +391,7 @@ const scenarios = {
     // an account from before the terms existed is asked to agree once on its next sign-in
     await fetch(`http://localhost:${MOCK_PORT}/__mock/strip-terms`);
     const q = await newPage(browser, { phone: true });
-    await go(q, "account"); await q.getByLabel("Email").fill("legal@e2e.test"); await q.locator("#auth-pw").fill("secret123"); await q.getByRole("button", { name: "Sign in" }).click(); await q.waitForTimeout(1200);
+    await go(q, "account"); await q.getByLabel("Email").fill("legal@e2e.test"); await q.locator("#auth-pw").fill("secret123"); await q.getByRole("button", { name: "Sign in" }).click(); await deviceCode(q, "legal@e2e.test"); await q.waitForTimeout(1200);
     ok("older accounts are asked to agree", (await q.getByText("Our Terms and Privacy Policy").count()) === 1);
     await q.getByRole("button", { name: "Agree and continue" }).click(); await q.waitForTimeout(200);
     ok("…and can't skip the checkbox", (await q.getByText("Check the box to agree.").count()) === 1);
@@ -560,7 +576,7 @@ const scenarios = {
       await N.locator(".lv-signin").click();
       ok("Live sign-in speaks Spanish", /Crear cuenta gratis/.test(await N.locator(".ma").innerText()), await N.locator(".ma").innerText().catch(() => ""));
       await N.locator(".ma-seg button").nth(1).click(); await N.getByLabel("Correo electrónico", { exact: true }).fill("dana@example.com"); await N.getByLabel("Contraseña", { exact: true }).fill("family-pass-1");
-      await N.locator(".ma .ma-go").click(); await N.waitForTimeout(1500);
+      await N.locator(".ma .ma-go").click(); await deviceCode(N, "dana@example.com"); await N.waitForTimeout(1500);
       ok("signed in on a new phone, the teams they follow are there", /Ping Club/.test(await N.locator(".lv-mine").innerText().catch(() => "")), await N.locator("main").innerText().then((x) => x.slice(0, 300)));
       await N.context().close();
     }
@@ -912,7 +928,7 @@ const scenarios = {
     const R2 = await newPage(browser, { strict: true, phone: true });
     await R2.goto(U + "recruit/#/emails"); await R2.waitForTimeout(400);
     await R2.locator(".ma").getByRole("button", { name: "Sign in" }).first().click(); await R2.getByLabel("Email", { exact: true }).fill("maya@e2e.test"); await R2.getByLabel("Password", { exact: true }).fill("athlete-pass");
-    await R2.locator(".ma").getByRole("button", { name: "Sign in" }).last().click(); await R2.waitForTimeout(800);
+    await R2.locator(".ma").getByRole("button", { name: "Sign in" }).last().click(); await deviceCode(R2, "maya@e2e.test"); await R2.waitForTimeout(800);
     if (process.env.SHOTS) await R2.screenshot({ path: path.join(process.env.SHOTS, "phone-emails-signed-in.png"), fullPage: true });
     ok("accounts: on a phone, the email comes right after the coach and school", await R2.evaluate(() => { const a = document.querySelector(".rg-preview").getBoundingClientRect().top, b = document.querySelector(".rg-you").getBoundingClientRect().top, c = document.querySelector(".rg-this").getBoundingClientRect().top; return c < a && a < b; }));
     ok("accounts: an athlete's details follow them to another device", (await R2.getByLabel("First name").inputValue()) === "Maya" && (await R2.getByLabel("Grad year").inputValue()) === "2028");
@@ -1291,7 +1307,7 @@ const scenarios = {
     for (const r of ["matchup", "practice", "court", "labs", "settings", "club"]) { await go(A, r); await shot(A, r, true); }
     // the same coach on a phone
     const Ph = await newPage(browser, { phone: true });
-    await go(Ph, "account"); await Ph.getByLabel("Email").fill("coach@explore.test"); await Ph.locator("#auth-pw").fill("secret123"); await Ph.getByRole("button", { name: "Sign in" }).click(); await Ph.waitForTimeout(2500);
+    await go(Ph, "account"); await Ph.getByLabel("Email").fill("coach@explore.test"); await Ph.locator("#auth-pw").fill("secret123"); await Ph.getByRole("button", { name: "Sign in" }).click(); await deviceCode(Ph, "coach@explore.test"); await Ph.waitForTimeout(2500);
     for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "live"]) { await go(Ph, r); await shot(Ph, "phone-" + r, true); }
     await P.waitForTimeout(5500); await shot(P, "gamecast-parent-late", true);
     await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);

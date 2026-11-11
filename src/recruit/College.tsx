@@ -21,7 +21,7 @@ function Auth({ onIn }: { onIn: () => void }) {
     setBusy(true); setMsg("");
     try {
       if (mode === "up") { const r = await signUp(email.trim(), pw); if (r === "confirm-email") { setMsg("Check your school email for a link to confirm the account, then sign in."); setBusy(false); return; } }
-      else await signIn(email.trim(), pw);
+      else if (await signIn(email.trim(), pw) === "check-device") { setMsg("This device is new to your account. We emailed you a sign-in link: open it on this device."); setBusy(false); return; }
       if (needsTermsAgreement()) await acceptTerms();
       onIn();
     } catch (e: any) { setMsg(e?.message || "Couldn't sign in."); }

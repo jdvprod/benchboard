@@ -12,3 +12,4 @@
 .ma-link{border:0;background:none;padding:0;color:var(--us);font:inherit;font-size:14px;font-weight:600;cursor:pointer;justify-self:start}
 .ma-done{gap:8px}.ma-done p{margin:0;color:var(--muted)}
 .ma-who{font-size:13.5px;color:var(--muted);margin:0}
+.ma input.ma-code{font-size:22px;font-weight:600;letter-spacing:.3em;text-align:center;font-variant-numeric:tabular-nums}

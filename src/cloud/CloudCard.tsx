@@ -3,30 +3,13 @@ import { siteUrl } from "./links";
 import { useEffect, useState } from "react";
 import { seasonsOf, team, toast } from "../data/store";
 import { Card, ConfirmButton, copyText, download } from "../ui/kit";
-import { cloudAvailable, CloudError, currentUser, sendPasswordReset, signIn, signOut, signUp } from "./client";
+import { cloudAvailable, CloudError, currentUser, signOut } from "./client";
 import { createInvite, isLinked, joinWithCode, linkTeam, members, pendingCount, removeMember, roleOn, shareLive, shareSeason, status, syncNow, unlinkTeam, shareBoard } from "./sync";
 import { go } from "../app/router";
 import { QrButton } from "../ui/QrButton";
 import { flyerHtml, flyerImage } from "../features/team/familyFlyer";
 
 const errText = (e: unknown) => (e instanceof CloudError ? e.message : "Something went wrong. Try again.");
-
-export function AuthForm({ onDone }: { onDone?: () => void }) {
-  const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
-  const run = async (f: () => Promise<string | void>) => { setBusy(true); setMsg(""); try { const m = await f(); if (m) setMsg(m); else onDone?.(); } catch (e) { setMsg(errText(e)); } setBusy(false); };
-  return <form className="stack" onSubmit={(e) => { e.preventDefault(); run(async () => { await signIn(email.trim(), pw); toast("Signed in"); }); }}>
-    <div className="two">
-      <label className="field"><span className="label">Email</span><input type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-      <label className="field"><span className="label">Password</span><input type="password" autoComplete="current-password" value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} /></label>
-    </div>
-    <div className="row">
-      <button className="btn primary" disabled={busy || !email || !pw} type="submit">Sign in</button>
-      <button className="btn" type="button" disabled={busy || !email || pw.length < 6} onClick={() => run(async () => { const r = await signUp(email.trim(), pw); if (r === "confirm-email") return "Account created. Check your email for a confirmation link, then sign in here."; toast("Account created"); })}>Create account</button>
-      <button className="btn sm ghost" type="button" disabled={busy || !email} onClick={() => run(async () => { await sendPasswordReset(email.trim()); return "If that email has an account, a reset link is on its way."; })}>Forgot password</button>
-    </div>
-    {msg && <p className="hint">{msg}</p>}
-  </form>;
-}
 
 export function CloudCard() {
   const [seasonUrl, setSeasonUrl] = useState(""), [boardUrl, setBoardUrl] = useState("");

@@ -3,6 +3,7 @@ const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
+const otps = new Map(); // email -> one-time sign-in code (new-device check)
 const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
 const films = new Map(), filmViews = new Map(); // film sessions by code; views by code:user
@@ -28,12 +29,15 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/__mock/strip-terms") { for (const u of users.values()) if (u.meta) delete u.meta.terms_version; return send(res, 204); } // simulate accounts made before the terms existed
     if (p === "/__mock/pushes") return send(res, 200, { subs: [...pushSubs.values()], pushes }); // test inspection only
     if (p === "/__mock/make-admin") { const u = [...users.values()].find((x) => x.email === url.searchParams.get("email")); if (u) admins.add(u.id); return send(res, u ? 204 : 404); }
+    if (p === "/__mock/otp") return send(res, 200, { code: otps.get(url.searchParams.get("email")) || null }); // test inspection only: "read the email"
     if (p === "/__mock/users") return send(res, 200, [...users.values()].map((u) => ({ email: u.email, meta: u.meta }))); // test inspection only
     if (!req.headers.apikey) return send(res, 401, { message: "no apikey" });
     // auth
     if (p === "/auth/v1/signup") { if ([...users.values()].some((u) => u.email === b.email)) return send(res, 400, { msg: "User already registered" }); const u = { id: uid(), email: b.email, pw: b.password, meta: b.data || {} }; users.set(u.id, u); return send(res, 200, session(u)); }
     if (p === "/auth/v1/token" && url.searchParams.get("grant_type") === "password") { const u = [...users.values()].find((x) => x.email === b.email && x.pw === b.password); return u ? send(res, 200, session(u)) : send(res, 400, { error_description: "Invalid login credentials" }); }
     if (p === "/auth/v1/token") { const id = tokens.get(b.refresh_token); return id ? send(res, 200, session(users.get(id))) : send(res, 400, { error: "invalid" }); }
+    if (p === "/auth/v1/otp") { const u = [...users.values()].find((x) => x.email === b.email); if (!u && b.create_user === false) return send(res, 422, { msg: "Signups not allowed for otp" }); otps.set(b.email, String(100000 + Math.floor(Math.random() * 900000))); return send(res, 200, {}); }
+    if (p === "/auth/v1/verify") { const u = [...users.values()].find((x) => x.email === b.email); if (!u || b.type !== "email" || !otps.has(b.email) || otps.get(b.email) !== b.token) return send(res, 403, { code: "otp_expired", msg: "Token has expired or is invalid" }); otps.delete(b.email); return send(res, 200, session(u)); }
     if (p === "/auth/v1/logout" || p === "/auth/v1/recover") return send(res, 204);
     if (p === "/auth/v1/user" && req.method === "PUT") { const u = users.get(me); if (!u) return send(res, 401, { message: "JWT required" }); if (b.data) u.meta = { ...(u.meta || {}), ...b.data }; if (b.password) u.pw = b.password; return send(res, 200, { id: u.id, email: u.email, user_metadata: u.meta }); }
     // rpc
