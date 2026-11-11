@@ -21,7 +21,7 @@ export interface ClipQuery {
 export interface QueryPlayer { id: string; first: string; last: string; num: string }
 export interface Parsed { q: ClipQuery; chips: string[]; empty: boolean }
 
-const BLOCKS = ["BS", "BA", "BE"], ATT = ["K", "KT", "AE", "AB", "TA"], SRV = ["SA", "SI", "SEN", "SEO", "SE"], PASS = ["P3", "P2", "P1", "P0"];
+const BLOCKS = ["BS", "BA", "BT", "BE"], ATT = ["K", "KT", "AE", "AB", "TA"], SRV = ["SA", "SI", "SEN", "SEO", "SE"], PASS = ["P3", "P2", "P1", "P0"];
 const OUR_ERR = ["AE", "AB", "SEN", "SEO", "SE", "BE", "BHE", "P0", "DE", "CE", "EE", "PE"];
 /** Longest phrases first; each is a regex on the cleaned text, with the codes and how to show it. */
 const PLAYS: [RegExp, string[], string][] = [
@@ -30,9 +30,10 @@ const PLAYS: [RegExp, string[], string][] = [
   [/\btheir errors?\b|\bopponent errors?\b|\bfree points?\b/, ["OE"], "Their errors"],
   [/\b(kills? )?off the block\b|\btools?\b|\btooled\b|\bwipes?\b/, ["KT"], "Kills off the block"],
   [/\bsolo blocks?\b|\bstuff blocks? solo\b/, ["BS"], "Solo blocks"],
+  [/\bblock touch(es)?\b|\btouch(es)? (on|at) the block\b|\bsoft blocks?\b|\bdeflections?\b/, ["BT"], "Block touches"],
   [/\bblock assists?\b|\bassisted blocks?\b|\bjoint blocks?\b/, ["BA"], "Block assists"],
   [/\b(block|net) errors?\b|\bnet violations?\b|\bin the net\b/, ["BE"], "Block / net errors"],
-  [/\bblocking reps?\b|\bblock(ing)? touches\b|\bblocks?\b|\bblocking\b|\bstuffs?\b|\broofs?\b/, BLOCKS, "Blocks"],
+  [/\bblocking reps?\b|\bblocking touches\b|\bblocks?\b|\bblocking\b|\bstuffs?\b|\broofs?\b/, BLOCKS, "Blocks"],
   [/\b(attack|hitting|hit|swing) errors?\b|\bhitting mistakes?\b/, ["AE", "AB"], "Attack errors"],
   [/\bgot blocked\b|\bwere blocked\b|\bblocked (attacks?|balls?|swings?)\b|\bbeen blocked\b/, ["AB"], "Blocked attacks"],
   [/\bkills?\b|\bput ?aways?\b|\bterminations?\b/, ["K", "KT"], "Kills"],
@@ -139,14 +140,14 @@ export function matchQuery(q: ClipQuery, l: LogEntry): boolean {
 /** What the AI is asked to fill when the words aren't understood. */
 export function aiQueryPrompt(text: string, roster: QueryPlayer[]): string {
   return `A volleyball coach is searching match film. Turn the request into JSON with these optional keys:
-codes: array of play codes from K (kill), KT (kill off the block), AE (attack error), AB (attack blocked), TA (attack attempt), SA (ace), SI (serve in), SEN/SEO (serve error), P3/P2/P1/P0 (pass grades), D (dig), DE (dig error), AST (assist), SATT (set), BHE (setting error), BS (solo block), BA (block assist), BE (block error), FBR (free ball), OK (their kill), OA (their ace), OE (their error);
+codes: array of play codes from K (kill), KT (kill off the block), AE (attack error), AB (attack blocked), TA (attack attempt), SA (ace), SI (serve in), SEN/SEO (serve error), P3/P2/P1/P0 (pass grades), D (dig), DE (dig error), AST (assist), SATT (set), BHE (setting error), BS (solo block), BA (block assist), BT (block touch, ball stayed in play), BE (block error), FBR (free ball), OK (their kill), OA (their ace), OE (their error);
 players: array of player ids from the roster; opp: array of their jersey numbers; zones: array of court areas 1-6 the ball went to; sets: array of set numbers; rots: array of our rotations 1-6;
 won: "us" or "them" (who won the rally); serving: "us" or "them"; ctx: attack context array from P3, P2, P1, DIG, FREE, OTH; clutch: true for late in sets (20+); tags: true for film notes.
 Roster: ${roster.map((p) => `${p.id}=#${p.num} ${p.first} ${p.last}`).join("; ")}
 Request: ${JSON.stringify(text)}
 Answer with only the JSON object.`;
 }
-const CODES = new Set(["K", "KT", "AE", "AB", "TA", "SA", "SI", "SEN", "SEO", "SE", "P3", "P2", "P1", "P0", "D", "DE", "AST", "SATT", "BHE", "BS", "BA", "BE", "FBR", "OK", "OA", "OE"]);
+const CODES = new Set(["K", "KT", "AE", "AB", "TA", "SA", "SI", "SEN", "SEO", "SE", "P3", "P2", "P1", "P0", "D", "DE", "AST", "SATT", "BHE", "BS", "BA", "BT", "BE", "FBR", "OK", "OA", "OE"]);
 /** Keep only well-formed fields from an AI answer. */
 export function cleanAiQuery(x: any, roster: QueryPlayer[]): ClipQuery {
   const arr = (v: any) => (Array.isArray(v) ? v : []);

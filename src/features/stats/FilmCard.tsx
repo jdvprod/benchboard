@@ -23,7 +23,7 @@ const match = (f: Filter, l: LogEntry): boolean => {
     case "errors": return OUR_ERR.has(t);
     case "serve": return ["SA", "SI", "SEN", "SEO", "SE"].includes(t);
     case "pass": return ["P3", "P2", "P1", "P0"].includes(t);
-    case "defense": return ["D", "DE", "BS", "BA", "BE"].includes(t);
+    case "defense": return ["D", "DE", "BS", "BA", "BT", "BE"].includes(t);
     case "theirs": return l.w === "them";
     default: return true;
   }

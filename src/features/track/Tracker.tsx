@@ -536,7 +536,7 @@ function OppPicker({ m, value, onPick }: { m: Match; value?: string; onPick: (n:
 export { isMine };
 
 /* ---------- phone: action sheet for the selected player ---------- */
-const SHEET_GROUPS: [string, ActionCode[]][] = [["Attack", ["K", "KT", "TA", "AE", "AB"]], ["Pass", ["P3", "P2", "P1", "P0"]], ["Serve", ["SA", "SI", "SEN", "SEO"]], ["Defense", ["D", "DE"]], ["Set", ["AST", "SATT", "BHE"]], ["Block", ["BS", "BA", "BE"]], ["Errors", ["CE", "EE", "PE"]]];
+const SHEET_GROUPS: [string, ActionCode[]][] = [["Attack", ["K", "KT", "TA", "AE", "AB"]], ["Pass", ["P3", "P2", "P1", "P0"]], ["Serve", ["SA", "SI", "SEN", "SEO"]], ["Defense", ["D", "DE"]], ["Set", ["AST", "SATT", "BHE"]], ["Block", ["BS", "BA", "BT", "BE"]], ["Errors", ["CE", "EE", "PE"]]];
 function ActionSheet({ m, c, record }: { m: Match; c: SetState; record: (k: ActionCode) => boolean | void }) {
   const sel = ui.sel; if (!sel || !player(sel)) return null;
   const p = player(sel)!, scr = m.scrim, flip = !!(scr && scr.b.ids.includes(sel));

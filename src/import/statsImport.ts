@@ -6,13 +6,13 @@
 
 export type Field = "ignore" | "num" | "name" | "first" | "last" | "pos" | "date" | "opp" | "score" | "SP"
   | "K" | "AE" | "TA" | "SA" | "SE" | "SERV" | "RTOT" | "RGOOD" | "RE" | "PAVG" | "R3" | "R2" | "R1" | "R0"
-  | "D" | "DE" | "BS" | "BA" | "BE" | "AST" | "BHE" | "BHA";
+  | "D" | "DE" | "BS" | "BA" | "BT" | "BE" | "AST" | "BHE" | "BHA";
 
 export const FIELD_LABEL: Record<Field, string> = {
   ignore: "Leave out", num: "Jersey number", name: "Player name", first: "First name", last: "Last name", pos: "Position", date: "Date", opp: "Opponent", score: "Score / set scores",
   SP: "Sets played", K: "Kills", AE: "Attack errors", TA: "Attack attempts (total)", SA: "Aces", SE: "Serve errors", SERV: "Serve attempts (total)",
   RTOT: "Receptions (total)", RGOOD: "Good receptions", RE: "Reception errors", PAVG: "Pass average", R3: "3 passes", R2: "2 passes", R1: "1 passes", R0: "0 passes (aced)",
-  D: "Digs", DE: "Dig errors", BS: "Solo blocks", BA: "Block assists", BE: "Block errors", AST: "Assists", BHE: "Ball-handling errors", BHA: "Ball-handling attempts",
+  D: "Digs", DE: "Dig errors", BS: "Solo blocks", BA: "Block assists", BT: "Block touches", BE: "Block errors", AST: "Assists", BHE: "Ball-handling errors", BHA: "Ball-handling attempts",
 };
 export const FIELDS = Object.keys(FIELD_LABEL) as Field[];
 
@@ -84,7 +84,7 @@ export function guessField(header: string, all: string[]): Field {
     se: "SE", serr: "SE", tsa: "SERV", serves: "SERV", serveattempts: "SERV", srvatt: "SERV", totalserves: "SERV",
     r: "RTOT", rec: "RTOT", tr: "RTOT", receptions: "RTOT", sr: "RTOT", re: "RE", rerr: "RE", recerr: "RE", sre: "RE",
     pa: "PAVG", passavg: "PAVG", passaverage: "PAVG", passrating: "PAVG", sravg: "PAVG", r3: "R3", r2: "R2", r1: "R1", r0: "R0", p3: "R3", p2: "R2", p1: "R1", p0: "R0", "3": "R3", "2": "R2", "1": "R1", "0": "R0",
-    d: "D", dig: "D", digs: "D", de: "DE", digerr: "DE", digerrors: "DE", bs: "BS", solo: "BS", ba: "BA", be: "BE", blkerr: "BE",
+    d: "D", dig: "D", digs: "D", de: "DE", digerr: "DE", digerrors: "DE", bs: "BS", solo: "BS", ba: "BA", bt: "BT", blocktouches: "BT", touches: "BT", be: "BE", blkerr: "BE",
     ast: "AST", assists: "AST", bhe: "BHE", bha: "BHA", aces: "SA", ace: "SA", serviceaces: "SA", serveerrors: "SE", serviceerrors: "SE",
   };
   // "A" and "SA" mean different things in MaxPreps (A = aces, SA = serve attempts) and NCAA box scores (A = assists, SA = service aces)
@@ -104,7 +104,7 @@ export function guessField(header: string, all: string[]): Field {
   if (has(n, "playername", "athletename")) return "name";
   if (has(n, "setsplayed", "gamesplayed")) return "SP";
   const att = has(n, "attempt", "total") || /att$/.test(n);
-  if (has(n, "block")) return has(n, "solo") ? "BS" : has(n, "assist") ? "BA" : has(n, "err") ? "BE" : "ignore";
+  if (has(n, "block")) return has(n, "solo") ? "BS" : has(n, "assist") ? "BA" : has(n, "touch") ? "BT" : has(n, "err") ? "BE" : "ignore";
   if (has(n, "dig")) return has(n, "err") ? "DE" : "D";
   if (has(n, "recept", "receiv", "receive", "passes", "passing")) return has(n, "err") ? "RE" : has(n, "success", "good") ? "RGOOD" : "RTOT";
   if (has(n, "ballhandl", "handling")) return has(n, "err") ? "BHE" : att ? "BHA" : "ignore";
@@ -193,7 +193,7 @@ export function playsFor(l: Line, sets: number, notes: Set<Note["kind"]>): strin
     codes.push(["P3", p3], ["P2", p2], ["P1", p1], ["P0", p0]);
   } else if (counts) codes.push(["P3", n("R3")], ["P2", n("R2")], ["P1", n("R1")], ["P0", v.R0 != null ? n("R0") : n("RE")]);
   else if (v.RTOT || v.RGOOD || v.RE) notes.add("passes-unrated");
-  codes.push(["D", n("D")], ["DE", n("DE")], ["BS", n("BS")], ["BA", n("BA")], ["BE", n("BE")]);
+  codes.push(["D", n("D")], ["DE", n("DE")], ["BS", n("BS")], ["BA", n("BA")], ["BT", n("BT")], ["BE", n("BE")]);
   const AST = n("AST"), BHE = n("BHE");
   codes.push(["AST", AST], ["BHE", BHE], ["SATT", Math.max(0, n("BHA") - AST - BHE)]);
   const k = Math.max(1, Math.min(sets, v.SP != null ? Math.round(v.SP) || sets : sets));

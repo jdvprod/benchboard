@@ -38,7 +38,7 @@ export function mergeLogs(logs: MatchEvent[][]): MatchEvent[] {
 
 /* ---------- stat lines ---------- */
 
-export const STAT_KEYS = ["K", "KT", "AE", "AB", "TA", "SATT", "AST", "BHE", "SA", "SE", "SEN", "SEO", "SI", "R", "RS", "R3", "R2", "R1", "P0", "D", "DE", "BS", "BA", "BE", "CE", "EE", "PE", "OVP", "FBS"] as const;
+export const STAT_KEYS = ["K", "KT", "AE", "AB", "TA", "SATT", "AST", "BHE", "SA", "SE", "SEN", "SEO", "SI", "R", "RS", "R3", "R2", "R1", "P0", "D", "DE", "BS", "BA", "BT", "BE", "CE", "EE", "PE", "OVP", "FBS"] as const;
 export type StatKey = (typeof STAT_KEYS)[number];
 export type Stat = Record<StatKey, number>;
 export const blank = (): Stat => Object.fromEntries(STAT_KEYS.map((k) => [k, 0])) as Stat;

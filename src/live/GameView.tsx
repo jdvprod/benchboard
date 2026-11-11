@@ -72,10 +72,10 @@ function Gamecast({ g, team, P, follow, setFollow, players }: { g: Game; team: s
 function BoxScore({ g, team, P, follow }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string }) {
   const A = aggregate(g.R.sets), them = g.m.opp || "Opponent";
   const ids = Object.keys(A.ps).filter((id) => P.has(id)).sort((a, b) => (+P.get(a)!.num || 0) - (+P.get(b)!.num || 0));
-  const row = (s: Stat, served: number) => [s.K, s.AE, s.TA, fmtHit(hitting(s)), s.SA, serveErrors(s), serves(s, served), s.R, s.R ? fmtAvg(passAvg(s)) : "–", s.D, s.BS, s.BA, s.AST];
+  const row = (s: Stat, served: number) => [s.K, s.AE, s.TA, fmtHit(hitting(s)), s.SA, serveErrors(s), serves(s, served), s.R, s.R ? fmtAvg(passAvg(s)) : "–", s.D, s.BS, s.BA, s.BT || 0, s.AST];
   return <section className="lv-card"><div className="lv-h"><h2>{team}</h2></div>
     <div className="tbl lv-box"><table>
-      <thead><tr><th className="l">{tr("Player")}</th><th>SP</th><th title="Kills">K</th><th title="Attack errors">E</th><th title="Attack attempts">TA</th><th title="Hitting percentage">Hit%</th><th title="Aces">A</th><th title="Serve errors">SE</th><th title="Serves">Srv</th><th title="Serve receptions">Rec</th><th title="Pass average, 0–3">Pass</th><th title="Digs">D</th><th title="Solo blocks">BS</th><th title="Block assists">BA</th><th title="Assists">Ast</th></tr></thead>
+      <thead><tr><th className="l">{tr("Player")}</th><th>SP</th><th title="Kills">K</th><th title="Attack errors">E</th><th title="Attack attempts">TA</th><th title="Hitting percentage">Hit%</th><th title="Aces">A</th><th title="Serve errors">SE</th><th title="Serves">Srv</th><th title="Serve receptions">Rec</th><th title="Pass average, 0–3">Pass</th><th title="Digs">D</th><th title="Solo blocks">BS</th><th title="Block assists">BA</th><th title="Block touches">BT</th><th title="Assists">Ast</th></tr></thead>
       <tbody>{ids.map((id) => <tr key={id} className={id === follow ? "mine" : undefined}><td className="l">{pname(P.get(id))}</td><td>{A.setsPlayed[id] || 0}</td>{row(A.ps[id], A.srv[id]?.n || 0).map((v, i) => <td key={i}>{v}</td>)}</tr>)}</tbody>
       <tfoot><tr><td className="l">{tr("Team")}</td><td>{A.sets}</td>{row(A.T, A.psc.n).map((v, i) => <td key={i}>{v}</td>)}</tr></tfoot>
     </table></div>

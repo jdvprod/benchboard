@@ -25,6 +25,13 @@ test("two block assists on one rally count as one point", () => {
   assert.equal(R.cur!.ps.mb1.BA, 1); assert.equal(R.cur!.ps.opp.BA, 1);
 });
 
+test("a block touch is counted but keeps the rally going", () => {
+  const R = replay([ev("NS", { serve: "us" }), ev("BT", { p: "mb1" }), ev("D", { p: "lib" }), ev("BT", { p: "mb1" }), ev("K", { p: "oh1" })]);
+  assert.equal(R.cur!.us, 1); assert.equal(R.cur!.them, 0);
+  assert.equal(R.cur!.ps.mb1.BT, 2);
+  assert.equal(aggregate(R.sets).ps.mb1.BT, 2);
+});
+
 test("deleted events disappear from every device's log", () => {
   const a = ev("NS", { serve: "us" }), b = ev("K", { p: "x" }), c = ev("DEL", { ref: b.id });
   const merged = mergeLogs([[a, b], [c]]);

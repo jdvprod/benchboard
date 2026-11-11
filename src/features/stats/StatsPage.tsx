@@ -147,8 +147,8 @@ function Players({ A }: { A: Agg }) {
     {mode === "compare" ? <Compare A={A} ids={ids} /> : <>
     <div className="tbl"><table>
       {mode === "totals" && <><thead>
-        <tr><th /><th /><th colSpan={6} className="gh">Hitting</th><th colSpan={3} className="gh">Setting</th><th colSpan={5} className="gh">Serve</th><th colSpan={3} className="gh">Receive</th><th colSpan={2} className="gh">Defense</th><th colSpan={3} className="gh">Block</th><th colSpan={3} className="gh">Misc errors</th></tr>
-        <tr><th className="l">#</th><th className="l">Player</th>{["K", "TA", "E", "Hit %", "Tool", "Blk'd", "Att", "Ast", "E", "Att", "Ace", "In", "Net", "Out", "Avg", "Rec", "0s", "Dig", "Dig E", "Solo", "Ast", "E", "Comm", "Eff", "Pos"].map((l, i) => S.th(l, "t" + i))}</tr></thead>
+        <tr><th /><th /><th colSpan={6} className="gh">Hitting</th><th colSpan={3} className="gh">Setting</th><th colSpan={5} className="gh">Serve</th><th colSpan={3} className="gh">Receive</th><th colSpan={2} className="gh">Defense</th><th colSpan={4} className="gh">Block</th><th colSpan={3} className="gh">Misc errors</th></tr>
+        <tr><th className="l">#</th><th className="l">Player</th>{["K", "TA", "E", "Hit %", "Tool", "Blk'd", "Att", "Ast", "E", "Att", "Ace", "In", "Net", "Out", "Avg", "Rec", "0s", "Dig", "Dig E", "Solo", "Ast", "Touch", "E", "Comm", "Eff", "Pos"].map((l, i) => S.th(l, "t" + i))}</tr></thead>
         <tbody>{ids.map((id) => { const s = A.ps[id] || ({} as Stat), c = cls(s), p = player(id)!; return <tr key={id} className="click" onClick={() => go("player", id)}><td className="l">{p.num}</td><td className="l">{p.first} {p.last} <span className="label">{p.pos}</span></td>{totals(s, c.hc, c.pc, A.srv[id]?.n || 0)}</tr>; })}</tbody>
         <tfoot><tr><td /><td className="l">Team</td>{totals(A.T, "", "", A.psc.n)}</tr></tfoot></>}
       {mode === "perset" && <><thead><tr><th className="l">#</th><th className="l">Player</th>{S.th("Sets", "sets")}{S.th("Kills/S", "kps")}{S.th("Aces/S", "aps2")}{S.th("Blocks/S", "bps")}{S.th("Digs/S", "dps")}{S.th("Assists/S", "asps")}{S.th("Rec/S", "rps")}{S.th("Errors/S", "eps")}{S.th("Net pts/S", "nps")}</tr></thead>
@@ -161,7 +161,7 @@ function Players({ A }: { A: Agg }) {
 }
 /** Serves that went in without an ace: tapped "In", or served rallies nobody tapped. */
 const servesIn = (s: Stat, served: number) => Math.max(s.SI || 0, served - (s.SA || 0) - serveErrors(s));
-const TOTAL_GET: ((s: Stat, served: number) => number | null)[] = [(s) => s.K, (s) => s.TA, (s) => s.AE, (s) => hitting(s), (s) => s.KT, (s) => s.AB, (s) => s.SATT, (s) => s.AST, (s) => s.BHE, (s, n) => serves(s, n), (s) => s.SA, (s, n) => servesIn(s, n), (s) => s.SEN, (s) => s.SEO + s.SE, (s) => passAvg(s), (s) => s.R, (s) => s.P0, (s) => s.D, (s) => s.DE, (s) => s.BS, (s) => s.BA, (s) => s.BE, (s) => s.CE, (s) => s.EE, (s) => s.PE];
+const TOTAL_GET: ((s: Stat, served: number) => number | null)[] = [(s) => s.K, (s) => s.TA, (s) => s.AE, (s) => hitting(s), (s) => s.KT, (s) => s.AB, (s) => s.SATT, (s) => s.AST, (s) => s.BHE, (s, n) => serves(s, n), (s) => s.SA, (s, n) => servesIn(s, n), (s) => s.SEN, (s) => s.SEO + s.SE, (s) => passAvg(s), (s) => s.R, (s) => s.P0, (s) => s.D, (s) => s.DE, (s) => s.BS, (s) => s.BA, (s) => s.BT || 0, (s) => s.BE, (s) => s.CE, (s) => s.EE, (s) => s.PE];
 /** Click-to-sort for stat tables: first click sorts high to low, second low to high, third clears. */
 function useSort() {
   const [k, setK] = useState<string | null>(null), [d, setD] = useState(-1);
@@ -171,7 +171,7 @@ function useSort() {
 }
 
 function totals(s: Stat, hc: string, pc: string, served = 0) {
-  const v = [s.K, s.TA, s.AE, <b className={hc}>{fmtHit(hitting(s))}</b>, s.KT, s.AB, s.SATT, s.AST, s.BHE, serves(s, served), s.SA, servesIn(s, served), s.SEN, s.SEO + s.SE, <b className={pc}>{fmtAvg(passAvg(s))}</b>, s.R, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE];
+  const v = [s.K, s.TA, s.AE, <b className={hc}>{fmtHit(hitting(s))}</b>, s.KT, s.AB, s.SATT, s.AST, s.BHE, serves(s, served), s.SA, servesIn(s, served), s.SEN, s.SEO + s.SE, <b className={pc}>{fmtAvg(passAvg(s))}</b>, s.R, s.P0, s.D, s.DE, s.BS, s.BA, s.BT || 0, s.BE, s.CE, s.EE, s.PE];
   return v.map((x, i) => <td key={i}>{x ?? 0}</td>);
 }
 
@@ -273,9 +273,9 @@ function ScrimStats({ S, A }: { S: Scope; A: Agg }) {
 /* ---------- export ---------- */
 async function exportSheet(S: Scope, A: Agg) {
   const t = team()!, M = teamMetrics(A), T = A.T;
-  const head = ["#", "Player", "Pos", "Sets", "Kills", "Attack att", "Attack err", "Hit %", "Set att", "Assists", "Set err", "Serve att", "Aces", "Serve in", "Serve err net", "Serve err out", "Serve eff", "Pass avg", "Receptions", "Perfect passes", "Pass 0s", "Digs", "Dig err", "Solo blocks", "Block assists", "Block/net err", "Comm err", "Effort err", "Position err", "+/-", "Net points"];
+  const head = ["#", "Player", "Pos", "Sets", "Kills", "Attack att", "Attack err", "Hit %", "Set att", "Assists", "Set err", "Serve att", "Aces", "Serve in", "Serve err net", "Serve err out", "Serve eff", "Pass avg", "Receptions", "Perfect passes", "Pass 0s", "Digs", "Dig err", "Solo blocks", "Block assists", "Block touches", "Block/net err", "Comm err", "Effort err", "Position err", "+/-", "Net points"];
   const r3 = (v: number | null) => (v == null ? "" : +v.toFixed(3));
-  const row = (num: string, name: string, pos: string, s: Stat, id?: string) => { const pm = id ? playerMetrics(A, id) : null; return [num, name, pos, pm ? pm.sets : A.sets, s.K, s.TA, s.AE, r3(hitting(s)), s.SATT, s.AST, s.BHE, serves(s, id ? A.srv[id]?.n : A.psc.n), s.SA, s.SI, s.SEN, s.SEO + s.SE, r3(serveEfficiency(s, id ? A.srv[id]?.n : A.psc.n)), r3(passAvg(s)), s.R, s.R3, s.P0, s.D, s.DE, s.BS, s.BA, s.BE, s.CE, s.EE, s.PE, pm?.plusMinus ?? "", netPoints(s)]; };
+  const row = (num: string, name: string, pos: string, s: Stat, id?: string) => { const pm = id ? playerMetrics(A, id) : null; return [num, name, pos, pm ? pm.sets : A.sets, s.K, s.TA, s.AE, r3(hitting(s)), s.SATT, s.AST, s.BHE, serves(s, id ? A.srv[id]?.n : A.psc.n), s.SA, s.SI, s.SEN, s.SEO + s.SE, r3(serveEfficiency(s, id ? A.srv[id]?.n : A.psc.n)), r3(passAvg(s)), s.R, s.R3, s.P0, s.D, s.DE, s.BS, s.BA, s.BT || 0, s.BE, s.CE, s.EE, s.PE, pm?.plusMinus ?? "", netPoints(s)]; };
   const players = [head, ...teamPlayers().filter((p) => A.ps[p.id]).map((p) => row(p.num, `${p.first} ${p.last}`, p.pos, A.ps[p.id], p.id)), row("", "Team", "", T)];
   const summary: any[][] = [[`${t.name} · ${S.label}`], [], ["Metric", "Value"], ["Points won", A.us], ["Points lost", A.them], ["Hitting %", r3(M.hitting)], ["Kill %", r3(M.killPct)], ["Side-out %", r3(M.sideOut)], ["First-ball side-out %", r3(M.firstBallSO)], ["Point-scoring %", r3(M.pointScoring)], ["Pass average", r3(M.passAvg)], ["Perfect pass %", r3(M.perfectPass)], ["Serve in %", r3(M.serveIn)], ["Serve efficiency", r3(M.serveEff)], ["In-system %", r3(M.inSystemPct)], ["In-system hitting", r3(M.hitInSystem)], ["Out-of-system hitting", r3(M.hitOutOfSystem)], ["Transition hitting", r3(M.hitTransition)], ["Dig success", r3(M.digSuccess)], ["Side-out after 3 pass", r3(M.soByPass.P3)], ["Side-out after 2 pass", r3(M.soByPass.P2)], ["Side-out after 1 pass", r3(M.soByPass.P1)], ["Their errors", A.team.OE], ["Points we gave away", M.freePoints.ours], [], ["Date", "Opponent", "Result", "Set scores"], ...S.items.map(({ m, R }) => [m.date, m.opp, `${R.wonUs}-${R.wonThem}`, R.sets.map((s) => s.us + "-" + s.them).join(", ")])];
   const rot = [["Rotation", "Won", "Lost", "Side-out won", "Side-out chances", "Serve points won", "Serve chances"], ...[1, 2, 3, 4, 5, 6].map((r) => [r, A.rot[r].w, A.rot[r].l, A.rot[r].rw, A.rot[r].rn, A.rot[r].sw, A.rot[r].sn])];

@@ -10,7 +10,7 @@ export const CODE_MAP: Record<string, ActionCode> = {
   set: "SATT", st: "SATT", ast: "AST", as: "AST", bh: "BHE", bhe: "BHE", ste: "BHE",
   ace: "SA", sa: "SA", in: "SI", si: "SI", sn: "SEN", sen: "SEN", so: "SEO", seo: "SEO", se: "SE",
   p3: "P3", p2: "P2", p1: "P1", p0: "P0", r3: "P3", r2: "P2", r1: "P1", r0: "P0",
-  d: "D", dig: "D", de: "DE", b: "BS", bs: "BS", ba: "BA", be: "BE", bn: "BE",
+  d: "D", dig: "D", de: "DE", b: "BS", bs: "BS", ba: "BA", bt: "BT", touch: "BT", be: "BE", bn: "BE",
   ce: "CE", ee: "EE", pe: "PE", fb: "FBR", fbr: "FBR", ovp: "OVP", ov: "OVP", fbs: "FBS",
   oe: "OE", ok: "OK", oa: "OA", tp: "TP", up: "UP", ref: "REF",
 };
@@ -45,7 +45,7 @@ export const QUICK_HELP: [string, string][] = [
   ["12ace / 12in / 12sn / 12so", "ace · in · serve error net · out (server is automatic: just ace, in…)"],
   ["4p3 … 4p0", "pass grade 3 to 0"],
   ["3d / 3de", "dig · dig error"],
-  ["9bs / 9ba / 9be", "solo block · block assist · net error"],
+  ["9bs / 9ba / 9bt / 9be", "solo block · block assist · block touch · net error"],
   ["ok11 / oa7 / oe / tp", "their kill · ace · error · other point (with their #)"],
   ["ce / ee / pe / ref / up", "communication · effort · positioning · bad call · our point"],
   ["u", "undo your last entry"],
@@ -56,7 +56,7 @@ const NUM_WORDS: Record<string, number> = { zero: 0, oh: 0, one: 1, won: 1, two:
 // longest phrases first; "their"/"they"/"opponent" phrases are the other team's
 const SPOKEN: [RegExp, string][] = [
   [/^(their|they|opponent|opp) (kill|kills)$/, "ok"], [/^(their|they|opponent|opp) (ace|aces)$/, "oa"], [/^(their|they|opponent|opp) (error|errors|mistake)$/, "oe"], [/^(their|they|opponent|opp) point$/, "tp"],
-  [/^solo block$/, "bs"], [/^block assist$/, "ba"], [/^(block|blocks)$/, "bs"], [/^(net|block error|net error)$/, "be"],
+  [/^solo block$/, "bs"], [/^block assist$/, "ba"], [/^(block touch|touch)$/, "bt"], [/^(block|blocks)$/, "bs"], [/^(net|block error|net error)$/, "be"],
   [/^(serve error|service error|missed serve|miss serve|serve out|serve net)$/, "se"], [/^(serve in|serve good)$/, "in"], [/^(ace|aces|service ace)$/, "ace"],
   [/^(perfect pass|pass three|three pass|pass 3)$/, "p3"], [/^(pass two|two pass|good pass|pass 2)$/, "p2"], [/^(pass one|one pass|bad pass|pass 1)$/, "p1"], [/^(shank|shanked|pass zero|zero pass|reception error|aced|pass 0)$/, "p0"],
   [/^(kill|kills|killed|put away)$/, "k"], [/^(tool|tooled|off the block)$/, "kt"], [/^(blocked|roofed|stuffed)$/, "ab"], [/^(attack error|hitting error|hit error|hit out|error|out)$/, "e"], [/^(attempt|attack|swing|kept in play)$/, "a"],

@@ -121,7 +121,7 @@ const ES: Record<string, string> = {
 };
 // plays, by the action's English name
 const PLAYS_ES: Record<string, string> = {
-  "Ace": "Ace", "Attack attempt": "Intento de ataque", "Attack blocked": "Ataque bloqueado", "Attack error": "Error de ataque", "Bad ref call": "Mala decisión arbitral", "Block / net error": "Error de bloqueo o red", "Block assist": "Bloqueo compartido",
+  "Ace": "Ace", "Attack attempt": "Intento de ataque", "Attack blocked": "Ataque bloqueado", "Attack error": "Error de ataque", "Bad ref call": "Mala decisión arbitral", "Block / net error": "Error de bloqueo o red", "Block assist": "Bloqueo compartido", "Block touch": "Toque de bloqueo",
   "Communication error": "Error de comunicación", "Dig error": "Error de defensa", "Dig": "Defensa", "Effort error": "Error de esfuerzo", "Free ball given": "Pelota regalada", "Free ball received": "Pelota fácil recibida", "Kill off the block (tool)": "Remate contra el bloqueo",
   "Kill": "Remate",  "Overpass": "Pelota pasada", "Pass 0 (reception error)": "Recepción 0 (error)", "Pass 1": "Recepción 1", "Pass 2": "Recepción 2", "Pass 3": "Recepción 3",
   "Point": "Punto", "Positioning error": "Error de posición", "Serve error (net)": "Error de saque (red)", "Serve error (out)": "Error de saque (afuera)", "Serve error": "Error de saque", "Serve in": "Saque adentro", "Set assist": "Asistencia", "Set attempt": "Intento de colocación", "Setting error": "Error de colocación", "Solo block": "Bloqueo",

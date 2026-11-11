@@ -9,7 +9,7 @@ const roster = [{ id: "p1", first: "Maya", last: "Lopez", num: "12" }, { id: "p2
 
 test("clip search understands plays, players, areas, sets and rotations", () => {
   let r = parseQuery("all solo blocks", roster); assert.deepEqual(r.q.codes, ["BS"]);
-  r = parseQuery("blocking reps", roster); assert.deepEqual(r.q.codes!.sort(), ["BA", "BE", "BS"]);
+  r = parseQuery("blocking reps", roster); assert.deepEqual(r.q.codes!.sort(), ["BA", "BE", "BS", "BT"]);
   r = parseQuery("kills to area 1", roster); assert.deepEqual(r.q.codes, ["K", "KT"]); assert.deepEqual(r.q.zones, [1]);
   r = parseQuery("Maya's digs in set 2", roster); assert.deepEqual(r.q.codes, ["D"]); assert.deepEqual(r.q.players, ["p1"]); assert.deepEqual(r.q.sets, [2]);
   r = parseQuery("#7 aces in rotation 3", roster); assert.deepEqual(r.q.codes, ["SA"]); assert.deepEqual(r.q.players, ["p2"]); assert.deepEqual(r.q.rots, [3]);
@@ -89,4 +89,9 @@ test("rally check: finds rallies with no point statted, counting plays entered j
   assert.equal(crossedEnd(rs, 13.8, 14.1), 0);
   assert.equal(crossedEnd(rs, 5, 30), -1); // a seek
   assert.equal(crossedEnd(rs, 20, 20.2), -1);
+});
+
+test("clip search: block touches are their own play", () => {
+  assert.deepEqual(parseQuery("all block touches").q.codes, ["BT"]);
+  assert.ok(parseQuery("blocks").q.codes!.includes("BT"));
 });

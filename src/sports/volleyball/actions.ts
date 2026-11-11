@@ -44,6 +44,7 @@ export const ACTIONS = {
   SE: { label: "Error", long: "Serve error", point: "them", serve: true },
   BS: { label: "Solo block", long: "Solo block", point: "us", short: "Solo" },
   BA: { label: "Block assist", long: "Block assist", point: "us", short: "Assist" },
+  BT: { label: "Touch", long: "Block touch", short: "Touch" }, // got a hand on it, ball stays in play
   BE: { label: "Net / error", long: "Block / net error", point: "them" },
   CE: { label: "Communication", long: "Communication error", point: "them", optionalPlayer: true, short: "Comms" },
   EE: { label: "Effort", long: "Effort error", point: "them", optionalPlayer: true },
@@ -69,7 +70,7 @@ export const GROUPS: [string, ActionCode[]][] = [
   ["Defense", ["D", "DE"]],
   ["Transition", ["FBR", "OVP", "FBS"]],
   ["Serve", ["SA", "SI", "SEN", "SEO"]],
-  ["Block", ["BS", "BA", "BE"]],
+  ["Block", ["BS", "BA", "BT", "BE"]],
   ["Misc", ["CE", "EE", "PE", "REF"]],
   ["Opponent", ["OE", "OK", "OA", "TP"]],
 ];

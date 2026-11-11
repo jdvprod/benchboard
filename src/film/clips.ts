@@ -39,8 +39,8 @@ export function filmTiming(m: { filmStart?: number | null; videoOffset?: number 
 /** Plays statted in Film Room carry their exact video time; others are timed from when they were entered. */
 export const videoTime = (T: FilmTiming, id: string) => T.vt?.get(id) ?? ((T.ts.get(id) ?? T.base) - T.base) / 1000 + T.offset;
 
-const HIGHLIGHT: Record<string, number> = { K: 5, KT: 5, SA: 5, BS: 5, BA: 4, D: 2, AST: 1, P3: 1 };
-const NAMES: Record<string, string> = { K: "Kill", KT: "Kill off the block", SA: "Ace", BS: "Solo block", BA: "Block", D: "Dig", AST: "Set for a kill", P3: "Perfect pass", AE: "Attack error", AB: "Blocked", SEN: "Serve error", SEO: "Serve error", P0: "Shanked pass", DE: "Dig error", OK: "Their kill", OA: "Their ace", OE: "Their error" };
+const HIGHLIGHT: Record<string, number> = { K: 5, KT: 5, SA: 5, BS: 5, BA: 4, BT: 2, D: 2, AST: 1, P3: 1 };
+const NAMES: Record<string, string> = { K: "Kill", KT: "Kill off the block", SA: "Ace", BS: "Solo block", BA: "Block", BT: "Block touch", D: "Dig", AST: "Set for a kill", P3: "Perfect pass", AE: "Attack error", AB: "Blocked", SEN: "Serve error", SEO: "Serve error", P0: "Shanked pass", DE: "Dig error", OK: "Their kill", OA: "Their ace", OE: "Their error" };
 export const playName = (t: string, long?: string) => NAMES[t] || long || t;
 
 /** Clips for the plays in `log` that pass `keep`, against the match video. lead/tail in seconds. */

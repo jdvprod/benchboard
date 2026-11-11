@@ -7,7 +7,7 @@ export const KEYMAP: [string, ActionCode, string][] = [
   ["s", "SA", "Ace"], ["i", "SI", "Serve in"], ["n", "SEN", "Serve error, net"], ["o", "SEO", "Serve error, out"],
   ["d", "D", "Dig"], ["x", "DE", "Dig error"],
   ["h", "AST", "Assist"], ["g", "SATT", "Set attempt"], ["l", "BHE", "Setting error"],
-  ["b", "BS", "Solo block"], ["v", "BA", "Block assist"], ["m", "BE", "Block / net error"],
+  ["b", "BS", "Solo block"], ["v", "BA", "Block assist"], ["u", "BT", "Block touch"], ["m", "BE", "Block / net error"],
   ["f", "FBR", "Free ball to us"],
   ["E", "OE", "Their error"], ["K", "OK", "Their kill"], ["A", "OA", "Their ace"], ["P", "TP", "Their point"],
 ];

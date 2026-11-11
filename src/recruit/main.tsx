@@ -56,7 +56,7 @@ function Profile({ code }: { code: string }) {
   // only what the staff recorded: a team that doesn't track digs shouldn't make a player look like she has none
   const tiles: [string, string, string, number][] = [
     ["Kills / set", fmtNum(s.kps, 2), `${s.K} kills`, s.K + s.TA], ["Hitting %", s.TA ? fmtHit(s.hitting) : "—", `${s.TA} swings, ${s.AE} errors`, s.TA], ["Aces / set", fmtNum(s.acesPs, 2), `${s.SA} aces`, s.SA + s.SE], ["Serve in", fmtPct(s.serveIn), `${s.SE} serve errors`, s.serveIn != null ? 1 : 0],
-    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${s.R} passes`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${s.D} digs`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
+    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${s.R} passes`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${s.D} digs`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists${s.BT ? `, ${s.BT} touches` : ""}`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
   ];
   const shown = tiles.filter((x) => x[3] > 0);
   const measure: [string, string | undefined][] = [["Height", p.height], ["Standing reach", pr.reach], ["Approach jump", pr.approach], ["Block jump", pr.block], ["Dominant hand", pr.hand], ["GPA", pr.gpa], ["Club", pr.club]];
