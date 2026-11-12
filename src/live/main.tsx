@@ -15,7 +15,6 @@ import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
 import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
-import { GameOverlay, TeamOverlay } from "./Overlay";
 import { TeamLogo } from "../ui/Logo";
 import { FilmSessionView } from "./FilmSession";
 import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
@@ -97,8 +96,8 @@ function Landing() {
 
 function LiveApp() {
   const r = useRoute();
-  if (r[0] === "t" && r[1] && r[2] === "overlay") return <TeamOverlay key={r[1]} code={r[1].toUpperCase()} q={query()} />;
-  if (r[0] === "g" && r[1] && r[2] === "overlay") return <GameOverlay key={r[1]} code={r[1].toUpperCase()} q={query()} />;
+  // old stream-overlay links open the normal page
+  if ((r[0] === "t" || r[0] === "g") && r[1] && r[2] === "overlay") return r[0] === "t" ? <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={[]} /> : <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "film" && r[1]) return <FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} />;

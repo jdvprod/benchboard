@@ -8,7 +8,6 @@ import { MomentumChart } from "../../ui/charts";
 import { logText } from "../track/Tracker";
 import { sideNames } from "../../app/Scoreboard";
 import { liveUrlFor, ShareLive } from "../../cloud/CloudCard";
-import { StreamOverlay } from "../../cloud/StreamOverlay";
 import { qrSvg } from "../../lib/qr";
 import { GameScore } from "../../ui/GameScore";
 
@@ -68,7 +67,6 @@ export function LivePage() {
         })}</ul> : <p className="empty">Plays show up here as they're recorded.</p>}
       </Card>
     </div>
-    <StreamOverlay />
     <p className="small muted" style={{ textAlign: "center" }}>Put this screen on a TV or a second device for the bench and fans. It updates as plays are recorded.</p>
   </div>;
 }

@@ -11,6 +11,7 @@ import { APP_VERSION, LEGAL, LEGAL_EMAIL } from "../../app/legal";
 import { eraseDevice } from "../../data/db";
 import { offlineAllowed, skipAccounts } from "../../cloud/AuthPage";
 import { go } from "../../app/router";
+import { LOC_KINDS, locChoice } from "../../data/model";
 
 export function SettingsPage() {
   const t = team()!, s = t.settings, p = state.prefs;
@@ -36,8 +37,14 @@ export function SettingsPage() {
       <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>
     </Card>
     <Card title={`Tracking · ${t.name}`}>
-      <SetRow title="Ask where the ball landed" sub="After kills, aces, serves and passes, tap the court. Feeds the tendency court."><Switch checked={s.askLoc} onChange={(v) => setSettings({ askLoc: v })} label="Ask where the ball landed" /></SetRow>
-      <SetRow title="Also ask after digs" sub="Shows where you dig their attacks. One more tap per dig."><Switch checked={s.askLocDigs} disabled={!s.askLoc} onChange={(v) => setSettings({ askLocDigs: v })} label="Ask after digs" /></SetRow>
+      <div className="setgroup">
+        <div className="setgroup-hd"><b>Ask where the ball landed</b><span>After the play, tap the court. Feeds the tendency court and the Live court. Choose for each kind of play.</span></div>
+        {LOC_KINDS.map((k) => <SetRow key={k.kind} title={k.title} sub={k.sub}>
+          <select className="input" style={{ width: "auto", maxWidth: 220 }} aria-label={"Where it landed: " + k.title} value={locChoice(s, k.kind)} onChange={(e) => setSettings({ locAsk: { ...LOC_KINDS.reduce((o, x) => ({ ...o, [x.kind]: locChoice(s, x.kind) }), {}), [k.kind]: e.target.value } })}>
+            {k.choices.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+        </SetRow>)}
+      </div>
       <SetRow title="Ask for their jersey number" sub="After their kills, aces and errors, so you can scout their players."><Switch checked={s.askOpp} onChange={(v) => setSettings({ askOpp: v })} label="Ask for their number" /></SetRow>
       <SetRow title="Subs allowed per set" sub="0 means no limit. High school is usually 15, club 12 or 15."><input className="input" style={{ width: 80 }} type="number" min={0} max={30} value={s.subLimit} onChange={(e) => setSettings({ subLimit: Math.max(0, +e.target.value || 0) })} aria-label="Subs per set" /></SetRow>
       <SetRow title="Default match format"><div className="row"><Seg value={s.bestOf} onChange={(v) => setSettings({ bestOf: v })} options={FORMATS} label="Format" /><select className="input" style={{ width: "auto" }} value={s.scoring || "25"} onChange={(e) => setSettings({ scoring: e.target.value })} aria-label="Scoring">{SCORING.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div></SetRow>

@@ -4,7 +4,7 @@ import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { roleOn } from "../../cloud/sync";
 import { setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers, appendEvents, deleteEvent, eventsOf, isMine, patch, patchEvent, player, playerName, replayOf, save, team, toast, undoLast } from "../../data/store";
-import { Match } from "../../data/model";
+import { asksLoc, Match } from "../../data/model";
 import { ACTIONS, ActionCode, GROUPS, LOCATION_HALF, OPP_NUMBER } from "../../sports/volleyball/actions";
 import { aggregate, LogEntry, Replay, serverOf, SetState, zoneOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveAttempts, serveErrors, serves, blocks } from "../../sports/volleyball/metrics";
@@ -102,8 +102,7 @@ export function Tracker({ m }: { m: Match }) {
     const e = appendEvents(m.id, [ev]); if (!e) return false;
     if (o.op && !m.oppPlayers.includes(o.op)) patch("matches", m.id, { oppPlayers: m.oppPlayers.concat(o.op) });
     if (o.quiet) return true;
-    let half = t.settings.askLoc ? LOCATION_HALF[code] || null : null;
-    if (code === "D" && !t.settings.askLocDigs) half = null;
+    let half = asksLoc(t.settings, code) ? LOCATION_HALF[code] || null : null;
     if (scr && half && ev.s === "b") half = half === "them" ? "us" : "them";
     const askOpp = !scr && t.settings.askOpp && !!OPP_NUMBER[code];
     if (half || askOpp) setUi({ follow: { id: e.id, half, askOpp, label: (p ? playerName(p) + " · " : "") + a.long } });
@@ -125,7 +124,7 @@ export function Tracker({ m }: { m: Match }) {
       <div className={focus ? "stack" : "split"}>
         <div className="stack">
           <Panels m={m} R={R} c={c} />
-          {scr ? <ScrimPlayers m={m} /> : <CourtPlayers c={c} />}
+          {scr ? <ScrimPlayers m={m} /> : <CourtPlayers m={m} c={c} />}
           <PlannedSub c={c} m={m} />
           <Hint c={c} m={m} />
           <Pad m={m} c={c} setA={setA} mA={mA} record={record} />
@@ -154,7 +153,7 @@ function Banners({ m, R }: { m: Match; R: Replay }) {
   useEffect(() => { if (ui.panel === "timeout") toRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [ui.panel]);
   const startNext = (serve: "us" | "them") => {
     const ev: any = { t: "NS", serve };
-    if (m.nextLu && m.nextLu.lu.length === 6) { Object.assign(ev, { lu: m.nextLu.lu, lib: m.nextLu.lib, libSrv: m.nextLu.libSrv }); patch("matches", m.id, { nextLu: null }); }
+    if (m.nextLu && m.nextLu.lu.length === 6) { Object.assign(ev, { lu: m.nextLu.lu, lib: m.nextLu.lib, lib2: m.nextLu.lib2 || null, libSrv: m.nextLu.libSrv }); patch("matches", m.id, { nextLu: null }); }
     appendEvents(m.id, [ev]);
   };
   return <>
@@ -291,14 +290,16 @@ function LineupFix({ m, c }: { m: Match; c: SetState }) {
   const base = c.lu || c.startLu || t.defLineup?.lu || autoLineup(ps).lu;
   const [lu, setLu] = useState<string[]>([0, 1, 2, 3, 4, 5].map((i) => base[i] || ""));
   const [lib, setLib] = useState<string>(c.lib || t.defLineup?.lib || ps.find((p) => p.pos === "L")?.id || "");
+  const [lib2, setLib2] = useState<string>(c.lib2 || t.defLineup?.lib2 || "");
   const [ls, setLs] = useState<string>(c.libSrv || "");
   const opts = (sel: string) => <><option value="">—</option>{ps.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.first} {p.last}</option>)}</>;
   const slot = (i: number) => <label className="field" key={i}><span className="label">Pos {i + 1}{i === 0 ? " · server" : ""}</span><select value={lu[i]} onChange={(e) => { const n = lu.slice(); n[i] = e.target.value; setLu(n); }}>{opts(lu[i])}</select></label>;
   const saveLu = () => {
     if (lu.some((x) => !x)) return toast("Fill all six positions.");
     if (new Set(lu).size !== 6) return toast("Each player can only be in one position.");
-    if (lib && lu.includes(lib)) return toast("The libero can't also be in the six.");
-    appendEvents(m.id, [{ t: "LU", lu, lib: lib || null, libSrv: ls && lu.includes(ls) ? ls : null } as any]);
+    if ((lib && lu.includes(lib)) || (lib2 && lu.includes(lib2))) return toast("A libero can't also be in the six.");
+    if (lib2 && lib2 === lib) return toast("Pick two different liberos, or leave the second one empty.");
+    appendEvents(m.id, [{ t: "LU", lu, lib: lib || lib2 || null, lib2: lib ? lib2 || null : null, libSrv: ls && lu.includes(ls) ? ls : null } as any]);
     toast("Lineup saved"); setUi({ panel: null });
   };
   return <div className="editor">
@@ -307,6 +308,9 @@ function LineupFix({ m, c }: { m: Match; c: SetState }) {
     <div className="rowlab">Back row</div><div className="c3">{[4, 5, 0].map(slot)}</div>
     <div className="two">
       <label className="field"><span className="label">Libero</span><select value={lib} onChange={(e) => setLib(e.target.value)}>{opts(lib)}</select></label>
+      <label className="field"><span className="label">Second libero (optional)</span><select value={lib2} onChange={(e) => setLib2(e.target.value)}>{opts(lib2)}</select></label>
+    </div>
+    <div className="two">
       <label className="field"><span className="label">Libero serves for</span><select value={ls} onChange={(e) => setLs(e.target.value)}><option value="">Nobody</option>{lu.filter(Boolean).map((id) => <option key={id} value={id}>{playerName(id)}</option>)}</select></label>
     </div>
     <p className="small muted">Position 1 is right back, the server. For starting lineups and all six rotations, use the Lineup tab.</p>
@@ -317,7 +321,7 @@ function LineupFix({ m, c }: { m: Match; c: SetState }) {
 function SubPanel({ m, c }: { m: Match; c: SetState }) {
   const t = team()!, lim = t.settings.subLimit;
   const [out, setOut] = useState<string | null>(null);
-  const on = new Set(c.lu!.concat(c.lib ? [c.lib] : []));
+  const on = new Set(c.lu!.concat(c.lib ? [c.lib] : [], c.lib2 ? [c.lib2] : []));
   const bench = activePlayers().filter((p) => !on.has(p.id));
   return <div className="editor">
     <b>Substitution</b><span className="small muted">Subs this set: {c.subs}{lim ? " of " + lim : ""}{lim && c.subs >= lim ? " · limit reached" : ""}. You can also drag a bench player onto a court player.</span>
@@ -365,28 +369,51 @@ function PlayerButton({ id, cls = "", server, drag, drop }: { id: string; cls?: 
   </button>;
 }
 
-function CourtPlayers({ c }: { c: SetState }) {
+function CourtPlayers({ m, c }: { m: Match; c: SetState }) {
   const srv = serverOf(c), ps = activePlayers();
   if (!ps.length) return <p className="empty">No players yet. Add them on the Team tab.</p>;
   if (!c.lu) return <div className="players">{ps.map((p) => <PlayerButton key={p.id} id={p.id} />)}</div>;
-  const L = c.lu, libServing = !!(srv && c.lib && srv === c.lib), on = new Set(L.concat(c.lib ? [c.lib] : []));
+  const L = c.lu, libServing = !!(srv && c.lib && srv === c.lib), on = new Set(L.concat(c.lib ? [c.lib] : [], c.lib2 ? [c.lib2] : []));
   const bench = ps.filter((p) => !on.has(p.id));
   return <>
-    <div className="courtgrid" aria-label="On court">
-      <div className="netbar"><span>NET</span></div>
-      <div className="rowlab">Front row</div>
-      <div className="c3">{[L[3], L[2], L[1]].map((id) => <PlayerButton key={id} id={id} drop />)}</div>
-      <div className="rowlab">Back row</div>
-      <div className="c3"><PlayerButton id={L[4]} drop /><PlayerButton id={L[5]} drop />{libServing ? <PlayerButton id={c.lib!} cls="lib" server /> : <PlayerButton id={L[0]} server={srv === L[0]} drop />}</div>
+    <div className="courtwrap">
+      <div className="courtgrid" aria-label="On court">
+        <div className="netbar"><span>NET</span></div>
+        <div className="rowlab">Front row</div>
+        <div className="c3">{[L[3], L[2], L[1]].map((id) => <PlayerButton key={id} id={id} drop />)}</div>
+        <div className="rowlab">Back row</div>
+        <div className="c3"><PlayerButton id={L[4]} drop /><PlayerButton id={L[5]} drop />{libServing ? <PlayerButton id={c.lib!} cls="lib" server /> : <PlayerButton id={L[0]} server={srv === L[0]} drop />}</div>
+      </div>
+      <Liberos m={m} c={c} bench={bench.map((p) => p.id)} libServing={libServing} />
     </div>
-    <div className="row between"><span className="label">{c.lib ? "Libero & bench" : "Bench"}</span><span className="small muted">Drag a bench player onto a court player to sub</span></div>
+    <div className="row between"><span className="label">Bench</span><span className="small muted">Drag a bench player onto a court player to sub</span></div>
     <div className="players">
-      {c.lib && !libServing && <PlayerButton id={c.lib} cls="lib" />}
       {libServing && <PlayerButton id={L[0]} cls="bench" />}
       {bench.map((p) => <PlayerButton key={p.id} id={p.id} cls="bench" drag />)}
     </div>
     {libServing && <p className="small muted">{playerName(c.lib)} (libero) is serving for {playerName(L[0])}.</p>}
   </>;
+}
+
+/** Two libero spots beside the court: the libero playing now, and an optional second libero to swap in between rallies. */
+function Liberos({ m, c, bench, libServing }: { m: Match; c: SetState; bench: string[]; libServing: boolean }) {
+  const set = (lib: string | null, lib2: string | null) => appendEvents(m.id, [{ t: "LIB", lib, lib2 } as any]);
+  const pick = (which: 1 | 2) => <select className="libpick" aria-label={which === 1 ? "Choose the libero" : "Choose a second libero"} value="" onChange={(e) => {
+    const id = e.target.value; if (!id) return;
+    if (which === 1) set(id, c.lib2); else set(c.lib, id);
+    toast(`${playerName(id)} is ${which === 1 ? "the libero" : "the second libero"}`);
+  }}><option value="">{which === 1 ? "+ Libero" : "+ Add"}</option>{bench.map((id) => <option key={id} value={id}>{playerName(id)}</option>)}</select>;
+  return <div className="libcol" aria-label="Liberos">
+    <div className="rowlab">Libero</div>
+    {c.lib ? (libServing ? <div className="pl lib libsrv"><span className="lb">L</span><span className="n">{player(c.lib)?.num}</span><span className="nm">Serving at P1</span></div> : <PlayerButton id={c.lib} cls="lib on" />) : <div className="libslot">{pick(1)}</div>}
+    {c.lib && <>
+      <div className="rowlab">2nd libero</div>
+      {c.lib2 ? <>
+        <PlayerButton id={c.lib2} cls="lib off" />
+        <button className="btn sm libswap" disabled={libServing} onClick={() => { set(c.lib2, c.lib); toast(`${playerName(c.lib2)} is the libero now`); }}>Swap liberos</button>
+      </> : <div className="libslot">{pick(2)}</div>}
+    </>}
+  </div>;
 }
 
 function ScrimPlayers({ m }: { m: Match }) {

@@ -43,7 +43,7 @@ function TeamInfo() {
         <label className="field"><span className="label">Team name</span><input defaultValue={t.name} onBlur={(e) => e.target.value.trim() && setTeamPatch({ name: e.target.value.trim() })} /></label>
         <label className="field"><span className="label">Level</span><input defaultValue={t.level} onBlur={(e) => setTeamPatch({ level: e.target.value.trim() })} /></label>
       </div>
-      <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, your team page, the stream overlay and share graphics.</p>
+      <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, play-by-play, your team page and share graphics.</p>
         <LogoPicker kind="team" id={t.id} name={t.name} value={t.logo} onPick={teamLogoPick} /></div>
       <div><div className="label">Season</div>
         <div className="row" style={{ marginTop: 6 }}>

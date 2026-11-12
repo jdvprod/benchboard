@@ -58,7 +58,7 @@ function ranked(zones: Record<string, ZoneCount>, key: keyof ZoneCount) {
 
 function recommend(view: TendencyView, zones: Record<string, ZoneCount>, total: number, out: number, pts: Loc[]): string[] {
   const recs: string[] = [];
-  if (total < 5) return [total ? `Only ${total} marked so far. Recommendations show up after about 5.` : "No locations marked yet. Turn on \"Ask where the ball landed\" in Settings and tap the court after each play."];
+  if (total < 5) return [total ? `Only ${total} marked so far. Recommendations show up after about 5.` : "No locations marked yet. In Settings, choose which plays ask where the ball landed, then tap the court after each one."];
   if (view === "theirAttack") {
     const kills = ranked(zones, "bad"), killTotal = kills.reduce((n, [, v]) => n + v.bad, 0);
     if (kills.length) {

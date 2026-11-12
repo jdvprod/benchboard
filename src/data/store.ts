@@ -246,7 +246,7 @@ export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: M
   if (!o.film) save("teams", { ...t, currentMatchId: m.id }, true);
   const lu = o.lineup !== undefined ? o.lineup : m.kind === "match" ? t.defLineup : null;
   const first: any = { t: "NS", serve: o.serve || "us" };
-  if (lu && lu.lu.length === 6) Object.assign(first, { lu: lu.lu.slice(), lib: lu.lib, libSrv: lu.libSrv });
+  if (lu && lu.lu.length === 6) Object.assign(first, { lu: lu.lu.slice(), lib: lu.lib, lib2: lu.lib2 || null, libSrv: lu.libSrv });
   appendEvents(m.id, o.events || [first]);
   return m;
 }

@@ -527,7 +527,7 @@ const scenarios = {
       ok("Live speaks Spanish on a Spanish phone", /Inicio/i.test(t) && /Récord/i.test(t) && /Cancha 3/.test(t) && /Arbitrando: Buchanan vs Central/.test(t) && /Resultados/i.test(t), t.slice(0, 300).replace(/\s+/g, " "));
       await E.locator(".lv-res", { hasText: /G 2–0/ }).first().click(); await E.waitForTimeout(500);
       await E.getByRole("button", { name: "Jugadas", exact: true }).click();
-      ok("play-by-play in Spanish", (await E.locator(".lv-pbp").first().innerText()).includes("Remate"), (await E.locator(".lv-pbp").first().innerText()).slice(0, 120));
+      ok("play-by-play in Spanish", (await E.locator(".lv-espn").first().innerText()).includes("Remate"), (await E.locator(".lv-espn").first().innerText()).slice(0, 120));
       if (process.env.SHOTS) await E.screenshot({ path: path.join(process.env.SHOTS, "live-es.png"), fullPage: true });
       await E.getByRole("button", { name: "English" }).click(); await E.waitForTimeout(1200);
       ok("the footer switches back to English", /Play-by-play/i.test(await E.locator("body").innerText()));
@@ -704,21 +704,15 @@ const scenarios = {
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
     const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
-    await go(A, "live"); await A.locator(".card", { hasText: "Stream overlay" }).getByRole("button", { name: "Make overlay link" }).click(); await A.waitForTimeout(1200);
-    const ovUrl = (await A.locator(".ov-url").innerText()).trim();
     const P = await newPage(browser, { phone: true }); await P.goto(teamUrl); await P.waitForTimeout(1500);
     await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(600);
-    const court = P.locator("section", { has: P.getByRole("heading", { name: "On the court" }) });
-    ok("gamecast shows the six on the court with the server", (await court.locator(".lv-spot").count()) === 6 && (await court.locator(".lv-spot.srv").count()) === 1 && /Rotation 1/.test(await court.innerText()), (await court.innerText().catch(() => "")).replace(/\s+/g, " "));
+    const court = P.locator(".lv-gc");
+    ok("gamecast court shows our six with the server and the rotation", (await court.locator(".lv-gc-pl").count()) === 6 && (await court.locator(".lv-gc-pl.srv").count()) === 1 && /Rotation 1/.test(await court.innerText()), (await court.innerText().catch(() => "")).slice(0, 200));
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "on-court.png"), fullPage: true });
     { const ax = await a11y(P); ok("on-court view controls all have names", !ax.length, ax.join(" | ")); }
-    // the stream: a caption names who scored
-    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } }); await ctx.addInitScript((u) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url: u, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
-    const O = await ctx.newPage(); await O.goto(ovUrl); await O.waitForTimeout(1500);
-    ok("no caption before anything happens", (await O.locator(".ov-cap").count()) === 0);
+    // a point from the bench shows up as the last play, with where it landed
     await go(A, "track"); await A.locator(".pl", { hasText: "Maya" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape");
-    { const t0 = Date.now(); let cap = ""; while (Date.now() - t0 < 12000) { cap = await O.locator(".ov-cap").innerText().catch(() => ""); if (cap) break; await O.waitForTimeout(400); } ok("stream caption names who scored", /#7 Maya · Kill/.test(cap), cap || "(none)"); }
-    if (process.env.SHOTS) await O.screenshot({ path: path.join(process.env.SHOTS, "overlay-caption.png") });
+    { const t0 = Date.now(); let last = ""; while (Date.now() - t0 < 12000) { last = await P.locator(".lv-gc-last").innerText().catch(() => ""); if (/Maya/.test(last)) break; await P.waitForTimeout(400); } ok("gamecast calls out the last play with the player", /#7 Maya.*Kill/s.test(last), last); }
     await P.waitForTimeout(6000); ok("the rotation moves as the match goes on", /Rotation \d/.test(await court.innerText()));
     // families: calendar and their teams list
     await P.goto(teamUrl + "/schedule"); await P.waitForTimeout(800);
@@ -741,7 +735,7 @@ const scenarios = {
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "season-review.png"), fullPage: true });
     await go(A, "stats"); { const g = await download(A, () => A.getByRole("button", { name: "Season graphic" }).click(), 15000); ok("season graphic saves", g.name.endsWith(".png") && g.size > 20000, `${g.name} ${g.size}`); if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "season-graphic.png")); }
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
-    await A.context().close(); await P.context().close(); await ctx.close();
+    await A.context().close(); await P.context().close();
   },
   async reel(browser) {
     const p = await newPage(browser, { cloud: false });
@@ -1031,7 +1025,8 @@ const scenarios = {
     if (season) {
       await P.goto(season); await P.waitForTimeout(2000); await shot(P, "live-team");
       const gc = P.getByRole("link", { name: "Open the gamecast" }); if (await gc.count()) { await gc.click(); await P.waitForTimeout(1500); await shot(P, "live-game");
-        const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); } }
+        const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); }
+        const pbp = P.getByRole("button", { name: "Play-by-play", exact: true }); if (await pbp.count()) { await pbp.click(); await shot(P, "live-pbp"); } }
     }
     // athletes: a recruiting profile
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click").first().click(); await A.waitForTimeout(600);
@@ -1042,6 +1037,45 @@ const scenarios = {
     if (rec) { await P.goto(rec); await P.waitForTimeout(2000); await shot(P, "recruit-profile"); }
     await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(1200); await shot(P, "recruit-guide");
     await A.context().close(); await M.context().close(); await P.context().close();
+  },
+  async coachtools(browser) {
+    const A = await newPage(browser);
+    await go(A, "sample"); await A.waitForTimeout(1500); await go(A, "track"); await A.waitForTimeout(500);
+    // two liberos beside the court
+    const lc = A.locator(".libcol");
+    ok("track shows a libero box beside the court", (await lc.count()) === 1 && (await lc.locator(".pl.lib.on").count()) === 1);
+    const first = (await lc.locator(".pl.lib.on .nm").innerText()).trim();
+    await lc.locator("select[aria-label='Choose a second libero']").selectOption({ index: 1 }); await A.waitForTimeout(300);
+    ok("a second libero can be added", (await lc.locator(".pl.lib.off").count()) === 1);
+    const second = (await lc.locator(".pl.lib.off .nm").innerText()).trim();
+    await lc.getByRole("button", { name: "Swap liberos" }).click(); await A.waitForTimeout(300);
+    ok("swapping puts the second libero on the court", (await lc.locator(".pl.lib.on .nm").innerText()).trim() === second && (await lc.locator(".pl.lib.off .nm").innerText()).trim() === first);
+    ok("a libero isn't listed on the bench too", (await A.locator(".players .pl.bench", { hasText: second }).count()) === 0);
+    await A.reload(); await A.waitForTimeout(800);
+    ok("the libero swap is saved", (await A.locator(".libcol .pl.lib.on .nm").innerText()).trim() === second);
+    // where it landed, chosen per kind of play
+    await go(A, "settings"); const passes = A.locator("select[aria-label='Where it landed: Our passes']");
+    ok("where-it-landed has a choice for each kind of play", (await A.locator("select[aria-label^='Where it landed:']").count()) === 7);
+    await passes.selectOption("bad"); await A.waitForTimeout(600); await A.reload(); await A.waitForTimeout(900);
+    { const v = [await A.locator("select[aria-label='Where it landed: Our passes']").inputValue(), await A.locator("select[aria-label='Where it landed: Our digs']").inputValue()];
+      ok("the choice is saved", v[0] === "bad" && v[1] === "off", v.join(",")); }
+    // stats: errors, one stat from a dropdown, and your own table
+    await go(A, "stats"); await A.getByRole("button", { name: "Errors", exact: true }).click(); await A.waitForTimeout(300);
+    ok("Errors page totals our errors and lists players", /Our errors/.test(await A.locator(".kpis").first().innerText()) && (await A.locator(".card", { hasText: "By player" }).locator("tbody tr").count()) >= 3 && (await A.locator(".errbar").count()) >= 3);
+    await A.getByRole("button", { name: "Pick stats", exact: true }).click(); await A.waitForTimeout(300);
+    await A.locator("select[aria-label='Stat']").selectOption("D"); await A.waitForTimeout(200);
+    ok("the stat dropdown ranks players on that stat", (await A.locator(".lookup-row").count()) >= 3 && /Digs/.test(await A.locator(".lookup-team").innerText()));
+    await A.locator("select[aria-label='Start from']").selectOption("errors"); await A.waitForTimeout(200);
+    const heads = await A.locator(".card", { hasText: "Choose your stats" }).locator("thead th").allInnerTexts();
+    ok("a preset fills the table with those stats", heads.includes("Errors") && heads.includes("SE") && heads.length === 10, heads.join(","));
+    await A.getByRole("button", { name: /^Stats \(/ }).click(); await A.locator(".picker-o", { hasText: "Kills" }).first().locator("input").check(); await A.waitForTimeout(200);
+    ok("ticking a stat adds its column at the end", (await A.locator(".card", { hasText: "Choose your stats" }).locator("thead th").last().innerText()) === "K");
+    await A.locator("select[aria-label='Stats for']").selectOption({ index: 1 }); await A.waitForTimeout(300);
+    ok("one player's table has a row per match", (await A.locator(".card", { hasText: "Choose your stats" }).locator("tbody tr").count()) >= 2);
+    const [pop] = await Promise.all([A.waitForEvent("popup"), A.getByRole("button", { name: "Print", exact: true }).click()]);
+    await pop.waitForLoadState().catch(() => {}); ok("Print opens a clean printable table", (await pop.locator("table tbody tr").count()) >= 2 && /Errors/.test(await pop.locator("thead").innerText()));
+    await pop.close().catch(() => {});
+    ok("coach tools: no page errors", !A.errors.length, A.errors.slice(0, 3).join(" | "));
   },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });
@@ -1110,38 +1144,6 @@ const scenarios = {
     ok("college: no page errors", !A.errors.length && !C.errors.length, A.errors.concat(C.errors).slice(0, 3).join(" | "));
     await A.context().close(); await C.context().close();
   },
-  async overlay(browser) {
-    const A = await newPage(browser);
-    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
-    await A.getByLabel("Email").fill("stream@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Test Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
-    await A.getByLabel("Team name").fill("Clovis North"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
-    await A.locator("input[type=file][accept^='.csv']").first().setInputFiles(path.join(__dirname, "roster.csv")); await A.waitForTimeout(800);
-    await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan Bears Volleyball Club"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
-    await go(A, "live"); const card = A.locator(".card", { hasText: "Stream overlay" });
-    ok("Live tab offers a stream overlay", (await card.count()) === 1);
-    await card.getByRole("button", { name: "Large" }).click(); await card.getByRole("button", { name: "Bottom right" }).click(); await card.getByLabel("Short name").fill("CN");
-    await card.getByRole("button", { name: "Make overlay link" }).click(); await A.waitForTimeout(1200);
-    const url = (await card.locator(".ov-url").innerText()).trim();
-    ok("overlay link follows the team, with the options", /\/live\/#\/t\/[A-Z0-9]{6}\/overlay\?size=l&pos=br&us=CN$/.test(url), url);
-    { const ax = await a11y(A); ok("overlay settings controls all have names", !ax.length, ax.join(" | ")); }
-    // the streaming computer: a 1080p browser source
-    const ctx = await browser.newContext({ viewport: { width: 1920, height: 1080 } }); await ctx.addInitScript((u) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url: u, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
-    const O = await ctx.newPage(); O.errors = []; O.on("pageerror", (e) => O.errors.push(e.message));
-    await O.goto(url); await O.waitForTimeout(1500);
-    ok("overlay page is see-through", await O.evaluate(() => getComputedStyle(document.body).backgroundColor === "rgba(0, 0, 0, 0)" && getComputedStyle(document.documentElement).backgroundColor === "rgba(0, 0, 0, 0)"));
-    const bug = async () => (await O.locator(".ov").innerText().catch(() => "")).replace(/\s+/g, " ").trim();
-    ok("overlay shows the live match with short and long names", /CN .*BUCHANAN BEARS/i.test(await bug()) && /Set 1/i.test(await bug()), await bug());
-    ok("overlay sits in the bottom-right corner", await O.evaluate(() => { const r = document.querySelector(".ov").getBoundingClientRect(); return r.right > 1700 && r.bottom > 950 && r.left > 960; }));
-    ok("long opponent name doesn't stretch the bug", await O.evaluate(() => document.querySelector(".ov").getBoundingClientRect().width < 700));
-    // points from the bench reach the stream
-    await go(A, "track"); for (let i = 0; i < 3; i++) { await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } await A.waitForTimeout(400);
-    { const t0 = Date.now(); let seen = ""; while (Date.now() - t0 < 15000) { seen = (await O.locator(".ov-row.us .ov-pts").innerText().catch(() => "")).trim(); if (seen === "3") break; await O.waitForTimeout(500); }
-      ok("overlay updates within a few seconds of the point", seen === "3", `${seen} after ${Date.now() - t0}ms`); console.log(`    (overlay caught up in ${Date.now() - t0}ms)`); }
-    ok("the coach's app made the fast game link by itself", await A.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("bs-live-url-"))));
-    if (process.env.SHOTS) { await O.evaluate(() => { document.documentElement.style.setProperty("background", "linear-gradient(135deg,#6b8f71,#2d4a3a)", "important"); }); await O.screenshot({ path: path.join(process.env.SHOTS, "overlay.png") }); }
-    ok("overlay: no page errors", !A.errors.length && !O.errors.length, A.errors.concat(O.errors).slice(0, 3).join(" | "));
-    await A.context().close(); await ctx.close();
-  },
   async cloud(browser) {
     const A = await newPage(browser);
     await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
@@ -1186,7 +1188,8 @@ const scenarios = {
     // the game from the team page: ESPN-style tabs
     await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(500);
     await P.getByRole("button", { name: "Box score", exact: true }).click(); ok("box score lists Nia with her pass", (await P.locator(".lv-box tbody tr", { hasText: "Nia" }).count()) === 1);
-    await P.getByRole("button", { name: "Play-by-play", exact: true }).click(); ok("play-by-play groups by set", (await P.locator(".lv-set h3", { hasText: "Set 1" }).count()) === 1 && (await P.locator(".lv-pbp li").count()) >= 3);
+    await P.getByRole("button", { name: "Play-by-play", exact: true }).click(); { const n = [await P.locator(".lv-espn tbody tr.pt").count(), await P.locator(".lv-espn td.sc.on").count()], end = await P.locator(".lv-espn-end").innerText().catch(() => "");
+      ok("play-by-play reads like a broadcast: scoring plays with both scores and the set line", n[0] >= 3 && n[1] >= 3 && /End of set|In progress/i.test(end), n.join(",") + " " + end); }
     await P.getByRole("button", { name: "Team stats", exact: true }).click(); ok("team stats compare both teams", (await P.locator(".lv-cmp-r").count()) >= 5);
     ok("Live site fits a phone", (await overflow(P)) <= 1);
     { const ax = await a11y(P); ok("Live game page controls all have names", !ax.length, ax.join(" | ")); }

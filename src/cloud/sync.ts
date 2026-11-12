@@ -206,12 +206,12 @@ export async function shareLive(teamId: string, matchId: string) {
   await syncNow();
   return r;
 }
-/** Teams streaming with the overlay: live matches get their gamecast link without the coach doing anything. */
+/** Live matches on synced teams get their gamecast link without the coach doing anything (for the recap text and families). */
 async function streamLinks() {
   for (const m of all("matches")) {
     if (m.kind !== "match" || m.status !== "live" || m.imported || !S.teams.includes(m.teamId)) continue;
     const t = all("teams").find((x) => x.id === m.teamId), role = roleOn(m.teamId);
-    if (!t?.streamOverlay || (role !== "owner" && role !== "coach")) continue;
+    if (!t || (role !== "owner" && role !== "coach")) continue;
     try { if (localStorage.getItem("bs-live-url-" + m.id)) continue; } catch { /* private mode */ }
     if (Date.now() - m.createdAt > 6 * 3600_000) continue;
     await ensureLiveShare(m.teamId, m.id);

@@ -30,22 +30,23 @@ export function LineupPage() {
   const seed: Lineup = t.defLineup || { ...autoLineup(ps), libSrv: null };
   const [lu, setLu] = useState<string[]>([0, 1, 2, 3, 4, 5].map((i) => seed.lu[i] || ""));
   const [lib, setLib] = useState<string | null>(seed.lib);
+  const [lib2, setLib2] = useState<string | null>(seed.lib2 || null);
   const [libSrv, setLibSrv] = useState<string | null>(seed.libSrv);
-  const [sel, setSel] = useState<number | "lib" | null>(null);
+  const [sel, setSel] = useState<number | "lib" | "lib2" | null>(null);
   const [busy, setBusy] = useState(false), [err, setErr] = useState("");
   const [statsFrom, setStatsFrom] = useState<"season" | "lineup">("season");
 
-  const place = (slot: number | "lib", id: string) => {
-    const n = lu.slice(); let L = lib;
+  const place = (slot: number | "lib" | "lib2", id: string) => {
+    const n = lu.slice(); let L = lib, L2 = lib2;
     const from = n.indexOf(id);
-    if (slot === "lib") { if (from >= 0) n[from] = ""; L = id; }
-    else { const prev = n[slot]; if (from >= 0) n[from] = prev; else if (L === id) L = prev && player(prev)?.pos === "L" ? prev : null; n[slot] = id; }
-    setLu(n); setLib(L); if (libSrv && !n.includes(libSrv)) setLibSrv(null); setSel(null);
+    if (slot === "lib" || slot === "lib2") { if (from >= 0) n[from] = ""; if (slot === "lib") { if (L2 === id) L2 = L; L = id; } else { if (L === id) L = L2; L2 = id; } }
+    else { const prev = n[slot]; if (from >= 0) n[from] = prev; else if (L === id) L = prev && player(prev)?.pos === "L" ? prev : null; else if (L2 === id) L2 = null; n[slot] = id; }
+    setLu(n); setLib(L); setLib2(L2 && L2 !== L ? L2 : null); if (libSrv && !n.includes(libSrv)) setLibSrv(null); setSel(null);
   };
-  useDragDrop((d) => { if (d.target === "slot") place(d.targetId === "lib" ? "lib" : +d.targetId, d.id); });
+  useDragDrop((d) => { if (d.target === "slot") place(d.targetId === "lib" || d.targetId === "lib2" ? d.targetId : +d.targetId, d.id); });
 
-  const valid = lu.every(Boolean) && new Set(lu).size === 6 && !(lib && lu.includes(lib));
-  const current: Lineup = { lu, lib, libSrv: libSrv && lu.includes(libSrv) ? libSrv : null };
+  const valid = lu.every(Boolean) && new Set(lu).size === 6 && !(lib && lu.includes(lib)) && !(lib2 && lu.includes(lib2));
+  const current: Lineup = { lu, lib: lib || lib2, lib2: lib ? lib2 : null, libSrv: libSrv && lu.includes(libSrv) ? libSrv : null };
   const saveDefault = () => { if (!valid) return toast("Fill all six spots with different players."); setTeamPatch({ defLineup: current }); toast("Saved as your starting lineup"); };
   const useNow = () => { if (!m || !valid) return; appendEvents(m.id, [{ t: "LU", ...current } as any]); toast("Lineup is on court now"); };
   const useNext = () => { if (!m || !valid) return; patch("matches", m.id, { nextLu: current }); toast("Queued for the next set"); };
@@ -73,11 +74,11 @@ export function LineupPage() {
   };
   const adv = t.luAdvice;
 
-  const slot = (i: number | "lib") => {
-    const id = i === "lib" ? lib : lu[i];
+  const slot = (i: number | "lib" | "lib2") => {
+    const id = i === "lib" ? lib : i === "lib2" ? lib2 : lu[i];
     const p = player(id);
-    return <button key={i} className={"lslot " + (p ? "filled " : "") + (sel === i ? "sel" : "")} data-drop="slot" data-drop-id={String(i)} onClick={() => setSel(sel === i ? null : i)} aria-label={i === "lib" ? "Libero" : POS_NAME[i]}>
-      <span className="pos">{i === "lib" ? "LIBERO" : "P" + (i + 1)}</span>
+    return <button key={i} className={"lslot " + (p ? "filled " : "") + (sel === i ? "sel" : "")} data-drop="slot" data-drop-id={String(i)} onClick={() => setSel(sel === i ? null : i)} aria-label={i === "lib" ? "Libero" : i === "lib2" ? "Second libero" : POS_NAME[i]}>
+      <span className="pos">{i === "lib" ? "LIBERO" : i === "lib2" ? "2ND LIBERO" : "P" + (i + 1)}</span>
       {p ? <><span className="n">{p.num}</span><span className="nm">{p.first || p.last}</span><span className="ps">{p.pos}</span></> : <span className="small muted">{sel === i ? "Pick a player" : "Empty"}</span>}
     </button>;
   };
@@ -94,7 +95,7 @@ export function LineupPage() {
         {m && m.kind === "match" && <><button className="btn" disabled={!valid} onClick={useNow}>Put on court now</button><button className="btn" disabled={!valid} onClick={useNext}>Use next set{m.nextLu ? " ✓" : ""}</button></>}
       </div>
     </div>
-    {live?.lu && <p className="small muted">On court now in set {live.n}: {live.lu.map((id) => playerName(id)).join(", ")}. <button className="btn sm" onClick={() => { setLu(live.lu!.slice()); setLib(live.lib); setLibSrv(live.libSrv); }}>Load it here</button></p>}
+    {live?.lu && <p className="small muted">On court now in set {live.n}: {live.lu.map((id) => playerName(id)).join(", ")}. <button className="btn sm" onClick={() => { setLu(live.lu!.slice()); setLib(live.lib); setLib2(live.lib2); setLibSrv(live.libSrv); }}>Load it here</button></p>}
     <div className="grid2" style={{ alignItems: "start" }}>
       <Card title="Starting six" actions={<span className="small muted">Tap a spot, then a player. Or drag.</span>}>
         <div className="stack">
@@ -103,13 +104,14 @@ export function LineupPage() {
           <div className="mini3" style={{ gap: 8 }}>{BACK.map(slot)}</div>
           <div className="row" style={{ alignItems: "stretch" }}>
             <div style={{ width: 120 }}>{slot("lib")}</div>
+            <div style={{ width: 120 }}>{slot("lib2")}</div>
             <label className="field grow"><span className="label">Libero serves for</span>
               <select value={libSrv || ""} onChange={(e) => setLibSrv(e.target.value || null)} disabled={!lib}><option value="">Nobody</option>{lu.filter(Boolean).map((id) => <option key={id} value={id}>{playerName(id)}</option>)}</select></label>
           </div>
           <div>
-            <div className="label" style={{ marginBottom: 6 }}>Roster {sel !== null && <span className="tag">placing into {sel === "lib" ? "libero" : "P" + ((sel as number) + 1)}</span>}</div>
+            <div className="label" style={{ marginBottom: 6 }}>Roster {sel !== null && <span className="tag">placing into {sel === "lib" ? "libero" : sel === "lib2" ? "second libero" : "P" + ((sel as number) + 1)}</span>}</div>
             <div className="players">{ps.map((p) => {
-              const where = lu.indexOf(p.id), isLib = lib === p.id;
+              const where = lu.indexOf(p.id), isLib = lib === p.id || lib2 === p.id;
               return <button key={p.id} className={"pl " + (where >= 0 || isLib ? "" : "bench")} data-drag="lp" data-drag-id={p.id} onClick={() => { if (sel !== null) place(sel, p.id); else { const empty = lu.findIndex((x) => !x); if (empty >= 0) place(empty, p.id); else toast("Tap a spot first, then the player."); } }}>
                 {isLib && <span className="lb">L</span>}<span className="n">{p.num}</span><span className="nm">{p.first || p.last}</span><span className="ps">{where >= 0 ? "P" + (where + 1) : p.pos}</span>
               </button>; })}</div>

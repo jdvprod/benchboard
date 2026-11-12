@@ -20,10 +20,12 @@ import { shareSeasonGraphic } from "./seasonGraphic";
 import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
+import { CustomView } from "./Custom";
+import { ErrorsView } from "./Errors";
 import { seasonAwards, seasonReportHtml } from "./seasonReport";
 import { rate, situationNotes, situations, WN } from "../../sports/volleyball/situations";
 
-type View = "overview" | "players" | "offense" | "servepass" | "rotations" | "situations" | "opponent" | "film" | "fix";
+type View = "overview" | "players" | "pick" | "errors" | "offense" | "servepass" | "rotations" | "situations" | "opponent" | "film" | "fix";
 
 export function StatsPage() {
   const t = team()!;
@@ -63,12 +65,14 @@ export function StatsPage() {
       </div>
     </div>
     {!S.sets.length ? <Card><p className="empty">No stats recorded yet for this selection.</p></Card> : isScrim ? <ScrimStats S={S} A={A} /> : <>
-      <Seg value={vw} onChange={setView} options={[["overview", "Overview"], ["players", "Players"], ["offense", "Offense"], ["servepass", "Serve & pass"], ["rotations", "Rotations"], ["situations", "Situations"], ["opponent", "Opponent"], ...(single && single.m.kind === "match" ? [["film", "Film"] as [View, string]] : []), ...(single && !isScrim ? [["fix", "Fix plays"] as [View, string]] : [])]} label="Section" />
+      <Seg value={vw} onChange={setView} options={[["overview", "Overview"], ["players", "Players"], ["pick", "Pick stats"], ["errors", "Errors"], ["offense", "Offense"], ["servepass", "Serve & pass"], ["rotations", "Rotations"], ["situations", "Situations"], ["opponent", "Opponent"], ...(single && single.m.kind === "match" ? [["film", "Film"] as [View, string]] : []), ...(single && !isScrim ? [["fix", "Fix plays"] as [View, string]] : [])]} label="Section" />
       {vw === "overview" && S.event && <EventCard S={S} />}
       {vw === "overview" && <Overview S={S} A={A} />}
       {vw === "overview" && S.key === "season" && !S.event && ui.statsSeason !== "all" && <SeasonVsSeason seasonId={ui.statsSeason} />}
       {vw === "overview" && S.kind !== "practice" && <AskCard key={S.key} S={S} />}
       {vw === "players" && <Players A={A} />}
+      {vw === "pick" && <CustomView S={S} A={A} />}
+      {vw === "errors" && <ErrorsView S={S} A={A} />}
       {vw === "offense" && <Offense A={A} />}
       {vw === "servepass" && <ServePass A={A} />}
       {vw === "rotations" && <><Rotations A={A} S={S} /><Units A={A} /></>}

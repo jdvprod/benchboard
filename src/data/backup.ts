@@ -46,7 +46,7 @@ function importV1(d: any): ImportResult {
   if (cfg.bestOf) settings.bestOf = +cfg.bestOf;
   if (cfg.askLoc != null) settings.askLoc = !!cfg.askLoc;
   if (cfg.askOpp != null) settings.askOpp = !!cfg.askOpp;
-  const defL = cfg.defLineup && Array.isArray(cfg.defLineup.lu) ? { lu: cfg.defLineup.lu, lib: cfg.defLineup.lib || null, libSrv: cfg.defLineup.libSrv || null } : null;
+  const defL = cfg.defLineup && Array.isArray(cfg.defLineup.lu) ? { lu: cfg.defLineup.lu, lib: cfg.defLineup.lib || null, lib2: cfg.defLineup.lib2 || null, libSrv: cfg.defLineup.libSrv || null } : null;
   save("teams", { ...t, settings, defLineup: defL, scrimSplit: cfg.scrimSplit || null }, true);
   let count = 0;
   for (const it of d.matches || []) {

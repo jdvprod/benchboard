@@ -19,14 +19,16 @@ export interface StatEvent extends BaseEvent {
   s?: "a" | "b"; // scrimmage side of the player
   ns?: boolean; // stats only: counts for the player but never changes the score (a second coach's device)
 }
-export interface NewSetEvent extends BaseEvent { t: "NS"; serve: Side; lu?: string[]; lib?: string | null; libSrv?: string | null }
-export interface LineupEvent extends BaseEvent { t: "LU"; lu: string[]; lib?: string | null; libSrv?: string | null }
+export interface NewSetEvent extends BaseEvent { t: "NS"; serve: Side; lu?: string[]; lib?: string | null; lib2?: string | null; libSrv?: string | null }
+export interface LineupEvent extends BaseEvent { t: "LU"; lu: string[]; lib?: string | null; lib2?: string | null; libSrv?: string | null }
+/** Libero change between rallies: who is the libero on the court (lib) and the second libero waiting (lib2). */
+export interface LiberoEvent extends BaseEvent { t: "LIB"; lib: string | null; lib2: string | null }
 export interface SubEvent extends BaseEvent { t: "SUB"; out: string; in: string }
 export interface SimpleEvent extends BaseEvent { t: "ROT" | "SRV" | "TO"; v: any }
 export interface AdjustEvent extends BaseEvent { t: "ADJ"; us: number; them: number }
 export interface TagEvent extends BaseEvent { t: "TAG"; note: string; p?: string }
 export interface DeleteEvent extends BaseEvent { t: "DEL"; ref: string }
-export type MatchEvent = StatEvent | NewSetEvent | LineupEvent | SubEvent | SimpleEvent | AdjustEvent | TagEvent | DeleteEvent;
+export type MatchEvent = StatEvent | NewSetEvent | LineupEvent | LiberoEvent | SubEvent | SimpleEvent | AdjustEvent | TagEvent | DeleteEvent;
 
 /** Sort by time, drop deleted events. Works across several devices' logs. */
 export function mergeLogs(logs: MatchEvent[][]): MatchEvent[] {
@@ -108,7 +110,7 @@ export interface CtxLine { K: number; E: number; TA: number }
 export interface OppPlayerLine { K: number; A: number; E: number; P: number; z: Record<string, number> }
 
 export type LogEntry =
-  | { id: string; set: number; kind: "stat"; t: ActionCode; p?: string; op?: string; w: Side | null; us: number; them: number; /** rotation, who served and attack context when the play happened; where the ball went */ rot?: number; sv?: Side; cx?: AttackContext; z?: Zone | null }
+  | { id: string; set: number; kind: "stat"; t: ActionCode; p?: string; op?: string; w: Side | null; us: number; them: number; /** rotation, who served and attack context when the play happened; where the ball went (zone, and the spot in meters) */ rot?: number; sv?: Side; cx?: AttackContext; z?: Zone | null; x?: number; y?: number }
   | { id: string; set: number; kind: "set"; serve: Side }
   | { id: string; set: number; kind: "rot"; v: number }
   | { id: string; set: number; kind: "srv"; v: Side }
@@ -121,6 +123,8 @@ export type LogEntry =
 export interface SetState {
   n: number; us: number; them: number; serve: Side; rot: number; rotB: number;
   lu: string[] | null; lib: string | null; libSrv: string | null;
+  /** The second libero, off the court (teams may name two; one plays at a time). */
+  lib2: string | null;
   startLu: string[] | null; startLibSrv: string | null;
   subs: number; subLog: { out: string; in: string; score: string }[];
   to: Record<Side, number>;
@@ -153,9 +157,9 @@ export interface Replay {
   firstTs: number | null;
 }
 
-function newSet(n: number, serve: Side, lu: string[] | null, lib: string | null): SetState {
+function newSet(n: number, serve: Side, lu: string[] | null, lib: string | null, lib2: string | null = null): SetState {
   return {
-    n, us: 0, them: 0, serve, rot: 1, rotB: 1, lu: lu ? lu.slice() : null, lib, libSrv: null, startLu: lu ? lu.slice() : null, startLibSrv: null,
+    n, us: 0, them: 0, serve, rot: 1, rotB: 1, lu: lu ? lu.slice() : null, lib, lib2: lib2 && lib2 !== lib ? lib2 : null, libSrv: null, startLu: lu ? lu.slice() : null, startLibSrv: null,
     subs: 0, subLog: [], to: { us: 0, them: 0 }, rallies: [], ps: {}, team: teamBlank(), src: { us: {}, them: {} }, ctx: {}, atkRot: {}, rcvRot: {}, srv: {}, opp: {},
     locs: [], tags: [], fbr: { n: 0, w: 0 }, fbso: { n: 0, w: 0 }, side: { a: blank(), b: blank() }, pside: {}, pm: {},
     target: 25, over: false, winner: null,
@@ -181,7 +185,8 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       const prev = sets[sets.length - 1];
       const lu = e.lu || (prev && prev.startLu) || null;
       const lib = e.lu ? e.lib || null : e.lib || (prev && prev.lib) || null;
-      cur = newSet(sets.length + 1, e.serve || "us", lu, lib);
+      const lib2 = e.lu ? e.lib2 || null : e.lib2 !== undefined ? e.lib2 || null : (prev && prev.lib2) || null;
+      cur = newSet(sets.length + 1, e.serve || "us", lu, lib, lib2);
       cur.libSrv = e.lu ? e.libSrv || null : e.libSrv !== undefined ? e.libSrv || null : (prev && prev.startLibSrv) || null;
       cur.startLibSrv = cur.libSrv;
       sets.push(cur); lastBA = false; lastTO = null; startRally();
@@ -195,13 +200,18 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       case "TO": cur.to[e.v as Side]++; lastTO = e.v as Side; log.push({ id: e.id, set: cur.n, kind: "to", v: e.v }); continue;
       case "ADJ": cur.us = Math.max(0, +e.us || 0); cur.them = Math.max(0, +e.them || 0); log.push({ id: e.id, set: cur.n, kind: "adj", us: cur.us, them: cur.them }); continue;
       case "LU":
-        cur.lu = e.lu.slice(); cur.lib = e.lib || null; cur.libSrv = e.libSrv || null;
+        cur.lu = e.lu.slice(); cur.lib = e.lib || null; cur.lib2 = e.lib2 && e.lib2 !== cur.lib ? e.lib2 : null; cur.libSrv = e.libSrv || null;
         if (!cur.rallies.length) { cur.startLu = e.lu.slice(); cur.rot = 1; cur.startLibSrv = cur.libSrv; }
         log.push({ id: e.id, set: cur.n, kind: "lu" }); continue;
+      case "LIB": {
+        const a = e.lib || null, b = e.lib2 && e.lib2 !== a ? e.lib2 : null;
+        if (cur.lu && ((a && cur.lu.includes(a)) || (b && cur.lu.includes(b)))) continue; // a libero can't be one of the six
+        cur.lib = a; cur.lib2 = b; log.push({ id: e.id, set: cur.n, kind: "lu" }); continue;
+      }
       case "SUB":
         // A sub only applies if the player coming out is on court and the one going in isn't (two coaches can both
         // record the same sub, or an earlier sub can be deleted); otherwise the lineup would hold a player twice.
-        if (cur.lu) { const i = cur.lu.indexOf(e.out); if (i < 0 || cur.lu.includes(e.in) || e.in === cur.lib) { log.push({ id: e.id, set: cur.n, kind: "sub", in: e.in, out: e.out }); continue; } cur.lu[i] = e.in; }
+        if (cur.lu) { const i = cur.lu.indexOf(e.out); if (i < 0 || cur.lu.includes(e.in) || e.in === cur.lib || e.in === cur.lib2) { log.push({ id: e.id, set: cur.n, kind: "sub", in: e.in, out: e.out }); continue; } cur.lu[i] = e.in; }
         cur.subs++; cur.subLog.push({ out: e.out, in: e.in, score: cur.us + "–" + cur.them });
         log.push({ id: e.id, set: cur.n, kind: "sub", in: e.in, out: e.out }); continue;
       case "TAG":
@@ -264,7 +274,7 @@ export function replay(events: MatchEvent[], info: MatchInfo = {}): Replay {
       else if (wn === "them" && cur.serve === "us") { cur.serve = "them"; cur.rotB = (cur.rotB % 6) + 1; }
       startRally();
     }
-    log.push({ id: e.id, set: cur.n, kind: "stat", t: raw, p: ev.p, op: ev.op, w: wn, us: cur.us, them: cur.them, ...(ev.imp ? {} : { rot: rotNow, sv: svNow, cx: cxNow }), ...(ev.x != null ? { z: zoneOf(ev.x, ev.y) } : {}) });
+    log.push({ id: e.id, set: cur.n, kind: "stat", t: raw, p: ev.p, op: ev.op, w: wn, us: cur.us, them: cur.them, ...(ev.imp ? {} : { rot: rotNow, sv: svNow, cx: cxNow }), ...(ev.x != null ? { z: zoneOf(ev.x, ev.y), x: ev.x, y: ev.y } : {}) });
   }
 
   let wonUs = 0, wonThem = 0;

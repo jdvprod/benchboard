@@ -7,12 +7,37 @@ export interface TeamSettings {
   scoring?: string;        // default scoring: "25", "25c27", "21", "21c23"
   askLoc: boolean;         // ask where the ball landed
   askLocDigs: boolean;     // also ask after digs
+  /** Where-it-landed, chosen per kind of play (newer than askLoc / askLocDigs, which stay as the fallback). */
+  locAsk?: Partial<Record<LocKind, string>>;
   askOpp: boolean;         // ask for their jersey number
   hideZones: boolean;      // hide zone numbers on drawing boards
 }
+/** Kinds of play that can ask "where did the ball land?", the choices for each, and what the old on/off switch meant. */
+export type LocKind = "kill" | "attempt" | "serve" | "pass" | "dig" | "theirKill" | "theirAce";
+export const LOC_KINDS: { kind: LocKind; title: string; sub: string; codes: string[]; choices: [string, string][] }[] = [
+  { kind: "kill", title: "Our kills", sub: "Where our kills land on their side.", codes: ["K", "KT"], choices: [["all", "Ask"], ["off", "Don't ask"]] },
+  { kind: "attempt", title: "Our attacks kept in play", sub: "Where they dug or covered our swings.", codes: ["TA"], choices: [["all", "Ask"], ["off", "Don't ask"]] },
+  { kind: "serve", title: "Our serves", sub: "Where our serves land.", codes: ["SA", "SI"], choices: [["all", "Ask after aces and serves in"], ["aces", "Aces only"], ["off", "Don't ask"]] },
+  { kind: "pass", title: "Our passes", sub: "Where their serves come to us.", codes: ["P3", "P2", "P1", "P0"], choices: [["all", "Ask after every pass"], ["bad", "Only 1s and 0s"], ["off", "Don't ask"]] },
+  { kind: "dig", title: "Our digs", sub: "Where we dig their attacks.", codes: ["D"], choices: [["all", "Ask"], ["off", "Don't ask"]] },
+  { kind: "theirKill", title: "Their kills", sub: "Where their hitters score on us.", codes: ["OK"], choices: [["all", "Ask"], ["off", "Don't ask"]] },
+  { kind: "theirAce", title: "Their aces", sub: "Where their aces land.", codes: ["OA"], choices: [["all", "Ask"], ["off", "Don't ask"]] },
+];
+/** The choice for one kind, falling back to the old switches. */
+export function locChoice(s: TeamSettings, kind: LocKind): string {
+  const v = s.locAsk?.[kind]; if (v) return v;
+  if (!s.askLoc) return "off";
+  return kind === "dig" ? (s.askLocDigs ? "all" : "off") : "all";
+}
+/** Should this play ask where it landed? */
+export function asksLoc(s: TeamSettings, code: string): boolean {
+  const k = LOC_KINDS.find((x) => x.codes.includes(code)); if (!k) return false;
+  const v = locChoice(s, k.kind);
+  return v === "all" || (v === "aces" && code === "SA") || (v === "bad" && (code === "P1" || code === "P0"));
+}
 export const DEFAULT_SETTINGS: TeamSettings = { subLimit: 15, bestOf: 5, askLoc: true, askLocDigs: false, askOpp: true, hideZones: false };
 
-export interface Lineup { lu: string[]; lib: string | null; libSrv: string | null }
+export interface Lineup { lu: string[]; lib: string | null; libSrv: string | null; lib2?: string | null }
 
 export interface Team {
   id: string;

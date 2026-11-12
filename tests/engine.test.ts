@@ -32,6 +32,28 @@ test("a block touch is counted but keeps the rally going", () => {
   assert.equal(aggregate(R.sets).ps.mb1.BT, 2);
 });
 
+test("two liberos: the second waits off the court and can swap in between rallies", () => {
+  const R = replay([ev("NS", { serve: "us", lu: LU, lib: "lib", lib2: "lib2" }), ev("K", { p: "oh1" }), ev("LIB", { lib: "lib2", lib2: "lib" }), ev("D", { p: "lib2" }), ev("OK")]);
+  assert.equal(R.cur!.lib, "lib2"); assert.equal(R.cur!.lib2, "lib");
+  assert.ok(R.cur!.rallies[R.cur!.rallies.length - 1].onCourt.includes("lib2"));
+  const N = replay([...[ev("NS", { serve: "us", lu: LU, lib: "lib", lib2: "lib2" })], ev("NS", { serve: "them" })]);
+  assert.equal(N.cur!.lib2, "lib2", "the second libero carries into the next set");
+  const bad = replay([ev("NS", { serve: "us", lu: LU, lib: "lib" }), ev("LIB", { lib: "oh1", lib2: null })]);
+  assert.equal(bad.cur!.lib, "lib", "a player in the six can't become the libero");
+});
+
+import { asksLoc, DEFAULT_SETTINGS } from "../src/data/model";
+test("where it landed: a choice for each kind of play, with the old switches as the fallback", () => {
+  const old = { ...DEFAULT_SETTINGS };
+  assert.equal(asksLoc(old, "K"), true); assert.equal(asksLoc(old, "D"), false); assert.equal(asksLoc(old, "BS"), false);
+  assert.equal(asksLoc({ ...old, askLoc: false }, "K"), false);
+  const s = { ...old, locAsk: { pass: "bad", serve: "aces", kill: "off", dig: "all" } };
+  assert.equal(asksLoc(s, "P3"), false); assert.equal(asksLoc(s, "P1"), true); assert.equal(asksLoc(s, "P0"), true);
+  assert.equal(asksLoc(s, "SA"), true); assert.equal(asksLoc(s, "SI"), false);
+  assert.equal(asksLoc(s, "K"), false); assert.equal(asksLoc(s, "KT"), false); assert.equal(asksLoc(s, "D"), true);
+  assert.equal(asksLoc(s, "OK"), true, "kinds not chosen keep the old setting");
+});
+
 test("deleted events disappear from every device's log", () => {
   const a = ev("NS", { serve: "us" }), b = ev("K", { p: "x" }), c = ev("DEL", { ref: b.id });
   const merged = mergeLogs([[a, b], [c]]);
@@ -369,15 +391,6 @@ test("notifications: start and final messages read naturally", () => {
   assert.equal(finalMessage("Clovis North", "Buchanan", 0, 2, [[20, 25], [18, 25]]).title, "Final: Buchanan beat Clovis North 2–0");
   assert.equal(finalMessage("Clovis North", "Buchanan", 2, 0, [[25, 20], [25, 18]], "League").body, "25-20, 25-18 · League · Box score on Floorcall Live");
   assert.equal(finalMessage("Clovis North", "Buchanan", 1, 1, [[25, 20], [18, 25]]).title, "Final: Clovis North and Buchanan split 1–1");
-});
-
-import { shortTeam } from "../src/live/Overlay";
-test("overlay: long team names shorten sensibly", () => {
-  assert.equal(shortTeam("Buchanan Bears Volleyball Club"), "Buchanan Bears");
-  assert.equal(shortTeam("Clovis North High School"), "Clovis North");
-  assert.equal(shortTeam("Central Valley Christian Academy"), "Central");
-  assert.equal(shortTeam("St. Joseph Notre Dame"), "St. Joseph");
-  assert.equal(shortTeam("Buchanan"), "Buchanan");
 });
 
 import { autoPick, findLogos, regionOf, titleMatches } from "../src/lib/logoSearch";
