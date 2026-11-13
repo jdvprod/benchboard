@@ -190,14 +190,12 @@ function HalfMark({ x, y, src, name }: { x: number; y: number; src?: string | nu
 }
 
 function Chip({ x, y, p, lib, srv, mine }: { x: number; y: number; p?: LPlayer; lib: boolean; srv: boolean; mine: boolean }) {
-  const first = (p?.first || "").split(/\s+/)[0].toUpperCase().slice(0, 9);
   return <g transform={`translate(${x} ${y})`} className={"fc-chip" + (lib ? " lib" : "") + (mine ? " mine" : "") + (srv ? " srv" : "")}>
     <title>{pname(p) + (lib ? " (libero)" : "") + (srv ? " · " + tr("Serving") : "")}</title>
     <g filter="url(#fc-shadow)"><circle r={16.5} className="fc-chip-ring" /></g>
     {p?.photo ? <image href={p.photo} x={-15} y={-15} width={30} height={30} clipPath="url(#fc-chip)" preserveAspectRatio="xMidYMid slice" />
       : <><circle r={15} className="fc-chip-jersey" /><text y={0.5} textAnchor="middle" dominantBaseline="central" className="fc-chip-num">{p?.num ?? "?"}</text></>}
     {p?.photo && <g transform="translate(11 -11)"><circle r={7} className="fc-chip-badge" /><text textAnchor="middle" dominantBaseline="central" className="fc-chip-badge-n">{p.num}</text></g>}
-    {first && <g transform="translate(0 25)"><rect x={-first.length * 3.6 - 5} y={-6.5} width={first.length * 7.2 + 10} height={13} rx={6.5} className="fc-chip-tag" /><text textAnchor="middle" dominantBaseline="central" className="fc-chip-name">{first}</text></g>}
     {srv && <g transform="translate(-19 -14)"><Ball r={6} /></g>}
     {lib && <g transform="translate(-12 -12)"><circle r={6.5} className="fc-chip-badge lib" /><text textAnchor="middle" dominantBaseline="central" className="fc-chip-badge-n">L</text></g>}
   </g>;

@@ -1024,9 +1024,9 @@ const scenarios = {
     const P = await newPage(browser, { phone: true, scale: 3 });
     if (season) {
       await P.goto(season); await P.waitForTimeout(2000); await shot(P, "live-team");
-      const gc = P.getByRole("link", { name: "Open the gamecast" }); if (await gc.count()) { await gc.click(); await P.waitForTimeout(1500); await shot(P, "live-game");
+      const gc = P.getByRole("link", { name: "Open the gamecast" }); if (await gc.count()) { await gc.click(); await P.waitForTimeout(1500); await shot(P, "live-game"); await P.screenshot({ path: path.join(out, "live-game-full.png"), fullPage: true });
         { const ch = P.getByRole("button", { name: /chart$/i }).first(); if (await ch.count()) { await ch.click(); await P.waitForTimeout(400); await P.locator(".lv-gc").screenshot({ path: path.join(out, "live-chart.png") }); await P.getByRole("button", { name: "Last play", exact: true }).click(); }
-          const url = P.url(), Dk = await newPage(browser, { size: { width: 1280, height: 900 }, scale: 2 }); await Dk.goto(url); await Dk.waitForTimeout(2500); await Dk.locator(".lv-gc").screenshot({ path: path.join(out, "live-desk.png") }); await Dk.context().close(); }
+          const url = P.url(), Dk = await newPage(browser, { size: { width: 1280, height: 900 }, scale: 2 }); await Dk.goto(url); await Dk.waitForTimeout(2500); await Dk.locator(".lv-gc").screenshot({ path: path.join(out, "live-desk.png") }); await Dk.screenshot({ path: path.join(out, "live-desk-page.png"), fullPage: true }); await Dk.context().close(); }
         const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); }
         const pbp = P.getByRole("button", { name: "Play-by-play", exact: true }); if (await pbp.count()) { await pbp.click(); await shot(P, "live-pbp"); } }
     }
@@ -1189,7 +1189,7 @@ const scenarios = {
     ok("team page shows the live match with a link to the gamecast", (await P.locator(".lv-livecard .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the gamecast" }).count()) === 1);
     // the game from the team page: ESPN-style tabs
     await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(500);
-    await P.getByRole("button", { name: "Box score", exact: true }).click(); ok("box score lists Nia with her pass", (await P.locator(".lv-box tbody tr", { hasText: "Nia" }).count()) === 1);
+    await P.getByRole("button", { name: "Box score", exact: true }).click(); ok("box score lists Nia with her pass", (await P.locator(".lv-ebox tbody tr", { hasText: "Nia" }).count()) === 1);
     await P.getByRole("button", { name: "Play-by-play", exact: true }).click(); { const n = [await P.locator(".lv-espn tbody tr.pt").count(), await P.locator(".lv-espn td.sc.on").count()], end = await P.locator(".lv-espn-end").innerText().catch(() => "");
       ok("play-by-play reads like a broadcast: scoring plays with both scores and the set line", n[0] >= 3 && n[1] >= 3 && /End of set|In progress/i.test(end), n.join(",") + " " + end); }
     await P.getByRole("button", { name: "Team stats", exact: true }).click(); ok("team stats compare both teams", (await P.locator(".lv-cmp-r").count()) >= 5);

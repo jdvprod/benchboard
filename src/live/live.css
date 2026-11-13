@@ -249,3 +249,40 @@ body{padding-left:0}
 .lv-espn th.play,.lv-espn td.play{text-align:left;overflow:hidden}
 .lv-espn-txt{justify-items:start;text-align:left}.lv-espn-txt span{white-space:normal;overflow-wrap:anywhere}
 .lv-espn-end td{text-align:left}
+
+/* ---------- gamecast page: court with the play-by-play beside it, box score below (broadcast layout) ---------- */
+.lv-main:has(.lv-cast){max-width:1240px}
+.lv-cast{display:grid;gap:14px;grid-template-columns:minmax(0,1fr)}
+.lv-cast>div{min-width:0;display:grid;gap:14px;align-content:start}
+.lv-cast .lv-card{margin:0}
+.lv-pbp-card.feed .lv-pbp-scroll{max-height:560px;overflow-y:auto;overscroll-behavior:contain;margin:0 -4px;padding:0 4px}
+.lv-pbp-card.feed .lv-espn thead th{position:sticky;top:0;background:var(--surface);z-index:1}
+.lv-pbp-all{display:block;margin:10px auto 0}
+@media (max-width:979px){.lv-pbp-card.feed .lv-pbp-scroll{max-height:420px}}
+@media (min-width:980px){
+  .lv-cast{grid-template-columns:minmax(0,1fr) 380px;grid-template-areas:"court pbp" "rest pbp"}
+  .lv-cast-court{grid-area:court}.lv-cast-rest{grid-area:rest}
+  .lv-cast-pbp{grid-area:pbp;position:sticky;top:12px;align-self:start}
+  .lv-pbp-card.feed .lv-pbp-scroll{max-height:calc(100vh - 230px)}
+  .lv-pbp-card.feed .lv-espn th.sc{width:46px}
+  .lv-pbp-card.feed .lv-filters label:not(:first-child){display:none}
+}
+
+/* ---------- box score (broadcast style) ---------- */
+.lv-ebox{padding:0;overflow:hidden}
+.lv-ebox-h{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:3px solid var(--us)}
+.lv-ebox-h h2{margin:0;font:700 20px var(--display);letter-spacing:.02em}
+.lv-ebox-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.lv-ebox table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+.lv-ebox th,.lv-ebox td{padding:8px 8px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line)}
+.lv-ebox .lv-ebox-sec th{font:700 11.5px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:1px solid var(--line);padding-top:9px;padding-bottom:9px}
+.lv-ebox .lv-ebox-sec th.nm{color:var(--ink)}
+.lv-ebox th.nm{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;min-width:132px;max-width:170px;box-shadow:1px 0 0 var(--line)}
+.lv-ebox .lv-ebox-sec th.nm{background:var(--bg)}
+.lv-ebox-nm{display:flex;align-items:baseline;gap:6px;overflow:hidden}
+.lv-ebox-nm b{font-weight:600;overflow:hidden;text-overflow:ellipsis}.lv-ebox-nm small{color:var(--muted);font-size:12px;flex:none}
+.lv-ebox td.dnp{text-align:left;color:var(--muted);font-size:13px;font-style:italic}
+.lv-ebox tr.mine th,.lv-ebox tr.mine td{background:var(--us-soft)}
+.lv-ebox tfoot .tot th,.lv-ebox tfoot .tot td{font-weight:700;border-top:2px solid var(--ink);border-bottom:0}
+.lv-ebox tbody tr:hover td,.lv-ebox tbody tr:hover th{background:var(--surface-2,rgba(0,0,0,.03))}
+.lv-ebox .lv-note{padding:0 16px 14px;margin-top:10px}

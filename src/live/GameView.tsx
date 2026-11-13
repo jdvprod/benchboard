@@ -26,7 +26,7 @@ export function GameView({ g, team, players, fresh, back, logo }: { g: Game; tea
     <p className="lv-when">{fmtDay(m.date)}{m.site === "away" ? tr(" · Away") : m.site === "home" ? tr(" · Home") : ""}{m.event ? " · " + m.event : ""}</p>
     <nav className="lv-tabs" aria-label={tr("Game sections")}>{TABS.map(([k, l]) => <button key={k} aria-current={tab === k ? "page" : undefined} onClick={() => setTab(k)}>{tr(l)}</button>)}</nav>
     {tab === "cast" && <Gamecast g={g} team={team} P={P} follow={follow} setFollow={setFollow} players={players} logos={{ us: logo, them: m.oppLogo }} openPbp={() => setTab("pbp")} />}
-    {tab === "box" && <BoxScore g={g} team={team} P={P} follow={follow} />}
+    {tab === "box" && <><BoxScore g={g} team={team} P={P} follow={follow} logo={logo} /><TeamStats g={g} team={team} /></>}
     {tab === "pbp" && <PlayByPlay g={g} team={team} P={P} follow={follow} logos={{ us: logo, them: m.oppLogo }} />}
     {tab === "team" && <TeamStats g={g} team={team} />}
   </div>;
@@ -48,14 +48,14 @@ export function playText(l: LogEntry, team: string, them: string, P: Map<string,
 type Logos = { us?: string | null; them?: string | null };
 function Gamecast({ g, team, P, follow, setFollow, players, logos, openPbp }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string; setFollow: (id: string) => void; players: LPlayer[]; logos: Logos; openPbp: () => void }) {
   const { m, R } = g, c = R.cur, A = aggregate(R.sets), them = m.opp || "Opponent";
-  const points = R.log.filter((l) => l.kind === "stat" && l.w).slice(-6).reverse();
   const fp = follow ? P.get(follow) : undefined, fs: Stat | undefined = fp ? A.ps[follow] : undefined;
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).filter(([id]) => P.has(id)).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <div className="lv-lead" key={label}><span>{label}</span><b>{+top[1].toFixed(1)}</b><small>{pname(P.get(top[0]))}</small></div> : null; };
   const leaders = [leader((s) => s.K, tr("Kills")), leader((s) => s.SA, tr("Aces")), leader((s) => s.D, tr("Digs")), leader((s) => blocks(s), tr("Blocks")), leader((s) => s.AST, tr("Assists"))].filter(Boolean);
-  return <>
-    {(c || R.log.length > 0) && <GameCourt c={c} P={P} log={R.log} team={team} them={them} follow={follow} logos={logos} live={isLive(g)} />}
-    {points.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Latest points")}</h2><button className="lv-more" onClick={openPbp}>{tr("Full play-by-play")}</button></div>
-      <PbpTable rows={points} team={team} them={them} P={P} follow={follow} logos={logos} /></section>}
+  return <div className="lv-cast">
+    <div className="lv-cast-court">{(c || R.log.length > 0) && <GameCourt c={c} P={P} log={R.log} team={team} them={them} follow={follow} logos={logos} live={isLive(g)} />}</div>
+    <div className="lv-cast-pbp"><PlayByPlay g={g} team={team} P={P} follow={follow} logos={logos} feed openFull={openPbp} /></div>
+    <div className="lv-cast-rest">
+    <BoxScore g={g} team={team} P={P} follow={follow} logo={logos.us} />
     {c && c.rallies.length > 1 && <section className="lv-card"><div className="lv-h"><h2>{tr("Momentum · set {n}", { n: c.n })}</h2></div><MomentumChart diffs={momentum(c)} height={120} labels={[tr("{team} ahead", { team }), tr("{team} ahead", { team: them })]} /></section>}
     <section className="lv-card">
       <div className="lv-h"><h2>{tr("Follow a player")}</h2>
@@ -67,7 +67,8 @@ function Gamecast({ g, team, P, follow, setFollow, players, logos, openPbp }: { 
       </div> : <p className="lv-note">{tr("Pick a player to see their numbers update with every point.")}</p>}
     </section>
     {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Leaders")}</h2></div><div className="lv-leads">{leaders}</div></section>}
-  </>;
+    </div>
+  </div>;
 }
 
 /** Who a play belongs to: their kills, aces, errors and points are theirs; everything else is ours. */
@@ -97,21 +98,43 @@ function PbpTable({ rows, team, them, P, follow, logos, endOf }: { rows: LogEntr
 }
 const abbr = (n: string) => { const w = n.replace(/\s+(high school|hs|volleyball club|volleyball|vbc|club|academy)$/i, "").trim().split(/\s+/); return (w.length > 1 ? w.map((x) => x[0]).join("").slice(0, 4) : w[0].slice(0, 4)).toUpperCase(); };
 
-function BoxScore({ g, team, P, follow }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string }) {
-  const A = aggregate(g.R.sets), them = g.m.opp || "Opponent";
-  const ids = Object.keys(A.ps).filter((id) => P.has(id)).sort((a, b) => (+P.get(a)!.num || 0) - (+P.get(b)!.num || 0));
-  const row = (s: Stat, served: number) => [s.K, s.AE, s.TA, fmtHit(hitting(s)), s.SA, serveErrors(s), serves(s, served), s.R, s.R ? fmtAvg(passAvg(s)) : "–", s.D, s.BS, s.BA, s.BT || 0, s.AST];
-  return <section className="lv-card"><div className="lv-h"><h2>{team}</h2></div>
-    <div className="tbl lv-box"><table>
-      <thead><tr><th className="l">{tr("Player")}</th><th>SP</th><th title="Kills">K</th><th title="Attack errors">E</th><th title="Attack attempts">TA</th><th title="Hitting percentage">Hit%</th><th title="Aces">A</th><th title="Serve errors">SE</th><th title="Serves">Srv</th><th title="Serve receptions">Rec</th><th title="Pass average, 0–3">Pass</th><th title="Digs">D</th><th title="Solo blocks">BS</th><th title="Block assists">BA</th><th title="Block touches">BT</th><th title="Assists">Ast</th></tr></thead>
-      <tbody>{ids.map((id) => <tr key={id} className={id === follow ? "mine" : undefined}><td className="l">{pname(P.get(id))}</td><td>{A.setsPlayed[id] || 0}</td>{row(A.ps[id], A.srv[id]?.n || 0).map((v, i) => <td key={i}>{v}</td>)}</tr>)}</tbody>
-      <tfoot><tr><td className="l">{tr("Team")}</td><td>{A.sets}</td>{row(A.T, A.psc.n).map((v, i) => <td key={i}>{v}</td>)}</tr></tfoot>
+/** Box score, broadcast style: starters and bench, every player's line, did-not-play rows, team totals. */
+function BoxScore({ g, team, P, follow, logo }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string; logo?: string | null }) {
+  const A = aggregate(g.R.sets), them = g.m.opp || "Opponent", first = g.R.sets[0];
+  const start = new Set([...(first?.startLu || []), ...(first?.lib ? [first.lib] : [])]);
+  const byNum = (a: string, b: string) => (+P.get(a)!.num || 0) - (+P.get(b)!.num || 0);
+  const played = (id: string) => !!(A.setsPlayed[id] || A.ps[id]);
+  const starters = [...P.keys()].filter((id) => start.has(id)).sort(byNum), bench = [...P.keys()].filter((id) => !start.has(id)).sort((a, b) => (+played(b) - +played(a)) || byNum(a, b));
+  const pts = (s: Stat) => s.K + s.SA + s.BS + s.BA / 2;
+  const COLS: [string, string, (s: Stat, served: number) => string | number][] = [
+    ["K", "Kills", (s) => s.K], ["E", "Attack errors", (s) => s.AE], ["TA", "Attack attempts", (s) => s.TA], ["PCT", "Hitting percentage", (s) => (s.TA ? fmtHit(hitting(s)) : "–")],
+    ["AST", "Assists", (s) => s.AST], ["SA", "Service aces", (s) => s.SA], ["SE", "Service errors", (s) => serveErrors(s)],
+    ["REC", "Serve receptions", (s) => s.R], ["RE", "Reception errors", (s) => s.P0], ["PASS", "Pass average, 0–3", (s) => (s.R ? fmtAvg(passAvg(s)) : "–")],
+    ["DIG", "Digs", (s) => s.D], ["BS", "Solo blocks", (s) => s.BS], ["BA", "Block assists", (s) => s.BA], ["BT", "Block touches", (s) => s.BT || 0],
+    ["BLK", "Total blocks", (s) => +blocks(s).toFixed(1)], ["PTS", "Points: kills + aces + solo blocks + half of block assists", (s) => +pts(s).toFixed(1)],
+  ];
+  const head = (label: string) => <tr className="lv-ebox-sec"><th className="nm" scope="col">{label}</th><th scope="col" title={tr("Sets played")}>SP</th>{COLS.map(([k, t]) => <th key={k} scope="col" title={tr(t)}>{k}</th>)}</tr>;
+  const line = (id: string) => {
+    const p = P.get(id)!, s = A.ps[id];
+    return <tr key={id} className={id === follow ? "mine" : undefined}>
+      <th className="nm" scope="row"><span className="lv-ebox-nm"><b>{p.first ? p.first + (p.last ? " " + p.last + "." : "") : tr("Player #{n}", { n: p.num })}</b><small>{p.num ? "#" + p.num : ""}{p.pos ? " " + p.pos : ""}</small></span></th>
+      {played(id) ? <><td>{A.setsPlayed[id] || 0}</td>{COLS.map(([k, , f]) => <td key={k}>{s ? f(s, A.srv[id]?.n || 0) : 0}</td>)}</> : <td className="dnp" colSpan={COLS.length + 1}>{tr("Did not play")}</td>}
+    </tr>;
+  };
+  return <section className="lv-card lv-ebox">
+    <header className="lv-ebox-h"><TeamLogo src={logo} name={team} size={30} /><h2>{team}</h2></header>
+    <div className="lv-ebox-scroll"><table>
+      {starters.length > 0 && <><thead>{head(tr("Starters"))}</thead><tbody>{starters.map(line)}</tbody></>}
+      <thead>{head(starters.length ? tr("Bench") : tr("Players"))}</thead><tbody>{bench.map(line)}</tbody>
+      <tfoot>
+        <tr className="tot"><th className="nm" scope="row">{tr("Team")}</th><td>{A.sets}</td>{COLS.map(([k, , f]) => <td key={k}>{f(A.T, A.psc.n)}</td>)}</tr>
+      </tfoot>
     </table></div>
-    <p className="lv-note">{tr("{them}: {k} kills, {a} aces, {e} errors. SP = sets played. Hit% = (kills − errors) ÷ attempts.", { them, k: A.team.OK, a: A.team.OA, e: A.team.OE })}</p>
+    <p className="lv-note">{tr("{them}: {k} kills, {a} aces, {e} errors. SP = sets played. PCT = (kills − errors) ÷ attempts.", { them, k: A.team.OK, a: A.team.OA, e: A.team.OE })}</p>
   </section>;
 }
 
-function PlayByPlay({ g, team, P, follow, logos }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string; logos: Logos }) {
+function PlayByPlay({ g, team, P, follow, logos, feed, openFull }: { g: Game; team: string; P: Map<string, LPlayer>; follow: string; logos: Logos; feed?: boolean; openFull?: () => void }) {
   const { m, R } = g, them = m.opp || "Opponent";
   const [all, setAll] = useState(false), [mine, setMine] = useState(false);
   const fp = follow ? P.get(follow) : undefined;
@@ -123,13 +146,14 @@ function PlayByPlay({ g, team, P, follow, logos }: { g: Game; team: string; P: M
   for (const l of R.log) { if (l.kind === "set") sets.push({ n: l.set, items: [] }); else if (sets.length && keep(l)) sets[sets.length - 1].items.push(l); }
   const [pick, setPick] = useState<number>(0), shown = sets.find((s) => s.n === pick) || sets[sets.length - 1];
   const st = shown ? R.sets.find((x) => x.n === shown.n) : undefined;
-  return <section className="lv-card">
+  return <section className={"lv-card lv-pbp-card" + (feed ? " feed" : "")}>
     <div className="lv-h"><h2>{tr("Play-by-play")}</h2><div className="lv-filters">
       <label><input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} /> {tr("Every touch")}</label>
       {fp && <label><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} /> {tr("Only {name}", { name: pname(fp, false) })}</label>}</div></div>
     {sets.length > 1 && <nav className="lv-sets" aria-label={tr("Sets")}>{sets.map((s) => <button key={s.n} aria-current={shown?.n === s.n ? "true" : undefined} onClick={() => setPick(s.n)}>{tr("Set {n}", { n: s.n })}</button>)}</nav>}
-    {shown && <PbpTable rows={shown.items.slice().reverse()} team={team} them={them} P={P} follow={follow} logos={logos} endOf={st ? { us: st.us, them: st.them, won: st.winner ? true : m.status === "live" ? null : true } : undefined} />}
-    {shown && <p className="lv-espn-start">{tr("Start of set {n}", { n: shown.n })}</p>}
+    {shown && <div className="lv-pbp-scroll"><PbpTable rows={shown.items.slice().reverse()} team={team} them={them} P={P} follow={follow} logos={logos} endOf={st ? { us: st.us, them: st.them, won: st.winner ? true : m.status === "live" ? null : true } : undefined} />
+      <p className="lv-espn-start">{tr("Start of set {n}", { n: shown.n })}</p></div>}
+    {feed && openFull && <button className="lv-more lv-pbp-all" onClick={openFull}>{tr("Full play-by-play")}</button>}
   </section>;
 }
 
