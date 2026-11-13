@@ -707,7 +707,7 @@ const scenarios = {
     const P = await newPage(browser, { phone: true }); await P.goto(teamUrl); await P.waitForTimeout(1500);
     await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(600);
     const court = P.locator(".lv-gc");
-    ok("gamecast court shows our six with the server and the rotation", (await court.locator(".lv-gc-pl").count()) === 6 && (await court.locator(".lv-gc-pl.srv").count()) === 1 && /Rotation 1/.test(await court.innerText()), (await court.innerText().catch(() => "")).slice(0, 200));
+    ok("gamecast court shows our six with the server and the rotation", (await court.locator(".fc-chip").count()) === 6 && (await court.locator(".fc-chip.srv").count()) === 1 && /Rotation 1/.test(await court.innerText()), (await court.innerText().catch(() => "")).slice(0, 200));
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "on-court.png"), fullPage: true });
     { const ax = await a11y(P); ok("on-court view controls all have names", !ax.length, ax.join(" | ")); }
     // a point from the bench shows up as the last play, with where it landed
@@ -1025,6 +1025,8 @@ const scenarios = {
     if (season) {
       await P.goto(season); await P.waitForTimeout(2000); await shot(P, "live-team");
       const gc = P.getByRole("link", { name: "Open the gamecast" }); if (await gc.count()) { await gc.click(); await P.waitForTimeout(1500); await shot(P, "live-game");
+        { const ch = P.getByRole("button", { name: /chart$/i }).first(); if (await ch.count()) { await ch.click(); await P.waitForTimeout(400); await P.locator(".lv-gc").screenshot({ path: path.join(out, "live-chart.png") }); await P.getByRole("button", { name: "Last play", exact: true }).click(); }
+          const url = P.url(), Dk = await newPage(browser, { size: { width: 1280, height: 900 }, scale: 2 }); await Dk.goto(url); await Dk.waitForTimeout(2500); await Dk.locator(".lv-gc").screenshot({ path: path.join(out, "live-desk.png") }); await Dk.context().close(); }
         const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); }
         const pbp = P.getByRole("button", { name: "Play-by-play", exact: true }); if (await pbp.count()) { await pbp.click(); await shot(P, "live-pbp"); } }
     }
