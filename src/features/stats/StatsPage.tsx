@@ -253,7 +253,7 @@ function RotationCourt({ A, startLu }: { A: Agg; startLu: string[] | null }) {
   if (!startLu || startLu.length !== 6 || startLu.some((id) => !player(id))) return null;
   const lu = rotateLineup(startLu, r - 1), dl = team()!.defLineup, li = liberoFor(lu, dl?.lib || null, dl?.libSrv || null);
   const spots = mode === "serve" ? BASE.map((b, i) => (i === 0 ? SERVE_SPOT : b)) : RECEIVE;
-  const pegs = lu.map((id, i) => { const pid = li === i && dl?.lib && !(mode === "serve" && i === 0) ? dl.lib : id, p = player(pid)!; return { num: p.num, name: p.first || "#" + p.num, x: spots[i][0], y: spots[i][1], lib: pid !== id, hl: mode === "serve" && i === 0 }; });
+  const pegs = lu.map((id, i) => { const pid = li === i && dl?.lib && !(mode === "serve" && i === 0) ? dl.lib : id, p = player(pid)!; return { num: p.num, name: p.first || "#" + p.num, x: spots[i][0], y: spots[i][1], lib: pid !== id, hl: mode === "serve" && i === 0, ball: mode === "serve" && i === 0 }; });
   const x = A.rot[r], best = [1, 2, 3, 4, 5, 6].filter((k) => A.rot[k].w + A.rot[k].l >= 6).sort((a, b) => (A.rot[b].w - A.rot[b].l) - (A.rot[a].w - A.rot[a].l));
   return <Card title="Rotation court" actions={<Seg value={mode} onChange={setMode} options={[["serve", "Serving"], ["receive", "Receiving"]]} label="Phase" />}>
     <div className="c3d-wrap">
