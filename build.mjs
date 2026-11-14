@@ -8,7 +8,7 @@ import { execFileSync } from "node:child_process";
 import path from "node:path";
 const pkgSite = JSON.parse(readFileSync(path.join(path.dirname(new URL(import.meta.url).pathname), "package.json"), "utf8")).site || {};
 const siteHost = (() => { try { return new URL(process.env.SITE_URL || pkgSite.url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
-const sites = siteHost && !/workers\.dev$/.test(siteHost) ? { home: `https://${siteHost}/`, app: `https://app.${siteHost}/`, live: `https://live.${siteHost}/`, recruit: `https://recruit.${siteHost}/` } : null;
+const sites = siteHost && !/workers\.dev$/.test(siteHost) ? { home: `https://${siteHost}/`, app: `https://app.${siteHost}/`, live: `https://live.${siteHost}/`, recruit: `https://recruit.${siteHost}/`, beach: `https://beach.${siteHost}/` } : null;
 
 const require = createRequire(import.meta.url);
 const esbuild = require("esbuild");
@@ -40,7 +40,7 @@ cpSync(path.join(root, "public"), dist, { recursive: true });
 const legal = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).legal || {};
 const options = {
   // the coaching app, plus the public sites that live beside it: /live/ (families and fans) and /recruit/ (college coaches)
-  entryPoints: { app: path.join(root, "src/main.tsx"), "live/live": path.join(root, "src/live/main.tsx"), ...(existsSync(path.join(root, "src/recruit/main.tsx")) ? { "recruit/recruit": path.join(root, "src/recruit/main.tsx") } : {}) },
+  entryPoints: { app: path.join(root, "src/main.tsx"), "live/live": path.join(root, "src/live/main.tsx"), "beach/beach": path.join(root, "src/beach/main.tsx"), ...(existsSync(path.join(root, "src/recruit/main.tsx")) ? { "recruit/recruit": path.join(root, "src/recruit/main.tsx") } : {}) },
   bundle: true, format: "esm", target: "es2020", outdir: dist, jsx: "automatic", splitting: true, chunkNames: "chunks/[name]-[hash]",
   minify: !args.has("--watch"), sourcemap: args.has("--watch") ? "inline" : false,
   define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __MAXPREPS__: JSON.stringify(JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).maxpreps || {}), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || ""), __SITES__: JSON.stringify(sites) },
@@ -66,9 +66,9 @@ for (const f of readdirSync(path.join(dist, "legal"))) {
 
 const site = String(process.env.SITE_URL || pkgSite.url || "").replace(/\/*$/, "") + "/";
 // With a real domain, each site gets its own address: app., live., recruit. (see worker/index.js)
-const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site).replaceAll("%APP%", sites ? sites.app : "./").replaceAll("%LIVE%", sites ? sites.live : site + "live/").replaceAll("%RECRUIT%", sites ? sites.recruit : site + "recruit/");
+const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site).replaceAll("%APP%", sites ? sites.app : "./").replaceAll("%LIVE%", sites ? sites.live : site + "live/").replaceAll("%RECRUIT%", sites ? sites.recruit : site + "recruit/").replaceAll("%BEACH%", sites ? sites.beach : site + "beach/");
 writeFileSync(path.join(dist, "index.html"), fill(readFileSync(path.join(root, "index.html"), "utf8")));
-for (const f of ["about.html", "live/index.html", "recruit/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
+for (const f of ["about.html", "live/index.html", "recruit/index.html", "beach/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
 if (!legal.email) console.warn("\n⚠  package.json legal.email is empty: the Privacy Policy and Terms have no contact address. Add it before launch.\n");
 const sw = readFileSync(path.join(root, "public/sw.js"), "utf8").replace("%VERSION%", version + "-" + Date.now().toString(36));
 writeFileSync(path.join(dist, "sw.js"), sw);

@@ -1,14 +1,15 @@
-/** Floorcall on Cloudflare: one Worker, four addresses.
+/** Floorcall on Cloudflare: one Worker, five addresses.
  *   getfloorcall.com          product page (about.html), legal pages, shared images
  *   app.getfloorcall.com      the coaching app
  *   live.getfloorcall.com     Floorcall Live   (files under /live/)
  *   recruit.getfloorcall.com  Floorcall Recruit (files under /recruit/)
+ *   beach.getfloorcall.com    Floorcall Beach   (files under /beach/)
  * workers.dev and other test addresses work as before: /, /live/, /recruit/ side by side. */
 const PAGE = /(\.html|\/)$/;
 export default {
   async fetch(req, env) {
     const url = new URL(req.url), host = url.hostname;
-    const m = /^(app|live|recruit|www)\.(.+)$/.exec(host);
+    const m = /^(app|live|recruit|beach|www)\.(.+)$/.exec(host);
     const test = /(^localhost$|^127\.|\.workers\.dev$)/.test(host);
     if (test) return env.ASSETS.fetch(req);
     const apex = m ? m[2] : host, kind = m ? m[1] : "home";
@@ -17,8 +18,8 @@ export default {
     let p = url.pathname;
     if (kind === "www") return go("", p);
     // old links: getfloorcall.com/live/… and /recruit/… now live on their own addresses
-    for (const s of ["live", "recruit"]) if (kind !== s && (p === "/" + s || p.startsWith("/" + s + "/"))) return go(s, p.slice(s.length + 1) || "/");
-    if (kind === "live" || kind === "recruit") {
+    for (const s of ["live", "recruit", "beach"]) if (kind !== s && (p === "/" + s || p.startsWith("/" + s + "/"))) return go(s, p.slice(s.length + 1) || "/");
+    if (kind === "live" || kind === "recruit" || kind === "beach") {
       if (p.startsWith("/" + kind + "/")) p = p.slice(kind.length + 1);
       const r = await asset("/" + kind + p);
       if (r.status !== 404) return r;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 // @ts-ignore plain JS Worker
 import worker from "../worker/index.js";
 
-const files = new Set(["/index.html", "/about.html", "/favicon.png", "/legal/terms.html", "/app.js", "/live/index.html", "/live/live.js", "/live/sw.js", "/recruit/index.html", "/recruit/recruit.js"]);
+const files = new Set(["/index.html", "/about.html", "/favicon.png", "/legal/terms.html", "/app.js", "/live/index.html", "/live/live.js", "/live/sw.js", "/recruit/index.html", "/recruit/recruit.js", "/beach/index.html", "/beach/beach.js"]);
 const env = { ASSETS: { fetch: async (r: Request) => { let p = new URL(r.url).pathname; if (p.endsWith("/")) p += "index.html"; return files.has(p) ? new Response("FILE " + p) : new Response("404", { status: 404 }); } } };
 const get = async (u: string) => { const r: Response = await worker.fetch(new Request(u), env); return r.status >= 300 && r.status < 400 ? "→ " + r.headers.get("location") : await r.text(); };
 
@@ -14,6 +14,8 @@ test("each address goes to its own site", async () => {
   assert.equal(await get("https://live.getfloorcall.com/"), "FILE /live/index.html");
   assert.equal(await get("https://live.getfloorcall.com/sw.js"), "FILE /live/sw.js");
   assert.equal(await get("https://recruit.getfloorcall.com/"), "FILE /recruit/index.html");
+  assert.equal(await get("https://beach.getfloorcall.com/"), "FILE /beach/index.html");
+  assert.equal(await get("https://beach.getfloorcall.com/beach.js"), "FILE /beach/beach.js");
 });
 test("shared files and pages", async () => {
   assert.equal(await get("https://live.getfloorcall.com/favicon.png"), "FILE /favicon.png");

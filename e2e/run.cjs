@@ -1052,6 +1052,40 @@ const scenarios = {
     await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(1200); await shot(P, "recruit-guide");
     await A.context().close(); await M.context().close(); await P.context().close();
   },
+  async beach(browser) {
+    const p = await newPage(browser, { phone: true });
+    await p.goto(U + "beach/"); await p.waitForTimeout(500);
+    ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 4);
+    await p.getByLabel("Your player 1").fill("Ava"); await p.getByLabel("Your player 2").fill("Maya");
+    await p.getByLabel("Opponent 1").fill("Kim"); await p.getByLabel("Opponent 2").fill("Lee");
+    await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
+    ok("a new match starts at 0-0 with the first server named", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "0-0" && (await p.locator(".bv-note").innerText()).includes("Ava serves"));
+    const pad = (name) => p.locator(".bv-pad", { has: p.getByRole("heading", { name }) });
+    ok("only the server gets ace and serve error", (await pad("Ava").getByRole("button", { name: "Ace" }).count()) === 1 && (await pad("Maya").getByRole("button", { name: "Ace" }).count()) === 0);
+    await pad("Ava").getByRole("button", { name: "Ace" }).click();
+    await pad("Maya").getByRole("button", { name: "Kill" }).click();
+    await pad("Kim").getByRole("button", { name: "Kill" }).click(); await p.waitForTimeout(150);
+    ok("points score and the serve passes on a side-out", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "2-1" && (await p.locator(".bv-note").innerText()).includes("Kim serves"));
+    await pad("Kim").getByRole("button", { name: "Serve error" }).click(); await p.waitForTimeout(100);
+    ok("after the next side-out the other partner serves", (await p.locator(".bv-note").innerText()).includes("Maya serves"));
+    for (let i = 0; i < 3; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
+    await p.waitForTimeout(150);
+    ok("at 7 points it says to switch sides", (await p.locator(".bv-note.sw").count()) === 1 && /far side/.test(await p.locator(".bv-sand").getAttribute("aria-label")));
+    const box = await p.locator(".bv-box tbody tr").first().innerText();
+    ok("the box score counts each player's touches", /Ava\s+1\s+0\s+0\s+0\s+–\s+1/.test(box), box);
+    await p.getByRole("button", { name: "Undo" }).click(); await p.waitForTimeout(100);
+    ok("undo takes the last point back", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "5-1");
+    for (let i = 0; i < 16; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
+    for (let i = 0; i < 21; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
+    await p.waitForTimeout(200);
+    ok("two sets win the match and entry stops", (await p.locator(".bv-note.win").innerText()).includes("2–0") && (await p.locator(".bv-pad").count()) === 0);
+    ok("beach fits a phone", (await overflow(p)) <= 0);
+    await p.reload(); await p.waitForTimeout(400);
+    ok("the match is still there after a reload", (await p.locator(".bv-set").innerText()) === "Final");
+    await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
+    ok("finished matches are listed on the beach home page", (await p.locator(".bv-list li").innerText()).includes("Won 2–0"));
+    ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
+  },
   async coachtools(browser) {
     const A = await newPage(browser);
     await go(A, "sample"); await A.waitForFunction(() => !location.hash.includes("sample"), null, { timeout: 8000 }).catch(() => {}); await A.waitForTimeout(800);

@@ -75,6 +75,14 @@ MaxPreps has no API for stat apps; every partner gives the coach a `.txt` file t
 2. Put both in `package.json` under `"maxpreps"`: `supplierId`, and `fields` (the column names joined with `|`, in MaxPreps' order; the default there is the usual volleyball list, check it against what they send).
 3. Release. Stats → one match now shows **MaxPreps import file** next to the MaxPreps sheet.
 
+## Beach site
+
+Floorcall Beach is built with everything else and lives at `beach.getfloorcall.com`. One step in Cloudflare:
+Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `beach.getfloorcall.com`.
+Do this before sharing the link: `getfloorcall.com/beach/` redirects to the beach address, so it does not work until the domain is added.
+
+Beach matches are saved on the device only for now: no account, no Live gamecast yet.
+
 ## App stores
 
 - **Google Play** ($25 once): play.google.com/console → create the app with package `com.getfloorcall.app`. Build the Android package at pwabuilder.com from `https://app.getfloorcall.com` (Package for stores → Android). Copy the signing key's SHA-256 fingerprint (PWABuilder shows it; Play Console → App integrity has the Play one) into `package.json` → `store.androidSha256`, release, and check `https://app.getfloorcall.com/.well-known/assetlinks.json` lists it. Upload the `.aab`.

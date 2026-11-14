@@ -11,7 +11,7 @@ self.addEventListener("fetch", (e) => {
   if (url.origin === location.origin) {
     const scope = new URL("./", location.href).pathname, rel = url.pathname.slice(scope.length);
     // the public sites (Live, Recruit), legal pages and the product page aren't part of the offline app
-    if (/^(live|recruit|legal)\//.test(rel) || (req.mode === "navigate" && rel && rel !== "index.html")) return;
+    if (/^(live|recruit|beach|legal)\//.test(rel) || (req.mode === "navigate" && rel && rel !== "index.html")) return;
     const key = req.mode === "navigate" ? "./index.html" : req;
     // Chunks have the content hash in their names and never change: cached copy first.
     if (url.pathname.includes("/chunks/")) { e.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req).then((r) => { if (r.ok) { const copy = r.clone(); caches.open(CACHE).then((c) => c.put(req, copy)); } return r; }))); return; }
