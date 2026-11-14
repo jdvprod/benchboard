@@ -8,14 +8,15 @@ import { CourtSvg, ZONE_POS } from "../../ui/court";
 import { Card, Seg } from "../../ui/kit";
 import { setUi, ui } from "../../app/ui";
 import { useRoute } from "../../app/router";
+import { Playbook } from "./Playbook";
 
 export function CourtPage() {
   const route = useRoute();
   return <div className="page">
     <div className="pagehead"><h1>Court</h1>
-      <Seg value={ui.courtTab} onChange={(v) => setUi({ courtTab: v })} options={[["tendency", "Tendencies"], ["boards", "Drawing boards"]]} label="Court section" />
+      <Seg value={ui.courtTab} onChange={(v) => setUi({ courtTab: v })} options={[["tendency", "Tendencies"], ["playbook", "Playbook"], ["boards", "Drawing boards"]]} label="Court section" />
     </div>
-    {ui.courtTab === "tendency" ? <Tendency oppId={route.id} /> : <Boards />}
+    {ui.courtTab === "tendency" ? <Tendency oppId={route.id} /> : ui.courtTab === "playbook" ? <Playbook /> : <Boards />}
   </div>;
 }
 

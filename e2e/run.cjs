@@ -1054,7 +1054,32 @@ const scenarios = {
   },
   async coachtools(browser) {
     const A = await newPage(browser);
-    await go(A, "sample"); await A.waitForTimeout(1500); await go(A, "track"); await A.waitForTimeout(500);
+    await go(A, "sample"); await A.waitForFunction(() => !location.hash.includes("sample"), null, { timeout: 8000 }).catch(() => {}); await A.waitForTimeout(800);
+    // playbook: the 3D court as a board
+    await go(A, "court"); await A.waitForTimeout(500);
+    await A.getByRole("button", { name: "Playbook", exact: true }).click(); await A.waitForTimeout(300);
+    ok("playbook lists defenses, blocking, serve receive and hitting plays", (await A.locator(".pb-group").count()) === 4 && (await A.locator(".pb-item").count()) > 20);
+    ok("a defense shows six players and their routes", (await A.locator(".pb .c3d-grab").count()) === 6 && (await A.locator(".pb .c3d-route").count()) === 6);
+    await A.getByRole("button", { name: "Slide", exact: true }).click(); await A.waitForTimeout(200);
+    ok("a hitting play loads with its note", (await A.locator(".pb-note").inputValue()).includes("one foot") && (await A.locator(".pb .c3d-route").count()) === 3);
+    await A.locator(".pb .c3d").scrollIntoViewIfNeeded();
+    const lb = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox();
+    await A.mouse.move(lb.x + lb.width / 2, lb.y + lb.height / 2); await A.mouse.down(); await A.mouse.move(lb.x + lb.width / 2 + 90, lb.y + lb.height / 2 - 30, { steps: 4 }); await A.mouse.up();
+    await A.waitForTimeout(150); let lb2 = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox();
+    ok("dragging a player moves her", lb2.x - lb.x > 50);
+    await A.getByRole("button", { name: "Draw routes" }).click(); await A.waitForTimeout(200);
+    lb2 = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox(); // the page may have scrolled to reach the button
+    await A.mouse.move(lb2.x + lb2.width / 2, lb2.y + lb2.height / 2); await A.mouse.down(); await A.mouse.move(lb2.x + lb2.width / 2 - 120, lb2.y + lb2.height / 2 + 60, { steps: 4 }); await A.mouse.up(); await A.waitForTimeout(150);
+    ok("dragging in route mode draws a route", (await A.locator(".pb .c3d-route").count()) === 4);
+    await A.locator("input[aria-label='Play name']").fill("Slide vs Ridgeview"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(200);
+    ok("a play saves under My plays", (await A.locator(".pb-group").first().innerText()).includes("Slide vs Ridgeview"));
+    await A.getByRole("button", { name: "Run it" }).click(); await A.waitForTimeout(600);
+    ok("Run it hides the arrows while players move", (await A.locator(".pb .c3d-route").count()) === 0);
+    await A.waitForTimeout(2200);
+    ok("and they come back after", (await A.locator(".pb .c3d-route").count()) === 4);
+    await go(A, "stats"); await A.waitForTimeout(400); await A.getByRole("button", { name: "Rotations", exact: true }).click(); await A.waitForTimeout(300);
+    ok("the rotation court is flat, from above", (await A.locator(".c2d .c2d-p").count()) === 6 && (await A.locator(".c3d").count()) === 0);
+    await go(A, "track"); await A.waitForTimeout(500);
     // two liberos beside the court
     const lc = A.locator(".libcol");
     ok("track shows a libero box beside the court", (await lc.count()) === 1 && (await lc.locator(".pl.lib.on").count()) === 1);

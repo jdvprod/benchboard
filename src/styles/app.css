@@ -850,6 +850,25 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .c3d-views button[aria-pressed="true"]{background:#9BD3F2;border-color:#9BD3F2;color:#0B1B26}
 .c3d-views span{margin-left:auto;font-size:12px;color:#8C99A6}
 @media print{.c3d-views{display:none}}
+.c3d.edit .c3d-grab{cursor:move}
+.c3d-route line{stroke:#FFC93C;stroke-width:3;stroke-linecap:round}.c3d-route polygon{fill:#FFC93C}
+.c3d-route ellipse{fill:rgba(255,201,60,.18);stroke:#FFC93C;stroke-width:1.5;stroke-dasharray:4 4}
+.c2d{display:block;width:100%;max-width:440px;height:auto;margin:0 auto}
+.c2d-floor{fill:var(--surface-2,#EEF2F5)}.c2d-court{fill:#9BD3F2;opacity:.45}.c2d-front{fill:#9BD3F2;opacity:.5}
+.c2d-lines rect,.c2d-lines line{stroke:var(--ink);stroke-width:2;fill:none}.c2d-net{stroke:var(--ink);stroke-width:5;stroke-linecap:round}
+.c2d-cap{font:600 11px var(--display);fill:var(--muted)}
+.c2d-p circle{fill:var(--surface);stroke:var(--ink);stroke-width:2}.c2d-num{font:700 16px var(--display);fill:var(--ink)}
+.c2d-name{font:600 11px var(--display);fill:var(--ink)}
+.c2d-p.lib circle{fill:var(--ink)}.c2d-p.lib .c2d-num{fill:var(--bg)}
+.c2d-p.hl circle{stroke:#1F6FA8;stroke-width:4}
+.pb{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:start}
+@media (max-width:900px){.pb{grid-template-columns:1fr}}
+.pb-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}.pb-bar .input{width:auto;flex:1 1 160px;max-width:240px}.pb-gap{flex:1 1 0}
+.pb-note{margin-top:10px;width:100%;resize:vertical}
+.pb-lib{display:grid;gap:14px}.pb-group{display:grid;gap:4px}.pb-group h3{font:700 12px var(--display);color:var(--muted);margin:0 0 2px}
+.pb-item{text-align:left;border:1px solid transparent;background:transparent;border-radius:8px;padding:7px 10px;font:500 14px var(--body,inherit);color:var(--ink);cursor:pointer}
+.pb-item:hover{background:var(--surface-2,rgba(127,127,127,.12))}.pb-item.on{background:var(--ink);color:var(--bg)}
+.pb-item.new{border:1px dashed var(--line);font-weight:600}
 .c3d-side{display:grid;gap:12px}
 .c3d-rots{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
 .c3d-rots button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:8px 0;font:700 13px var(--display);color:var(--ink);cursor:pointer}

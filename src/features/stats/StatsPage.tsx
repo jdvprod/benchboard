@@ -22,7 +22,8 @@ import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
 import { CustomView } from "./Custom";
 import { rotateLineup } from "../../sports/volleyball/engine";
-import { BASE, Court3D, RECEIVE, SERVE_SPOT } from "../../ui/Court3D";
+import { BASE, RECEIVE, SERVE_SPOT } from "../../ui/Court3D";
+import { Court2D } from "../../ui/Court2D";
 import { liberoFor } from "../lineup/LineupPage";
 import { ErrorsView } from "./Errors";
 import { seasonAwards, seasonReportHtml } from "./seasonReport";
@@ -247,7 +248,7 @@ function Rotations({ A, S }: { A: Agg; S: Scope }) {
   </Card></>;
 }
 
-/** The six in 3D for one rotation, serving or receiving, with that rotation's results. */
+/** The six from above for one rotation, serving or receiving, with that rotation's results. */
 function RotationCourt({ A, startLu }: { A: Agg; startLu: string[] | null }) {
   const [r, setR] = useState(1), [mode, setMode] = useState<"serve" | "receive">("serve");
   if (!startLu || startLu.length !== 6 || startLu.some((id) => !player(id))) return null;
@@ -257,7 +258,7 @@ function RotationCourt({ A, startLu }: { A: Agg; startLu: string[] | null }) {
   const x = A.rot[r], best = [1, 2, 3, 4, 5, 6].filter((k) => A.rot[k].w + A.rot[k].l >= 6).sort((a, b) => (A.rot[b].w - A.rot[b].l) - (A.rot[a].w - A.rot[a].l));
   return <Card title="Rotation court" actions={<Seg value={mode} onChange={setMode} options={[["serve", "Serving"], ["receive", "Receiving"]]} label="Phase" />}>
     <div className="c3d-wrap">
-      <Court3D pegs={pegs} label={`Rotation ${r}, ${mode === "serve" ? "serving" : "receiving"}: ${pegs.map((p) => p.name).join(", ")}`} />
+      <Court2D pegs={pegs} label={`Rotation ${r}, ${mode === "serve" ? "serving" : "receiving"}: ${pegs.map((p) => p.name).join(", ")}`} />
       <div className="c3d-side">
         <div className="c3d-rots" role="group" aria-label="Rotation">{[1, 2, 3, 4, 5, 6].map((k) => <button key={k} aria-pressed={r === k} className={best[0] === k ? "best" : best.length > 1 && best[best.length - 1] === k ? "worst" : ""} onClick={() => setR(k)}>R{k}</button>)}</div>
         <div className="c3d-stats">

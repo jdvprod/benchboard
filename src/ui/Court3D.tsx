@@ -2,7 +2,7 @@
  * Drag to move the camera around. Drawn as SVG with its own perspective math (no WebGL), so it scales, prints and works offline. */
 import { useMemo, useRef, useState, type PointerEvent as RPE } from "react";
 
-export interface Peg { num: string; name: string; x: number; y: number; lib?: boolean; hl?: boolean; ball?: boolean }
+export interface Peg { num: string; name: string; x: number; y: number; lib?: boolean; hl?: boolean; ball?: boolean; /** where this player moves to: drawn as a dashed arrow on the floor */ to?: [number, number] | null }
 
 // world: x across the court (0–9 m), y from our end line toward the net (9) and their end line (18), z up
 const W = 900, H = 520, F = 1050;
@@ -20,7 +20,9 @@ function camera(az: number, el: number) {
   const cam = [C[0] + DIST * Math.sin(rad(az)) * Math.cos(rad(el)), C[1] - DIST * Math.cos(rad(az)) * Math.cos(rad(el)), C[2] + DIST * Math.sin(rad(el))];
   const fw = norm(sub(C, cam)), rt = norm(cross(fw, [0, 0, 1])), up = cross(rt, fw);
   const pr = (x: number, y: number, z = 0): [number, number, number, number] => { const d = sub([x, y, z], cam), cz = Math.max(0.6, dot(d, fw)), s = F / cz; return [W / 2 + dot(d, rt) * s, H * 0.52 - dot(d, up) * s, s, cz]; };
-  return { cam, pr };
+  /** A point on screen back to the floor (z = 0). */
+  const un = (sx: number, sy: number): [number, number] => { const d = [0, 1, 2].map((i) => fw[i] * F + rt[i] * (sx - W / 2) - up[i] * (sy - H * 0.52)); const t = d[2] < -1e-6 ? -cam[2] / d[2] : 0; return [cam[0] + d[0] * t, cam[1] + d[1] * t]; };
+  return { cam, pr, un };
 }
 
 /** Where the six stand: base spots by lineup index (0 = P1 right back … 3 = P4 left front), and a W serve-receive shape. */
@@ -49,25 +51,41 @@ function Figure({ x, y, u, k, cls, num, back }: { x: number; y: number; u: numbe
   </g>;
 }
 
-export function Court3D({ pegs, label }: { pegs: Peg[]; label: string }) {
+const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+/** With onMove / onRoute the court is a board: drag a player to move her, or (tool "route") drag from a player to draw where she goes. */
+export function Court3D({ pegs, label, ball, tool = "move", onMove, onRoute }: { pegs: Peg[]; label: string; ball?: [number, number, number] | null; tool?: "move" | "route";
+  onMove?: (i: number, x: number, y: number) => void; onRoute?: (i: number, to: [number, number] | null) => void }) {
+  const svg = useRef<SVGSVGElement>(null), grab = useRef<{ i: number; dx: number; dy: number } | null>(null);
+  const edit = !!(onMove || onRoute);
   const [az, setAz] = useState(0), [el, setEl] = useState(24);
   const drag = useRef<{ x: number; y: number; az: number; el: number } | null>(null);
-  const { cam, pr } = useMemo(() => camera(az, el), [az, el]);
+  const { cam, pr, un } = useMemo(() => camera(az, el), [az, el]);
   const pt = (x: number, y: number, z = 0) => { const q = pr(x, y, z); return q[0].toFixed(1) + "," + q[1].toFixed(1); };
   const poly = (v: V[]) => v.map(([x, y, z]) => pt(x, y, z)).join(" ");
   const seg = (a: V, b: V) => { const p = pr(...a), q = pr(...b); return { x1: p[0], y1: p[1], x2: q[0], y2: q[1] }; };
   const dist = (x: number, y: number) => Math.hypot(x - cam[0], y - cam[1]);
-  const ours = pegs.slice().sort((a, b) => dist(b.x, b.y) - dist(a.x, a.y));
+  const ours = pegs.map((p, i) => ({ ...p, i })).sort((a, b) => dist(b.x, b.y) - dist(a.x, a.y));
   const theirs = THEM.slice().sort((a, b) => dist(b[0], b[1]) - dist(a[0], a[1]));
   const k = Math.max(0.6, Math.cos(rad(el)) / Math.cos(rad(24)) > 1 ? 1 : Math.cos(rad(el)) / Math.cos(rad(24)));
   const planks: number[] = []; for (let x = XMIN; x <= XMAX + 0.01; x += 0.5) planks.push(x);
   const meshV: number[] = []; for (let x = 0; x <= 9.01; x += 0.45) meshV.push(x);
-  const move = (e: RPE) => { const d = drag.current; if (!d) return; setAz(Math.max(-85, Math.min(85, d.az - (e.clientX - d.x) * 0.35))); setEl(Math.max(10, Math.min(64, d.el + (e.clientY - d.y) * 0.25))); };
+  const floor = (e: RPE): [number, number] => { const r = svg.current!.getBoundingClientRect(); return un(((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H); };
+  const down = (e: RPE) => {
+    const hit = edit ? (e.target as Element).closest?.("[data-i]") : null;
+    if (hit) { const i = +hit.getAttribute("data-i")!, f = floor(e), p = pegs[i]; grab.current = tool === "move" ? { i, dx: p.x - f[0], dy: p.y - f[1] } : { i, dx: 0, dy: 0 }; }
+    else drag.current = { x: e.clientX, y: e.clientY, az, el };
+    svg.current?.setPointerCapture?.(e.pointerId);
+  };
+  const up = () => { const g = grab.current; if (g && tool === "route" && onRoute) { const p = pegs[g.i]; if (p.to && Math.hypot(p.to[0] - p.x, p.to[1] - p.y) < 0.5) onRoute(g.i, null); } grab.current = null; drag.current = null; };
+  const move = (e: RPE) => {
+    const g = grab.current;
+    if (g) { const f = floor(e), x = clamp(f[0] + g.dx, -1.4, 10.4), y = clamp(f[1] + g.dy, -2.4, 8.9); if (tool === "move") onMove?.(g.i, +x.toFixed(2), +y.toFixed(2)); else onRoute?.(g.i, [+x.toFixed(2), +y.toFixed(2)]); return; }
+    const d = drag.current; if (!d) return; setAz(Math.max(-85, Math.min(85, d.az - (e.clientX - d.x) * 0.35))); setEl(Math.max(10, Math.min(64, d.el + (e.clientY - d.y) * 0.25))); };
 
   return <div className="c3d-box">
-    <svg className="c3d" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}
-      onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY, az, el }; (e.target as Element).setPointerCapture?.(e.pointerId); }}
-      onPointerMove={move} onPointerUp={() => (drag.current = null)} onPointerCancel={() => (drag.current = null)}>
+    <svg ref={svg} className={"c3d" + (edit ? " edit" : "")} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}
+      onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       <defs>
         <linearGradient id="c3d-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#141C24" /><stop offset="1" stopColor="#2A3642" /></linearGradient>
         <linearGradient id="c3d-wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#B4844D" /><stop offset="1" stopColor="#E6BA80" /></linearGradient>
@@ -114,19 +132,31 @@ export function Court3D({ pegs, label }: { pegs: Peg[]; label: string }) {
       <line {...seg([0, 9, NET - 1], [9, 9, NET - 1])} stroke="#FBFBF6" strokeWidth={Math.max(1.5, pr(4.5, 9, NET)[2] * 0.035)} />
       {[0, 9].map((x) => <g key={x}><line {...seg([x, 9, NET - 1], [x, 9, NET])} stroke="#FBFBF6" strokeWidth={Math.max(2, pr(x, 9, NET)[2] * 0.05)} />
         <line {...seg([x, 9, NET - 1], [x, 9, NET + 0.8])} stroke="#F4F4F0" strokeWidth={2.2} /><line {...seg([x, 9, NET - 1], [x, 9, NET + 0.8])} stroke="#D7263D" strokeWidth={2.2} strokeDasharray="5 5" /></g>)}
+      {/* routes: a dashed path on the floor, an arrowhead, and a ring where she ends up */}
+      {pegs.map((p, i) => { if (!p.to) return null; const [tx, ty] = p.to, dx = tx - p.x, dy = ty - p.y, len = Math.hypot(dx, dy); if (len < 0.3) return null;
+        const ux = dx / len, uy = dy / len, hx = tx - ux * 0.55, hy = ty - uy * 0.55, a = seg([p.x + ux * 0.3, p.y + uy * 0.3, 0], [hx, hy, 0]), c = pr(tx, ty, 0);
+        return <g key={"r" + i} className={"c3d-route" + (p.lib ? " lib" : "")}>
+          <ellipse cx={c[0]} cy={c[1]} rx={c[2] * 0.36} ry={Math.max(2, c[2] * 0.36 * Math.sin(rad(el)))} />
+          <line {...a} strokeDasharray="9 7" />
+          <polygon points={poly([[tx, ty, 0], [hx - uy * 0.28, hy + ux * 0.28, 0], [hx + uy * 0.28, hy - ux * 0.28, 0]])} />
+        </g>; })}
+      {ball && (() => { const g = pr(ball[0], ball[1], 0), b = pr(ball[0], ball[1], ball[2]); return <g>
+        <ellipse cx={g[0]} cy={g[1]} rx={g[2] * 0.14} ry={Math.max(1.5, g[2] * 0.14 * Math.sin(rad(el)))} fill="#000" opacity={0.35} />
+        <circle cx={b[0]} cy={b[1]} r={b[2] * 0.11} fill="#FDFBF4" stroke="#1E2A33" strokeWidth={0.8} /><path d={`M${b[0] - b[2] * 0.11} ${b[1]} Q${b[0]} ${b[1] - b[2] * 0.07} ${b[0] + b[2] * 0.11} ${b[1]}`} fill="none" stroke="#2B79B0" strokeWidth={1} /></g>; })()}
       {/* our six */}
       {ours.map((p) => { const q = pr(p.x, p.y, 0), u = q[2], top = q[1] - 1.92 * u * k, tag = p.name.toUpperCase().slice(0, 10), tw = tag.length * 7 + 14;
-        return <g key={p.num + p.name}>
+        return <g key={p.i} data-i={p.i} className={edit ? "c3d-grab" : undefined}>
           <ellipse cx={q[0]} cy={q[1]} rx={u * 0.46} ry={Math.max(2, u * 0.46 * Math.sin(rad(el)))} fill="url(#c3d-sh)" />
           <Figure x={q[0]} y={q[1]} u={u} k={k} cls={(p.lib ? "lib" : "us") + (p.hl ? " hl" : "")} num={p.num} back={Math.abs(az) < 60} />
           {p.ball && <g transform={`translate(${q[0] + u * 0.36} ${q[1] - u * 1.05 * k})`}><circle r={u * 0.105} fill="#FDFBF4" stroke="#1E2A33" strokeWidth={0.8} /><path d={`M${-u * 0.105} 0 Q0 ${-u * 0.06} ${u * 0.105} 0`} fill="none" stroke="#2B79B0" strokeWidth={1} /></g>}
+          {edit && <rect x={q[0] - u * 0.5} y={q[1] - 2.1 * u * k} width={u} height={2.2 * u * k} fill="transparent" />}
           <g transform={`translate(${q[0]} ${top})`} filter="url(#c3d-drop)"><rect x={-tw / 2} y={-9} width={tw} height={18} rx={9} className={"c3d-tag" + (p.hl ? " hl" : "")} /><text textAnchor="middle" dominantBaseline="central" className="c3d-name">{tag}</text></g>
         </g>; })}
       <rect width={W} height={H} fill="url(#c3d-light)" pointerEvents="none" />
     </svg>
     <div className="c3d-views" role="group" aria-label="Camera">
       {VIEWS.map(([l, a, e]) => <button key={l} aria-pressed={Math.abs(az - a) < 1 && Math.abs(el - e) < 1} onClick={() => { setAz(a); setEl(e); }}>{l}</button>)}
-      <span>Drag the court to turn it</span>
+      <span>{edit ? (tool === "move" ? "Drag a player to move her. Drag the floor to turn the court." : "Drag from a player to draw her route. Tap her to clear it.") : "Drag the court to turn it"}</span>
     </div>
   </div>;
 }

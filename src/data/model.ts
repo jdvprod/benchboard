@@ -54,6 +54,8 @@ export interface Team {
   scrimSplit?: { aName: string; bName: string; a: string[]; b: string[]; out: string[]; to: number; games: number } | null;
   luAdvice?: { lineup: string[]; libero: string | null; summary: string; reasons: string[]; serveReceive: string[]; at: number } | null;
   sample?: boolean;
+  /** Plays the coach drew and saved in the Court playbook. */
+  plays?: import("../sports/volleyball/playbook").Play[];
   /** Where players stand in each rotation (serve receive, serving, base defense). */
   formations?: import("../sports/volleyball/formations").Formations | null;
   /** Substitutions planned by rotation, e.g. a DS in for the opposite in rotation 4. */

@@ -9,6 +9,6 @@ export const ui = {
   statsScope: "match" as string,       // season | practice | match | s1..s5
   statsSeason: "" as string,
   prevRally: false,                    // stats-only device: put the next entry in the rally that just ended
-  courtTab: "tendency" as "tendency" | "boards",
+  courtTab: "tendency" as "tendency" | "playbook" | "boards",
 };
 export function setUi(p: Partial<typeof ui>) { Object.assign(ui, p); emit(); }

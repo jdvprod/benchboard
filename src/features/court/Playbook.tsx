@@ -1,0 +1,65 @@
+/** Playbook: the 3D court as a board. Pick a defense, blocking scheme, serve-receive shape or hitting play, drag players, draw routes, run it, and save your own. */
+import { useEffect, useRef, useState } from "react";
+import { patch, team, uid } from "../../data/store";
+import { blankPlay, KIND_LABEL, LIBRARY, Play, PlayKind } from "../../sports/volleyball/playbook";
+import { Court3D } from "../../ui/Court3D";
+import { Card, Seg } from "../../ui/kit";
+
+const copy = (p: Play): Play => JSON.parse(JSON.stringify(p));
+
+export function Playbook() {
+  const t = team()!, mine = t.plays || [];
+  const [play, setPlay] = useState<Play>(() => copy(LIBRARY[1]));
+  const [src, setSrc] = useState(LIBRARY[1].id), [dirty, setDirty] = useState(false);
+  const [tool, setTool] = useState<"move" | "route">("move");
+  const [k, setK] = useState(0), raf = useRef(0); // 0 = start spots, 1 = everyone at the end of her route
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
+
+  const open = (p: Play) => { cancelAnimationFrame(raf.current); setK(0); setPlay(copy(p)); setSrc(p.id); setDirty(false); };
+  const edit = (f: (p: Play) => void) => { const n = copy(play); f(n); setPlay(n); setDirty(true); };
+  const hasRoutes = play.spots.some((s) => s.to);
+  const run = () => {
+    cancelAnimationFrame(raf.current); const t0 = performance.now();
+    const step = (now: number) => { const e = now - t0; setK(e < 1100 ? e / 1100 : e < 2300 ? 1 : 0); if (e < 2300) raf.current = requestAnimationFrame(step); };
+    raf.current = requestAnimationFrame(step);
+  };
+  const ease = k * k * (3 - 2 * k), running = k > 0;
+  const pegs = play.spots.map((s) => ({ num: s.r, name: s.name, lib: s.lib, x: s.to ? s.x + (s.to[0] - s.x) * ease : s.x, y: s.to ? s.y + (s.to[1] - s.y) * ease : s.y, to: running ? null : s.to }));
+  const saved = mine.some((m) => m.id === src);
+  const save = () => {
+    const name = play.name.trim() || "My play";
+    if (saved) patch("teams", t.id, { plays: mine.map((m) => (m.id === src ? { ...copy(play), id: src, kind: "mine" as PlayKind, name } : m)) });
+    else { const id = uid("pl"); patch("teams", t.id, { plays: [...mine, { ...copy(play), id, kind: "mine" as PlayKind, name: LIBRARY.some((l) => l.name === name) ? name + " (mine)" : name }] }); setSrc(id); }
+    setDirty(false);
+  };
+  const remove = () => { patch("teams", t.id, { plays: mine.filter((m) => m.id !== src) }); open(LIBRARY[0]); };
+  const groups: [PlayKind, Play[]][] = [["mine", mine], ...(["defense", "block", "receive", "attack"] as PlayKind[]).map((g): [PlayKind, Play[]] => [g, LIBRARY.filter((p) => p.kind === g)])];
+
+  return <div className="pb">
+    <Card title={play.name + (dirty ? " (edited)" : "")} actions={<Seg value={tool} onChange={setTool} options={[["move", "Move players"], ["route", "Draw routes"]]} label="Tool" />}>
+      <Court3D pegs={pegs} ball={play.ball} tool={tool} label={`${play.name}: ${play.spots.map((s) => s.name).join(", ")}`}
+        onMove={running ? undefined : (i, x, y) => edit((p) => { p.spots[i].x = x; p.spots[i].y = y; })}
+        onRoute={running ? undefined : (i, to) => edit((p) => { p.spots[i].to = to; })} />
+      <div className="pb-bar">
+        <button className="btn primary" onClick={run} disabled={!hasRoutes || running}>Run it</button>
+        <button className="btn" onClick={() => edit((p) => p.spots.forEach((s) => (s.to = null)))} disabled={!hasRoutes}>Clear routes</button>
+        <button className="btn" onClick={() => open([...mine, ...LIBRARY].find((p) => p.id === src) || blankPlay())} disabled={!dirty}>Reset</button>
+        <span className="pb-gap" />
+        <input className="input" value={play.name} onChange={(e) => edit((p) => { p.name = e.target.value; })} aria-label="Play name" maxLength={40} />
+        <button className="btn" onClick={save} disabled={saved && !dirty}>{saved ? "Save changes" : "Save to my plays"}</button>
+        {saved && <button className="btn danger" onClick={remove}>Delete</button>}
+      </div>
+      <textarea className="input pb-note" rows={2} value={play.note} placeholder="Notes for this play: who has tips, what to call, when to use it." onChange={(e) => edit((p) => { p.note = e.target.value; })} aria-label="Notes" />
+      <p className="keys">Dashed arrows show where a player goes; Run it plays the movement. These are the common textbook shapes. Move anyone to match how your team plays it, then save your version.</p>
+    </Card>
+    <Card title="Playbook">
+      <div className="pb-lib">
+        <button className={"pb-item new" + (src === "" ? " on" : "")} onClick={() => open(blankPlay())}>Start a new play</button>
+        {groups.map(([g, list]) => (g !== "mine" || list.length > 0) && <div key={g} className="pb-group">
+          <h3>{KIND_LABEL[g]}</h3>
+          {list.map((p) => <button key={p.id} className={"pb-item" + (src === p.id ? " on" : "")} aria-pressed={src === p.id} onClick={() => open(p)}>{p.name}</button>)}
+        </div>)}
+      </div>
+    </Card>
+  </div>;
+}
