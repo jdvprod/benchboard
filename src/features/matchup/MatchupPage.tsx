@@ -2,7 +2,7 @@
 import { TheirRotations } from "../stats/StatsPage";
 import { parseSchedule } from "./parseSchedule";
 import { useState } from "react";
-import { ensureOpponent, get, matchesOf, newMatch, oppKey, opponentsOf, patch, playerName, replayOf, setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
+import { ensureOpponent, get, setOppRoster, matchesOf, newMatch, oppKey, opponentsOf, patch, playerName, replayOf, setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
 import { Match, Opponent, PlanItem, ScheduleItem } from "../../data/model";
 import { aggregate, Agg, Replay, resultOf } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, playerMetrics, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
@@ -15,6 +15,7 @@ import { scoutPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
 import { TournamentList } from "../tournament/TournamentPage";
+import { OppRosterEditor } from "./OppRoster";
 
 interface H2H { o: Opponent; games: { m: Match; R: Replay }[]; A: Agg; season: Agg }
 
@@ -134,6 +135,7 @@ function Matchup({ h, next }: { h: H2H; next?: ScheduleItem }) {
       </div>
       <GamePlan o={o} h={h} />
     </>}
+    <Card title={`${o.name} roster`}><OppRosterEditor key={o.id} roster={o.roster || {}} onChange={(r) => setOppRoster(o.name, r)} team={o.name} /></Card>
     <Card title="Notes"><textarea className="input" aria-label="Scouting notes" rows={3} key={o.id} defaultValue={o.notes} placeholder="Best hitters, setter tendencies, serve targets, what worked last time…" onBlur={(e) => patch("opponents", o.id, { notes: e.target.value })} /></Card>
     <AiCard key={"ai" + o.id} title={`Scouting report: ${o.name}`} desc="A pre-match report from every match you've recorded against them plus your notes. Saved for next time." button="Write scouting report" prompt={() => scoutPrompt(o.name)} saved={o.scout} savedAt={o.scoutAt} onSave={(text) => patch("opponents", o.id, { scout: text, scoutAt: Date.now() })} filename={o.name + " scouting report"} />
   </>;

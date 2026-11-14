@@ -15,7 +15,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 1. Supabase (the database and accounts)
 
-1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 16: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
+1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 17: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
 2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**` and `https://recruit.getfloorcall.com/**`.
 3. **Emails (required before launch).** Sign-up confirmation, password resets and the new-device sign-in code all go by email, and Supabase's built-in email only reaches your own team, a couple an hour.
    - Make a free **Resend** account (resend.com) → **Domains → Add domain** `getfloorcall.com` → add the DNS records it shows in Cloudflare (DNS → Records) → wait for **Verified**. Then **API Keys → Create** (sending access).

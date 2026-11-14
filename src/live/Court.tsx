@@ -6,7 +6,7 @@ import { Avatar, TeamLogo } from "../ui/Logo";
 import { playName, tr } from "../lib/i18n";
 import { LPlayer, pname } from "./data";
 import { liberoSpot } from "./OnCourt";
-import { playText } from "./GameView";
+import { playText, Roster, theirWhat, theirWho } from "./GameView";
 
 type Stat = Extract<LogEntry, { kind: "stat" }>;
 
@@ -66,7 +66,7 @@ function origin(l: Stat, c: SetState | null): [number, number] {
 type View = "last" | "set";
 type Who = "both" | "us" | "them";
 
-export function GameCourt({ c, P, log, team, them, follow, logos, live }: { c: SetState | null; P: Map<string, LPlayer>; log: LogEntry[]; team: string; them: string; follow: string; logos: { us?: string | null; them?: string | null }; live: boolean }) {
+export function GameCourt({ c, P, log, team, them, follow, logos, live, ro }: { ro?: Roster; c: SetState | null; P: Map<string, LPlayer>; log: LogEntry[]; team: string; them: string; follow: string; logos: { us?: string | null; them?: string | null }; live: boolean }) {
   const [view, setView] = useState<View>("last"), [who, setWho] = useState<Who>("both"), [pick, setPick] = useState<string>("");
   const reduce = useMemo(() => { try { return matchMedia("(prefers-reduced-motion: reduce)").matches; } catch { return false; } }, []);
   const setN = c?.n;
@@ -85,7 +85,7 @@ export function GameCourt({ c, P, log, team, them, follow, logos, live }: { c: S
     {last && <div className={"lv-gc-last " + lastSide} aria-live="polite">
       {lastP ? <Avatar photo={lastP.photo} num={lastP.num} size={44} className="lv-gc-last-pic" /> : <TeamLogo src={lastSide === "them" ? logos.them : logos.us} name={lastSide === "them" ? them : team} size={40} />}
       <div className="lv-gc-last-t"><small>{live ? tr("Last play") : tr("Final play")}{setN ? " · " + tr("Set {n}", { n: setN }) : ""}</small>
-        <b>{lastP ? <>{pname(lastP)} <span>{playName(lastStat!.t)}</span></> : playText(last, team, them, P)}</b>
+        <b>{lastP ? <>{pname(lastP)} <span>{playName(lastStat!.t)}</span></> : playText(last, team, them, P, ro)}</b>
         {lastStat?.z && lastStat.z !== "out" && <em>{tr("Landed in area {z}", { z: String(lastStat.z) })}</em>}</div>
       {lastStat?.w && <span className="lv-gc-last-sc"><span className={lastStat.w === "us" ? "on" : ""}>{lastStat.us}</span><i>–</i><span className={lastStat.w === "them" ? "on" : ""}>{lastStat.them}</span></span>}
     </div>}
@@ -103,7 +103,7 @@ export function GameCourt({ c, P, log, team, them, follow, logos, live }: { c: S
           <radialGradient id="fc-light" cx="50%" cy="45%" r="70%"><stop offset="0" stopColor="#fff" stopOpacity={0.1} /><stop offset="0.55" stopColor="#fff" stopOpacity={0} /><stop offset="1" stopColor="#000" stopOpacity={0.38} /></radialGradient>
           <linearGradient id="fc-sheen" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#fff" stopOpacity={0} /><stop offset="0.48" stopColor="#fff" stopOpacity={0.09} /><stop offset="0.52" stopColor="#fff" stopOpacity={0.09} /><stop offset="1" stopColor="#fff" stopOpacity={0} /></linearGradient>
           <pattern id="fc-mesh" width={2.4} height={2.4} patternUnits="userSpaceOnUse"><path d="M0 0H2.4M0 0V2.4" stroke="#0E151B" strokeWidth={0.5} opacity={0.75} /></pattern>
-          <clipPath id="fc-chip"><circle r={15} /></clipPath>
+          <radialGradient id="fc-gloss" cx="35%" cy="30%" r="70%"><stop offset="0" stopColor="#fff" stopOpacity={0.55} /><stop offset="0.5" stopColor="#fff" stopOpacity={0} /></radialGradient>
           <marker id="fc-arrow" viewBox="0 0 10 10" refX={8} refY={5} markerWidth={5} markerHeight={5} orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#fff" /></marker>
         </defs>
 
@@ -148,9 +148,9 @@ export function GameCourt({ c, P, log, team, them, follow, logos, live }: { c: S
         })}
 
         {/* the plays */}
-        {marks.map((l) => <Mark key={l.id} l={l} on={l === focus} side={sideOf(l)} point={isPoint(l)} err={isErr(l)} select={() => setPick(l.id === pick ? "" : l.id)} label={playText(l, team, them, P)} />)}
+        {marks.map((l) => <Mark key={l.id} l={l} on={l === focus} side={sideOf(l)} point={isPoint(l)} err={isErr(l)} select={() => setPick(l.id === pick ? "" : l.id)} label={playText(l, team, them, P, ro)} />)}
         {focus && <Flight key={focus.id + view} l={focus} c={c} reduce={reduce} side={sideOf(focus)} />}
-        {focus && <Callout l={focus} text={calloutText(focus, P, them)} side={sideOf(focus)} />}
+        {focus && <Callout l={focus} text={calloutText(focus, P, them, ro)} side={sideOf(focus)} />}
         {focus && view === "last" && lastStat && focus.id !== lastStat.id && <g transform={`translate(${cx(0)} ${cy(-1.35)})`} className="fc-note"><rect width={112} height={16} rx={8} /><text x={56} y={8.5} textAnchor="middle" dominantBaseline="central">{tr("LAST MARKED PLAY")}</text></g>}
       </svg>
       {!placed.length && <p className="lv-gc-empty">{tr("Plays show here when the coach marks where the ball landed.")}</p>}
@@ -189,15 +189,14 @@ function HalfMark({ x, y, src, name }: { x: number; y: number; src?: string | nu
   </g>;
 }
 
+/** One of our players: a plain dot in the team color (the libero in white, the server ringed in gold with the ball). Name on hover. */
 function Chip({ x, y, p, lib, srv, mine }: { x: number; y: number; p?: LPlayer; lib: boolean; srv: boolean; mine: boolean }) {
   return <g transform={`translate(${x} ${y})`} className={"fc-chip" + (lib ? " lib" : "") + (mine ? " mine" : "") + (srv ? " srv" : "")}>
     <title>{pname(p) + (lib ? " (libero)" : "") + (srv ? " · " + tr("Serving") : "")}</title>
-    <g filter="url(#fc-shadow)"><circle r={16.5} className="fc-chip-ring" /></g>
-    {p?.photo ? <image href={p.photo} x={-15} y={-15} width={30} height={30} clipPath="url(#fc-chip)" preserveAspectRatio="xMidYMid slice" />
-      : <><circle r={15} className="fc-chip-jersey" /><text y={0.5} textAnchor="middle" dominantBaseline="central" className="fc-chip-num">{p?.num ?? "?"}</text></>}
-    {p?.photo && <g transform="translate(11 -11)"><circle r={7} className="fc-chip-badge" /><text textAnchor="middle" dominantBaseline="central" className="fc-chip-badge-n">{p.num}</text></g>}
-    {srv && <g transform="translate(-19 -14)"><Ball r={6} /></g>}
-    {lib && <g transform="translate(-12 -12)"><circle r={6.5} className="fc-chip-badge lib" /><text textAnchor="middle" dominantBaseline="central" className="fc-chip-badge-n">L</text></g>}
+    <g filter="url(#fc-shadow)"><circle r={11} className="fc-chip-ring" /></g>
+    <circle r={8.6} className="fc-chip-jersey" />
+    <circle r={8.6} className="fc-chip-gloss" />
+    {srv && <g transform="translate(-14 -9)"><Ball r={5.5} /></g>}
   </g>;
 }
 
@@ -226,10 +225,11 @@ function Flight({ l, c, reduce, side }: { l: Stat; c: SetState | null; reduce: b
   </g>;
 }
 
-function calloutText(l: Stat, P: Map<string, LPlayer>, them: string): [string, string] {
+function calloutText(l: Stat, P: Map<string, LPlayer>, them: string, ro?: Roster): [string, string] {
+  const where = l.z && l.z !== "out" ? " · " + tr("area {z}", { z: String(l.z) }) : l.z === "out" ? " · " + tr("out") : "";
+  if (sideOf(l) === "them") return [theirWho(l, them, ro), theirWhat(l.t) + where];
   const p = l.p ? P.get(l.p) : undefined;
-  const who = p ? `#${p.num} ${(p.first || "").split(/\s+/)[0]}` : sideOf(l) === "them" ? (l.op ? `${them} #${l.op}` : them) : "";
-  return [who, playName(l.t) + (l.z && l.z !== "out" ? " · " + tr("area {z}", { z: String(l.z) }) : l.z === "out" ? " · " + tr("out") : "")];
+  return [p ? `#${p.num} ${(p.first || "").split(/\s+/)[0]}` : "", playName(l.t) + where];
 }
 
 /** A label beside the play in focus, kept inside the court picture. */

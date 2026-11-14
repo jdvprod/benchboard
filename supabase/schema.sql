@@ -168,7 +168,7 @@ begin
     'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'level', data->>'level', 'logo', public_url(data->>'logo')) from records where store = 'teams' and id = s.team_id and not deleted),
     -- only what the gamecast shows: never the coach's match notes, film link or scouting
     'match', (select jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'event', data->>'event', 'status', data->>'status', 'kind', data->>'kind',
-                                        'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'scrim', data->'scrim', 'oppLogo', public_url(data->>'oppLogo'))
+                                        'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'scrim', data->'scrim', 'oppLogo', public_url(data->>'oppLogo'), 'oppRoster', data->'oppRoster')
               from records where store = 'matches' and id = s.match_id and not deleted),
     'logs', coalesce((select jsonb_agg(public_events(data->'events')) from records where store = 'logs' and team_id = s.team_id and data->>'matchId' = s.match_id and not deleted), '[]'::jsonb),
     'players', coalesce((select jsonb_agg(public_player(data)) from records where store = 'players' and team_id = s.team_id and not deleted), '[]'::jsonb),
@@ -203,7 +203,7 @@ begin
   select jsonb_build_object(
     'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'logo', public_url(data->>'logo'), 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
-    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId', 'oppLogo', public_url(data->>'oppLogo')))
+    'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId', 'oppLogo', public_url(data->>'oppLogo'), 'oppRoster', data->'oppRoster'))
                          from records where store = 'matches' and team_id = s.team_id and data->>'seasonId' = s.season_id and data->>'kind' = 'match' and not deleted), '[]'::jsonb),
     'logs', coalesce((select jsonb_agg(jsonb_build_object('matchId', l.data->>'matchId', 'events', public_events(l.data->'events')))
                       from records l where l.store = 'logs' and l.team_id = s.team_id and not l.deleted
@@ -604,7 +604,7 @@ end $$;
 revoke all on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) from public, anon;
 grant execute on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 16 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 17 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

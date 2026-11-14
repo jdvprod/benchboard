@@ -5,7 +5,7 @@ import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";
 import { locale, tr } from "../lib/i18n";
 
 export interface LPlayer { id: string; num: string; first: string; last: string; pos: string; photo?: string | null }
-export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any; imported?: { season?: boolean } | null; tournamentId?: string | null; oppLogo?: string | null }
+export interface LMatch { id: string; opp: string; date: string; bestOf?: number; setTo?: number; cap?: number | null; status: string; event?: string; site?: string; kind?: string; scrim?: any; imported?: { season?: boolean } | null; tournamentId?: string | null; oppLogo?: string | null; oppRoster?: Record<string, { name?: string; pos?: string }> | null }
 export interface LSched { id: string; date: string; time: string; opp: string; site: string; event: string }
 export interface SeasonData { team: { name: string; level: string; color?: string; logo?: string | null; schedule: LSched[]; tournaments?: import("../tournament/model").Tournament[] } | null; season: string | null; matches: LMatch[]; logs: { matchId: string; events: any[] }[]; players: LPlayer[]; live?: { matchId: string; code: string }[]; at: string }
 export interface WatchData { team: { name: string; color: string; level: string; logo?: string | null } | null; match: LMatch; logs: any[][]; players: LPlayer[]; at: string }

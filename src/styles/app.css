@@ -812,3 +812,9 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .picker>.row{grid-column:1/-1}
 .picker-g{border:0;margin:0;padding:0;display:grid;gap:4px;align-content:start}.picker-g legend{font-weight:700;font-size:13px;margin-bottom:4px;padding:0}
 .picker-o{display:flex;gap:8px;align-items:center;font-size:14px}.picker-o input{width:16px;height:16px;accent-color:var(--us)}
+/* their roster editor */
+.opr{display:grid;gap:10px}
+.opr-t td,.opr-t th{padding:4px 6px}.opr-t td .input{min-width:0}
+.opr-add{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.opr-add .input:not([style]){flex:1;min-width:140px}
+.opr-bulk{display:grid;gap:8px}.opr-bulk .btn{justify-self:start}
+.ochips button small{font-weight:400;margin-left:4px;color:var(--muted)}

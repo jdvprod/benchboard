@@ -42,22 +42,23 @@ export function createSampleTeam() {
     return x;
   });
   const opps = ["Ridgeview", "Lakeside", "Westbrook", "Valley Prep"];
+  const RIDGE = { "11": { name: "Kayla Moore", pos: "OH" }, "7": { name: "Tess Rivera", pos: "MB" }, "3": { name: "Jada Kim", pos: "S" }, "15": { name: "Brooke Hale", pos: "OPP" }, "9": { name: "Nina Cole", pos: "OH" } };
   const day = 86400000, now = Date.now();
   opps.forEach((opp, i) => {
     const date = new Date(now - (opps.length - i) * 7 * day);
     const m: Match = {
       id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp, date: localISO(date), bestOf: 5, status: "done",
       site: i >= 2 ? "neutral" : i % 2 ? "away" : "home", event: i >= 2 ? "Harvest Invitational" : "League", notes: "", oppPlayers: ["11", "7", "3", "15", "9"], scrim: null, filmStart: null, nextLu: null,
-      report: "", reportAt: null, planId: null, createdAt: date.getTime(), sample: true,
+      report: "", reportAt: null, planId: null, createdAt: date.getTime(), sample: true, ...(i === 0 ? { oppRoster: RIDGE } : {}),
     };
     save("matches", m, true);
-    save("opponents", { id: uid("o"), teamId: t.id, name: opp, notes: i === 0 ? "Their #11 outside hits line when the set is tight. Setter dumps on 2 when front row." : "", scout: "", scoutAt: null }, true);
+    save("opponents", { id: uid("o"), teamId: t.id, name: opp, notes: i === 0 ? "Their #11 outside hits line when the set is tight. Setter dumps on 2 when front row." : "", scout: "", scoutAt: null, ...(i === 0 ? { roster: RIDGE } : {}) }, true);
     appendEvents(m.id, remap(sampleMatch(11 + i * 7, date.getTime(), { sets: 5, finished: true, strength: [1.1, 0.95, 1.15, 1.0][i] })) as any);
   });
   // a live match in progress
   const live: Match = {
     id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: "match", opp: "Ridgeview", date: localISO(new Date()), bestOf: 5, status: "live",
-    site: "home", event: "League", notes: "Rematch. Their #11 hits line when tight.", oppPlayers: ["11", "7", "3", "15", "9"], scrim: null, filmStart: null, nextLu: null,
+    site: "home", event: "League", notes: "Rematch. Their #11 hits line when tight.", oppPlayers: ["11", "7", "3", "15", "9"], oppRoster: RIDGE, scrim: null, filmStart: null, nextLu: null,
     report: "", reportAt: null, planId: null, createdAt: now, sample: true,
   };
   save("matches", live, true);

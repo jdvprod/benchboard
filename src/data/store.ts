@@ -4,7 +4,7 @@
  */
 import { useSyncExternalStore } from "react";
 import * as db from "./db";
-import { DEFAULT_SETTINGS, Drill, EventLog, Lineup, Match, Opponent, Player, PracticePlan, Prefs, Season, StoreName, StoreTypes, Team, Board } from "./model";
+import { DEFAULT_SETTINGS, Drill, EventLog, Lineup, Match, Opponent, OppRoster, Player, PracticePlan, Prefs, Season, StoreName, StoreTypes, Team, Board } from "./model";
 import { mergeLogs, MatchEvent, replay, Replay } from "../sports/volleyball/engine";
 
 type Tables = { [K in StoreName]: Map<string, StoreTypes[K]> };
@@ -241,7 +241,10 @@ export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: M
     date: o.date || todayISO(), bestOf: o.bestOf || t.settings.bestOf, setTo: o.setTo, cap: o.cap ?? null, status: "live", site: o.site || "", event: o.event || "", notes: o.notes || "",
     oppPlayers: o.oppPlayers || [], scrim: o.scrim || null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: o.planId || null, createdAt: Date.now(), sample: o.sample, ...(o.film ? { film: true, video: o.video } : {}),
   };
-  if (m.kind === "match") { const op = ensureOpponent(m.opp); if (op.logo) m.oppLogo = op.logo; else hooks.newOpponent?.(op); }
+  if (m.kind === "match") {
+    const op = ensureOpponent(m.opp); if (op.logo) m.oppLogo = op.logo; else hooks.newOpponent?.(op);
+    if (op.roster && Object.keys(op.roster).length) { m.oppRoster = op.roster; m.oppPlayers = [...new Set([...m.oppPlayers, ...Object.keys(op.roster)])]; }
+  }
   save("matches", m, true);
   if (!o.film) save("teams", { ...t, currentMatchId: m.id }, true);
   const lu = o.lineup !== undefined ? o.lineup : m.kind === "match" ? t.defLineup : null;
@@ -251,6 +254,12 @@ export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: M
   return m;
 }
 
+/** Save their roster on the opponent and on every match against them, so tracking and Live use it. */
+export function setOppRoster(name: string, roster: OppRoster) {
+  const o = ensureOpponent(name); patch("opponents", o.id, { roster });
+  for (const m of all("matches").filter((x) => x.teamId === o.teamId && x.kind === "match" && oppKey(x.opp) === oppKey(o.name)))
+    patch("matches", m.id, { oppRoster: roster, oppPlayers: [...new Set([...m.oppPlayers, ...Object.keys(roster)])] });
+}
 export const oppKey = (name: string) => name.toLowerCase().replace(/\(sample\)/g, "").replace(/[^a-z0-9]+/g, " ").trim();
 export function ensureOpponent(name: string): Opponent {
   const t = team()!; const k = oppKey(name);

@@ -23,7 +23,7 @@ insert into auth.users values ('11111111-1111-1111-1111-111111111111', 'coach@ex
 insert into teams_cloud (id, name, owner) values ('t1', 'Test', '11111111-1111-1111-1111-111111111111');
 insert into records (store, id, team_id, data) values
   ('teams', 't1', 't1', '{"name":"Test","logo":"data:image/png;base64,AAAA","tournaments":[{"id":"tn1","name":"Fall Classic","start":"2026-11-07","poolTeams":["A","B"],"games":[],"others":[]}]}'), ('seasons', 's1', 't1', '{"name":"Fall"}'),
-  ('matches', 'm1', 't1', '{"id":"m1","seasonId":"s1","kind":"match","opp":"Them","date":"2026-10-01","bestOf":5,"status":"done","oppLogo":"https://upload.wikimedia.org/them.png"}'),
+  ('matches', 'm1', 't1', '{"id":"m1","seasonId":"s1","kind":"match","opp":"Them","date":"2026-10-01","bestOf":5,"status":"done","oppLogo":"https://upload.wikimedia.org/them.png","oppRoster":{"11":{"name":"Kayla M","pos":"OH"}}}'),
   ('logs', 'l1', 't1', '{"matchId":"m1","events":[{"id":"e1","t":"K","p":"p1","ts":1},{"id":"e2","t":"TAG","note":"private film note","ts":2}]}'),
   ('players', 'p1', 't1', '{"id":"p1","num":"7","first":"Maya","last":"Chen","pos":"OH","photo":"https://x.supabase.co/storage/v1/object/public/media/t1/p1.jpg"}'),
   ('players', 'p2', 't1', '{"id":"p2","num":"9","first":"Riley","last":"Brooks","pos":"MB","hidePublic":true,"photo":"https://x.supabase.co/storage/v1/object/public/media/t1/p2.jpg"}');
@@ -48,13 +48,15 @@ check "select watch('l1l1l1')->'match'->>'opp';" "Them" "live link returns the m
 check "select count(*) from jsonb_array_elements(season_view('s1s1s1')->'players') p where p->>'photo' like 'https://%';" "1" "public pages show photos, except for players kept off them"
 check "select season_view('s1s1s1')->'team'->>'logo' is null;" "t" "pictures embedded in a record never reach public pages"
 check "select watch('l1l1l1')->'match'->>'oppLogo';" "https://upload.wikimedia.org/them.png" "gamecast gets the opponent's logo"
+check "select watch('l1l1l1')->'match'->'oppRoster'->'11'->>'name';" "Kayla M" "gamecast gets their roster names the coach entered"
+check "select season_view('s1s1s1')->'matches'->0->'oppRoster'->'11'->>'pos';" "OH" "season page gets their roster too"
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
 check "select recruit_view('r1r1r1')->'data'->'player'->>'first';" "Maya" "recruit link returns the profile data"
 check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting board lists shared profiles with their clip count"
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "16" "schema version is reported"
+check "select schema_version();" "17" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb

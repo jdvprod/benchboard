@@ -5,6 +5,7 @@ import { GameScore } from "../ui/GameScore";
 import { todayISO } from "../lib/dates";
 import { fmtDay, fmtTime, Game, isLive, isResult, LPlayer, pname, SeasonData, seasonGames } from "./data";
 import { GameView, playText } from "./GameView";
+import { TeamLeaders } from "./Leaders";
 import { TournamentCard } from "./TournamentCard";
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { NotifyCard } from "./Notify";
@@ -49,14 +50,15 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
     {live && <section className="lv-card lv-livecard" aria-label={tr("Live now")}>
       <div className="lv-h"><h2>{tr("Live now · {where}{opp}", { where: tr(live.m.site === "away" ? "at " : "vs "), opp: live.m.opp })}</h2><span className="lv-fresh">{fresh}</span></div>
       <GameScore R={live.R} us={team} them={live.m.opp || "Opponent"} live logos={{ us: d.team?.logo, them: live.m.oppLogo }} />
-      {lastPts.length > 0 && <ul className="lv-pbp">{lastPts.map((l) => <li key={l.id}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, live.m.opp || "Opponent", P)}</span></li>)}</ul>}
+      {lastPts.length > 0 && <ul className="lv-pbp">{lastPts.map((l) => <li key={l.id}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, live.m.opp || "Opponent", P, live.m.oppRoster)}</span></li>)}</ul>}
       <a className="btn primary" href={`#/t/${code}/m/${live.m.id}`}>{tr("Open the gamecast")}</a>
     </section>}
     {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
     <SeasonReview games={games.filter(isResult)} P={P} code={code} />
     <NotifyCard code={code} team={team} players={d.players} />
-    {leaders.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Season leaders")}</h2><a href={`#/t/${code}/stats`}>{tr("All stats ›")}</a></div><div className="lv-leads">{leaders}</div></section>}
+    <TeamLeaders A={A} P={P} href={(id) => `#/t/${code}/p/${id}`} title={tr("Season leaders")} />
+    {leaders.length > 0 && <p className="lv-more-row"><a href={`#/t/${code}/stats`}>{tr("All stats ›")}</a></p>}
   </>;
 }
 

@@ -554,7 +554,7 @@ function OppPicker({ m, value, onPick }: { m: Match; value?: string; onPick: (n:
   const [v, setV] = useState("");
   const add = () => { const n = v.replace(/[^0-9A-Za-z]/g, "").slice(0, 3); if (n) { onPick(n); setV(""); } };
   return <><div className="label">Their player</div><div className="ochips">
-    {m.oppPlayers.map((n) => <button key={n} aria-pressed={value === n} onClick={() => onPick(n)}>{n}</button>)}
+    {[...new Set([...m.oppPlayers, ...Object.keys(m.oppRoster || {})])].sort((a, b) => (parseInt(a) || 999) - (parseInt(b) || 999)).map((n) => <button key={n} aria-pressed={value === n} onClick={() => onPick(n)}>{n}{m.oppRoster?.[n]?.name ? <small>{m.oppRoster[n].name!.split(/\s+/)[0]}</small> : null}</button>)}
     <input className="input" style={{ width: 80 }} inputMode="numeric" placeholder="Add #" value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()} aria-label="Add their jersey number" />
     <button className="btn sm" onClick={add}>Add</button>
   </div></>;

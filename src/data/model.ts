@@ -113,6 +113,8 @@ export interface Match {
   event: string;           // tournament / league name
   notes: string;
   oppPlayers: string[];
+  /** Their roster for this match (copied from the opponent): jersey number → optional name and position. Shows on Live. */
+  oppRoster?: OppRoster;
   scrim: ScrimSetup | null;
   filmStart: number | null;
   /** Match video link and how many seconds into it the tracking clock starts. */
@@ -144,7 +146,8 @@ export interface EventLog { id: string; matchId: string; device: string; events:
   by?: string; job?: "all" | "score" | "stats"; groups?: string[]; seen?: number }
 
 export interface PlanItem { id: string; text: string; done?: boolean }
-export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: Record<string, { name?: string; pos?: string }> }
+export type OppRoster = Record<string, { name?: string; pos?: string }>;
+export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster }
 export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string }
 
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;

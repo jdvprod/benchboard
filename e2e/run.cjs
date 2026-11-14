@@ -1028,7 +1028,9 @@ const scenarios = {
         { const ch = P.getByRole("button", { name: /chart$/i }).first(); if (await ch.count()) { await ch.click(); await P.waitForTimeout(400); await P.locator(".lv-gc").screenshot({ path: path.join(out, "live-chart.png") }); await P.getByRole("button", { name: "Last play", exact: true }).click(); }
           const url = P.url(), Dk = await newPage(browser, { size: { width: 1280, height: 900 }, scale: 2 }); await Dk.goto(url); await Dk.waitForTimeout(2500); await Dk.locator(".lv-gc").screenshot({ path: path.join(out, "live-desk.png") }); await Dk.screenshot({ path: path.join(out, "live-desk-page.png"), fullPage: true }); await Dk.context().close(); }
         const box = P.getByRole("button", { name: "Box score", exact: true }); if (await box.count()) { await box.click(); await shot(P, "live-box"); }
-        const pbp = P.getByRole("button", { name: "Play-by-play", exact: true }); if (await pbp.count()) { await pbp.click(); await shot(P, "live-pbp"); } }
+        const pbp = P.getByRole("button", { name: "Play-by-play", exact: true }); if (await pbp.count()) { await pbp.click(); await shot(P, "live-pbp"); }
+        const ld = P.getByRole("button", { name: "Leaders", exact: true }); if (await ld.count()) { await ld.click(); await P.waitForTimeout(300); await P.screenshot({ path: path.join(out, "live-leaders.png"), fullPage: true }); }
+        const bx = P.getByRole("button", { name: "Box score", exact: true }); if (await bx.count()) { await bx.click(); await P.waitForTimeout(300); await P.screenshot({ path: path.join(out, "live-box-full.png"), fullPage: true }); } }
     }
     // athletes: a recruiting profile
     await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click").first().click(); await A.waitForTimeout(600);
@@ -1077,6 +1079,20 @@ const scenarios = {
     const [pop] = await Promise.all([A.waitForEvent("popup"), A.getByRole("button", { name: "Print", exact: true }).click()]);
     await pop.waitForLoadState().catch(() => {}); ok("Print opens a clean printable table", (await pop.locator("table tbody tr").count()) >= 2 && /Errors/.test(await pop.locator("thead").innerText()));
     await pop.close().catch(() => {});
+    // their roster: on the matchup page, and when starting a match
+    await go(A, "matchup"); await A.locator("select[aria-label='Opponent']").selectOption({ label: "Ridgeview" }); await A.waitForTimeout(300);
+    const rc = A.locator(".card", { hasText: "Ridgeview roster" });
+    ok("matchup shows their roster with names", (await rc.locator("input[aria-label='Name for their #11']").inputValue()) === "Kayla Moore");
+    await rc.getByRole("button", { name: "Paste a list" }).click(); await rc.locator("textarea").fill("21 Mia Lopez L, 4"); await rc.getByRole("button", { name: /^Add 2 players/ }).click(); await A.waitForTimeout(300);
+    ok("a pasted list adds numbers, names and positions", (await rc.locator("input[aria-label='Name for their #21']").inputValue()) === "Mia Lopez" && (await rc.locator("select[aria-label='Position for their #21']").inputValue()) === "L" && (await rc.locator("input[aria-label='Name for their #4']").count()) === 1);
+    await go(A, "track"); if (await A.locator("button.ctrl", { hasText: "End match" }).count()) { await A.locator("button.ctrl", { hasText: "End match" }).click(); await A.locator("button.ctrl", { hasText: "Tap again" }).click(); await A.waitForTimeout(400); }
+    if (await A.getByPlaceholder("e.g. Buchanan").count()) {
+      await A.getByPlaceholder("e.g. Buchanan").fill("Lakeside"); await A.getByRole("button", { name: /^Their roster \(optional\)/ }).click();
+      await A.getByLabel("Their jersey number").fill("5"); await A.getByLabel("Their player's name").fill("Ana Ruiz"); await A.getByRole("button", { name: "Add player" }).click();
+      await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(400);
+      await go(A, "matchup"); await A.locator("select[aria-label='Opponent']").selectOption({ label: "Lakeside" }); await A.waitForTimeout(300);
+      ok("a roster typed when starting the match is saved for that opponent", (await A.locator("input[aria-label='Name for their #5']").inputValue().catch(() => "")) === "Ana Ruiz");
+    } else ok("start-match form reachable", false);
     ok("coach tools: no page errors", !A.errors.length, A.errors.slice(0, 3).join(" | "));
   },
   async voice(browser) {
@@ -1190,6 +1206,7 @@ const scenarios = {
     // the game from the team page: ESPN-style tabs
     await P.getByRole("link", { name: "Open the gamecast" }).click(); await P.waitForTimeout(500);
     await P.getByRole("button", { name: "Box score", exact: true }).click(); ok("box score lists Nia with her pass", (await P.locator(".lv-ebox tbody tr", { hasText: "Nia" }).count()) === 1);
+    await P.getByRole("button", { name: "Leaders", exact: true }).click(); ok("leaders tab opens with game leaders", (await P.locator(".lv-ldr").count()) === 1 && ((await P.locator(".lv-ldr-cat").count()) === 0 || (await P.locator(".lv-ldr-p.them").count()) >= 1));
     await P.getByRole("button", { name: "Play-by-play", exact: true }).click(); { const n = [await P.locator(".lv-espn tbody tr.pt").count(), await P.locator(".lv-espn td.sc.on").count()], end = await P.locator(".lv-espn-end").innerText().catch(() => "");
       ok("play-by-play reads like a broadcast: scoring plays with both scores and the set line", n[0] >= 3 && n[1] >= 3 && /End of set|In progress/i.test(end), n.join(",") + " " + end); }
     await P.getByRole("button", { name: "Team stats", exact: true }).click(); ok("team stats compare both teams", (await P.locator(".lv-cmp-r").count()) >= 5);
