@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BeachEvent, BeachMatch, hitPct, replay, summary } from "../src/sports/beach/engine";
+import { BeachEvent, BeachMatch, hitPct, pack, replay, summary, unpack } from "../src/sports/beach/engine";
 
 const match = (events: BeachEvent[], extra: Partial<BeachMatch> = {}): BeachMatch => ({ id: "m", at: 0, format: "bo3", us: "Ava / Maya", them: "Ridgeview", names: ["Ava", "Maya", "Kim", "Lee"], first: "us", firstServer: [0, 2], events, ...extra });
 const pts = (w: "us" | "them", n: number): BeachEvent[] => Array.from({ length: n }, () => ({ t: "pt", w }));
@@ -38,4 +38,13 @@ test("beach: stats score the right pair and feed hitting percentage", () => {
   assert.deepEqual([S.sets[0].us, S.sets[0].them], [2, 3]);
   assert.equal(hitPct(S.players[0]), 0); assert.equal(S.players[2].A, 1); assert.equal(S.players[1].D, 1); assert.equal(S.timeouts.us, 1);
   assert.match(summary(match([]), S), /Ava: 1 K, 1 E, 3 TA/);
+});
+
+test("beach: a share link carries the whole match and rejects junk", () => {
+  const m = match([{ t: "stat", c: "K", p: 0 }, { t: "stat", c: "AE", p: 3 }, { t: "pt", w: "them" }, { t: "to", w: "us" }, { t: "stat", c: "SE", p: 2 }], { names: ["Ava", "Maya", "Kim", "Zoë"], first: "them", firstServer: [1, 3] });
+  const back = unpack(pack(m))!;
+  assert.deepEqual(back.events, m.events); assert.deepEqual(back.names, m.names); assert.equal(back.first, "them"); assert.deepEqual(back.firstServer, [1, 3]);
+  assert.deepEqual(replay(back).sets, replay(m).sets);
+  assert.match(pack(m), /^[A-Za-z0-9_-]+$/);
+  assert.equal(unpack("not-a-match"), null); assert.equal(unpack(""), null);
 });

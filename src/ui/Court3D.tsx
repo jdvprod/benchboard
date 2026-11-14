@@ -1,6 +1,6 @@
 /** A volleyball gym in 3D: a wood floor, a painted court, the net, and players as figures standing where they play.
  * Drag to move the camera around. Drawn as SVG with its own perspective math (no WebGL), so it scales, prints and works offline. */
-import { useMemo, useRef, useState, type PointerEvent as RPE } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as RPE } from "react";
 
 export interface Peg { num: string; name: string; x: number; y: number; lib?: boolean; hl?: boolean; ball?: boolean; /** where this player moves to: drawn as a dashed arrow on the floor */ to?: [number, number] | null; /** a point the route bends through, for curved runs */ via?: [number, number] | null }
 
@@ -65,6 +65,10 @@ export function Court3D({ pegs, label, ball, tool = "move", onMove, onRoute }: {
   onMove?: (i: number, x: number, y: number) => void; onRoute?: (i: number, to: [number, number] | null, via?: [number, number] | null) => void }) {
   const svg = useRef<SVGSVGElement>(null), grab = useRef<{ i: number; dx: number; dy: number; path?: [number, number][] } | null>(null);
   const edit = !!(onMove || onRoute);
+  // on a phone, trim the empty gym at the sides so the court and players are bigger
+  const [narrow, setNarrow] = useState(() => typeof matchMedia !== "undefined" && matchMedia("(max-width: 640px)").matches);
+  useEffect(() => { const q = matchMedia("(max-width: 640px)"), f = () => setNarrow(q.matches); q.addEventListener("change", f); return () => q.removeEventListener("change", f); }, []);
+  const vx = narrow ? 120 : 0, vw = narrow ? 660 : W;
   const [az, setAz] = useState(0), [el, setEl] = useState(24);
   const drag = useRef<{ x: number; y: number; az: number; el: number } | null>(null);
   const { cam, pr, un } = useMemo(() => camera(az, el), [az, el]);
@@ -77,7 +81,7 @@ export function Court3D({ pegs, label, ball, tool = "move", onMove, onRoute }: {
   const k = Math.max(0.6, Math.cos(rad(el)) / Math.cos(rad(24)) > 1 ? 1 : Math.cos(rad(el)) / Math.cos(rad(24)));
   const planks: number[] = []; for (let x = XMIN; x <= XMAX + 0.01; x += 0.5) planks.push(x);
   const meshV: number[] = []; for (let x = 0; x <= 9.01; x += 0.45) meshV.push(x);
-  const floor = (e: RPE): [number, number] => { const r = svg.current!.getBoundingClientRect(); return un(((e.clientX - r.left) / r.width) * W, ((e.clientY - r.top) / r.height) * H); };
+  const floor = (e: RPE): [number, number] => { const r = svg.current!.getBoundingClientRect(); return un(vx + ((e.clientX - r.left) / r.width) * vw, ((e.clientY - r.top) / r.height) * H); };
   const down = (e: RPE) => {
     const hit = edit ? (e.target as Element).closest?.("[data-i]") : null;
     if (hit) { const i = +hit.getAttribute("data-i")!, f = floor(e), p = pegs[i]; grab.current = tool === "move" ? { i, dx: p.x - f[0], dy: p.y - f[1] } : { i, dx: 0, dy: 0, path: [] }; }
@@ -97,7 +101,7 @@ export function Court3D({ pegs, label, ball, tool = "move", onMove, onRoute }: {
     const d = drag.current; if (!d) return; setAz(Math.max(-85, Math.min(85, d.az - (e.clientX - d.x) * 0.35))); setEl(Math.max(10, Math.min(64, d.el + (e.clientY - d.y) * 0.25))); };
 
   return <div className="c3d-box">
-    <svg ref={svg} className={"c3d" + (edit ? " edit" : "")} viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}
+    <svg ref={svg} className={"c3d" + (edit ? " edit" : "")} viewBox={`${vx} 0 ${vw} ${H}`} role="img" aria-label={label}
       onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}>
       <defs>
         <linearGradient id="c3d-wall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#141C24" /><stop offset="1" stopColor="#2A3642" /></linearGradient>

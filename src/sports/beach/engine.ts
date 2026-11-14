@@ -91,3 +91,30 @@ export function summary(m: BeachMatch, S: BeachState): string {
   const head = S.over ? `${S.winner === "us" ? m.us : m.them} def. ${S.winner === "us" ? m.them : m.us} ${S.setsWon[S.winner!]}-${S.setsWon[other(S.winner!)]}` : `${m.us} vs ${m.them}`;
   return [head + ` (${scoreLine(S)})`, "", m.us, row(0), row(1), "", m.them, row(2), row(3)].join("\n");
 }
+
+/** A match packed into a short piece of text for a share link: anyone with the link sees the score and box score, no account or server.
+ * Stats are a letter and the player (K0, A2…), plain points are u / t, timeouts are < / >. */
+const PACK: Record<Code, string> = { K: "K", A: "A", B: "B", AE: "X", SE: "S", E: "E", P: "P", TA: "T", D: "D" };
+const UNPACK = Object.fromEntries(Object.entries(PACK).map(([k, v]) => [v, k])) as Record<string, Code>;
+const b64 = (s: string) => btoa(String.fromCharCode(...new TextEncoder().encode(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64 = (s: string) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0)));
+export function pack(m: BeachMatch): string {
+  const ev = m.events.map((e) => (e.t === "stat" ? PACK[e.c] + e.p : e.t === "pt" ? (e.w === "us" ? "u" : "t") : e.w === "us" ? "<" : ">")).join("");
+  return b64(JSON.stringify([1, m.format, m.first === "us" ? 0 : 1, m.firstServer, m.names, m.us, m.them, m.at, ev]));
+}
+export function unpack(s: string): BeachMatch | null {
+  try {
+    const [v, format, first, firstServer, names, us, them, at, ev] = JSON.parse(unb64(s));
+    if (v !== 1 || !FORMATS[format as Format] || !Array.isArray(names) || names.length !== 4 || typeof ev !== "string") return null;
+    const events: BeachEvent[] = [];
+    for (let i = 0; i < ev.length; i++) {
+      const c = ev[i];
+      if (c === "u" || c === "t") events.push({ t: "pt", w: c === "u" ? "us" : "them" });
+      else if (c === "<" || c === ">") events.push({ t: "to", w: c === "<" ? "us" : "them" });
+      else if (UNPACK[c] && /[0-3]/.test(ev[i + 1] || "")) events.push({ t: "stat", c: UNPACK[c], p: +ev[++i] });
+      else return null;
+    }
+    const str = (x: unknown, max: number) => String(x ?? "").slice(0, max);
+    return { id: "shared", at: +at || 0, format, first: first ? "them" : "us", firstServer: [firstServer?.[0] === 1 ? 1 : 0, firstServer?.[1] === 3 ? 3 : 2], names: names.map((n: unknown) => str(n, 24)) as BeachMatch["names"], us: str(us, 60), them: str(them, 60), events };
+  } catch { return null; }
+}

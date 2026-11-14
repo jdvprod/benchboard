@@ -1088,6 +1088,15 @@ const scenarios = {
     ok("the match is still there after a reload", (await p.locator(".bv-set").innerText()) === "Final");
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("finished matches are listed on the beach home page", (await p.locator(".bv-list li").innerText()).includes("Won 2–0"));
+    await p.goto(U + "beach/#/m/" + (await p.evaluate(() => JSON.parse(localStorage.getItem("fc-beach"))[0].id))); await p.waitForTimeout(300);
+    await p.evaluate(() => { navigator.share = undefined; navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
+    await p.getByRole("button", { name: "Share link" }).click(); await p.waitForTimeout(200);
+    const shareUrl = await p.evaluate(() => window.__copied);
+    const q = await newPage(browser, { phone: true }); await q.goto(shareUrl); await q.waitForTimeout(500);
+    ok("a share link opens the final score and box score on another device, read only", (await q.locator(".bv-set").innerText()) === "Final" && (await q.locator(".bv-box tbody tr").count()) === 6 && (await q.getByRole("button", { name: "Undo" }).count()) === 0 && (await q.getByRole("link", { name: "Score your own match" }).count()) === 1);
+    await q.goto(U + "beach/#/v/garbage"); await q.waitForTimeout(300);
+    ok("a broken share link says so", (await q.getByText("This link didn't open").count()) === 1);
+    await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".bv-box tbody tr", { hasText: "Ava" }).innerText()));
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
   },

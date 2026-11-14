@@ -7,7 +7,7 @@ import "./beach.css";
 import { type FormEvent, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
-import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pairLine, replay, scoreLine, Side, summary } from "../sports/beach/engine";
+import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pack, pairLine, replay, scoreLine, Side, summary, unpack } from "../sports/beach/engine";
 import { SiteSwitch } from "../ui/SiteSwitch";
 
 const KEY = "fc-beach";
@@ -22,10 +22,12 @@ function App() {
   useEffect(() => { const f = () => { setRoute(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
   const save = (next: BeachMatch[]) => { setList(next); store(next); };
   const m = route[0] === "m" ? list.find((x) => x.id === route[1]) : null;
+  const shared = route[0] === "v" ? unpack(route[1] || "") : null;
   return <div className="bv">
     <header className="bv-top"><a className="bv-brand" href="#/"><b>Floorcall</b><span>Beach</span></a><SiteSwitch here="beach" /></header>
     <main className="bv-main">
-      {m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
+      {route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)
+        : m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
         : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}
     </main>
     <footer className="bv-foot">Matches are saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
@@ -92,11 +94,14 @@ function Totals({ list }: { list: BeachMatch[] }) {
 }
 
 /** The buttons under each player. Ace and serve error only show for whoever is serving. */
-const TOUCH: [Code, string, string][] = [["K", "Kill", "pt"], ["B", "Block", "pt"], ["D", "Dig", ""], ["TA", "Attack in play", ""], ["AE", "Attack error", "err"], ["E", "Error", "err"]];
+const TOUCH: [Code, string, string, string][] = [["K", "Kill", "pt", "Kill"], ["B", "Block", "pt", "Block"], ["D", "Dig", "", "Dig"], ["TA", "Attack in play", "", "In play"], ["AE", "Attack error", "err", "Hit error"], ["E", "Error", "err", "Error"]];
+/** Full label on wide screens, a short one on phones; screen readers always get the full one. */
+const Lbl = ({ full, short }: { full: string; short: string }) => (full === short ? <>{full}</> : <><span className="bv-lg">{full}</span><span className="bv-sm" aria-hidden="true">{short}</span></>);
 
-function Match({ m, onChange }: { m: BeachMatch; onChange: (m: BeachMatch) => void }) {
+function Match({ m, onChange, readOnly = false }: { m: BeachMatch; onChange: (m: BeachMatch) => void; readOnly?: boolean }) {
   const S = replay(m), cur = S.sets[S.set], f = FORMATS[m.format];
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState(false), [linked, setLinked] = useState(false);
+  const link = async () => { const url = location.href.split("#")[0] + "#/v/" + pack(m); try { if ((navigator as any).share) await (navigator as any).share({ title: `${m.us} vs ${m.them}`, url }); else { await navigator.clipboard.writeText(url); setLinked(true); setTimeout(() => setLinked(false), 2000); } } catch { /* cancelled or blocked */ } };
   const add = (e: BeachEvent) => onChange({ ...m, events: [...m.events, e] });
   const undo = () => onChange({ ...m, events: m.events.slice(0, -1) });
   const last = S.log[S.log.length - 1];
@@ -118,27 +123,28 @@ function Match({ m, onChange }: { m: BeachMatch; onChange: (m: BeachMatch) => vo
 
     <Sand m={m} S={S} />
 
-    {!S.over && <section className="bv-pads" aria-label="Record a touch">
+    {!S.over && !readOnly && <section className="bv-pads" aria-label="Record a touch">
       {[0, 1, 2, 3].map((p) => <div key={p} className={"card bv-pad " + (p < 2 ? "us" : "them")}>
         <h3>{m.names[p]}{S.server === p && <span className="bv-ball" title="Serving">serving</span>}</h3>
         <div className="bv-keys">
-          {S.server === p && <><button className="pt" onClick={() => add({ t: "stat", c: "A", p })}>Ace</button><button className="err" onClick={() => add({ t: "stat", c: "SE", p })}>Serve error</button></>}
-          {TOUCH.map(([c, l, cls]) => <button key={c} className={cls} onClick={() => add({ t: "stat", c, p })}>{l}</button>)}
+          {S.server === p && <><button className="pt" onClick={() => add({ t: "stat", c: "A", p })}>Ace</button><button className="err" aria-label="Serve error" onClick={() => add({ t: "stat", c: "SE", p })}><Lbl full="Serve error" short="Srv error" /></button></>}
+          {TOUCH.map(([c, l, cls, short]) => <button key={c} className={cls} aria-label={l} onClick={() => add({ t: "stat", c, p })}><Lbl full={l} short={short} /></button>)}
         </div>
       </div>)}
     </section>}
 
-    <section className="bv-bar">
+    {readOnly ? <section className="bv-bar"><span className="muted small">Shared from Floorcall Beach · {day(m.at)}</span><span className="bv-gap" /><a className="btn primary" href="#/">Score your own match</a></section> : <section className="bv-bar">
       {!S.over && <><button className="btn" onClick={() => add({ t: "pt", w: "us" })}>+1 {m.us}</button><button className="btn" onClick={() => add({ t: "pt", w: "them" })}>+1 {m.them}</button>
         <button className="btn" onClick={() => add({ t: "to", w: "us" })} disabled={S.timeouts.us >= 1}>Timeout {S.timeouts.us}/1</button>
         <button className="btn" onClick={() => add({ t: "to", w: "them" })} disabled={S.timeouts.them >= 1}>Their timeout {S.timeouts.them}/1</button></>}
       <span className="bv-gap" />
       <button className="btn" onClick={undo} disabled={!m.events.length}>Undo</button>
       <button className="btn" onClick={share}>{copied ? "Copied" : "Copy summary"}</button>
+      <button className="btn" onClick={link}>{linked ? "Link copied" : "Share link"}</button>
       <button className="btn" onClick={() => print()}>Print</button>
-    </section>
+    </section>}
 
-    {fresh && <section className="card bv-first">
+    {fresh && !readOnly && <section className="card bv-first">
       <h2>Who serves first for each pair?</h2>
       <div className="bv-opts">
         <label>{m.us}<select className="input" value={m.firstServer[0]} onChange={(e) => setServer("us", +e.target.value)}><option value={0}>{m.names[0]}</option><option value={1}>{m.names[1]}</option></select></label>
