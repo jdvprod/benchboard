@@ -15,6 +15,7 @@ test("beach: servers alternate within a pair on each side-out", () => {
 test("beach: sides switch every 7 points, every 5 in the third", () => {
   let S = replay(match([...pts("us", 4), ...pts("them", 3)]));
   assert.equal(S.switchNow, true); assert.equal(S.swapped, true);
+  assert.equal(replay(match([...pts("us", 4), ...pts("them", 3), { t: "stat", c: "D", p: 0 }, { t: "to", w: "us" }])).switchNow, true, "a dig or timeout does not clear the reminder");
   S = replay(match([...pts("us", 4), ...pts("them", 4)]));
   assert.equal(S.switchNow, false);
   const two = [...pts("us", 21), ...pts("them", 21)];

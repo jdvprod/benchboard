@@ -1080,6 +1080,8 @@ const scenarios = {
     await p.getByRole("button", { name: "Undo" }).click(); await p.waitForTimeout(100);
     ok("undo takes the last point back", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "5-1");
     for (let i = 0; i < 16; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
+    await p.waitForTimeout(150);
+    ok("the end of a set is announced with who serves next", /Set 1 to Ava \/ Maya, 21–1\. Switch sides\. Kim serves first in set 2/.test(await p.locator(".bv-note").innerText()), await p.locator(".bv-note").innerText());
     for (let i = 0; i < 21; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
     await p.waitForTimeout(200);
     ok("two sets win the match and entry stops", (await p.locator(".bv-note.win").innerText()).includes("2–0") && (await p.locator(".bv-pad").count()) === 0);
@@ -1098,6 +1100,15 @@ const scenarios = {
     ok("a broken share link says so", (await q.getByText("This link didn't open").count()) === 1);
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".bv-box tbody tr", { hasText: "Ava" }).innerText()));
+    // no signal at the beach: the site still opens and scores
+    await p.reload(); await p.waitForTimeout(1500);
+    await p.context().setOffline(true);
+    await p.reload().catch(() => {}); await p.waitForTimeout(800);
+    ok("beach opens with no connection", (await p.getByRole("button", { name: "Start match" }).count()) === 1);
+    await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "+1 Player 1 / Player 2" }).click(); await p.waitForTimeout(100);
+    ok("and scores a match offline", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "1-0");
+    await p.context().setOffline(false);
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
   },
   async coachtools(browser) {
@@ -1119,6 +1130,10 @@ const scenarios = {
     lb2 = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox(); // the page may have scrolled to reach the button
     await A.mouse.move(lb2.x + lb2.width / 2, lb2.y + lb2.height / 2); await A.mouse.down(); await A.mouse.move(lb2.x + lb2.width / 2 - 120, lb2.y + lb2.height / 2 + 60, { steps: 4 }); await A.mouse.up(); await A.waitForTimeout(150);
     ok("dragging in route mode draws a route", (await A.locator(".pb .c3d-route").count()) === 4);
+    { const n = await A.locator(".pb .c3d-route").count(), g = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox();
+      await A.mouse.click(g.x + g.width / 2, g.y + g.height / 2); await A.waitForTimeout(150);
+      ok("tapping a player in route mode clears her route", (await A.locator(".pb .c3d-route").count()) === n - 1);
+      await A.mouse.move(g.x + g.width / 2, g.y + g.height / 2); await A.mouse.down(); await A.mouse.move(g.x + g.width / 2 - 120, g.y + g.height / 2 + 60, { steps: 4 }); await A.mouse.up(); await A.waitForTimeout(150); }
     ok("the slide comes with a curved run", (await A.locator(".pb .c3d-route polyline").evaluateAll((l) => l.filter((x) => x.points.numberOfItems > 6).length)) >= 1);
     await A.locator("input[aria-label='Play name']").fill("Slide vs Ridgeview"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(200);
     ok("a play saves under My plays", (await A.locator(".pb-group").first().innerText()).includes("Slide vs Ridgeview"));

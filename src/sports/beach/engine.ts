@@ -52,6 +52,7 @@ export function replay(m: BeachMatch): BeachState {
   const startSet = () => { turn = { us: 0, them: 0 }; S.serving = S.set % 2 === 0 ? m.first : other(m.first); S.server = serverFor(S.serving); S.timeouts = { us: 0, them: 0 }; S.swapped = S.set % 2 === 1; };
   startSet();
   const point = (w: Side, text: string) => {
+    S.switchNow = false; // the reminder stays up through digs and timeouts, until the next point
     const cur = S.sets[S.set]; cur[w]++; S.players[S.server].SV++;
     S.log.push({ set: S.set, us: cur.us, them: cur.them, w, text });
     if (w !== S.serving) { turn[S.serving]++; S.serving = w; S.server = serverFor(w); } // side-out: the other pair serves, with whoever is next
@@ -66,7 +67,6 @@ export function replay(m: BeachMatch): BeachState {
   };
   for (const e of m.events) {
     if (S.over) break;
-    S.switchNow = false;
     if (e.t === "to") { S.timeouts[e.w]++; continue; }
     if (e.t === "pt") { point(e.w, `Point ${e.w === "us" ? m.us : m.them}`); continue; }
     const L = S.players[e.p]; if (!L) continue;

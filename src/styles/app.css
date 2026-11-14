@@ -846,7 +846,7 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .c3d-tag{fill:rgba(8,14,20,.88)}.c3d-tag.hl{fill:#FFC93C}.c3d-name{font:700 10px var(--display);letter-spacing:.06em;fill:#fff}
 .c3d-tag.hl+.c3d-name{fill:#0B1B26}
 .c3d-views{display:flex;gap:6px;align-items:center;padding:8px 10px;background:#0B1117;flex-wrap:wrap}
-.c3d-views button{border:1px solid #2A3642;background:transparent;color:#C9D3DC;border-radius:999px;padding:5px 12px;font:600 12px var(--display);cursor:pointer}
+.c3d-views button{border:1px solid #2A3642;background:transparent;color:#C9D3DC;border-radius:999px;min-height:36px;padding:5px 14px;font:600 12px var(--display);cursor:pointer}
 .c3d-views button[aria-pressed="true"]{background:#9BD3F2;border-color:#9BD3F2;color:#0B1B26}
 .c3d-views span{margin-left:auto;font-size:12px;color:#8C99A6}
 @media print{.c3d-views{display:none}}

@@ -321,7 +321,7 @@ a.lv-ldr-p:hover b,.lv-ldr-next:hover b{text-decoration:underline}
 .lv-demo .btn:not(.primary){background:#1B232B;border-color:#333;color:#fff}
 .lv-demo .btn.primary{margin-left:auto}
 @media (max-width:560px){.lv-demo{gap:8px;padding:10px 12px}.lv-demo-t span{display:none}.lv-demo .btn.primary{margin-left:0;width:100%;justify-content:center}.lv-demo .lv-gc-seg button{padding:6px 8px}}
-.lv-demo-link{margin:14px 0 0;font-weight:600}
+p.lv-demo-link{margin:14px 0 6px;font-weight:600;font-size:14px}.lv-demo-link a{color:var(--us);text-underline-offset:3px}
 
 /* ---------- team announcements ---------- */
 .lv-news ul{list-style:none;margin:0;padding:0;display:grid;gap:10px}

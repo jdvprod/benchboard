@@ -30,7 +30,7 @@ function App() {
         : m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
         : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}
     </main>
-    <footer className="bv-foot">Matches are saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <footer className="bv-foot">Matches are saved on this device, and scoring works without a signal once the page has loaded. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
   </div>;
 }
 
@@ -118,6 +118,7 @@ function Match({ m, onChange, readOnly = false }: { m: BeachMatch; onChange: (m:
     </section>
 
     {S.over ? <p className="bv-note win" role="status">{S.winner === "us" ? m.us : m.them} win{" "}{S.setsWon[S.winner!]}–{S.setsWon[S.winner === "us" ? "them" : "us"]} ({scoreLine(S)}).</p>
+      : S.set > 0 && cur.us + cur.them === 0 ? (() => { const d = S.sets[S.set - 1]; return <p className="bv-note sw" role="status">Set {S.set} to {d.us > d.them ? m.us : m.them}, {Math.max(d.us, d.them)}–{Math.min(d.us, d.them)}. Switch sides. {m.names[S.server]} serves first in set {S.set + 1}, played to {f.to[S.set]}.</p>; })()
       : S.switchNow ? <p className="bv-note sw" role="status">Switch sides. {cur.us + cur.them} points played; the next switch is at {cur.us + cur.them + f.sw[S.set]}.</p>
       : <p className="bv-note" role="status"><b>{m.names[S.server]}</b> serves. {last ? "Last point: " + last.text + "." : `Set to ${f.to[S.set]}, win by 2. Sides switch every ${f.sw[S.set]} points.`}</p>}
 
@@ -190,4 +191,11 @@ function Box({ m, S }: { m: BeachMatch; S: BeachState }) {
 }
 
 watchErrors();
+// keep working with no signal at the beach: save the page's files on the device (see public/beach/sw.js)
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) addEventListener("load", () => {
+  navigator.serviceWorker.register("sw.js").then(() => navigator.serviceWorker.ready).then((r) => {
+    const files = [location.href.split("#")[0], ...performance.getEntriesByType("resource").map((x) => x.name).filter((u) => u.startsWith(location.origin) || /fonts\.(googleapis|gstatic)\.com/.test(u))];
+    r.active?.postMessage({ cache: [...new Set(files)] });
+  }).catch(() => {});
+});
 createRoot(document.getElementById("root")!).render(<App />);

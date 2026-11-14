@@ -38,7 +38,7 @@ export function RecapVideo({ m, R, onClose }: { m: Match; R: Replay; onClose: ()
         <p className="small muted">A {len}-second vertical video for Reels, TikTok, Shorts and stories: the result, each set, your top performers and the team's numbers. Players marked as kept off public pages are left out.</p>
         {canMakeRecap()
           ? busy ? <div className="stack" style={{ gap: 4 }}><div className="meter"><i style={{ width: Math.round(frac * 100) + "%" }} /></div><span className="small muted" role="status">Recording, {Math.round(frac * 100)}% · keep this screen open</span></div>
-            : <button className="btn primary" onClick={make} disabled={!d}>Make the video</button>
+            : <button className="btn primary" onClick={make} disabled={!d} autoFocus>Make the video</button>
           : <p className="small">This browser can't record video. Use Chrome or Edge on a computer, or Safari 17 or later.</p>}
         <button className="btn" onClick={() => { abort.current?.abort(); onClose(); }}>{busy ? "Stop" : "Close"}</button>
       </div>

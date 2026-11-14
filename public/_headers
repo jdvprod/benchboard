@@ -8,6 +8,8 @@
   Cache-Control: no-cache
 /live/sw.js
   Cache-Control: no-cache
+/beach/sw.js
+  Cache-Control: no-cache
 /index.html
   Cache-Control: no-cache
 /

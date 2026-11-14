@@ -81,7 +81,7 @@ Floorcall Beach is built with everything else and lives at `beach.getfloorcall.c
 Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `beach.getfloorcall.com`.
 Do this before sharing the link: `getfloorcall.com/beach/` redirects to the beach address, so it does not work until the domain is added.
 
-Beach matches are saved on the device only for now: no account, no Live gamecast yet.
+Beach matches are saved on the device only for now: no account, no Live gamecast yet. The site keeps working with no signal after its first load, and a finished match can be sent as a share link.
 
 ## App stores
 

@@ -88,7 +88,7 @@ export function Court3D({ pegs, label, ball, tool = "move", onMove, onRoute }: {
     else drag.current = { x: e.clientX, y: e.clientY, az, el };
     svg.current?.setPointerCapture?.(e.pointerId);
   };
-  const up = () => { const g = grab.current; if (g && tool === "route" && onRoute) { const p = pegs[g.i]; if (p.to && Math.hypot(p.to[0] - p.x, p.to[1] - p.y) < 0.5) onRoute(g.i, null); } grab.current = null; drag.current = null; };
+  const up = () => { const g = grab.current; if (g && tool === "route" && onRoute) { const p = pegs[g.i]; if (!g.path?.length || (p.to && Math.hypot(p.to[0] - p.x, p.to[1] - p.y) < 0.5)) onRoute(g.i, null); } grab.current = null; drag.current = null; };
   const move = (e: RPE) => {
     const g = grab.current;
     if (g) { const f = floor(e), x = clamp(f[0] + g.dx, -1.4, 10.4), y = clamp(f[1] + g.dy, -2.4, 8.9); if (tool === "move") onMove?.(g.i, +x.toFixed(2), +y.toFixed(2)); else {
