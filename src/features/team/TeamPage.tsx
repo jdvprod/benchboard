@@ -18,6 +18,7 @@ import { setUi } from "../../app/ui";
 import { AiCard } from "../../ui/ai";
 import { scoutPrompt } from "../../ai/prompts";
 import { CloudCard } from "../../cloud/CloudCard";
+import { Announcements } from "./Announcements";
 import { isLinked } from "../../cloud/sync";
 
 export function TeamPage({ sub }: { sub?: string }) {
@@ -28,7 +29,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Opponents /><ImportStats /><Backup /></div>
+        <div className="stack"><CloudCard /><Announcements /><Opponents /><ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;

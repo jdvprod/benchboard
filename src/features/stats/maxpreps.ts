@@ -55,3 +55,21 @@ th{background:#f1f3f5;font-size:12px}th.g{background:#e3e8ed}td.l,th.l{text-alig
 <p class="note">Type these into MaxPreps' stat entry for this match; the columns follow MaxPreps' volleyball categories. Good receptions are every pass rated 1 to 3; ball handling attempts are set attempts, assists and ball handling errors. Made with Floorcall.</p>
 </main></body></html>`;
 }
+
+/**
+ * MaxPreps import file. MaxPreps has no API for stat partners: every stat app hands the coach a .txt file to load at
+ * Team Admin > Schedule > Enter Stats > Import Stats. The first line is the stat supplier's ID (MaxPreps issues it when
+ * Floorcall registers as a stat supplier), the second names the columns, then one line per player by jersey number.
+ * The ID and column names live in package.json "maxpreps" so they can follow MaxPreps' spec without touching code.
+ */
+declare const __MAXPREPS__: { supplierId?: string; fields?: string } | undefined;
+const MP = (typeof __MAXPREPS__ !== "undefined" && __MAXPREPS__) || {};
+export const maxprepsReady = () => !!(MP.supplierId && MP.fields);
+/** Our stat codes in the order of the default column list. */
+const FILE_ORDER = ["SP", "SA", "A", "SE", "PTS", "ATT", "K", "E", "R", "RE", "BS", "BA", "BE", "BHA", "AST", "BHE", "D", "DE"];
+export function maxprepsTxt(R: Replay, cfg: { supplierId?: string; fields?: string } = MP): string {
+  const fields = (cfg.fields || "").split("|").filter(Boolean);
+  const rows = maxprepsRows(R).filter((r) => r.num !== "");
+  const line = (r: MpRow) => [r.num, ...FILE_ORDER.slice(0, Math.max(0, fields.length - 1)).map((c) => r.v[c] ?? 0)].join("|");
+  return [cfg.supplierId || "", fields.join("|"), ...rows.map(line)].join("\r\n") + "\r\n";
+}

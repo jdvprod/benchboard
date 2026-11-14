@@ -6,6 +6,7 @@ import { todayISO } from "../lib/dates";
 import { fmtDay, fmtTime, Game, isLive, isResult, LPlayer, pname, SeasonData, seasonGames } from "./data";
 import { GameView, playText } from "./GameView";
 import { TeamLeaders } from "./Leaders";
+import { TeamNews } from "./News";
 import { TournamentCard } from "./TournamentCard";
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { NotifyCard } from "./Notify";
@@ -13,7 +14,7 @@ import { tr } from "../lib/i18n";
 import { icsFile, CalItem } from "../lib/ics";
 import { seasonSummary } from "../sports/volleyball/seasonSummary";
 
-type Tab = "home" | "schedule" | "stats" | "roster";
+type Tab = "home" | "schedule" | "stats" | "roster" | "news";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
   const team = d.team?.name || "Team", games = seasonGames(d), P = new Map(d.players.map((p) => [p.id, p]));
   const href = (rest = "") => `#/t/${code}${rest ? "/" + rest : ""}`;
@@ -22,7 +23,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
     if (g) return <GameView g={g} team={team} players={d.players} fresh={fresh} back={{ href: href(), label: team }} logo={d.team?.logo} />;
   }
   if (view.player && P.has(view.player)) return <PlayerSeason p={P.get(view.player)!} games={games} team={team} season={d.season} back={href("roster")} />;
-  const tab = (["home", "schedule", "stats", "roster"].includes(view.tab || "") ? view.tab : "home") as Tab;
+  const tab = (["home", "schedule", "stats", "roster", "news"].includes(view.tab || "") ? view.tab : "home") as Tab;
   const rec = recordOf(games.filter(isResult).map((g) => g.R));
   return <>
     <header className="lv-team">
@@ -30,11 +31,12 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
       <div className="grow"><h1>{team}</h1><p>{d.season || tr("Season")}{d.team?.level ? " · " + d.team.level : ""}</p></div>
       <div className="lv-rec"><b>{rec.text}</b><span>{tr("Record")}</span></div>
     </header>
-    <nav className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
+    <nav className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"], ["news", "News"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
     {tab === "home" && <Home d={d} games={games} team={team} code={code} fresh={fresh} P={P} />}
     {tab === "schedule" && <Schedule d={d} games={games.filter(isResult)} code={code} all />}
     {tab === "stats" && <SeasonStats games={games} P={P} code={code} />}
     {tab === "roster" && <Roster d={d} games={games} code={code} />}
+    {tab === "news" && <TeamNews code={code} team={team} full />}
   </>;
 }
 
@@ -47,6 +49,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).filter(([id]) => P.has(id)).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <a className="lv-lead" key={label} href={`#/t/${code}/p/${top[0]}`}><span>{label}</span><b>{+top[1].toFixed(1)}</b><small>{pname(P.get(top[0]))}</small></a> : null; };
   const leaders = [leader((s) => s.K, tr("Kills")), leader((s) => s.SA, tr("Aces")), leader((s) => s.D, tr("Digs")), leader((s) => blocks(s), tr("Blocks")), leader((s) => s.AST, tr("Assists"))].filter(Boolean);
   return <>
+    <TeamNews code={code} team={team} />
     {live && <section className="lv-card lv-livecard" aria-label={tr("Live now")}>
       <div className="lv-h"><h2>{tr("Live now · {where}{opp}", { where: tr(live.m.site === "away" ? "at " : "vs "), opp: live.m.opp })}</h2><span className="lv-fresh">{fresh}</span></div>
       <GameScore R={live.R} us={team} them={live.m.opp || "Opponent"} live logos={{ us: d.team?.logo, them: live.m.oppLogo }} />

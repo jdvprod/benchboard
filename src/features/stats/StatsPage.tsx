@@ -14,13 +14,16 @@ import { activeSeason, defaultScope, resolveScope, Scope, seasonEvents, seasonMa
 import { buildXlsx } from "../../lib/xlsx";
 import { logText } from "../track/Tracker";
 import { matchReportHtml } from "./matchReport";
-import { maxprepsHtml } from "./maxpreps";
+import { maxprepsHtml, maxprepsReady, maxprepsTxt } from "./maxpreps";
 import { shareFinalGraphic } from "./finalGraphic";
 import { shareSeasonGraphic } from "./seasonGraphic";
 import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
 import { CustomView } from "./Custom";
+import { rotateLineup } from "../../sports/volleyball/engine";
+import { BASE, Court3D, RECEIVE, SERVE_SPOT } from "../../ui/Court3D";
+import { liberoFor } from "../lineup/LineupPage";
 import { ErrorsView } from "./Errors";
 import { seasonAwards, seasonReportHtml } from "./seasonReport";
 import { rate, situationNotes, situations, WN } from "../../sports/volleyball/situations";
@@ -48,6 +51,7 @@ export function StatsPage() {
         {single && !isScrim && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(single.m, single.R), "text/html"); toast("Match report saved. Open it to print or share."); }}>Match report</button>}
         {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => shareFinalGraphic(single.m, single.R)}>Share graphic</button>}
         {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps.html`.replace(/[^\w\- .]+/g, ""), maxprepsHtml(single.m, single.R), "text/html"); toast("MaxPreps sheet saved. Open it next to MaxPreps' stat entry."); }}>MaxPreps sheet</button>}
+        {single && !isScrim && single.m.kind === "match" && maxprepsReady() && <button className="btn sm" title="In MaxPreps: Team Admin, Schedule, the pencil on this game, Enter Stats, Import Stats, then choose this file" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps import.txt`.replace(/[^\w\- .]+/g, ""), maxprepsTxt(single.R), "text/plain"); toast("Import file saved. In MaxPreps: Schedule, the pencil on this game, Enter Stats, Import Stats."); }}>MaxPreps import file</button>}
         {single && <button className="btn sm" onClick={() => copyText(snapshot(single.m)).then((ok) => toast(ok ? "Summary copied" : "Couldn't copy here"))}>Copy summary</button>}
       </div>
     </div>
@@ -233,12 +237,37 @@ function ServePass({ A }: { A: Agg }) {
 function Rotations({ A, S }: { A: Agg; S: Scope }) {
   let mx = 1; for (let r = 1; r <= 6; r++) mx = Math.max(mx, Math.abs(A.rot[r].w - A.rot[r].l));
   const startLu = S.single?.R.sets.find((s) => s.startLu)?.startLu || team()!.defLineup?.lu || null;
-  return <Card title="Rotations">
+  return <><RotationCourt A={A} startLu={startLu} />
+  <Card title="Rotations">
     <div className="tbl"><table>
       <thead><tr><th className="l">Rotation</th><th className="l">Server</th><th>Won–lost</th><th style={{ width: "30%" }} /><th>Net</th><th>Side-out</th><th>Point-scoring</th></tr></thead>
       <tbody>{[1, 2, 3, 4, 5, 6].map((r) => { const x = A.rot[r], net = x.w - x.l; return <tr key={r}><td className="l"><b>R{r}</b></td><td className="l">{startLu ? playerName(startLu[(r - 1) % 6]) : "—"}</td><td>{x.w}–{x.l}</td><td><Diverge v={net} max={mx} /></td><td><b style={{ color: net > 0 ? "var(--us)" : net < 0 ? "var(--them)" : undefined }}>{fmtSigned(net)}</b></td><td>{fmtPct(ratio(x.rw, x.rn))} <span className="muted small">{x.rw}/{x.rn}</span></td><td>{fmtPct(ratio(x.sw, x.sn))} <span className="muted small">{x.sw}/{x.sn}</span></td></tr>; })}</tbody>
     </table></div>
     <p className="keys" style={{ marginTop: 8 }}>R1 is the starting rotation; it advances each time you side out. Side-out = rallies won on their serve. Point-scoring = rallies won on your serve. Plan and preview rotations on the Lineup tab.</p>
+  </Card></>;
+}
+
+/** The six in 3D for one rotation, serving or receiving, with that rotation's results. */
+function RotationCourt({ A, startLu }: { A: Agg; startLu: string[] | null }) {
+  const [r, setR] = useState(1), [mode, setMode] = useState<"serve" | "receive">("serve");
+  if (!startLu || startLu.length !== 6 || startLu.some((id) => !player(id))) return null;
+  const lu = rotateLineup(startLu, r - 1), dl = team()!.defLineup, li = liberoFor(lu, dl?.lib || null, dl?.libSrv || null);
+  const spots = mode === "serve" ? BASE.map((b, i) => (i === 0 ? SERVE_SPOT : b)) : RECEIVE;
+  const pegs = lu.map((id, i) => { const pid = li === i && dl?.lib && !(mode === "serve" && i === 0) ? dl.lib : id, p = player(pid)!; return { num: p.num, name: p.first || "#" + p.num, x: spots[i][0], y: spots[i][1], lib: pid !== id, hl: mode === "serve" && i === 0 }; });
+  const x = A.rot[r], best = [1, 2, 3, 4, 5, 6].filter((k) => A.rot[k].w + A.rot[k].l >= 6).sort((a, b) => (A.rot[b].w - A.rot[b].l) - (A.rot[a].w - A.rot[a].l));
+  return <Card title="Rotation court" actions={<Seg value={mode} onChange={setMode} options={[["serve", "Serving"], ["receive", "Receiving"]]} label="Phase" />}>
+    <div className="c3d-wrap">
+      <Court3D pegs={pegs} label={`Rotation ${r}, ${mode === "serve" ? "serving" : "receiving"}: ${pegs.map((p) => p.name).join(", ")}`} />
+      <div className="c3d-side">
+        <div className="c3d-rots" role="group" aria-label="Rotation">{[1, 2, 3, 4, 5, 6].map((k) => <button key={k} aria-pressed={r === k} className={best[0] === k ? "best" : best.length > 1 && best[best.length - 1] === k ? "worst" : ""} onClick={() => setR(k)}>R{k}</button>)}</div>
+        <div className="c3d-stats">
+          <div><b>{x.w}–{x.l}</b><span>Rallies won–lost</span></div>
+          <div><b>{fmtPct(ratio(x.rw, x.rn))}</b><span>Side-out ({x.rw}/{x.rn})</span></div>
+          <div><b>{fmtPct(ratio(x.sw, x.sn))}</b><span>Point-scoring ({x.sw}/{x.sn})</span></div>
+        </div>
+        <p className="small muted">{mode === "serve" ? `${pegs[0].name} serves.` : "A five-player W; adjust for your own serve-receive."} {best[0] === r ? "Your best rotation." : best.length > 1 && best[best.length - 1] === r ? "Your weakest rotation." : ""}</p>
+      </div>
+    </div>
   </Card>;
 }
 

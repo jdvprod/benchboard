@@ -15,7 +15,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 1. Supabase (the database and accounts)
 
-1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 17: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
+1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 18: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
 2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**` and `https://recruit.getfloorcall.com/**`.
 3. **Emails (required before launch).** Sign-up confirmation, password resets and the new-device sign-in code all go by email, and Supabase's built-in email only reaches your own team, a couple an hour.
    - Make a free **Resend** account (resend.com) → **Domains → Add domain** `getfloorcall.com` → add the DNS records it shows in Cloudflare (DNS → Records) → wait for **Verified**. Then **API Keys → Create** (sending access).
@@ -66,3 +66,16 @@ Also: Settings → **Admin** shows your test team, the uploads and no problems. 
 - Delete the old Netlify site once the Cloudflare one works.
 - Have a lawyer read the Privacy Policy and Terms before charging money (they cover minors' data).
 - Supabase free projects pause after a week without use; upgrade before the season so it never sleeps on a game night.
+
+## MaxPreps import file
+
+MaxPreps has no API for stat apps; every partner gives the coach a `.txt` file to load at Team Admin → Schedule → pencil on the game → Enter Stats → Import Stats.
+
+1. Register Floorcall as a stat supplier: support.maxpreps.com → "Stat Import Partners" → start the registration. A stat supplier link then shows under your MaxPreps account; fill it in. MaxPreps gives you a **supplier ID** and the **volleyball column list**.
+2. Put both in `package.json` under `"maxpreps"`: `supplierId`, and `fields` (the column names joined with `|`, in MaxPreps' order; the default there is the usual volleyball list, check it against what they send).
+3. Release. Stats → one match now shows **MaxPreps import file** next to the MaxPreps sheet.
+
+## App stores
+
+- **Google Play** ($25 once): play.google.com/console → create the app with package `com.getfloorcall.app`. Build the Android package at pwabuilder.com from `https://app.getfloorcall.com` (Package for stores → Android). Copy the signing key's SHA-256 fingerprint (PWABuilder shows it; Play Console → App integrity has the Play one) into `package.json` → `store.androidSha256`, release, and check `https://app.getfloorcall.com/.well-known/assetlinks.json` lists it. Upload the `.aab`.
+- **Apple App Store** ($99 a year): developer.apple.com/programs. pwabuilder.com → Package for stores → iOS gives an Xcode project; it needs a Mac with Xcode to build and upload. Apple reviews every app and can turn down apps that are only a website in a wrapper, so the listing should lead with what the app does offline and with notifications.

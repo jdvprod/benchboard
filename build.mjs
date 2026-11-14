@@ -31,6 +31,11 @@ const dist = path.join(root, "dist");
 rmSync(dist, { recursive: true, force: true });
 mkdirSync(dist, { recursive: true });
 cpSync(path.join(root, "public"), dist, { recursive: true });
+// Google Play (Trusted Web Activity): proves the Play app and app.getfloorcall.com belong together. The package name and the
+// signing key fingerprint(s) from Play Console go in package.json "store"; until then the list is empty.
+{ const st = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).store || {};
+  mkdirSync(path.join(dist, ".well-known"), { recursive: true });
+  writeFileSync(path.join(dist, ".well-known", "assetlinks.json"), JSON.stringify((st.androidSha256 || []).length ? [{ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: st.androidPackage, sha256_cert_fingerprints: st.androidSha256 } }] : [])); }
 
 const legal = JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).legal || {};
 const options = {
@@ -38,7 +43,7 @@ const options = {
   entryPoints: { app: path.join(root, "src/main.tsx"), "live/live": path.join(root, "src/live/main.tsx"), ...(existsSync(path.join(root, "src/recruit/main.tsx")) ? { "recruit/recruit": path.join(root, "src/recruit/main.tsx") } : {}) },
   bundle: true, format: "esm", target: "es2020", outdir: dist, jsx: "automatic", splitting: true, chunkNames: "chunks/[name]-[hash]",
   minify: !args.has("--watch"), sourcemap: args.has("--watch") ? "inline" : false,
-  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || ""), __SITES__: JSON.stringify(sites) },
+  define: { "process.env.NODE_ENV": args.has("--watch") ? '"development"' : '"production"', __APP_VERSION__: JSON.stringify(version), __MAXPREPS__: JSON.stringify(JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).maxpreps || {}), __LEGAL_VERSION__: JSON.stringify(String(legal.version || "1")), __LEGAL_EMAIL__: JSON.stringify(legal.email || ""), __SITES__: JSON.stringify(sites) },
   loader: { ".css": "css" }, nodePaths, logLevel: "info",
 };
 

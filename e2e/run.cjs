@@ -570,6 +570,16 @@ const scenarios = {
     await P.getByLabel("Your player (optional)").selectOption({ label: "#22 Nia L." });
     await P.getByRole("button", { name: "Turn on notifications" }).click(); await P.waitForTimeout(1500);
     ok("notifications turn on", (await P.locator(".lv-notify h2", { hasText: "Notifications on" }).count()) === 1, await P.locator(".lv-notify").innerText().catch(() => ""));
+    { // the coach sends an announcement: followers are notified and read it on the team page; the coach sees it was read
+      await go(A, "team"); const ann = A.locator(".card", { hasText: "Announcements" });
+      await ann.locator("textarea").fill("Practice moved to 4pm. Bring both jerseys."); await ann.getByRole("button", { name: "Send to followers" }).click(); await A.waitForTimeout(1500);
+      const M0 = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(), pp = M0.pushes.find((x) => x.kind === "post" && /Practice moved/.test(x.body));
+      ok("an announcement notifies the team's followers", !!pp && pp.to >= 1 && /Ping Club/.test(pp.title), JSON.stringify(pp));
+      await P.reload(); await P.waitForTimeout(1500);
+      ok("followers read it on the team page, marked new", /Practice moved to 4pm/.test(await P.locator(".lv-news").innerText().catch(() => "")) && (await P.locator(".lv-news li.new").count()) === 1);
+      await A.reload(); await A.waitForTimeout(1500);
+      ok("the coach sees it was read", /read by 1/.test(await A.locator(".ann-list").innerText().catch(() => "")), await A.locator(".ann-list").innerText().catch(() => ""));
+    }
     { // the same family on a new phone, in Spanish: signing in brings back the team they follow
       const N = await newPage(browser, { phone: true }); await N.context().addInitScript(() => { try { localStorage.setItem("bbl-lang", "es"); } catch { /* ignore */ } });
       await N.goto(new URL(season).origin + "/live/"); await N.waitForTimeout(500);
@@ -581,7 +591,7 @@ const scenarios = {
       await N.context().close();
     }
     ok("the live site's service worker is registered", await P.evaluate(async () => !!(await navigator.serviceWorker.getRegistration("./"))));
-    let M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    let M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("the phone is subscribed to the team for starts and finals, following Nia", M.subs.length === 1 && M.subs[0].starts && M.subs[0].finals && !!M.subs[0].player, JSON.stringify(M.subs));
     { const ax = await a11y(P); ok("notification card controls all have names", !ax.length, ax.join(" | ")); }
     await P.reload(); await P.waitForTimeout(1200);
@@ -591,21 +601,21 @@ const scenarios = {
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "2 sets (pool)" }).click();
     await A.getByLabel("Scoring").selectOption("21c23"); await A.getByRole("button", { name: "Start · we serve first" }).click(); await A.waitForTimeout(300);
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1200);
-    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("families are told the match is starting", M.pushes.length === 1 && M.pushes[0].kind === "start" && M.pushes[0].title === "Ping Club vs Buchanan is starting" && M.pushes[0].to === 1 && /\/live\/$/.test(M.pushes[0].base), JSON.stringify(M.pushes));
     await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(900);
-    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1")); ok("the start is announced only once", M.pushes.length === 1, JSON.stringify(M.pushes.map((x) => x.kind)));
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1")); ok("the start is announced only once", M.pushes.length === 1, JSON.stringify(M.pushes.map((x) => x.kind)));
     // ...and the final
     await go(A, "track");
     await A.locator(".pl", { hasText: "Nia" }).first().click(); await A.getByRole("button", { name: "Kill", exact: true }).first().click(); await skipIfAsked(A); await A.keyboard.press("Escape");
     for (let set = 0; set < 2; set++) { for (let i = 0; i < (set ? 21 : 20); i++) { await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } await A.waitForTimeout(200); const nx = A.getByRole("button", { name: /serve$/ }); if (set === 0 && await nx.count()) await nx.first().click(); }
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(1500);
-    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("families get the final score", M.pushes.length === 2 && M.pushes[1].kind === "final" && M.pushes[1].title === "Final: Ping Club beat Buchanan 2–0" && M.pushes[1].body.startsWith("21-0, 21-0"), JSON.stringify(M.pushes));
     ok("the family following Nia gets her line first", (M.pushes[1].bodies || [])[0]?.startsWith("Nia L.: 1 kill · 21-0"), JSON.stringify(M.pushes[1].bodies));
     // turning off
     await P.getByRole("button", { name: "Change" }).click(); await P.getByRole("button", { name: "Turn off" }).click(); await P.waitForTimeout(800);
-    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club")); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
+    M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("turning off removes the subscription", M.subs.length === 0 && (await P.getByRole("button", { name: "Turn on notifications" }).count()) === 1);
     // setup check: the notify function answers
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1500);

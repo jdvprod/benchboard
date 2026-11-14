@@ -6,6 +6,7 @@ const teams = new Map(), members = [], records = new Map(), invites = new Map(),
 const otps = new Map(); // email -> one-time sign-in code (new-device check)
 const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
+const posts = []; // team announcements {id, team_id, body, by, pinned, at, reads:Set}
 const films = new Map(), filmViews = new Map(); // film sessions by code; views by code:user
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
@@ -61,7 +62,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 17);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 18);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -85,7 +86,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       if (b.action === "send") {
         if (!me || !canEdit(b.team_id, me)) return send(res, 403, { error: "Only the team's coaches can send notifications." });
         const k = b.match_id + ":" + b.kind; if (pushSent.has(k)) return send(res, 200, { sent: 0, duplicate: true }); pushSent.add(k);
-        const to = [...pushSubs.values()].filter((x) => x.team_id === b.team_id && (b.kind === "start" ? x.starts : x.finals));
+        const to = [...pushSubs.values()].filter((x) => x.team_id === b.team_id && (b.kind === "post" || (b.kind === "start" ? x.starts : x.finals)));
         pushes.push({ kind: b.kind, title: b.title, body: b.body, base: b.base, match_id: b.match_id, to: to.length, bodies: to.map((x) => (x.player && b.lines?.[x.player] ? b.lines[x.player] + " · " : "") + b.body) });
         return send(res, 200, { sent: to.length });
       }
@@ -106,6 +107,10 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       return send(res, 200, out);
     }
     if (p === "/__mock/staff") return send(res, 200, [...staff.values()]);
+    if (p === "/rest/v1/rpc/post_send") { if (!canEdit(b.t, me)) return send(res, 400, { message: "Only the team's coaches can post announcements" }); if (!String(b.b || "").trim()) return send(res, 400, { message: "Write a message first" }); const u = [...users.values()].find((x) => x.id === me); const po = { id: uid(), team_id: b.t, body: String(b.b).trim(), by: u?.meta?.name || "Coach", pinned: !!b.pin, at: now(), reads: new Set() }; posts.push(po); return send(res, 200, { ...po, reads: 0, team_id: undefined }); }
+    if (p === "/rest/v1/rpc/post_update") { const i = posts.findIndex((x) => x.id === b.pid); if (i < 0 || !canEdit(posts[i].team_id, me)) return send(res, 400, { message: "Only the team's coaches can change announcements" }); if (b.del) posts.splice(i, 1); else if (b.pin != null) posts[i].pinned = !!b.pin; return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/posts_for_team") { if (!isMember(b.t, me)) return send(res, 200, null); return send(res, 200, posts.filter((x) => x.team_id === b.t).sort((a, c) => +c.pinned - +a.pinned || c.at.localeCompare(a.at)).map((x) => ({ id: x.id, body: x.body, by: x.by, pinned: x.pinned, at: x.at, reads: x.reads.size }))); }
+    if (p === "/rest/v1/rpc/posts_by_code") { if (!me) return send(res, 401, { message: "Sign in to read team announcements" }); const ss = seasonShares.get(String(b.c).toUpperCase()); if (!ss) return send(res, 200, null); const out = posts.filter((x) => x.team_id === ss.team_id).sort((a, c) => +c.pinned - +a.pinned || c.at.localeCompare(a.at)).map((x) => ({ id: x.id, body: x.body, by: x.by, pinned: x.pinned, at: x.at, new: !x.reads.has(me) })); posts.forEach((x) => { if (x.team_id === ss.team_id) x.reads.add(me); }); return send(res, 200, out); }
     if (p === "/rest/v1/rpc/film_share") { if (!canEdit(b.t, me)) return send(res, 400, { message: "Only the team's coaches can share film" }); let f = [...films.values()].find((x) => x.team_id === b.t && x.session_id === b.sid); if (!f) { f = { code: uid().slice(1, 9).toUpperCase().padEnd(8, "X"), team_id: b.t, session_id: b.sid }; films.set(f.code, f); } f.data = b.d; return send(res, 200, f.code); }
     if (p === "/rest/v1/rpc/film_open") { const f = films.get(String(b.c).toUpperCase()); if (!f) return send(res, 200, null); const k = f.code + ":" + me; const v = filmViews.get(k) || { code: f.code, user: me, watched: [] }; v.last = now(); filmViews.set(k, v); return send(res, 200, { ...f.data, watched: v.watched }); }
     if (p === "/rest/v1/rpc/film_watched") { const v = filmViews.get(String(b.c).toUpperCase() + ":" + me); if (v && !v.watched.includes(b.n)) v.watched.push(b.n); return send(res, 200, null); }

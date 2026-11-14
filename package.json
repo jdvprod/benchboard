@@ -35,5 +35,13 @@
     "state": "California",
     "effective": "October 26, 2026",
     "version": "1"
+  },
+  "maxpreps": {
+    "supplierId": "",
+    "fields": "Jersey|MatchGamesPlayed|TotalServes|ServingAces|ServingErrors|ServingPoints|AttacksAttempts|AttacksKills|AttacksErrors|ServingReceivedSuccess|ServingReceivedErrors|BlocksSolo|BlocksAssists|BlocksErrors|BallHandlingAttempt|Assists|AssistsErrors|Digs|DigsErrors"
+  },
+  "store": {
+    "androidPackage": "com.getfloorcall.app",
+    "androidSha256": []
   }
 }

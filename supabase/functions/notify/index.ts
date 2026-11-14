@@ -10,7 +10,8 @@
 //   { action: "subscribe", code, sub, starts, finals, player? } → follow a team by its Floorcall Live team code (signed-in accounts);
 //                                                          with a player id, finals start with that player's line
 //   { action: "unsubscribe", endpoint }                   → stop (anyone with the subscription)
-//   { action: "send", team_id, match_id, kind, title, body, base, lines? } → a coach of that team announces a start or a final
+//   { action: "send", team_id, match_id, kind, title, body, base, lines? } → a coach of that team announces a start or a final,
+//     or (kind "post", match_id = the announcement's id) a team announcement to every follower
 //                                                          (lines: { playerId: "Maya C.: 14 kills, 8 digs" } for followed players)
 import webpush from "npm:web-push@3.6.7";
 
@@ -52,7 +53,7 @@ Deno.serve(async (req) => {
   if (b.action === "send") {
     // only a coach or owner of the team can announce its matches: ask the database as the caller
     const auth = req.headers.get("authorization") || "";
-    const team = String(b.team_id || ""), match = String(b.match_id || ""), kind = b.kind === "final" ? "final" : b.kind === "start" ? "start" : "";
+    const team = String(b.team_id || ""), match = String(b.match_id || ""), kind = b.kind === "final" ? "final" : b.kind === "start" ? "start" : b.kind === "post" ? "post" : "";
     if (!team || !match || !kind) return json(400, { error: "Missing match details." });
     const can = await fetch(`${URL_}/rest/v1/rpc/can_edit`, { method: "POST", headers: { apikey: ANON, authorization: auth, "content-type": "application/json" }, body: JSON.stringify({ t: team }) }).then((r) => r.ok ? r.json() : false).catch(() => false);
     if (can !== true) return json(403, { error: "Only the team's coaches can send notifications." });
@@ -61,8 +62,8 @@ Deno.serve(async (req) => {
     if (!first.ok) return json(200, { sent: 0, duplicate: true });
     const code = (await rest(`season_shares?select=code&team_id=eq.${encodeURIComponent(team)}&order=created_at.desc&limit=1`).then((r) => r.json()).catch(() => []))?.[0]?.code;
     const base = /^https?:\/\//.test(b.base || "") ? String(b.base) : "";
-    const url = code && base ? `${base}#/t/${code}/m/${match}` : base || "/";
-    const subs: any[] = await rest(`push_subs?select=endpoint,p256dh,auth,player&team_id=eq.${encodeURIComponent(team)}&${kind === "start" ? "starts" : "finals"}=is.true`).then((r) => r.json()).catch(() => []);
+    const url = code && base ? (kind === "post" ? `${base}#/t/${code}/news` : `${base}#/t/${code}/m/${match}`) : base || "/";
+    const subs: any[] = await rest(`push_subs?select=endpoint,p256dh,auth,player&team_id=eq.${encodeURIComponent(team)}${kind === "post" ? "" : `&${kind === "start" ? "starts" : "finals"}=is.true`}`).then((r) => r.json()).catch(() => []);
     const lines: Record<string, string> = b.lines && typeof b.lines === "object" ? b.lines : {};
     const payload = (s: any) => { const mine = s.player && typeof lines[s.player] === "string" ? String(lines[s.player]).slice(0, 80) : ""; return JSON.stringify({ title: String(b.title || "").slice(0, 120), body: ((mine ? mine + " · " : "") + String(b.body || "")).slice(0, 240), url, tag: match + ":" + kind }); };
     let sent = 0;

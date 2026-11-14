@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "17" "schema version is reported"
+check "select schema_version();" "18" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -138,4 +138,19 @@ expect "$(asall $D "select film_viewers('$FC');" | grep -c "Only the team's coac
 expect "$(q -c "set role anon; select count(*) from film_views;" 2>&1 | grep -c 'permission denied\|^ *0$')" "1" "view records aren't readable directly"
 as $B "select film_unshare('$FC');" >/dev/null
 expect "$(as $D "select film_open('$FC');")" "" "a session taken down no longer opens"
+# team announcements: coaches post, signed-in followers read by the team page code, coaches see read counts
+q -c "insert into season_shares values ('P3P3P3', 't3', 's1');" >/dev/null
+PID=$(as $B "select post_send('t3', 'Practice moved to 4pm. Bring both jerseys.', true)->>'id';")
+expect "${#PID}" "36" "a coach posts an announcement"
+expect "$(asall $E "select post_send('t3', 'hi');" | grep -c "Only the team's coaches")" "1" "people who don't coach the team can't post"
+expect "$(asall $B "select post_send('t3', '   ');" | grep -c 'Write a message first')" "1" "empty announcements are refused"
+expect "$(q -c "set role anon; select posts_by_code('P3P3P3');" 2>&1 | grep -c 'permission denied')" "1" "announcements need an account"
+expect "$(as $D "select posts_by_code('p3p3p3')->0->>'new';")" "true" "a follower reads it by the team code, marked new the first time"
+expect "$(as $D "select posts_by_code('P3P3P3')->0->>'new';")" "false" "and not new the second time"
+expect "$(as $B "select posts_for_team('t3')->0->>'reads';")" "1" "the coach sees how many have read it"
+expect "$(as $E "select posts_for_team('t3') is null;")" "t" "people off the team can't list its announcements with read counts"
+expect "$(asall $E "select post_update('$PID', null, true);" | grep -c "Only the team's coaches")" "1" "only coaches delete announcements"
+as $B "select post_update('$PID', null, true);" >/dev/null
+expect "$(as $D "select jsonb_array_length(posts_by_code('P3P3P3'));")" "0" "a deleted announcement is gone"
+expect "$(q -c "insert into push_sent values ('$PID', 'post', 't3') returning kind;" | head -1)" "post" "announcements can be pushed once each"
 echo "schema OK"

@@ -604,7 +604,76 @@ end $$;
 revoke all on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) from public, anon;
 grant execute on function public.film_share(text, text, jsonb), public.film_open(text), public.film_watched(text, int), public.film_viewers(text), public.film_unshare(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 17 $$;
+-- ---------- Team announcements: coaches post, signed-in followers read (one way; no replies or direct messages) ----------
+create table if not exists public.team_posts (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  body text not null check (char_length(body) between 1 and 2000),
+  author uuid,
+  author_name text,
+  pinned boolean not null default false,
+  created_at timestamptz not null default now()
+);
+create index if not exists team_posts_team on public.team_posts (team_id, created_at desc);
+alter table public.team_posts enable row level security; -- through the functions below only
+create table if not exists public.team_post_reads (
+  post_id uuid not null references public.team_posts(id) on delete cascade,
+  user_id uuid not null,
+  read_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+alter table public.team_post_reads enable row level security;
+alter table public.push_sent drop constraint if exists push_sent_kind_check;
+alter table public.push_sent add constraint push_sent_kind_check check (kind in ('start', 'final', 'post'));
+
+create or replace function public.post_send(t text, b text, pin boolean default false) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare r public.team_posts; nm text;
+begin
+  if auth.uid() is null or not can_edit(t) then raise exception 'Only the team''s coaches can post announcements'; end if;
+  if char_length(btrim(coalesce(b, ''))) = 0 then raise exception 'Write a message first'; end if;
+  if (select count(*) from team_posts where team_id = t and created_at > now() - interval '1 day') >= 30 then raise exception 'That''s a lot of announcements for one day. Try again tomorrow.'; end if;
+  select coalesce(nullif(raw_user_meta_data->>'name', ''), 'Coach') into nm from auth.users where id = auth.uid();
+  insert into team_posts (team_id, body, author, author_name, pinned) values (t, left(btrim(b), 2000), auth.uid(), left(nm, 60), coalesce(pin, false)) returning * into r;
+  return jsonb_build_object('id', r.id, 'body', r.body, 'by', r.author_name, 'pinned', r.pinned, 'at', r.created_at, 'reads', 0);
+end $$;
+
+create or replace function public.post_update(pid uuid, pin boolean default null, del boolean default false) returns void
+language plpgsql security definer set search_path = public as $$
+declare t text;
+begin
+  select team_id into t from team_posts where id = pid;
+  if t is null or auth.uid() is null or not can_edit(t) then raise exception 'Only the team''s coaches can change announcements'; end if;
+  if del then delete from team_posts where id = pid; elsif pin is not null then update team_posts set pinned = pin where id = pid; end if;
+end $$;
+
+-- the coach app: this team's announcements with how many followers have read each
+create or replace function public.posts_for_team(t text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select case when auth.uid() is not null and is_member(t) then coalesce((
+    select jsonb_agg(jsonb_build_object('id', p.id, 'body', p.body, 'by', p.author_name, 'pinned', p.pinned, 'at', p.created_at,
+      'reads', (select count(*) from team_post_reads r where r.post_id = p.id)) order by p.pinned desc, p.created_at desc)
+    from (select * from team_posts where team_id = t order by created_at desc limit 50) p), '[]'::jsonb) end
+$$;
+
+-- Floorcall Live: a signed-in follower reads the team's announcements by its team page code (and they count as read)
+create or replace function public.posts_by_code(c text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare t text; out jsonb;
+begin
+  if auth.uid() is null then raise exception 'Sign in to read team announcements'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then return null; end if;
+  select coalesce(jsonb_agg(jsonb_build_object('id', p.id, 'body', p.body, 'by', p.author_name, 'pinned', p.pinned, 'at', p.created_at,
+    'new', not exists (select 1 from team_post_reads r where r.post_id = p.id and r.user_id = auth.uid())) order by p.pinned desc, p.created_at desc), '[]'::jsonb)
+    into out from (select * from team_posts where team_id = t order by created_at desc limit 30) p;
+  insert into team_post_reads (post_id, user_id) select p.id, auth.uid() from team_posts p where p.team_id = t on conflict do nothing;
+  return out;
+end $$;
+revoke all on function public.post_send(text, text, boolean), public.post_update(uuid, boolean, boolean), public.posts_for_team(text), public.posts_by_code(text) from public, anon;
+grant execute on function public.post_send(text, text, boolean), public.post_update(uuid, boolean, boolean), public.posts_for_team(text), public.posts_by_code(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 18 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

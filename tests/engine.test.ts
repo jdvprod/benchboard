@@ -54,6 +54,15 @@ test("where it landed: a choice for each kind of play, with the old switches as 
   assert.equal(asksLoc(s, "OK"), true, "kinds not chosen keep the old setting");
 });
 
+import { maxprepsTxt } from "../src/features/stats/maxpreps";
+test("MaxPreps import file: supplier ID, column names, then a line per jersey", () => {
+  const R = replay([ev("NS", { serve: "us" }), ev("K", { p: "oh1" }), ev("SA", { p: "oh1" })]);
+  const txt = maxprepsTxt(R, { supplierId: "ABC-123", fields: "Jersey|MatchGamesPlayed|TotalServes|ServingAces" });
+  const lines = txt.trim().split("\r\n");
+  assert.equal(lines[0], "ABC-123"); assert.equal(lines[1], "Jersey|MatchGamesPlayed|TotalServes|ServingAces");
+  assert.ok(lines.length >= 2); for (const l of lines.slice(2)) assert.equal(l.split("|").length, 4);
+});
+
 test("deleted events disappear from every device's log", () => {
   const a = ev("NS", { serve: "us" }), b = ev("K", { p: "x" }), c = ev("DEL", { ref: b.id });
   const merged = mergeLogs([[a, b], [c]]);
