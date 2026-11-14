@@ -205,6 +205,10 @@ const scenarios = {
     const mp = await download(p, () => p.getByRole("button", { name: "MaxPreps sheet" }).click());
     { const h = mp.text(); ok("MaxPreps sheet has every category and Bea's tool kill counts as a kill", ["SP", "PTS", "ATT", "RE", "BHA", "DE"].every((c) => h.includes(`>${c}</th>`)) && /Bea Outside<\/td><td>\d+<\/td>/.test(h), mp.name); }
     const gfx = await download(p, () => p.getByRole("button", { name: "Share graphic" }).click()); ok("share graphic is a PNG", gfx.name.endsWith(".png") && gfx.size > 20000, gfx.size + " bytes");
+    await p.getByRole("button", { name: "Recap video" }).click(); await p.waitForTimeout(900);
+    ok("recap video opens a vertical preview that is drawing", await p.locator(".rv-cv").evaluate((c) => c.width === 1080 && c.height === 1920 && c.getContext("2d").getImageData(60, 70, 1, 1).data[0] > 200));
+    await p.keyboard.press("Escape"); await p.waitForTimeout(200);
+    ok("Escape closes the recap video", (await p.locator(".rv-back").count()) === 0);
     await p.getByRole("button", { name: /^Season \(/ }).click();
     const sr = await download(p, () => p.getByRole("button", { name: "Season report" }).click()); ok("season report has awards and situations", sr.text().includes("Situations") && sr.text().includes("1–0"));
     // family requests: copy of a player's data, then erase her name but keep the team's totals
