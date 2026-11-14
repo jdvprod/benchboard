@@ -15,6 +15,7 @@ import { download } from "../../ui/kit";
 import { TournamentToday, todaysTournament } from "../tournament/TournamentPage";
 import { shareFinalGraphic } from "../stats/finalGraphic";
 import { recapText } from "../stats/recap";
+import { RecapVideo } from "../stats/RecapDialog";
 import { liveUrlFor } from "../../cloud/CloudCard";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -29,6 +30,7 @@ function Spark({ vals }: { vals: (number | null)[] }) {
 
 export function Home() {
   const t = team()!, today = todayISO();
+  const [recap, setRecap] = useState(false);
   const games = matchesOf().filter((m) => m.kind === "match" && (!t.activeSeasonId || m.seasonId === t.activeSeasonId)).map((m) => ({ m, R: replayOf(m)! })).filter((x) => x.R && x.R.sets.length);
   const done = games.filter((g) => (g.R.matchOver || g.m.status === "done") && !g.m.imported?.season && g.R.sets.some((s) => s.us + s.them > 0));
   const W = done.filter((g) => g.R.wonUs > g.R.wonThem).length, L = done.filter((g) => g.R.wonThem > g.R.wonUs).length, T = done.filter((g) => g.R.matchOver && g.R.wonUs === g.R.wonThem).length;
@@ -44,6 +46,7 @@ export function Home() {
   const star = lastA ? Object.entries(lastA.ps).map(([id, s]) => [id, s.K + s.SA + s.BS + s.BA / 2 - s.AE - s.SE - s.SEN - s.SEO] as [string, number]).sort((a, b) => b[1] - a[1])[0] : null;
 
   return <div className="stack">
+    {recap && last && <RecapVideo m={last.m} R={last.R} onClose={() => setRecap(false)} />}
     <div className="home-head">
       <div><h1>{t.name}</h1><p className="muted">{t.level}{done.length ? ` · ${W}–${L}${T ? "–" + T : ""} this season` : ""}</p></div>
       <button className="btn primary" onClick={() => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Start a match</button>
@@ -67,7 +70,7 @@ export function Home() {
           <div className="home-opp"><span className={resultOf(last.R) === "W" ? "w" : resultOf(last.R) === "L" ? "l" : ""}>{resultOf(last.R) || ""}</span> {last.R.wonUs}–{last.R.wonThem} vs {last.m.opp}</div>
           <p className="muted">{fmtDate(last.m.date)} · {last.R.sets.map((s) => `${s.us}-${s.them}`).join(", ")}{!last.R.matchOver ? " · ended early" : ""}</p>
           <p className="small">Hitting {fmtHit(lastM.hitting)} · side-out {fmtPct(lastM.sideOut)} · pass {fmtAvg(lastM.passAvg)}{star && star[1] > 0 ? ` · Top: ${playerName(star[0])}` : ""}</p>
-          <div className="row"><button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button><button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button><button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button><button className="btn sm" onClick={() => shareRecap(last.m, last.R)}>Text recap</button></div>
+          <div className="row"><button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button><button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button><button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button><button className="btn sm" onClick={() => setRecap(true)}>Recap video</button><button className="btn sm" onClick={() => shareRecap(last.m, last.R)}>Text recap</button></div>
         </> : <p className="muted" style={{ marginTop: 6 }}>Your most recent result shows up here.</p>}
       </section>
     </div>

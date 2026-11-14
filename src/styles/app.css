@@ -851,7 +851,7 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .c3d-views span{margin-left:auto;font-size:12px;color:#8C99A6}
 @media print{.c3d-views{display:none}}
 .c3d.edit .c3d-grab{cursor:move}
-.c3d-route line{stroke:#FFC93C;stroke-width:3;stroke-linecap:round}.c3d-route polygon{fill:#FFC93C}
+.c3d-route polyline{stroke:#FFC93C;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;fill:none}.c3d-route polygon{fill:#FFC93C}
 .c3d-route ellipse{fill:rgba(255,201,60,.18);stroke:#FFC93C;stroke-width:1.5;stroke-dasharray:4 4}
 .c2d{display:block;width:100%;max-width:440px;height:auto;margin:0 auto}
 .c2d-floor{fill:var(--surface-2,#EEF2F5)}.c2d-court{fill:#9BD3F2;opacity:.45}.c2d-front{fill:#9BD3F2;opacity:.5}

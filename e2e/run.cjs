@@ -1088,6 +1088,7 @@ const scenarios = {
     ok("the match is still there after a reload", (await p.locator(".bv-set").innerText()) === "Final");
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("finished matches are listed on the beach home page", (await p.locator(".bv-list li").innerText()).includes("Won 2–0"));
+    ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".bv-box tbody tr", { hasText: "Ava" }).innerText()));
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
   },
   async coachtools(browser) {
@@ -1109,6 +1110,7 @@ const scenarios = {
     lb2 = await A.locator('.c3d-grab[data-i="4"] rect').first().boundingBox(); // the page may have scrolled to reach the button
     await A.mouse.move(lb2.x + lb2.width / 2, lb2.y + lb2.height / 2); await A.mouse.down(); await A.mouse.move(lb2.x + lb2.width / 2 - 120, lb2.y + lb2.height / 2 + 60, { steps: 4 }); await A.mouse.up(); await A.waitForTimeout(150);
     ok("dragging in route mode draws a route", (await A.locator(".pb .c3d-route").count()) === 4);
+    ok("the slide comes with a curved run", (await A.locator(".pb .c3d-route polyline").evaluateAll((l) => l.filter((x) => x.points.numberOfItems > 6).length)) >= 1);
     await A.locator("input[aria-label='Play name']").fill("Slide vs Ridgeview"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(200);
     ok("a play saves under My plays", (await A.locator(".pb-group").first().innerText()).includes("Slide vs Ridgeview"));
     await A.getByRole("button", { name: "Run it" }).click(); await A.waitForTimeout(600);

@@ -2,13 +2,13 @@
  * x runs 0–9 m left to right seen from behind our end line; y runs 0 (our end line) to 9 (the net).
  * Spots are in rotation order: right back, right front, middle front, left front, left back, middle back. */
 export type PlayKind = "defense" | "block" | "receive" | "attack" | "mine";
-export interface Spot { r: string; name: string; x: number; y: number; to?: [number, number] | null; lib?: boolean }
+export interface Spot { r: string; name: string; x: number; y: number; to?: [number, number] | null; via?: [number, number] | null; lib?: boolean }
 export interface Play { id: string; kind: PlayKind; name: string; note: string; spots: Spot[]; ball?: [number, number, number] | null }
 
 export const KIND_LABEL: Record<PlayKind, string> = { defense: "Defenses", block: "Blocking", receive: "Serve receive", attack: "Hitting plays", mine: "My plays" };
 type XY = [number, number];
 const NAMES: Record<string, string> = { S: "Setter", OH: "Outside", MB: "Middle", RS: "Right side", L: "Libero", DS: "Def. spec." };
-const six = (roles: string[], at: XY[], to: (XY | null)[] = []): Spot[] => roles.map((r, i) => ({ r, name: NAMES[r] || r, x: at[i][0], y: at[i][1], to: to[i] || null, lib: r === "L" }));
+const six = (roles: string[], at: XY[], to: (XY | null)[] = [], via: (XY | null)[] = []): Spot[] => roles.map((r, i) => ({ r, name: NAMES[r] || r, x: at[i][0], y: at[i][1], to: to[i] || null, via: via[i] || null, lib: r === "L" }));
 
 // base defense: where everyone waits before the other team attacks
 const DR = ["S", "RS", "MB", "OH", "L", "OH"];
@@ -22,7 +22,7 @@ const RR = ["OH", "S", "MB", "OH", "L", "RS"];
 const AR = ["S", "RS", "MB", "OH", "L", "OH"];
 const ATT: XY[] = [[6.3, 8.4], [8.3, 5.4], [4.6, 5.8], [0.5, 5.2], [2.2, 3.2], [5.8, 2.6]];
 const SET: [number, number, number] = [6.3, 8.6, 2.5];
-const hit = (id: string, name: string, note: string, to: (XY | null)[]): Play => ({ id, kind: "attack", name, note, spots: six(AR, ATT, to), ball: SET });
+const hit = (id: string, name: string, note: string, to: (XY | null)[], via: (XY | null)[] = []): Play => ({ id, kind: "attack", name, note, spots: six(AR, ATT, to, via), ball: SET });
 const GO: XY = [0.9, 8.3], ONE: XY = [5.5, 8.3], BACK: XY = [8.3, 8.3];
 
 export const LIBRARY: Play[] = [
@@ -46,9 +46,9 @@ export const LIBRARY: Play[] = [
   hit("go", "Go / hut (4)", "A fast set to the left antenna for your outside. The middle runs a quick to hold their middle blocker.", [null, BACK, ONE, GO, null, null]),
   hit("one", "Quick (1)", "The middle is in the air as the setter touches the ball, right in front of her. Needs a good pass.", [null, null, ONE, null, null, null]),
   hit("31", "31 / shoot", "A fast, low set to the middle in the gap between their middle and outside blockers.", [null, BACK, [3.2, 8.3], GO, null, null]),
-  hit("slide", "Slide", "The middle runs behind the setter along the net and hits off one foot near the right antenna. Hard for their middle to follow.", [null, [5.2, 8.3], [8.2, 8.3], GO, null, null]),
+  hit("slide", "Slide", "The middle runs behind the setter along the net and hits off one foot near the right antenna. Hard for their middle to follow.", [null, [5.2, 8.3], [8.2, 8.3], GO, null, null], [null, null, [6.4, 6.6], null, null, null]),
   hit("back-one", "Back quick (A)", "A quick set right behind the setter. Pairs well with a go to keep blockers apart.", [null, null, [7.1, 8.3], GO, null, null]),
-  hit("x", "X (cross)", "The middle goes up for a quick. The right side crosses behind her and hits a second-tempo ball in the middle. The blocker has to pick one.", [null, [4.6, 8.2], ONE, GO, null, null]),
+  hit("x", "X (cross)", "The middle goes up for a quick. The right side crosses behind her and hits a second-tempo ball in the middle. The blocker has to pick one.", [null, [4.6, 8.2], ONE, GO, null, null], [null, [6.4, 6.2], null, null, null, null]),
   hit("tandem", "Tandem", "The outside comes inside and hits right behind the middle's quick. Two hitters, one blocker.", [null, BACK, ONE, [5, 7.9], null, null]),
   hit("double-quick", "Double quick", "Quicks in front of and behind the setter at the same time. The setter chooses after she sees their middle move.", [null, [7.1, 8.3], ONE, GO, null, null]),
   hit("pipe", "Pipe / bic", "A back-row attack through the middle, taking off behind the attack line. The middle's quick pulls the block up first. A bic is the same play, set faster and lower.", [null, BACK, ONE, GO, null, [4.8, 6.3]]),

@@ -68,7 +68,27 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
         <button className="btn sm" onClick={() => { if (confirm("Delete this match?")) onDelete(m.id); }} aria-label={`Delete ${m.us} vs ${m.them}`}>Delete</button>
       </li>; })}</ul>
     </section>}
+    <Totals list={list} />
   </>;
+}
+
+/** Everyone who has played on "your pair" across the matches on this device, added up. */
+function Totals({ list }: { list: BeachMatch[] }) {
+  const by = new Map<string, { name: string; n: number; w: number; l: Line }>();
+  for (const m of list) { const S = replay(m); if (!S.log.length) continue;
+    for (const p of [0, 1]) { const k = m.names[p].trim().toLowerCase(); if (/^player [12]$/.test(k)) continue;
+      const e = by.get(k) || { name: m.names[p], n: 0, w: 0, l: { K: 0, AE: 0, TA: 0, A: 0, SE: 0, SV: 0, B: 0, D: 0, E: 0, PTS: 0 } };
+      e.n++; if (S.over && S.winner === "us") e.w++; for (const c of Object.keys(e.l) as (keyof Line)[]) e.l[c] += S.players[p][c]; by.set(k, e); } }
+  const rows = [...by.values()].sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+  if (!rows.length) return null;
+  return <section className="card">
+    <h2>Player totals</h2>
+    <div className="tbl"><table className="bv-box">
+      <thead><tr><th className="l">Player</th><th title="Matches played">MP</th><th title="Matches won">W</th><th title="Kills">K</th><th title="Attack errors">E</th><th title="Total attacks">TA</th><th title="Hitting percentage">PCT</th><th title="Aces">A</th><th title="Serve errors">SE</th><th title="Blocks">B</th><th title="Digs">D</th></tr></thead>
+      <tbody>{rows.map((r) => <tr key={r.name}><td className="l">{r.name}</td><td>{r.n}</td><td>{r.w}</td><td>{r.l.K}</td><td>{r.l.AE}</td><td>{r.l.K + r.l.AE + r.l.TA}</td><td>{fmtHit(r.l)}</td><td>{r.l.A}</td><td>{r.l.SE}</td><td>{r.l.B}</td><td>{r.l.D}</td></tr>)}</tbody>
+    </table></div>
+    <p className="keys">Totals for your players across every match saved on this device, matched by name.</p>
+  </section>;
 }
 
 /** The buttons under each player. Ace and serve error only show for whoever is serving. */

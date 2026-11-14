@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { patch, team, uid } from "../../data/store";
 import { blankPlay, KIND_LABEL, LIBRARY, Play, PlayKind } from "../../sports/volleyball/playbook";
-import { Court3D } from "../../ui/Court3D";
+import { along, Court3D } from "../../ui/Court3D";
 import { Card, Seg } from "../../ui/kit";
 
 const copy = (p: Play): Play => JSON.parse(JSON.stringify(p));
@@ -24,7 +24,7 @@ export function Playbook() {
     raf.current = requestAnimationFrame(step);
   };
   const ease = k * k * (3 - 2 * k), running = k > 0;
-  const pegs = play.spots.map((s) => ({ num: s.r, name: s.name, lib: s.lib, x: s.to ? s.x + (s.to[0] - s.x) * ease : s.x, y: s.to ? s.y + (s.to[1] - s.y) * ease : s.y, to: running ? null : s.to }));
+  const pegs = play.spots.map((s) => { const [x, y] = s.to ? along(s.x, s.y, s.to, s.via, ease) : [s.x, s.y]; return { num: s.r, name: s.name, lib: s.lib, x, y, to: running ? null : s.to, via: s.via }; });
   const saved = mine.some((m) => m.id === src);
   const save = () => {
     const name = play.name.trim() || "My play";
@@ -39,10 +39,10 @@ export function Playbook() {
     <Card title={play.name + (dirty ? " (edited)" : "")} actions={<Seg value={tool} onChange={setTool} options={[["move", "Move players"], ["route", "Draw routes"]]} label="Tool" />}>
       <Court3D pegs={pegs} ball={play.ball} tool={tool} label={`${play.name}: ${play.spots.map((s) => s.name).join(", ")}`}
         onMove={running ? undefined : (i, x, y) => edit((p) => { p.spots[i].x = x; p.spots[i].y = y; })}
-        onRoute={running ? undefined : (i, to) => edit((p) => { p.spots[i].to = to; })} />
+        onRoute={running ? undefined : (i, to, via) => edit((p) => { p.spots[i].to = to; p.spots[i].via = to ? via || null : null; })} />
       <div className="pb-bar">
         <button className="btn primary" onClick={run} disabled={!hasRoutes || running}>Run it</button>
-        <button className="btn" onClick={() => edit((p) => p.spots.forEach((s) => (s.to = null)))} disabled={!hasRoutes}>Clear routes</button>
+        <button className="btn" onClick={() => edit((p) => p.spots.forEach((s) => { s.to = null; s.via = null; }))} disabled={!hasRoutes}>Clear routes</button>
         <button className="btn" onClick={() => open([...mine, ...LIBRARY].find((p) => p.id === src) || blankPlay())} disabled={!dirty}>Reset</button>
         <span className="pb-gap" />
         <input className="input" value={play.name} onChange={(e) => edit((p) => { p.name = e.target.value; })} aria-label="Play name" maxLength={40} />
