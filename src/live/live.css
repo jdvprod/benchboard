@@ -312,3 +312,13 @@ a.lv-ldr-p:hover b,.lv-ldr-next:hover b{text-decoration:underline}
 .lv-more-row{margin:-4px 0 0;text-align:right;font-weight:600}
 .lv-ebox-h.them{border-bottom-color:#5E6873}
 @media (max-width:560px){.lv-ldr-p.us{border-left:3px solid var(--us);padding-left:10px}.lv-ldr-p.them{border-left:3px solid #8A9099!important;padding-left:10px!important}.lv-ldr-row{grid-template-columns:1fr;gap:10px}.lv-ldr-p.them{padding-left:0;border-left:0;padding-top:10px;border-top:1px dashed var(--line)}.lv-ldr-teams{display:none}.lv-ldr-p strong{font-size:28px}}
+
+/* ---------- demo game ---------- */
+.lv-demo{display:grid;gap:10px;padding:12px 14px;margin:0 0 14px;border-radius:14px;background:#000;color:#fff}
+.lv-demo-t{display:grid;gap:2px}.lv-demo-t b{font:700 15px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--us-bright)}.lv-demo-t span{font-size:13.5px;color:#B8C2CC}
+.lv-demo-c{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.lv-demo .lv-gc-seg{background:#111;border-color:#333}.lv-demo .lv-gc-seg button{color:#B8C2CC}.lv-demo .lv-gc-seg button[aria-pressed="true"]{background:#fff;color:#000}
+.lv-demo .btn:not(.primary){background:#1B232B;border-color:#333;color:#fff}
+.lv-demo .btn.primary{margin-left:auto}
+@media (max-width:560px){.lv-demo{gap:8px;padding:10px 12px}.lv-demo-t span{display:none}.lv-demo .btn.primary{margin-left:0;width:100%;justify-content:center}.lv-demo .lv-gc-seg button{padding:6px 8px}}
+.lv-demo-link{margin:14px 0 0;font-weight:600}

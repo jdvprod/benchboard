@@ -1095,6 +1095,20 @@ const scenarios = {
     } else ok("start-match form reachable", false);
     ok("coach tools: no page errors", !A.errors.length, A.errors.slice(0, 3).join(" | "));
   },
+  async demo(browser) {
+    const P = await newPage(browser, { size: { width: 390, height: 844 } });
+    await P.goto(U.replace(/\/?$/, "/") .replace(/\/\/$/, "/") + "live/#/demo"); await P.waitForTimeout(1500);
+    ok("demo game opens live, no account needed", /LIVE/.test(await P.locator(".lv-sb, .lv-score, header").first().innerText().catch(() => "")) || (await P.locator(".lv-gc").count()) === 1);
+    const before = await P.locator(".lv-espn tbody tr.pt").count();
+    await P.getByRole("button", { name: "10×" }).click(); await P.waitForTimeout(4000);
+    ok("the demo plays itself", (await P.locator(".lv-espn tbody tr.pt").count()) > before);
+    await P.getByRole("button", { name: "Set 3" }).click(); await P.waitForTimeout(500);
+    ok("jump to a set", /SET 3/i.test(await P.locator(".lv-gc-last").innerText().catch(() => "")));
+    await P.getByRole("button", { name: "Leaders", exact: true }).click(); await P.waitForTimeout(300);
+    ok("demo leaders show both teams, with their roster names", (await P.locator(".lv-ldr-cat").count()) >= 3 && /Kayla Moore|Tess Rivera|Jada Kim|Brooke Hale|Nina Cole/.test(await P.locator(".lv-ldr").innerText()));
+    ok("demo fits a phone", (await P.evaluate(() => document.documentElement.scrollWidth)) <= 391);
+    ok("demo: no page errors", !P.errors.length, P.errors.slice(0, 3).join(" | "));
+  },
   async voice(browser) {
     const p = await newPage(browser, { cloud: false });
     // a stand-in microphone: each start() "hears" the next phrase queued in window.__say

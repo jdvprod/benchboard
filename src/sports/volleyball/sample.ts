@@ -3,6 +3,8 @@ import type { MatchEvent } from "./engine";
 
 export interface SamplePlayer { id: string; num: string; first: string; last: string; pos: string; grad: number }
 
+/** The sample opponent's roster (fictional players), for the sample season and the Live demo. */
+export const SAMPLE_OPP_ROSTER: Record<string, { name: string; pos: string }> = { "11": { name: "Kayla Moore", pos: "OH" }, "7": { name: "Tess Rivera", pos: "MB" }, "3": { name: "Jada Kim", pos: "S" }, "15": { name: "Brooke Hale", pos: "OPP" }, "9": { name: "Nina Cole", pos: "OH" } };
 export const SAMPLE_ROSTER: SamplePlayer[] = [
   ["1", "Ava", "Ramirez", "S", 2027], ["4", "Jordan", "Lee", "OH", 2028], ["7", "Maya", "Chen", "OH", 2027], ["9", "Riley", "Brooks", "MB", 2027],
   ["12", "Sofia", "Nguyen", "MB", 2028], ["14", "Kenzie", "Park", "OPP", 2027], ["3", "Lily", "Torres", "L", 2029], ["10", "Emma", "Diaz", "DS", 2028],

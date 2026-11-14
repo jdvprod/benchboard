@@ -1,7 +1,7 @@
 /** Starter content: a drill library for every new team, and a full sample team to explore. */
 import { Drill, Match, Player, PracticePlan } from "./model";
 import { all, appendEvents, createTeam, localISO, save, setTeamPatch, team, uid } from "./store";
-import { SAMPLE_ROSTER, sampleMatch } from "../sports/volleyball/sample";
+import { SAMPLE_OPP_ROSTER, SAMPLE_ROSTER, sampleMatch } from "../sports/volleyball/sample";
 
 const DRILLS: [string, string, number, string, string[]][] = [
   ["Dynamic warm-up + arm care", "Warm-up", 10, "Jog, skips, lunges, band work for shoulders.", []],
@@ -42,7 +42,7 @@ export function createSampleTeam() {
     return x;
   });
   const opps = ["Ridgeview", "Lakeside", "Westbrook", "Valley Prep"];
-  const RIDGE = { "11": { name: "Kayla Moore", pos: "OH" }, "7": { name: "Tess Rivera", pos: "MB" }, "3": { name: "Jada Kim", pos: "S" }, "15": { name: "Brooke Hale", pos: "OPP" }, "9": { name: "Nina Cole", pos: "OH" } };
+  const RIDGE = SAMPLE_OPP_ROSTER;
   const day = 86400000, now = Date.now();
   opps.forEach((opp, i) => {
     const date = new Date(now - (opps.length - i) * 7 * day);

@@ -176,8 +176,8 @@ export function GameCourt({ c, P, log, team, them, follow, logos, live, ro }: { 
 
 /** A team name painted in the free zone behind an end line, sized to fit. */
 function EndName({ x, turn, name, side }: { x: number; turn: number; name: string; side: "us" | "them" }) {
-  const fit = Math.min(25, (8.6 * S) / Math.max(1, name.length * 0.92));
-  return <text transform={`translate(${x} ${cy(4.5)}) rotate(${turn})`} className={"fc-endname " + side} style={{ fontSize: fit, letterSpacing: fit > 20 ? "0.24em" : "0.12em" }} textAnchor="middle" dominantBaseline="central">{name}</text>;
+  const fit = Math.min(25, (8.2 * S) / Math.max(1, name.length * (name.length <= 7 ? 1.05 : 0.86)));
+  return <text transform={`translate(${x} ${cy(4.5)}) rotate(${turn})`} className={"fc-endname " + side} style={{ fontSize: fit, letterSpacing: name.length <= 7 ? "0.24em" : "0.1em" }} textAnchor="middle" dominantBaseline="central">{name}</text>;
 }
 
 /** A team mark painted in the middle of its half: the logo, or big initials. */

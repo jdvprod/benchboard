@@ -16,6 +16,7 @@ import { Game, replayOf, useSeason, useWatch } from "./data";
 import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
 import { TeamLogo } from "../ui/Logo";
+import { DemoGame } from "./Demo";
 import { FilmSessionView } from "./FilmSession";
 import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
@@ -85,6 +86,7 @@ function Landing() {
       <div><input id="code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} /><button className="btn primary" disabled={busy}>{tr(busy ? "Finding…" : "Follow")}</button></div>
       {err && <p className="lv-err" role="alert">{err}</p>}
     </form>
+    <p className="lv-demo-link"><a href="#/demo">{tr("No code? Watch a demo game")}</a></p>
     {cloudAvailable() && (currentUser() ? <SignedIn t={tr} onOut={() => location.reload()} />
       : signin ? <MiniAuth kind="parent" title={tr("Sign in to see your teams on this phone")} sub={tr("Your teams follow your account to every phone.")} t={tr} onIn={() => location.reload()} />
       : <button className="ma-link lv-signin" onClick={() => setSignin(true)}>{tr("Sign in to see your teams on this phone")}</button>)}
@@ -100,6 +102,7 @@ function LiveApp() {
   if ((r[0] === "t" || r[0] === "g") && r[1] && r[2] === "overlay") return r[0] === "t" ? <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={[]} /> : <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
+  if (r[0] === "demo") return <DemoGame Shell={Shell} />;
   if (r[0] === "film" && r[1]) return <FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} />;
   return <Landing />;
 }
