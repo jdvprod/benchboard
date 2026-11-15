@@ -1,6 +1,6 @@
 /** Matchups: the schedule, and everything you know about the next opponent from every time you've played them. */
 import { TheirRotations } from "../stats/StatsPage";
-import { parseSchedule } from "./parseSchedule";
+import { icsToLines, parseSchedule } from "./parseSchedule";
 import { AvailabilityLine, JobsEditor, useAvailability, useSignups } from "./Availability";
 import { useState } from "react";
 import { ensureOpponent, get, setOppRoster, matchesOf, newMatch, oppKey, opponentsOf, patch, playerName, replayOf, setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
@@ -63,6 +63,8 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
       {pasting && <div className="stack">
         <label className="field"><span className="label">Paste your schedule, one match per line</span>
           <textarea rows={6} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Thu 9/4 vs Buchanan 6:00 PM\n9/9 @ Clovis West 5:30pm (League)\nSep 13 - Fresno Invitational"} autoFocus /></label>
+        <label className="small mu-ics">Or bring in a calendar file (.ics) from Google Calendar, TeamSnap or a league site:
+          <input type="file" accept=".ics,text/calendar" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (!f) return; const lines = icsToLines(await f.text()); if (!lines.length) { toast("No upcoming matches in that calendar file."); return; } setPaste((p) => (p.trim() ? p.trim() + "\n" : "") + lines.join("\n")); }} /></label>
         {paste.trim() && <p className="small muted" style={{ margin: 0 }}>{parsed.length ? `Found ${parsed.length} ${parsed.length === 1 ? "match" : "matches"}. Check them, then add.` : "No dates found yet. Each line needs a date like 9/4 or Sep 4."}</p>}
         {parsed.length > 0 && <ul className="mu-sched">{parsed.map((g, i) => <li key={i}><span className="mu-sched-main" style={{ cursor: "default" }}><span className="d"><b>{new Date(g.date + "T12:00").toLocaleDateString([], { month: "short", day: "numeric" })}</b>{new Date(g.date + "T12:00").toLocaleDateString([], { weekday: "short" })}</span>
           <span className="o"><b>{g.site === "away" ? "at " : g.site === "home" ? "vs " : ""}{g.opp}</b><small>{[g.time && fmtTime(g.time), g.event, g.site === "neutral" ? "Neutral" : ""].filter(Boolean).join(" · ")}</small></span></span></li>)}</ul>}

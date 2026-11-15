@@ -785,6 +785,7 @@ const scenarios = {
     await P.getByRole("button", { name: "Run it" }).click(); await P.waitForTimeout(600);
     ok("a player can run the movement", (await P.locator(".lv-plays .c3d-route").count()) === 0);
     await P.waitForTimeout(2200);
+    { const f = await download(P, () => P.getByRole("button", { name: "Save picture" }).click(), 10000); ok("a player can save the play as a picture", /Slide vs Central\.png$/.test(f.name) && f.size > 20000, f.name + " " + f.size); }
     { const ax = await a11y(P); ok("playbook controls on Live all have names", !ax.length, ax.join(" | ")); ok("the Live playbook fits a phone", (await overflow(P)) <= 0); }
     if (process.env.QASHOT5) await P.screenshot({ path: process.env.QASHOT5, fullPage: true });
     await A.getByLabel(/Share with the team on Floorcall Live/).uncheck(); await A.waitForTimeout(700);
@@ -1227,7 +1228,10 @@ const scenarios = {
   async club(browser) {
     const A = await newPage(browser, { cloud: false });
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
-    await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Central 10:00 AM\n12/6 @ Buchanan 6:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
+    await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click();
+    await A.locator(".mu-ics input").setInputFiles({ name: "team.ics", mimeType: "text/calendar", buffer: Buffer.from("BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nDTSTART;TZID=America/Los_Angeles:20261205T100000\r\nSUMMARY:vs Central\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART;TZID=America/Los_Angeles:20261206T180000\r\nSUMMARY:@ Buchanan\r\nEND:VEVENT\r\nBEGIN:VEVENT\r\nDTSTART;TZID=America/Los_Angeles:20261204T160000\r\nSUMMARY:Practice\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n") }); await A.waitForTimeout(200);
+    ok("a calendar file fills the schedule, practices left out", /Found 2 matches/.test(await A.locator(".card", { hasText: "Schedule" }).first().innerText()));
+    await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
     await go(A, "team/new"); await A.getByLabel("Team name").fill("Clovis 15 Blue"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Fresno 11:00 AM\n12/5 vs Clovis West 3:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
     ok("with two teams the team menu offers the club view", (await A.locator("select[aria-label='Team'] option[value='__club']").count()) >= 1);
@@ -1270,6 +1274,8 @@ const scenarios = {
     await rate("Maya Chen", 5); await rate("Ava Ramirez", 3); await rate("Lily Torres", 2); await rate("Zoe Grant", 4);
     ok("rating counts progress on the skill", /4\/4 rated on Serve/.test(await A.locator(".page").innerText()));
     await A.getByLabel("Skill").selectOption("Pass"); await rate("Lily Torres", 5); await rate("Maya Chen", 4);
+    await A.getByRole("button", { name: "Add a note on Maya Chen" }).click(); await A.getByLabel("Note on Maya Chen").fill("Big arm, late on footwork"); await A.locator(".ty-note").getByRole("button", { name: "Save" }).click();
+    ok("an evaluator can note a player", (await A.getByRole("button", { name: "Edit note on Maya Chen" }).count()) === 1);
     { const ax = await a11y(A); ok("rating controls all have names", !ax.length, ax.join(" | ")); }
     if (process.env.QASHOT8) { await A.setViewportSize({ width: 390, height: 844 }); await A.screenshot({ path: process.env.QASHOT8, fullPage: true }); await A.setViewportSize({ width: 1360, height: 900 }); }
     await A.getByRole("button", { name: "Rankings", exact: true }).click(); await A.waitForTimeout(200);
@@ -1281,6 +1287,7 @@ const scenarios = {
     j.tryout.ratings = { "Coach Pat": { [ids["Ava Ramirez"]]: { Serve: 5, Pass: 5 }, [ids["Maya Chen"]]: { Serve: 1, Pass: 1 } } };
     await A.locator("input[type=file][aria-label='Ratings file']").setInputFiles({ name: "pat.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(j)) }); await A.waitForTimeout(300);
     ok("another evaluator's ratings merge in and change the order", /2 evaluators: Coach Kim, Coach Pat/.test(await A.locator(".page").innerText()) && (await A.locator(".ty-rank tbody tr td:nth-child(3) b").first().innerText()) === "Ava Ramirez");
+    ok("evaluator notes show in the rankings", /Coach Kim: Big arm, late on footwork/.test(await A.locator(".ty-rank tr", { hasText: "Maya Chen" }).innerText()));
     ok("players the evaluators saw differently are flagged", (await A.locator(".ty-rank tr", { hasText: "Maya Chen" }).locator(".ty-split").count()) === 1);
     { const csv = await download(A, () => A.getByRole("button", { name: "Spreadsheet" }).click()); ok("rankings export to a spreadsheet", /^Rank,Bib,Name/.test(csv.text()) && /Ava Ramirez/.test(csv.text())); }
     await A.getByLabel("Decision for Ava Ramirez").selectOption("offer"); await A.getByLabel("Decision for Zoe Grant").selectOption("offer"); await A.waitForTimeout(150);
@@ -1309,6 +1316,7 @@ const scenarios = {
     await B.getByLabel("Your name").fill("Coach Pat"); await B.getByLabel("Email", { exact: true }).fill("pat-tryout@e2e.test"); await B.getByLabel("Password", { exact: true }).fill("assist-pass");
     await B.locator(".ma-check input").first().check(); await B.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await B.waitForTimeout(1500);
     ok("the assistant lands on the tryout to rate, with the players", /16U tryouts/.test(await B.locator("h1").innerText()) && (await B.locator(".ty-rate li").count()) === 2 && (await B.getByRole("button", { name: "Rankings" }).count()) === 0);
+    await B.getByRole("button", { name: "Add a note on Ava Ramirez" }).click(); await B.getByLabel("Note on Ava Ramirez").fill("Great jump float"); await B.locator(".ty-note").getByRole("button", { name: "Save" }).click();
     await B.getByRole("group", { name: /Serve for Ava Ramirez/ }).getByRole("button", { name: "5 of 5" }).click(); await B.getByRole("group", { name: /Serve for Maya Chen/ }).getByRole("button", { name: "2 of 5" }).click(); await B.waitForTimeout(1200);
     ok("her ratings go to the head coach", /Sent to the head coach/.test(await B.locator(".ty-sync").innerText()));
     { const ax = await a11y(B); ok("the assistant's rating screen controls all have names", !ax.length, ax.join(" | ")); ok("and it fits a phone", (await overflow(B)) <= 0); }
@@ -1318,6 +1326,7 @@ const scenarios = {
     ok("new players reach the staff, and their ratings stay", (await B.locator(".ty-rate li").count()) === 3 && (await B.getByRole("group", { name: /Serve for Ava Ramirez/ }).getByRole("button", { name: "5 of 5" }).getAttribute("aria-pressed")) === "true");
     await A.getByRole("button", { name: "Rankings", exact: true }).click(); await A.getByRole("button", { name: "Get your staff's ratings" }).click(); await A.waitForTimeout(600);
     ok("the head coach pulls everyone's ratings into the rankings", /1 evaluator: Coach Pat/.test(await A.locator(".page").innerText()) && (await A.locator(".ty-rank tbody tr td:nth-child(3) b").first().innerText()) === "Ava Ramirez");
+    ok("with the assistant's notes", /Coach Pat: Great jump float/.test(await A.locator(".ty-rank tr", { hasText: "Ava Ramirez" }).innerText()));
     ok("no errors", A.errors.length === 0 && B.errors.length === 0, A.errors.concat(B.errors).join("; "));
     await A.context().close(); await B.context().close();
   },

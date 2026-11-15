@@ -51,3 +51,24 @@ export function parseSchedule(text: string, today = new Date()): ParsedGame[] {
   }
   return out;
 }
+
+/** A calendar file (.ics from Google Calendar, TeamSnap, a league site) as schedule lines parseSchedule understands:
+ * "2026-12-05 18:00 vs Central - Fresno Convention Center". Practices and past events are left out. */
+export function icsToLines(ics: string, today = new Date()): string[] {
+  const text = ics.replace(/\r\n[ \t]/g, "").replace(/\n[ \t]/g, ""), out: { key: string; line: string }[] = [];
+  const pad = (n: number) => String(n).padStart(2, "0"), un = (s: string) => s.replace(/\\n/gi, " ").replace(/\\([,;\\])/g, "$1").trim();
+  const from = new Date(today.getTime() - 86400000), fromKey = `${from.getFullYear()}-${pad(from.getMonth() + 1)}-${pad(from.getDate())}`;
+  for (const block of text.split(/BEGIN:VEVENT/i).slice(1)) {
+    const body = block.split(/END:VEVENT/i)[0], get = (k: string) => { const m = body.match(new RegExp(`^${k}((?:;[^:\\r\\n]*)?):(.*)$`, "im")); return m ? { params: m[1], value: m[2].trim() } : null; };
+    const st = get("DTSTART"), sum = get("SUMMARY"); if (!st || !sum) continue;
+    const summary = un(sum.value); if (!summary || /\bpractice\b|\bcancel(l)?ed\b/i.test(summary)) continue;
+    const m = st.value.match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/); if (!m) continue;
+    let date: string, time = "";
+    if (m[4] && m[7]) { const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5])); date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; time = `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+    else { date = `${m[1]}-${m[2]}-${m[3]}`; if (m[4]) time = `${m[4]}:${m[5]}`; }
+    if (date < fromKey) continue;
+    const loc = get("LOCATION"), where = loc ? un(loc.value).split(/,/)[0].trim() : "";
+    out.push({ key: date + (time || "99"), line: `${date}${time ? " " + time : ""} ${summary}${where ? " - " + where : ""}` });
+  }
+  return out.sort((a, b) => a.key.localeCompare(b.key)).map((x) => x.line);
+}

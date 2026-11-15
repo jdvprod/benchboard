@@ -8,7 +8,7 @@ import { go } from "../../app/router";
 import { Card, ConfirmButton, download, fmtDate, Seg } from "../../ui/kit";
 import { JoinTryout, StaffCard, useEvaluatorSync, useStaffPublish } from "./TryoutShare";
 export { JoinTryout };
-import { Candidate, Decision, mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, Tryout, tryoutCsv } from "./tryouts";
+import { Candidate, Decision, mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, staffNotes, Tryout, tryoutCsv } from "./tryouts";
 
 const KEY = "tryouts";
 const loadAll = (): Tryout[] => (get("kv", KEY)?.value as Tryout[]) || [];
@@ -113,6 +113,7 @@ function Rate({ t, onChange, ev, setEv, lockName = false }: { t: Tryout; onChang
     </div>
     <ul className="ty-rate">{shown.map((c) => { const v = mine[c.id]?.[skill]; return <li key={c.id} className={typeof v === "number" ? "done" : ""}>
       <span className="ty-who"><b className="num">{c.bib}</b> {c.name}{c.pos && <span className="muted small"> {c.pos}</span>}</span>
+      <NoteButton note={t.evNotes?.[ev]?.[c.id] || ""} who={c.name} onSave={(n) => onChange({ ...t, evNotes: { ...(t.evNotes || {}), [ev]: { ...(t.evNotes?.[ev] || {}), [c.id]: n } } })} />
       <span className="ty-scale" role="group" aria-label={`${skill} for ${c.name}`}>{[1, 2, 3, 4, 5].map((n) => <button key={n} aria-pressed={v === n} aria-label={`${n} of 5`} className={v === n ? "on" : ""} onClick={() => rate(c, n)}>{n}</button>)}</span>
     </li>; })}</ul>
   </div>;
@@ -124,7 +125,7 @@ function Rankings({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout) => voi
   const setDec = (c: Candidate, d: Decision) => onChange({ ...t, candidates: t.candidates.map((x) => (x.id === c.id ? { ...x, decision: d } : x)) });
   const offers = t.candidates.filter((c) => c.decision === "offer"), evs = Object.keys(t.ratings);
   const fmt = (v: number | null) => (v === null ? "–" : v.toFixed(1));
-  const share = () => { const mine = { ...t, ratings: ev && t.ratings[ev] ? { [ev]: t.ratings[ev] } : t.ratings }; download(`${t.name} ratings${ev ? " " + ev : ""}.json`.replace(/[^\w\- .]+/g, ""), JSON.stringify({ floorcallTryout: 1, tryout: mine }), "application/json"); toast("Ratings file saved. Send it to the head coach, who adds it here."); };
+  const share = () => { const mine = { ...t, ratings: ev && t.ratings[ev] ? { [ev]: t.ratings[ev] } : t.ratings, evNotes: ev && t.evNotes?.[ev] ? { [ev]: t.evNotes[ev] } : t.evNotes }; download(`${t.name} ratings${ev ? " " + ev : ""}.json`.replace(/[^\w\- .]+/g, ""), JSON.stringify({ floorcallTryout: 1, tryout: mine }), "application/json"); toast("Ratings file saved. Send it to the head coach, who adds it here."); };
   const merge = async (f: File) => {
     try { const j = JSON.parse(await f.text()); if (j?.floorcallTryout !== 1 || !j.tryout?.candidates) throw 0;
       const r = mergeTryout(t, j.tryout as Tryout, () => uid("c")); onChange(r.t); toast(`Added ${r.ratings} ratings${r.added ? ` and ${r.added} new players` : ""}.`); }
@@ -150,7 +151,7 @@ function Rankings({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout) => voi
     </div>
     {!rows.length ? <p className="empty">No players yet.</p> : <div className="tbl"><table className="ty-rank"><thead><tr><th>#</th><th>Bib</th><th className="l">Name</th><th>Pos</th><th>Score</th>{t.skills.map((k) => <th key={k} title={k} className="sk">{k.slice(0, 4)}</th>)}<th className="l">Decision</th></tr></thead>
       <tbody>{rows.map((r, i) => <tr key={r.c.id} className={r.c.decision}>
-        <td>{i + 1}</td><td className="num">{r.c.bib}</td><td className="l"><b>{r.c.name}</b>{r.spread !== null && r.spread >= 1.5 && <span className="ty-split" title="Evaluators disagree by 1.5 or more"> · split</span>}{r.c.note && <div className="small muted">{r.c.note}</div>}</td><td>{r.c.pos || "–"}</td>
+        <td>{i + 1}</td><td className="num">{r.c.bib}</td><td className="l"><b>{r.c.name}</b>{r.spread !== null && r.spread >= 1.5 && <span className="ty-split" title="Evaluators disagree by 1.5 or more"> · split</span>}{r.c.note && <div className="small muted">{r.c.note}</div>}{staffNotes(t, r.c.id).map((n) => <div key={n} className="small ty-snote">{n}</div>)}</td><td>{r.c.pos || "–"}</td>
         <td><b>{fmt(r.score)}</b></td>{t.skills.map((k) => <td key={k} className="sk">{fmt(r.bySkill[k])}</td>)}
         <td className="l"><select className="input ty-dec" aria-label={`Decision for ${r.c.name}`} value={r.c.decision} onChange={(e) => setDec(r.c, e.target.value as Decision)}><option value="">Undecided</option>{DEC.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
       </tr>)}</tbody></table></div>}
@@ -168,4 +169,13 @@ function printSheet(t: Tryout) {
   const html = ratingSheetHtml(t, myName()), w = window.open("", "_blank");
   if (w) { w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch { /* they can print from the page */ } }, 300); return; }
   download(`${t.name} rating sheet.html`.replace(/[^\w\- .]+/g, ""), html, "text/html"); toast("Saved the sheet. Open it to print.");
+}
+
+/** A short note on a player from this evaluator ("strong arm, late on footwork"), opened from a small button. */
+function NoteButton({ note, who, onSave }: { note: string; who: string; onSave: (n: string) => void }) {
+  const [open, setOpen] = useState(false), [v, setV] = useState(note);
+  if (!open) return <button className={"btn sm ghost ty-notebtn" + (note ? " has" : "")} aria-label={(note ? "Edit note on " : "Add a note on ") + who} title={note || "Add a note"} onClick={() => { setV(note); setOpen(true); }}>{note ? "Note ✓" : "Note"}</button>;
+  return <form className="ty-note" onSubmit={(e) => { e.preventDefault(); onSave(v.trim().slice(0, 300)); setOpen(false); }}>
+    <input className="input" autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder="Strong arm, late on footwork" aria-label={"Note on " + who} maxLength={300} />
+    <button className="btn sm primary">Save</button></form>;
 }

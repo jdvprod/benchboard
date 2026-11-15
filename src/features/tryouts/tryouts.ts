@@ -6,7 +6,7 @@ export type Decision = "offer" | "maybe" | "cut" | "";
 export interface Candidate { id: string; bib: string; name: string; grade: string; pos: string; note: string; decision: Decision }
 /** ratings[evaluator][candidateId][skill] = 1..5 */
 export type Ratings = Record<string, Record<string, Record<string, number>>>;
-export interface Tryout { id: string; name: string; date: string; skills: string[]; weights: Record<string, number>; candidates: Candidate[]; ratings: Ratings; createdAt: number; /** shared with the staff by this code */ code?: string; /** opened from someone else's code: rate only */ role?: "evaluator" }
+export interface Tryout { id: string; name: string; date: string; skills: string[]; weights: Record<string, number>; candidates: Candidate[]; ratings: Ratings; createdAt: number; /** each evaluator's notes: evNotes[evaluator][candidateId] */ evNotes?: Record<string, Record<string, string>>; /** shared with the staff by this code */ code?: string; /** opened from someone else's code: rate only */ role?: "evaluator" }
 
 export function newTryout(name: string, date: string, id: string): Tryout {
   return { id, name: name.trim() || "Tryouts", date, skills: DEFAULT_SKILLS.slice(), weights: {}, candidates: [], ratings: {}, createdAt: Date.now() };
@@ -67,14 +67,19 @@ export function mergeTryout(mine: Tryout, theirs: Tryout, mkId: () => string): {
     for (const [cid, sk] of Object.entries(byC)) { const to = idMap.get(cid); if (!to) continue; const clean: Record<string, number> = {}; for (const [k, v] of Object.entries(sk)) if (typeof v === "number" && v >= 1 && v <= 5) { clean[k] = Math.round(v); count++; } into[to] = clean; }
     ratings[ev] = into;
   }
+  const evNotes: Record<string, Record<string, string>> = { ...(mine.evNotes || {}) };
+  for (const [ev, byC] of Object.entries(theirs.evNotes || {})) { const into: Record<string, string> = {}; for (const [cid, note] of Object.entries(byC)) { const to = idMap.get(cid); if (to && typeof note === "string" && note.trim()) into[to] = note.slice(0, 300); } evNotes[ev] = into; }
   const skills = mine.skills.concat(theirs.skills.filter((k) => !mine.skills.includes(k)));
-  return { t: { ...mine, candidates, ratings, skills }, added, ratings: count };
+  return { t: { ...mine, candidates, ratings, skills, evNotes }, added, ratings: count };
 }
+
+/** Everyone's notes on one player, "Pat: strong arm". */
+export const staffNotes = (t: Tryout, cid: string) => Object.entries(t.evNotes || {}).map(([ev, m]) => (m[cid] ? `${ev}: ${m[cid]}` : "")).filter(Boolean);
 
 export function tryoutCsv(t: Tryout): string {
   const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s), f = (v: number | null) => (v === null ? "" : v.toFixed(2));
-  const head = ["Rank", "Bib", "Name", "Grade", "Position", "Score", ...t.skills, "Evaluators", "Decision", "Note"];
-  return [head.join(","), ...rank(t).map((r, i) => [String(i + 1), r.c.bib, q(r.c.name), q(r.c.grade), r.c.pos, f(r.score), ...t.skills.map((k) => f(r.bySkill[k])), String(r.evaluators), r.c.decision, q(r.c.note)].join(","))].join("\n") + "\n";
+  const head = ["Rank", "Bib", "Name", "Grade", "Position", "Score", ...t.skills, "Evaluators", "Decision", "Note", "Staff notes"];
+  return [head.join(","), ...rank(t).map((r, i) => [String(i + 1), r.c.bib, q(r.c.name), q(r.c.grade), r.c.pos, f(r.score), ...t.skills.map((k) => f(r.bySkill[k])), String(r.evaluators), r.c.decision, q(r.c.note), q(staffNotes(t, r.c.id).join(" | "))].join(","))].join("\n") + "\n";
 }
 
 /** A paper rating sheet for evaluators: one row per player, a box per skill, room for a note. */

@@ -944,3 +944,5 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .news-card{border-color:var(--us)}.news-card ul{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:10px}
 .news-card li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center}.news-card li b{grid-column:1}.news-card li span{grid-column:1;font-size:13.5px;color:var(--muted)}.news-card li .btn{grid-column:2;grid-row:1/3}
 @media (max-width:560px){.news-card li{grid-template-columns:1fr}.news-card li .btn{grid-column:1;grid-row:auto;justify-self:start;margin-top:4px}}
+.mu-ics{display:grid;gap:4px;color:var(--muted)}
+.ty-notebtn.has{color:var(--us);font-weight:700}.ty-note{display:flex;gap:6px;flex:1 1 100%}.ty-note .input{flex:1}.ty-snote{color:var(--ink);opacity:.8}

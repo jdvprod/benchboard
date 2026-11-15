@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, tryoutCsv } from "../src/features/tryouts/tryouts";
+import { mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, staffNotes, tryoutCsv } from "../src/features/tryouts/tryouts";
 
 let n = 0; const id = () => "c" + ++n;
 
@@ -32,14 +32,16 @@ test("tryouts: another evaluator's file merges by bib and replaces only their ow
   assert.deepEqual(t.ratings.me, mine.ratings.me, "my ratings stay");
   assert.equal(t.ratings.pat[mine.candidates[0].id], undefined, "pat's old ratings are replaced by the new file");
   assert.equal(t.ratings.pat[mine.candidates[1].id].Serve, 5);
+  const t2 = mergeTryout(mine, { ...theirs, evNotes: { pat: { [theirs.candidates[0].id]: "quick feet" } } }, id).t;
+  assert.deepEqual(staffNotes(t2, mine.candidates[1].id), ["pat: quick feet"], "notes come across by bib too");
 });
 
 test("tryouts: CSV for the club", () => {
   const t = newTryout("Fall", "2026-11-20", "t1"); t.skills = ["Serve"]; t.candidates = parseCandidates('1 Ann "Annie" Lee', [], id); t.candidates[0].decision = "offer";
   t.ratings = { me: { [t.candidates[0].id]: { Serve: 4 } } };
   const csv = tryoutCsv(t).split("\n");
-  assert.equal(csv[0], "Rank,Bib,Name,Grade,Position,Score,Serve,Evaluators,Decision,Note");
-  assert.equal(csv[1], '1,1,"Ann ""Annie"" Lee",,,4.00,4.00,1,offer,');
+  assert.equal(csv[0], "Rank,Bib,Name,Grade,Position,Score,Serve,Evaluators,Decision,Note,Staff notes");
+  assert.equal(csv[1], '1,1,"Ann ""Annie"" Lee",,,4.00,4.00,1,offer,,');
 });
 
 test("tryouts: a paper rating sheet, sorted by bib, with a box per skill", () => {

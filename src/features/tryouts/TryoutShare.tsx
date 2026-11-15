@@ -24,8 +24,9 @@ export function StaffCard({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout
   const pull = async () => {
     setBusy(true);
     try { const list: { name: string; ratings: Tryout["ratings"][string] }[] = (await rpc("tryout_all", { c: t.code })) || []; const ratings = { ...t.ratings };
-      for (const r of list) { const nm = r.name === ev ? r.name + " (phone)" : r.name; ratings[nm] = r.ratings || {}; }
-      onChange({ ...t, ratings }); toast(list.length ? `Ratings from ${list.length} ${list.length === 1 ? "evaluator" : "evaluators"}: ${list.map((r) => r.name).join(", ")}.` : "No ratings from your staff yet.");
+      const evNotes = { ...(t.evNotes || {}) };
+      for (const r of list) { const nm = r.name === ev ? r.name + " (phone)" : r.name, x = unpackRatings(r.ratings); ratings[nm] = x.r; if (Object.keys(x.n).length) evNotes[nm] = x.n; }
+      onChange({ ...t, ratings, evNotes }); toast(list.length ? `Ratings from ${list.length} ${list.length === 1 ? "evaluator" : "evaluators"}: ${list.map((r) => r.name).join(", ")}.` : "No ratings from your staff yet.");
     } catch (e: any) { toast(e?.message || "Couldn't get the ratings. Check your connection."); }
     setBusy(false);
   };
@@ -37,6 +38,12 @@ export function StaffCard({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout
     <p className="small muted">Your staff open the link (or Team → Tryouts → Join with a code) and sign in. New players you add reach them automatically.</p>
     <button className="btn primary" disabled={busy} onClick={pull}>{busy ? "Getting ratings…" : "Get your staff's ratings"}</button>
   </Card>;
+}
+
+/** An evaluator's upload is { r: ratings, n: notes } (older uploads were the ratings alone). */
+function unpackRatings(x: any): { r: Tryout["ratings"][string]; n: Record<string, string> } {
+  if (x && typeof x === "object" && x.r && typeof x.r === "object") return { r: x.r, n: x.n && typeof x.n === "object" ? x.n : {} };
+  return { r: x && typeof x === "object" ? x : {}, n: {} };
 }
 
 /** Keeps the staff's copy current (players, skills, name) while the head coach edits, whichever tab is open. */
@@ -57,7 +64,7 @@ export function JoinTryout({ code }: { code: string }) {
       if (!r) { setMsg("That tryout isn't shared anymore, or the code is mistyped."); return; }
       const all = loadAll(), id = "tj-" + r.code, prev = all.find((x) => x.id === id), d = r.data || {};
       const ev = (prev && Object.keys(prev.ratings)[0]) || userMeta().name || "Evaluator";
-      const t: Tryout = { id, name: d.name || "Tryouts", date: d.date || "", skills: d.skills || [], weights: {}, candidates: (d.candidates || []).map((c: any) => ({ ...c, note: "", decision: "" })), ratings: { [ev]: r.mine || prev?.ratings[ev] || {} }, createdAt: prev?.createdAt || Date.now(), code: r.code, role: r.owner ? undefined : "evaluator" };
+      const t: Tryout = { id, name: d.name || "Tryouts", date: d.date || "", skills: d.skills || [], weights: {}, candidates: (d.candidates || []).map((c: any) => ({ ...c, note: "", decision: "" })), ratings: { [ev]: r.mine ? unpackRatings(r.mine).r : prev?.ratings[ev] || {} }, evNotes: { [ev]: r.mine ? unpackRatings(r.mine).n : prev?.evNotes?.[ev] || {} }, createdAt: prev?.createdAt || Date.now(), code: r.code, role: r.owner ? undefined : "evaluator" };
       save("kv", { id: KEY, value: [t, ...all.filter((x) => x.id !== id)] });
       try { localStorage.setItem("fc-evaluator", ev); } catch { /* fine */ }
       go("tryouts", id);
@@ -75,10 +82,10 @@ export function useEvaluatorSync(t: Tryout | undefined, ev: string) {
   const [state, setState] = useState<"" | "saving" | "saved" | "offline">(""), last = useRef("");
   useEffect(() => {
     if (!t || t.role !== "evaluator" || !t.code || !ev || !currentUser()) return;
-    const r = t.ratings[ev] || {}, s = JSON.stringify(r); if (s === last.current) return;
+    const r = { r: t.ratings[ev] || {}, n: t.evNotes?.[ev] || {} }, s = JSON.stringify(r); if (s === last.current) return;
     setState("saving");
     const h = setTimeout(() => rpc("tryout_rate", { c: t.code, nm: ev, r }).then(() => { last.current = s; setState("saved"); }).catch(() => setState("offline")), 600);
     return () => clearTimeout(h);
-  }, [t?.ratings, ev, t?.code]);
+  }, [t?.ratings, t?.evNotes, ev, t?.code]);
   return state;
 }

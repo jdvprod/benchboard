@@ -6,6 +6,7 @@ import { MiniAuth } from "../cloud/MiniAuth";
 import { tr } from "../lib/i18n";
 import { cleanPlays, Play } from "../sports/volleyball/playbook";
 import { along, Court3D } from "../ui/Court3D";
+import { svgToPng } from "../lib/svgPng";
 
 export function TeamPlays({ code, team }: { code: string; team: string }) {
   const [, bump] = useState(0), [plays, setPlays] = useState<Play[] | null>(null), [i, setI] = useState(0), signed = !!currentUser();
@@ -25,7 +26,13 @@ export function TeamPlays({ code, team }: { code: string; team: string }) {
     <div className="lv-h"><h2>{tr("Playbook")}</h2><span className="lv-note">{plays.length} {tr(plays.length === 1 ? "play" : "plays")}</span></div>
     <div className="lv-play-pick" role="group" aria-label={tr("Plays")}>{plays.map((p, n) => <button key={p.id + n} aria-pressed={n === i} onClick={() => { cancelAnimationFrame(raf.current); setK(0); setI(n); }}>{p.name}</button>)}</div>
     <Court3D pegs={pegs} ball={play.ball} label={`${play.name}: ${play.spots.map((s) => s.name).join(", ")}`} />
-    <div className="lv-play-bar"><b>{play.name}</b>{hasRoutes && <button className="btn primary" onClick={run} disabled={running}>{tr("Run it")}</button>}</div>
+    <div className="lv-play-bar"><b>{play.name}</b><span className="row" style={{ gap: 6 }}>{hasRoutes && <button className="btn primary" onClick={run} disabled={running}>{tr("Run it")}</button>}<button className="btn" disabled={running} onClick={async () => {
+      const svg = document.querySelector<SVGSVGElement>(".lv-plays .c3d"); if (!svg) return;
+      try { const b = await svgToPng(svg, 2, "#0B1117", { title: play.name, sub: team.toUpperCase() }), name = `${play.name}.png`.replace(/[^\w\- .]+/g, ""), file = new File([b], name, { type: "image/png" }), nav: any = navigator;
+        if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: play.name }); return; } catch { /* save instead */ } }
+        const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      } catch { /* picture not available in this browser */ }
+    }}>{tr("Save picture")}</button></span></div>
     {play.note && <p className="lv-play-note">{play.note}</p>}
   </section>;
 }
