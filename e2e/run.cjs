@@ -7,7 +7,7 @@ const http = require("http"), fs = require("fs"), path = require("path");
 const { chromium } = require("playwright");
 const startMock = require("./mock-supabase.cjs");
 
-const DIST = path.join(__dirname, "..", "dist"), APP_PORT = 5199, MOCK_PORT = 54399, U = `http://localhost:${APP_PORT}/`;
+const DIST = process.env.E2E_DIST || path.join(__dirname, "..", "dist"), APP_PORT = 5199, MOCK_PORT = 54399, U = `http://localhost:${APP_PORT}/`;
 const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".webmanifest": "application/manifest+json", ".png": "image/png", ".webp": "image/webp", ".svg": "image/svg+xml" };
 const only = process.argv[2] || "";
 
