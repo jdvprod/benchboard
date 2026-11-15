@@ -5,7 +5,8 @@ import { cloudAvailable, currentUser, rpc } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
 import { blankPlay, KIND_LABEL, LIBRARY, Play, PlayKind } from "../../sports/volleyball/playbook";
 import { along, Court3D } from "../../ui/Court3D";
-import { Card, Seg } from "../../ui/kit";
+import { Card, download, Seg } from "../../ui/kit";
+import { svgToPng } from "../../lib/svgPng";
 
 const copy = (p: Play): Play => JSON.parse(JSON.stringify(p));
 
@@ -38,6 +39,14 @@ export function Playbook() {
   const role = roleOn(t.id), canShare = cloudAvailable() && !!currentUser() && isLinked(t.id) && (role === "owner" || role === "coach");
   const publish = (list: Play[]) => { if (canShare) rpc("plays_publish", { t: t.id, d: list.filter((p) => p.shared).map((p) => ({ id: p.id, name: p.name, note: p.note, spots: p.spots, ball: p.ball || null })) }).catch((e) => toast(e?.message || "Couldn't update the team's plays. Check your connection.")); };
   const setMine = (list: Play[]) => { patch("teams", t.id, { plays: list }); if (list.some((p) => p.shared) || mine.some((p) => p.shared)) publish(list); };
+  // a picture of the play as it's shown (camera angle included) to text the team or drop in a slide
+  const picture = async () => {
+    const svg = document.querySelector<SVGSVGElement>(".pb .c3d"); if (!svg) return;
+    try { const b = await svgToPng(svg, 2, "#0B1117", { title: play.name, sub: `${t.name.toUpperCase()} · FLOORCALL PLAYBOOK` }), name = `${play.name} play.png`.replace(/[^\w\- .]+/g, ""), file = new File([b], name, { type: "image/png" }), nav: any = navigator;
+      if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: play.name }); return; } catch { /* cancelled: save instead */ } }
+      download(name, b, "image/png"); toast("Picture saved.");
+    } catch { toast("Couldn't make the picture here."); }
+  };
   const remove = () => { setMine(mine.filter((m) => m.id !== src)); open(LIBRARY[0]); };
   const cur = mine.find((m) => m.id === src);
   const share = (on: boolean) => { setMine(mine.map((m) => (m.id === src ? { ...m, shared: on } : m))); toast(on ? "Shared. Players see it under Plays on your team's Live page, signed in." : "No longer shared with the team."); };
@@ -51,6 +60,7 @@ export function Playbook() {
       <div className="pb-bar">
         <button className="btn primary" onClick={run} disabled={!hasRoutes || running}>Run it</button>
         <button className="btn" onClick={() => edit((p) => p.spots.forEach((s) => { s.to = null; s.via = null; }))} disabled={!hasRoutes}>Clear routes</button>
+        <button className="btn" onClick={picture} disabled={running}>Save picture</button>
         <button className="btn" onClick={() => open([...mine, ...LIBRARY].find((p) => p.id === src) || blankPlay())} disabled={!dirty}>Reset</button>
         <span className="pb-gap" />
         <input className="input" value={play.name} onChange={(e) => edit((p) => { p.name = e.target.value; })} aria-label="Play name" maxLength={40} />

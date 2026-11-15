@@ -1339,6 +1339,8 @@ const scenarios = {
       ok("tapping a player in route mode clears her route", (await A.locator(".pb .c3d-route").count()) === n - 1);
       await A.mouse.move(g.x + g.width / 2, g.y + g.height / 2); await A.mouse.down(); await A.mouse.move(g.x + g.width / 2 - 120, g.y + g.height / 2 + 60, { steps: 4 }); await A.mouse.up(); await A.waitForTimeout(150); }
     ok("the slide comes with a curved run", (await A.locator(".pb .c3d-route polyline").evaluateAll((l) => l.filter((x) => x.points.numberOfItems > 6).length)) >= 1);
+    { const f = await download(A, () => A.getByRole("button", { name: "Save picture" }).click(), 10000); ok("a play saves as a picture", /play\.png$/.test(f.name) && f.size > 30000, `${f.name} ${f.size}`);
+      if (process.env.QASHOT9) fs.copyFileSync(f.path, process.env.QASHOT9); }
     await A.locator("input[aria-label='Play name']").fill("Slide vs Ridgeview"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(200);
     ok("a play saves under My plays", (await A.locator(".pb-group").first().innerText()).includes("Slide vs Ridgeview"));
     await A.getByRole("button", { name: "Run it" }).click(); await A.waitForTimeout(600);
