@@ -67,6 +67,7 @@ function TryoutView({ t, onChange, onDelete }: { t: Tryout; onChange: (t: Tryout
 
 function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) {
   const [text, setText] = useState(""), set = (c: Candidate, p: Partial<Candidate>) => onChange({ ...t, candidates: t.candidates.map((x) => (x.id === c.id ? { ...x, ...p } : x)) });
+  const dup = new Set(t.candidates.map((c) => c.bib).filter((b, i, a) => b && a.indexOf(b) !== i));
   const add = () => { const n = parseCandidates(text, t.candidates, () => uid("c")); if (!n.length) return; onChange({ ...t, candidates: t.candidates.concat(n) }); setText(""); toast(`Added ${n.length} ${n.length === 1 ? "player" : "players"}.`); };
   return <div className="grid2">
     <Card title="Add players">
@@ -81,10 +82,11 @@ function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) 
       <form className="row" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); const f = (e.target as HTMLFormElement).elements.namedItem("sk") as HTMLInputElement; const v = f.value.trim().slice(0, 30); if (v && !t.skills.includes(v)) onChange({ ...t, skills: t.skills.concat(v) }); f.value = ""; }}>
         <input name="sk" className="input" placeholder="Another skill" aria-label="Another skill" /><button className="btn sm">Add skill</button></form>
     </Card>
+    {dup.size > 0 && <p className="banner span2" role="alert" style={{ borderLeft: "4px solid var(--bad)" }}>Two players share bib {[...dup].join(", ")}. Give each a different bib so ratings and staff files line up.</p>}
     {t.candidates.length > 0 && <Card title={`Trying out (${t.candidates.length})`} className="span2" actions={<button className="btn sm" onClick={() => printSheet(t)}>Print rating sheet</button>}>
       <div className="tbl"><table><thead><tr><th>Bib</th><th className="l">Name</th><th>Pos</th><th>Grade</th><th className="l">Note</th><th /></tr></thead>
         <tbody>{t.candidates.map((c) => <tr key={c.id}>
-          <td><input className="input ty-bib" aria-label={`Bib for ${c.name}`} value={c.bib} onChange={(e) => set(c, { bib: e.target.value.slice(0, 4) })} /></td>
+          <td><input className={"input ty-bib" + (dup.has(c.bib) ? " dup" : "")} title={dup.has(c.bib) ? "Two players have this bib" : undefined} aria-label={`Bib for ${c.name}`} value={c.bib} onChange={(e) => set(c, { bib: e.target.value.slice(0, 4) })} /></td>
           <td className="l">{c.name}</td><td>{c.pos || "–"}</td><td>{c.grade || "–"}</td>
           <td className="l"><input className="input" aria-label={`Note on ${c.name}`} value={c.note} onChange={(e) => set(c, { note: e.target.value.slice(0, 200) })} placeholder="Note" /></td>
           <td><ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => onChange({ ...t, candidates: t.candidates.filter((x) => x.id !== c.id) })}><span aria-label={"Remove " + c.name}>✕</span></ConfirmButton></td></tr>)}</tbody></table></div>
@@ -96,6 +98,7 @@ function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) 
 function Rate({ t, onChange, ev, setEv, lockName = false }: { t: Tryout; onChange: (t: Tryout) => void; ev: string; setEv: (n: string) => void; lockName?: boolean }) {
   const [skill, setSkill] = useState(t.skills[0] || ""), [q, setQ] = useState("");
   if (!t.candidates.length) return <p className="empty">Add the players trying out first (Players).</p>;
+  if (!t.skills.length) return <p className="empty">Add at least one skill to rate (Players → Skills).</p>;
   if (!ev.trim()) return <Card title="Who's rating?"><form className="row" onSubmit={(e) => { e.preventDefault(); const v = ((e.target as HTMLFormElement).elements.namedItem("ev") as HTMLInputElement).value.trim(); if (v) setEv(v.slice(0, 40)); }}>
     <input name="ev" className="input" placeholder="Your name" aria-label="Your name as an evaluator" /><button className="btn primary">Start rating</button></form>
     <p className="keys">Each evaluator's ratings are kept separately and averaged in the rankings.</p></Card>;

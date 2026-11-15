@@ -1267,6 +1267,9 @@ const scenarios = {
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
     await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH 10th\n13 Ava Ramirez S Jr\nLily Torres L\n15 Zoe Grant MB"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
     ok("tryout players are added from a pasted list, numbered when they have no bib", (await A.locator("table tbody tr").count()) === 4 && (await A.getByLabel("Bib for Lily Torres").inputValue()) === "14");
+    await A.getByLabel("Bib for Zoe Grant").fill("12"); await A.waitForTimeout(100);
+    ok("two players with the same bib are flagged", /Two players share bib 12/.test(await A.locator("[role=alert]").innerText().catch(() => "")));
+    await A.getByLabel("Bib for Zoe Grant").fill("15"); await A.waitForTimeout(100);
     { const [pop] = await Promise.all([A.waitForEvent("popup", { timeout: 5000 }), A.getByRole("button", { name: "Print rating sheet" }).click()]); await pop.waitForLoadState();
       ok("a paper rating sheet opens to print", /16U tryouts: rating sheet/.test(await pop.locator("h1").innerText()) && (await pop.locator("tbody tr").count()) === 4); await pop.close(); }
     await A.getByRole("button", { name: "Rate", exact: true }).click(); await A.getByLabel("Your name as an evaluator").fill("Coach Kim"); await A.getByRole("button", { name: "Start rating" }).click(); await A.waitForTimeout(200);
