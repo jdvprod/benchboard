@@ -7,7 +7,7 @@ import "./beach.css";
 import { type FormEvent, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
-import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pack, pairLine, replay, scoreLine, Side, summary, unpack } from "../sports/beach/engine";
+import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pack, pairLine, pointScore, replay, scoreLine, sideOut, Side, summary, unpack } from "../sports/beach/engine";
 import { SiteSwitch } from "../ui/SiteSwitch";
 import { GoLive, Watch } from "./Live";
 
@@ -194,7 +194,9 @@ function Box({ m, S }: { m: BeachMatch; S: BeachState }) {
       <thead><tr><th className="l">Player</th><th title="Points won">PTS</th><th title="Kills">K</th><th title="Attack errors">E</th><th title="Total attacks">TA</th><th title="Hitting percentage">PCT</th><th title="Aces">A</th><th title="Serve errors">SE</th><th title="Blocks">B</th><th title="Digs">D</th><th title="Other errors">ERR</th></tr></thead>
       <tbody>{row(m.names[0], S.players[0])}{row(m.names[1], S.players[1])}{row(m.us, pairLine(S, "us"), true)}{row(m.names[2], S.players[2])}{row(m.names[3], S.players[3])}{row(m.them, pairLine(S, "them"), true)}</tbody>
     </table></div>
-    <p className="keys">PCT is hitting percentage: kills minus attack errors, divided by total attacks. Points added with the +1 buttons count in the score but not for a player.</p>
+    {S.log.length > 0 && <div className="bv-so" aria-label="Side-out and point-scoring">{(["us", "them"] as Side[]).map((s) => { const pc = (v: number | null) => (v === null ? "–" : Math.round(v * 100) + "%"); return <div key={s}>
+      <b>{s === "us" ? m.us : m.them}</b><span><span className="num">{pc(sideOut(S, s))}</span> side-out</span><span><span className="num">{pc(pointScore(S, s))}</span> point-scoring</span></div>; })}</div>}
+    <p className="keys">PCT is hitting percentage: kills minus attack errors, divided by total attacks. Side-out is the share of rallies won when receiving; point-scoring, when serving. Points added with the +1 buttons count in the score but not for a player.</p>
   </section>;
 }
 

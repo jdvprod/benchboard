@@ -41,13 +41,15 @@ export interface BeachState {
   over: boolean; winner: Side | null;
   players: Line[];                              // by player 0–3
   log: { set: number; us: number; them: number; w: Side; text: string }[];
+  /** rallies by who served: side-out % is receiving rallies won, point-scoring % is serving rallies won */
+  rallies: Record<Side, { serve: number; serveWon: number; recv: number; recvWon: number }>;
 }
 const teamOf = (p: number): Side => (p < 2 ? "us" : "them");
 const other = (s: Side): Side => (s === "us" ? "them" : "us");
 
 export function replay(m: BeachMatch): BeachState {
   const f = FORMATS[m.format];
-  const S: BeachState = { sets: [{ us: 0, them: 0, done: false }], setsWon: { us: 0, them: 0 }, set: 0, serving: m.first, server: 0, swapped: false, switchNow: false, timeouts: { us: 0, them: 0 }, over: false, winner: null, players: [line(), line(), line(), line()], log: [] };
+  const S: BeachState = { sets: [{ us: 0, them: 0, done: false }], setsWon: { us: 0, them: 0 }, set: 0, serving: m.first, server: 0, swapped: false, switchNow: false, timeouts: { us: 0, them: 0 }, rallies: { us: { serve: 0, serveWon: 0, recv: 0, recvWon: 0 }, them: { serve: 0, serveWon: 0, recv: 0, recvWon: 0 } }, over: false, winner: null, players: [line(), line(), line(), line()], log: [] };
   // each pair alternates servers; `turn` counts how many service turns a pair has started this set
   let turn = { us: 0, them: 0 };
   const serverFor = (s: Side) => { const a = s === "us" ? m.firstServer[0] : m.firstServer[1], b = s === "us" ? 1 - a : 5 - a; return turn[s] % 2 === 0 ? a : b; };
@@ -56,6 +58,7 @@ export function replay(m: BeachMatch): BeachState {
   const point = (w: Side, text: string) => {
     S.switchNow = false; // the reminder stays up through digs and timeouts, until the next point
     const cur = S.sets[S.set]; cur[w]++; S.players[S.server].SV++;
+    { const sv = S.serving, rc = other(sv); S.rallies[sv].serve++; S.rallies[rc].recv++; if (w === sv) S.rallies[sv].serveWon++; else S.rallies[rc].recvWon++; }
     S.log.push({ set: S.set, us: cur.us, them: cur.them, w, text });
     if (w !== S.serving) { turn[S.serving]++; S.serving = w; S.server = serverFor(w); } // side-out: the other pair serves, with whoever is next
     const to = f.to[S.set], lead = Math.abs(cur.us - cur.them);
@@ -91,7 +94,8 @@ export function summary(m: BeachMatch, S: BeachState): string {
   const pct = (l: Line) => { const h = hitPct(l); return h === null ? "-" : (h >= 0 ? "" : "-") + Math.abs(h).toFixed(3).replace(/^0/, ""); };
   const row = (i: number) => { const l = S.players[i]; return `${m.names[i]}: ${l.K} K, ${l.AE} E, ${l.K + l.AE + l.TA} TA (${pct(l)}), ${l.A} A, ${l.SE} SE, ${l.B} B, ${l.D} D`; };
   const head = S.over ? `${S.winner === "us" ? m.us : m.them} def. ${S.winner === "us" ? m.them : m.us} ${S.setsWon[S.winner!]}-${S.setsWon[other(S.winner!)]}` : `${m.us} vs ${m.them}`;
-  return [head + ` (${scoreLine(S)})`, "", m.us, row(0), row(1), "", m.them, row(2), row(3)].join("\n");
+  const pc = (v: number | null) => (v === null ? "-" : Math.round(v * 100) + "%"), so = (s: Side) => `side-out ${pc(sideOut(S, s))}, point-scoring ${pc(pointScore(S, s))}`;
+  return [head + ` (${scoreLine(S)})`, "", `${m.us}: ${so("us")}`, row(0), row(1), "", `${m.them}: ${so("them")}`, row(2), row(3)].join("\n");
 }
 
 /** A match packed into a short piece of text for a share link: anyone with the link sees the score and box score, no account or server.
@@ -120,3 +124,7 @@ export function unpack(s: string): BeachMatch | null {
     return { id: "shared", at: +at || 0, format, first: first ? "them" : "us", firstServer: [firstServer?.[0] === 1 ? 1 : 0, firstServer?.[1] === 3 ? 3 : 2], names: names.map((n: unknown) => str(n, 24)) as BeachMatch["names"], us: str(us, 60), them: str(them, 60), events };
   } catch { return null; }
 }
+
+/** Side-out %: receiving rallies won. Point-scoring %: serving rallies won. null before any. */
+export const sideOut = (S: BeachState, s: Side) => (S.rallies[s].recv ? S.rallies[s].recvWon / S.rallies[s].recv : null);
+export const pointScore = (S: BeachState, s: Side) => (S.rallies[s].serve ? S.rallies[s].serveWon / S.rallies[s].serve : null);

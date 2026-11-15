@@ -1171,6 +1171,7 @@ const scenarios = {
     ok("at 7 points it says to switch sides", (await p.locator(".bv-note.sw").count()) === 1 && /far side/.test(await p.locator(".bv-sand").getAttribute("aria-label")));
     const box = await p.locator(".bv-box tbody tr").first().innerText();
     ok("the box score counts each player's touches", /Ava\s+1\s+0\s+0\s+0\s+–\s+1/.test(box), box);
+    ok("side-out and point-scoring show for each pair", (await p.locator(".bv-so > div").count()) === 2 && /side-out/.test(await p.locator(".bv-so").innerText()));
     await p.getByRole("button", { name: "Undo" }).click(); await p.waitForTimeout(100);
     ok("undo takes the last point back", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "5-1");
     for (let i = 0; i < 16; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();

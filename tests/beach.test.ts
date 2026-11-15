@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { BeachEvent, BeachMatch, hitPct, pack, replay, summary, unpack } from "../src/sports/beach/engine";
+import { BeachEvent, BeachMatch, hitPct, pack, pointScore, replay, sideOut, summary, unpack } from "../src/sports/beach/engine";
 
 const match = (events: BeachEvent[], extra: Partial<BeachMatch> = {}): BeachMatch => ({ id: "m", at: 0, format: "bo3", us: "Ava / Maya", them: "Ridgeview", names: ["Ava", "Maya", "Kim", "Lee"], first: "us", firstServer: [0, 2], events, ...extra });
 const pts = (w: "us" | "them", n: number): BeachEvent[] => Array.from({ length: n }, () => ({ t: "pt", w }));
@@ -48,4 +48,12 @@ test("beach: a share link carries the whole match and rejects junk", () => {
   assert.deepEqual(replay(back).sets, replay(m).sets);
   assert.match(pack(m), /^[A-Za-z0-9_-]+$/);
   assert.equal(unpack("not-a-match"), null); assert.equal(unpack(""), null);
+});
+
+test("beach: side-out and point-scoring percentages by who served", () => {
+  // us serve: win, win, lose (side-out to them); them serve: lose (we side out); us serve: lose
+  const S = replay(match([{ t: "pt", w: "us" }, { t: "pt", w: "us" }, { t: "pt", w: "them" }, { t: "pt", w: "us" }, { t: "pt", w: "them" }]));
+  assert.equal(pointScore(S, "us"), 2 / 4); assert.equal(sideOut(S, "us"), 1 / 1);
+  assert.equal(sideOut(S, "them"), 2 / 4); assert.equal(pointScore(S, "them"), 0);
+  assert.match(summary(match([]), S), /side-out 100%, point-scoring 50%/);
 });

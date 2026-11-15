@@ -75,3 +75,5 @@ body{padding-left:0}
 .bv-livetag.off{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 @media print{.bv-live,.bv-golive{display:none}}
 .bv-day+.bv-day{margin-top:14px}.bv-day h3{font:700 15px var(--display);margin:0 0 4px}
+.bv-so{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.bv-so>div{display:grid;gap:2px;background:var(--surface-2);border-radius:10px;padding:10px 12px;font-size:14px}.bv-so .num{font:700 20px var(--display)}
+@media (max-width:480px){.bv-so{grid-template-columns:1fr}}
