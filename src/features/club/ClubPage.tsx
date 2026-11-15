@@ -25,7 +25,7 @@ export function ClubPage() {
   const teams = teamsOfClub(), [tab, setTab] = useState<Tab>("teams");
   const games = teams.map((t) => gamesOf(t)), tot = games.reduce((a, g) => { const r = recordOf(g.map((x) => x.R)); return { W: a.W + r.w, L: a.L + r.l }; }, { W: 0, L: 0 });
   return <div className="page">
-    <div className="pagehead"><h1>Club</h1><span className="muted">{teams.length} teams · {tot.W}–{tot.L} combined</span></div>
+    <div className="pagehead"><h1>Club</h1><span className="muted">{teams.length} {teams.length === 1 ? "team" : "teams"} · {tot.W}–{tot.L} combined</span></div>
     {!teams.length ? <p className="empty">Add a team to see it here.</p> : <>
       <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"]]} />
       <div style={{ marginTop: 14 }}>

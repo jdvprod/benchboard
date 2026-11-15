@@ -16,6 +16,8 @@ const load = (): BeachMatch[] => { try { const v = JSON.parse(localStorage.getIt
 const store = (list: BeachMatch[]) => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* private window: the match lives until the tab closes */ } };
 const parse = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
 const fmtHit = (l: Line) => { const h = hitPct(l); return h === null ? "–" : (h < 0 ? "-" : "") + Math.abs(h).toFixed(3).replace(/^0/, ""); };
+/** Matches grouped by the day they were played, newest day first (a tournament day reads as one block with its record). */
+const byDay = (list: BeachMatch[]): [string, BeachMatch[]][] => { const g = new Map<string, BeachMatch[]>(); for (const m of list.slice().sort((a, b) => b.at - a.at)) { const k = new Date(m.at).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }); g.set(k, (g.get(k) || []).concat(m)); } return [...g]; };
 const day = (t: number) => new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 
 function App() {
@@ -67,10 +69,12 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
     </form>
     {list.length > 0 && <section className="card">
       <h2>Your matches</h2>
-      <ul className="bv-list">{list.map((m) => { const S = replay(m); return <li key={m.id}>
+      {byDay(list).map(([d, ms]) => { const rs = ms.map((m) => replay(m)), w = rs.filter((S) => S.over && S.winner === "us").length, l = rs.filter((S) => S.over && S.winner === "them").length;
+        return <div key={d} className="bv-day"><h3>{d}{w + l > 0 && <span className="muted"> · {w}–{l}</span>}</h3>
+      <ul className="bv-list">{ms.map((m) => { const S = replay(m); return <li key={m.id}>
         <a href={"#/m/" + m.id}><b>{m.us}</b> <span className="muted">vs</span> <b>{m.them}</b><span className="bv-meta">{day(m.at)} · {S.over ? (S.winner === "us" ? "Won " : "Lost ") + S.setsWon.us + "–" + S.setsWon.them : "In progress"}{scoreLine(S) ? " · " + scoreLine(S) : ""}{m.live ? " · sharing live" : ""}</span></a>
         <button className="btn sm" onClick={() => { if (confirm("Delete this match?")) onDelete(m.id); }} aria-label={`Delete ${m.us} vs ${m.them}`}>Delete</button>
-      </li>; })}</ul>
+      </li>; })}</ul></div>; })}
     </section>}
     <Totals list={list} />
   </>;

@@ -1173,6 +1173,7 @@ const scenarios = {
     ok("the match is still there after a reload", (await p.locator(".bv-set").innerText()) === "Final");
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("finished matches are listed on the beach home page", (await p.locator(".bv-list li").innerText()).includes("Won 2–0"));
+    ok("matches are grouped by day with the day's record", (await p.locator(".bv-day").count()) === 1 && /· 1–0/.test(await p.locator(".bv-day h3").innerText()));
     await p.goto(U + "beach/#/m/" + (await p.evaluate(() => JSON.parse(localStorage.getItem("fc-beach"))[0].id))); await p.waitForTimeout(300);
     await p.evaluate(() => { navigator.share = undefined; navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
     await p.getByRole("button", { name: "Share link" }).click(); await p.waitForTimeout(200);

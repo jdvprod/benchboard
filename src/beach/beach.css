@@ -74,3 +74,4 @@ body{padding-left:0}
 .bv-livetag{font:700 12px var(--display);letter-spacing:.06em;background:var(--bad);color:#fff;border-radius:999px;padding:3px 10px}
 .bv-livetag.off{background:var(--surface-2);color:var(--muted);border:1px solid var(--line)}
 @media print{.bv-live,.bv-golive{display:none}}
+.bv-day+.bv-day{margin-top:14px}.bv-day h3{font:700 15px var(--display);margin:0 0 4px}
