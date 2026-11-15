@@ -17,6 +17,7 @@ import { shareFinalGraphic } from "../stats/finalGraphic";
 import { recapText } from "../stats/recap";
 import { RecapVideo } from "../stats/RecapDialog";
 import { NextMatchStatus } from "../matchup/Availability";
+import { WhatsNew } from "../../app/whatsNew";
 import { liveUrlFor } from "../../cloud/CloudCard";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -54,6 +55,7 @@ export function Home() {
     </div>
     <TournamentToday />
     <Setup />
+    {!t.sample && <WhatsNew />}
     <div className="home-top">
       <section className="card home-next">
         <div className="label">Next match</div>

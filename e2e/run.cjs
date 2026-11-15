@@ -1254,6 +1254,12 @@ const scenarios = {
   async tryouts(browser) {
     const A = await newPage(browser, { cloud: false });
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
+    await go(A, "track"); await A.waitForTimeout(300);
+    ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
+    await A.locator(".news-card").getByRole("button", { name: "Open the playbook" }).click(); await A.locator(".pb").waitFor({ timeout: 5000 }).catch(() => {});
+    ok("and its links go straight there", (await A.locator(".pb").count()) === 1);
+    await go(A, "track"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
+    ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
     await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH 10th\n13 Ava Ramirez S Jr\nLily Torres L\n15 Zoe Grant MB"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
     ok("tryout players are added from a pasted list, numbered when they have no bib", (await A.locator("table tbody tr").count()) === 4 && (await A.getByLabel("Bib for Lily Torres").inputValue()) === "14");
