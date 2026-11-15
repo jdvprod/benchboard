@@ -759,6 +759,14 @@ const scenarios = {
     for (let i = 0; i < 4; i++) { await p.waitForTimeout(1200); await p.keyboard.type("7"); await p.waitForTimeout(860); await p.keyboard.press(i === 2 ? "a" : "k"); await p.keyboard.press("Escape"); }
     await go(p, "stats"); await p.getByRole("button", { name: "One match", exact: true }).click(); await p.getByRole("button", { name: "Film", exact: true }).click();
     await p.getByLabel("Video link").fill(U + "__fixtures/match.webm"); await p.getByLabel("Time of first serve in the video").fill("0:12"); await p.getByLabel("Time of first serve in the video").press("Tab"); await p.waitForTimeout(300);
+    // the recap video picks up plays from the film
+    await p.getByRole("button", { name: "Recap video" }).click(); await p.waitForTimeout(800);
+    if (process.env.QASHOT) { await p.waitForTimeout(9500); await p.locator(".rv-cv").screenshot({ path: process.env.QASHOT }); }
+    ok("recap video offers plays from the match film", (await p.getByLabel("Include plays from the match film (no sound)").isChecked()) && /\d plays? from the film/.test(await p.locator(".rv-side").innerText()), await p.locator(".rv-side").innerText());
+    { const rv = await download(p, () => p.getByRole("button", { name: "Make the video" }).click(), 90000); ok("recap video with plays records to a file", /recap\.(webm|mp4)$/.test(rv.name) && rv.size > 200000, `${rv.name} ${rv.size} bytes`); }
+    await p.getByLabel("Include plays from the match film (no sound)").uncheck(); await p.waitForTimeout(300);
+    ok("plays can be left out of the recap", !/from the film/.test(await p.locator(".rv-side p").first().innerText()));
+    await p.keyboard.press("Escape");
     await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300);
     await p.getByRole("button", { name: "Make highlight video" }).click(); await p.waitForTimeout(300);
     const items = p.locator(".reel-list li");
