@@ -901,3 +901,16 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 
 .pb-share{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;font-size:14px;font-weight:600}.pb-share .muted{font-weight:400}
 .pb-shared{font-size:12px;font-weight:600;opacity:.7}
+/* club calendar, clashes, leaders, announce */
+.chip-check{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:5px 12px;min-height:36px;font-size:13.5px;font-weight:600;background:var(--surface);cursor:pointer}
+.club-pick{border:0;padding:0;margin:0;display:flex;flex-wrap:wrap;gap:6px}.club-pick legend{margin-bottom:6px}
+.club-clash{border-color:var(--bad);display:grid;gap:6px}.club-clash ul{margin:0;padding-left:18px;font-size:14px}
+.club-cal{display:grid;gap:14px}
+.club-day h3{margin:0 0 6px;font-family:var(--display);font-size:17px}
+.club-day ul{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+.club-ev{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line);font-size:14px}.club-ev:first-child{border-top:0}
+.club-ev .t{color:var(--muted);font-size:13px}.club-ev .w small{color:var(--muted)}
+.club-ev .k{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--surface-2);color:var(--muted)}
+.club-ev .k.match{background:var(--us-soft);color:var(--ink)}.club-ev .k.tournament{background:var(--ink);color:var(--bg)}
+.club-ev.clash{box-shadow:inset 3px 0 0 var(--bad)}.club-ev.clash .k{color:var(--bad)}
+@media (max-width:560px){.club-ev{grid-template-columns:70px minmax(0,1fr)}.club-ev .k{grid-column:2;justify-self:start}}

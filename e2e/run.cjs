@@ -1180,6 +1180,33 @@ const scenarios = {
     await p.context().setOffline(false);
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
   },
+  async club(browser) {
+    const A = await newPage(browser, { cloud: false });
+    await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
+    await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Central 10:00 AM\n12/6 @ Buchanan 6:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
+    await go(A, "team/new"); await A.getByLabel("Team name").fill("Clovis 15 Blue"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
+    await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Fresno 11:00 AM\n12/5 vs Clovis West 3:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
+    ok("with two teams the team menu offers the club view", (await A.locator("select[aria-label='Team'] option[value='__club']").count()) >= 1);
+    await go(A, "club"); await A.waitForTimeout(500);
+    ok("club shows every team", (await A.locator(".club-card").count()) === 2 && /2 teams/.test(await A.locator(".pagehead").innerText()));
+    await A.getByRole("button", { name: "Calendar", exact: true }).click(); await A.waitForTimeout(200);
+    ok("the club calendar puts every team's matches together", (await A.locator(".club-ev").count()) === 4 && /Clovis 16 Black/.test(await A.locator(".club-cal").innerText()) && /Clovis 15 Blue/.test(await A.locator(".club-cal").innerText()));
+    ok("home matches that need the gym at the same time are flagged", (await A.locator(".club-clash li").count()) === 1 && /Clovis 16 Black Varsity and Clovis 15 Blue Varsity both need the gym within two hours/.test(await A.locator(".club-clash").innerText()) && (await A.locator(".club-ev.clash").count()) === 2);
+    { const f = await download(A, () => A.getByRole("button", { name: "Download calendar" }).click()); const ics = f.text();
+      ok("one calendar file holds every team's events", f.name === "Clovis calendar.ics" && (ics.match(/BEGIN:VEVENT/g) || []).length === 4 && /SUMMARY:Clovis 15 Blue Varsity: vs Fresno/.test(ics), f.name); }
+    await A.getByLabel("Matches").uncheck(); await A.waitForTimeout(100);
+    ok("event types can be hidden", (await A.locator(".club-ev").count()) === 0); await A.getByLabel("Matches").check();
+    await A.getByRole("button", { name: "Leaders", exact: true }).click(); await A.waitForTimeout(200);
+    ok("leaders explain what they need when nobody qualifies", /Not enough sets played yet/.test(await A.locator(".page").innerText()));
+    await A.getByRole("button", { name: "Announce", exact: true }).click(); await A.waitForTimeout(200);
+    ok("club announcements ask for an account", /Sign in to send an announcement to several teams/.test(await A.locator(".page").innerText()));
+    await A.getByRole("button", { name: "Calendar", exact: true }).click();
+    { const ax = await a11y(A); ok("club controls all have names", !ax.length, ax.join(" | ")); }
+    await A.setViewportSize({ width: 390, height: 844 }); await A.waitForTimeout(200);
+    ok("the club calendar fits a phone", (await overflow(A)) <= 0);
+    if (process.env.QASHOT6) await A.screenshot({ path: process.env.QASHOT6, fullPage: true });
+    ok("no errors on the club page", A.errors.length === 0, A.errors.join("; "));
+  },
   async coachtools(browser) {
     const A = await newPage(browser);
     await go(A, "sample"); await A.waitForFunction(() => !location.hash.includes("sample"), null, { timeout: 8000 }).catch(() => {}); await A.waitForTimeout(800);
