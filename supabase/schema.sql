@@ -213,7 +213,9 @@ begin
     -- gamecast links the coach shared for this team's matches, so the season page can send families to the live game
     'live', coalesce((select jsonb_agg(jsonb_build_object('matchId', match_id, 'code', code)) from live_shares where team_id = s.team_id), '[]'::jsonb),
     -- upcoming practices: date, start time and title only (the drills stay with the coaches)
-    'practices', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'date', data->>'date', 'start', data->>'start', 'title', left(coalesce(data->>'title', ''), 80)) order by data->>'date', data->>'start')
+    'practices', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'date', data->>'date', 'start', data->>'start', 'title', left(coalesce(data->>'title', ''), 80),
+                             -- the blocks too when the coach chose to show the plan: names and minutes only
+                             'plan', case when data->>'share' = 'true' then (select jsonb_agg(jsonb_build_object('title', left(coalesce(b->>'title', ''), 60), 'minutes', b->'minutes')) from jsonb_array_elements(coalesce(data->'blocks', '[]'::jsonb)) b) end) order by data->>'date', data->>'start')
                            from records where store = 'plans' and team_id = s.team_id and not deleted and coalesce(data->>'status', '') <> 'done' and data->>'date' >= to_char(now() at time zone 'America/Los_Angeles' - interval '1 day', 'YYYY-MM-DD')), '[]'::jsonb),
     'at', now()
   ) into out;
@@ -980,8 +982,8 @@ language sql security definer set search_path = public as $$ delete from tryouts
 revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) from public, anon;
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
--- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 26 $$;
+-- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
+create or replace function public.schema_version() returns int language sql immutable as $$ select 27 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

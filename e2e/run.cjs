@@ -821,6 +821,11 @@ const scenarios = {
     await A.reload(); await A.waitForTimeout(1500);
     await A.locator(".att .mu-avail summary").click().catch(() => {});
     ok("the coach sees who may miss practice on the plan", /Players who may miss it: #7 Maya/.test(await A.locator(".att .mu-avail").innerText().catch(() => "")), await A.locator(".att").innerText().catch(() => "none"));
+    // the coach shows the plan; families see the blocks with start times (not the notes)
+    await A.getByRole("button", { name: "+ Custom block" }).click(); await A.getByLabel(/Show this plan to the team on Floorcall Live/).check(); await A.waitForTimeout(2800);
+    await P.reload(); await P.waitForTimeout(1200);
+    { const pl = P.locator(".lv-games li", { hasText: "Practice" }).locator(".lv-plan"); await pl.locator("summary").click().catch(() => {});
+      ok("a shown practice plan lists its blocks for the team", (await pl.count()) === 1 && (await pl.locator("li").count()) > 0, await P.locator(".lv-games li", { hasText: "Practice" }).innerText().catch(() => "")); }
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },

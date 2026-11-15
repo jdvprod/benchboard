@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "26" "schema version is reported"
+check "select schema_version();" "27" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -198,6 +198,10 @@ expect "$(as $D "select tryout_open('$TC') is null;")" "t" "unsharing ends it fo
 q -c "insert into records (store, id, team_id, data, u) values ('plans', 'pl1', 't3', '{\"id\":\"pl1\",\"teamId\":\"t3\",\"date\":\"2099-01-05\",\"start\":\"18:00\",\"title\":\"Serve receive\",\"status\":\"planned\",\"blocks\":[{\"drill\":\"secret\"}]}', 1);" >/dev/null
 expect "$(q -c "set role anon; select season_view('P3P3P3')->'practices'->0->>'title';")" "Serve receive" "upcoming practices are on the team page"
 expect "$(q -c "set role anon; select (season_view('P3P3P3')->'practices'->0) ? 'blocks';")" "f" "but not the drills"
+expect "$(q -c "set role anon; select season_view('P3P3P3')->'practices'->0->'plan' = 'null'::jsonb;")" "t" "the plan stays private unless the coach shows it"
+q -c "update records set data = data || '{\"share\":true,\"blocks\":[{\"title\":\"Serve receive\",\"minutes\":20,\"notes\":\"secret\"}]}' where id = 'pl1';" >/dev/null
+expect "$(q -c "set role anon; select season_view('P3P3P3')->'practices'->0->'plan'->0->>'title';")" "Serve receive" "a shown plan lists its blocks"
+expect "$(q -c "set role anon; select (season_view('P3P3P3')->'practices'->0->'plan'->0) ? 'notes';")" "f" "without the coach's notes"
 # volunteer jobs: families sign up for a match's jobs; counts for followers, names for the team's coaches
 as $D "select job_take('p3p3p3', 'sc1', 'line', true);" >/dev/null
 as $E "select job_take('P3P3P3', 'sc1', 'line', true);" >/dev/null

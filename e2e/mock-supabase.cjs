@@ -72,7 +72,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 26);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 27);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -86,7 +86,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
         matches: ms.map((m) => ({ id: m.id, opp: m.opp, date: m.date, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, status: m.status, event: m.event, site: m.site, imported: m.imported ? { season: m.imported.season } : null, tournamentId: m.tournamentId, oppLogo: pubUrl(m.oppLogo), oppRoster: m.oppRoster })),
         logs: R.filter((r) => r.store === "logs" && ids.has(r.data.matchId)).map((r) => ({ matchId: r.data.matchId, events: pubEvents(r.data.events) })),
         players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), live: [...shares.values()].filter((x) => x.team_id === s.team_id).map((x) => ({ matchId: x.match_id, code: x.code })),
-        practices: R.filter((r) => r.store === "plans" && r.data.status !== "done" && r.data.date >= new Date(Date.now() - 864e5).toISOString().slice(0, 10)).map((r) => ({ id: r.data.id, date: r.data.date, start: r.data.start, title: String(r.data.title || "").slice(0, 80) })).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)), at: new Date().toISOString() });
+        practices: R.filter((r) => r.store === "plans" && r.data.status !== "done" && r.data.date >= new Date(Date.now() - 864e5).toISOString().slice(0, 10)).map((r) => ({ id: r.data.id, date: r.data.date, start: r.data.start, title: String(r.data.title || "").slice(0, 80), plan: r.data.share ? (r.data.blocks || []).map((b) => ({ title: String(b.title || "").slice(0, 60), minutes: b.minutes })) : null })).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)), at: new Date().toISOString() });
     }
     if (p === "/rest/v1/app_errors" && req.method === "POST") { if (!b?.message || b.message.length > 300) return send(res, 403, { message: "row-level security" }); appErrors.push({ ...b, uid: me, at: new Date().toISOString() }); return send(res, 201); }
     if (p === "/__mock/errors") return send(res, 200, appErrors);

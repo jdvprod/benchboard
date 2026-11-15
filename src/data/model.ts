@@ -162,6 +162,8 @@ export interface PracticePlan {
   blocks: PlanBlock[]; notes: string; status: "planned" | "done"; createdAt: number;
   /** Who was at practice: present, late or absent (missing = not taken). */
   attendance?: Record<string, "in" | "late" | "out">;
+  /** show the blocks (names and minutes) to the team on Floorcall Live */
+  share?: boolean;
 }
 
 export interface Board { id: string; teamId: string; name: "hit" | "serve" | "def"; strokes: Stroke[] }

@@ -134,6 +134,7 @@ function PlanEditor({ plan, onDelete }: { plan: PracticePlan; onDelete: () => vo
         <label className="field"><span className="label">Start</span><input type="time" value={plan.start} onChange={(e) => set({ start: e.target.value })} /></label>
         <div className="field"><span className="label">Total</span><b style={{ fontSize: 20, fontFamily: "var(--display)" }}>{total} min · ends {addMin(plan.start, total)}</b></div>
       </div>
+      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={!!plan.share} onChange={(e) => set({ share: e.target.checked })} /> Show this plan to the team on Floorcall Live <span className="muted">(block names and minutes; your notes stay private)</span></label>
       {total > 0 && <div className="timeline" aria-label="Time by category">{plan.blocks.map((b) => <span key={b.id} title={`${b.title} · ${b.minutes} min`} style={{ width: (100 * b.minutes) / total + "%", background: catColor(b.category) }} />)}</div>}
       {plan.blocks.map((b, i) => { const start = clock; clock += b.minutes; return <div key={b.id} className={"block " + (b.done ? "done" : "")}>
         <div className="time">{addMin(plan.start, start)}</div>

@@ -110,8 +110,8 @@ const addDays = (iso: string, n: number) => { const x = new Date(iso + "T12:00")
 function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code: string; all?: boolean }) {
   const today = todayISO();
   // matches and practices together; practices show on the full schedule (the home tab keeps to matches)
-  type Up = { id: string; date: string; time: string; opp: string; site: string; event: string; jobs?: any[]; practice?: boolean };
-  const upcoming: Up[] = [...(d.team?.schedule || []).map((x) => x as Up), ...(all ? (d.practices || []).map((p) => ({ id: p.id, date: p.date, time: p.start, opp: p.title, site: "", event: "", practice: true })) : [])]
+  type Up = { id: string; date: string; time: string; opp: string; site: string; event: string; jobs?: any[]; practice?: boolean; plan?: { title: string; minutes: number }[] | null };
+  const upcoming: Up[] = [...(d.team?.schedule || []).map((x) => x as Up), ...(all ? (d.practices || []).map((p) => ({ id: p.id, date: p.date, time: p.start, opp: p.title, site: "", event: "", practice: true, plan: p.plan })) : [])]
     .filter((x) => x.date >= today).sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99"))).slice(0, all ? 60 : 3);
   const R = useRsvps(code), J = useJobs(code);
   const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
@@ -119,7 +119,7 @@ function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code:
     {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
       <RsvpFor R={R} players={d.players} />
-      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span>{x.practice ? <b className="lv-prac">{tr("Practice")}{x.opp && !/^practice$/i.test(x.opp) ? <span className="lv-ev"> · {x.opp}</span> : null}</b> : <b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b>}<span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.practice ? tr("Practice") : x.opp} R={R} /><JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>
+      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span>{x.practice ? <b className="lv-prac">{tr("Practice")}{x.opp && !/^practice$/i.test(x.opp) ? <span className="lv-ev"> · {x.opp}</span> : null}</b> : <b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b>}<span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.practice ? tr("Practice") : x.opp} R={R} />{x.practice && x.plan && x.plan.length > 0 && <PlanList start={x.time} plan={x.plan} />}<JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>
       <RsvpSignIn R={R} team={d.team?.name || tr("the team")} /></section>}
     <section className="lv-card"><div className="lv-h"><h2>{tr("Results")}</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>{tr("All results ›")}</a>}</div>
       {games.length ? <ul className="lv-games">{games.map((g) => { const r = resultOf(g.R), live = isLive(g); return <li key={g.m.id}><a href={`#/t/${code}/m/${g.m.id}`}>
@@ -165,4 +165,14 @@ function PlayerSeason({ p, games, team, season, back }: { p: LPlayer; games: Gam
       <tbody>{rows.map(({ g, s }) => <tr key={g.m.id}><td className="l">{fmtDay(g.m.date)}</td><td className="l">{g.m.opp}</td><td>{s!.K}</td><td>{s!.TA ? fmtHit(hitting(s!)) : "–"}</td><td>{s!.SA}</td><td>{s!.R ? fmtAvg(passAvg(s!)) : "–"}</td><td>{s!.D}</td><td>{fmtNum(blocks(s!))}</td><td>{s!.AST}</td></tr>)}</tbody>
     </table></div> : <p className="lv-note">{tr("No stats yet this season.")}</p>}</section>
   </>;
+}
+
+/** A practice plan the coach chose to show: each block with its start time. */
+function PlanList({ start, plan }: { start: string; plan: { title: string; minutes: number }[] }) {
+  const mins = (hhmm: string) => { const m = /^(\d{1,2}):(\d{2})/.exec(hhmm || ""); return m ? +m[1] * 60 + +m[2] : null; };
+  const fmt = (x: number) => { const h = Math.floor(x / 60) % 24; return `${((h + 11) % 12) + 1}:${String(x % 60).padStart(2, "0")}`; };
+  let t = mins(start); const total = plan.reduce((a, b) => a + (Number(b.minutes) || 0), 0);
+  return <details className="lv-plan"><summary>{tr("Practice plan")} · {total} min</summary>
+    <ol>{plan.map((b, i) => { const at = t; t = t === null ? null : t + (Number(b.minutes) || 0); return <li key={i}><span className="lv-note">{at === null ? "" : fmt(at)}</span><b>{b.title}</b><span className="lv-note">{Number(b.minutes) || 0} min</span></li>; })}</ol>
+  </details>;
 }
