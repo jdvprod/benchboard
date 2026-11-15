@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mergeTryout, newTryout, parseCandidates, rank, tryoutCsv } from "../src/features/tryouts/tryouts";
+import { mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, tryoutCsv } from "../src/features/tryouts/tryouts";
 
 let n = 0; const id = () => "c" + ++n;
 
@@ -40,4 +40,12 @@ test("tryouts: CSV for the club", () => {
   const csv = tryoutCsv(t).split("\n");
   assert.equal(csv[0], "Rank,Bib,Name,Grade,Position,Score,Serve,Evaluators,Decision,Note");
   assert.equal(csv[1], '1,1,"Ann ""Annie"" Lee",,,4.00,4.00,1,offer,');
+});
+
+test("tryouts: a paper rating sheet, sorted by bib, with a box per skill", () => {
+  const t = newTryout("16U <tryouts>", "2026-11-20", "t1"); t.skills = ["Serve", "Pass"]; t.candidates = parseCandidates("15 Zoe\n3 Ann", [], id);
+  const h = ratingSheetHtml(t, "Pat");
+  assert.match(h, /16U &lt;tryouts&gt;: rating sheet/); assert.match(h, /Evaluator: Pat/);
+  assert.ok(h.indexOf(">3<") < h.indexOf(">15<"), "sorted by bib");
+  assert.equal((h.match(/class="box"/g) || []).length, 4);
 });

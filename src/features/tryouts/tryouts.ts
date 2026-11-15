@@ -76,3 +76,17 @@ export function tryoutCsv(t: Tryout): string {
   const head = ["Rank", "Bib", "Name", "Grade", "Position", "Score", ...t.skills, "Evaluators", "Decision", "Note"];
   return [head.join(","), ...rank(t).map((r, i) => [String(i + 1), r.c.bib, q(r.c.name), q(r.c.grade), r.c.pos, f(r.score), ...t.skills.map((k) => f(r.bySkill[k])), String(r.evaluators), r.c.decision, q(r.c.note)].join(","))].join("\n") + "\n";
 }
+
+/** A paper rating sheet for evaluators: one row per player, a box per skill, room for a note. */
+export function ratingSheetHtml(t: Tryout, evaluator = ""): string {
+  const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+  const rows = t.candidates.slice().sort((a, b) => (parseInt(a.bib) || 0) - (parseInt(b.bib) || 0) || a.name.localeCompare(b.name));
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${esc(t.name)} rating sheet</title><style>
+body{font:12px/1.3 Arial,sans-serif;margin:0}h1{font-size:18px;margin:0 0 2px}p{margin:0 0 10px;color:#444}
+table{border-collapse:collapse;width:100%}th,td{border:1px solid #000;padding:5px 4px;text-align:center}th{font-size:11px;background:#eee}
+td.n{text-align:left;white-space:nowrap}td.b{font-weight:700;width:34px}td.box{width:44px}td.note{width:28%}tr{page-break-inside:avoid}@page{margin:10mm}
+</style></head><body><h1>${esc(t.name)}: rating sheet</h1><p>Evaluator: ${esc(evaluator) || "________________"} · Rate 1 (needs work) to 5 (excellent) · ${t.candidates.length} players</p>
+<table><thead><tr><th>Bib</th><th>Player</th><th>Pos</th>${t.skills.map((k) => `<th>${esc(k)}</th>`).join("")}<th>Note</th></tr></thead><tbody>
+${rows.map((c) => `<tr><td class="b">${esc(c.bib)}</td><td class="n">${esc(c.name)}</td><td>${esc(c.pos)}</td>${t.skills.map(() => '<td class="box"></td>').join("")}<td class="note"></td></tr>`).join("\n")}
+</tbody></table></body></html>`;
+}

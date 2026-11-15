@@ -8,7 +8,7 @@ import { go } from "../../app/router";
 import { Card, ConfirmButton, download, fmtDate, Seg } from "../../ui/kit";
 import { JoinTryout, StaffCard, useEvaluatorSync, useStaffPublish } from "./TryoutShare";
 export { JoinTryout };
-import { Candidate, Decision, mergeTryout, newTryout, parseCandidates, rank, Tryout, tryoutCsv } from "./tryouts";
+import { Candidate, Decision, mergeTryout, newTryout, parseCandidates, rank, ratingSheetHtml, Tryout, tryoutCsv } from "./tryouts";
 
 const KEY = "tryouts";
 const loadAll = (): Tryout[] => (get("kv", KEY)?.value as Tryout[]) || [];
@@ -81,7 +81,7 @@ function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) 
       <form className="row" style={{ marginTop: 8 }} onSubmit={(e) => { e.preventDefault(); const f = (e.target as HTMLFormElement).elements.namedItem("sk") as HTMLInputElement; const v = f.value.trim().slice(0, 30); if (v && !t.skills.includes(v)) onChange({ ...t, skills: t.skills.concat(v) }); f.value = ""; }}>
         <input name="sk" className="input" placeholder="Another skill" aria-label="Another skill" /><button className="btn sm">Add skill</button></form>
     </Card>
-    {t.candidates.length > 0 && <Card title={`Trying out (${t.candidates.length})`} className="span2">
+    {t.candidates.length > 0 && <Card title={`Trying out (${t.candidates.length})`} className="span2" actions={<button className="btn sm" onClick={() => printSheet(t)}>Print rating sheet</button>}>
       <div className="tbl"><table><thead><tr><th>Bib</th><th className="l">Name</th><th>Pos</th><th>Grade</th><th className="l">Note</th><th /></tr></thead>
         <tbody>{t.candidates.map((c) => <tr key={c.id}>
           <td><input className="input ty-bib" aria-label={`Bib for ${c.name}`} value={c.bib} onChange={(e) => set(c, { bib: e.target.value.slice(0, 4) })} /></td>
@@ -161,4 +161,11 @@ function Rankings({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout) => voi
     </Card>}
     <p className="keys">Score is the average of each evaluator's weighted rating. "Split" marks players the evaluators saw very differently: worth another look.</p>
   </div>;
+}
+
+/** Paper backup for evaluators who'd rather write: opens the sheet to print (or saves it if pop-ups are blocked). */
+function printSheet(t: Tryout) {
+  const html = ratingSheetHtml(t, myName()), w = window.open("", "_blank");
+  if (w) { w.document.open(); w.document.write(html); w.document.close(); w.focus(); setTimeout(() => { try { w.print(); } catch { /* they can print from the page */ } }, 300); return; }
+  download(`${t.name} rating sheet.html`.replace(/[^\w\- .]+/g, ""), html, "text/html"); toast("Saved the sheet. Open it to print.");
 }
