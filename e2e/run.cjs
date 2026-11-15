@@ -746,6 +746,12 @@ const scenarios = {
     { const ax = await a11y(P); ok("availability buttons all have names", !ax.length, ax.join(" | ")); ok("availability fits a phone", (await overflow(P)) <= 0); }
     await go(A, "matchup"); await A.waitForTimeout(700);
     ok("the coach sees how many are going", /1 going/.test(await A.locator(".mu-avail summary").first().innerText().catch(() => "")));
+    // a parent answers for her player: the coach sees which player will miss it
+    await P.locator(".lv-rsvp-for select").selectOption({ label: "#7 Maya" }); await P.locator(".lv-rsvp").nth(1).getByRole("button", { name: "Can't go" }).click(); await P.waitForTimeout(500);
+    await A.reload(); await A.waitForTimeout(1500);
+    ok("the coach sees which player may miss a match", /1 player may miss it/.test(await A.locator(".mu-avail summary").nth(1).innerText().catch(() => "")));
+    await A.locator(".mu-avail summary").nth(1).click();
+    ok("by name and number, with who answered", /Players who may miss it: #7 Maya/.test(await A.locator(".mu-avail").nth(1).innerText()) && /Can't go: #7 Maya \(Dana Chen\)/.test(await A.locator(".mu-avail").nth(1).innerText()), await A.locator(".mu-avail").nth(1).innerText().catch(() => ""));
     await A.locator(".mu-avail summary").first().click();
     if (process.env.QASHOT2) await A.locator(".card", { hasText: "Schedule" }).first().screenshot({ path: process.env.QASHOT2.replace(".png", "-coach.png") });
     ok("and who", /Going: Dana Chen/.test(await A.locator(".mu-avail").first().innerText()));

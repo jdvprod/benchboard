@@ -12,15 +12,26 @@ const OPTS: [Answer, string][] = [["yes", "Going"], ["maybe", "Maybe"], ["no", "
 /** Loads the answers for a team page and saves changes; null until loaded (or when signed out). */
 export function useRsvps(code: string) {
   const [, bump] = useState(0), [all, setAll] = useState<Record<string, Tally> | null>(null), signed = !!currentUser(), on = cloudAvailable();
+  // which player this phone answers for (a parent picks their kid once); kept on this device
+  const key = "fc-rsvp-for-" + code.toUpperCase(), [forP, setForP] = useState<string>(() => { try { return localStorage.getItem(key) || ""; } catch { return ""; } });
+  const setFor = (p: string) => { setForP(p); try { localStorage.setItem(key, p); } catch { /* private window */ } };
   useEffect(() => { if (on && signed) rpc("rsvps_by_code", { c: code }).then((d) => setAll(d || {})).catch(() => setAll(null)); }, [code, signed, on]);
   const answer = (item: string, s: Answer) => {
     if (!all) return;
     const cur = all[item] || { yes: 0, no: 0, maybe: 0, mine: null }, next = cur.mine === s ? null : s, n = { ...cur, mine: next };
     if (cur.mine) n[cur.mine] = Math.max(0, n[cur.mine] - 1); if (next) n[next]++;
     setAll({ ...all, [item]: n }); // show it right away; put it back if the save fails
-    rpc("rsvp_set", { c: code, item, s: next || "" }).catch(() => setAll((a) => (a ? { ...a, [item]: cur } : a)));
+    rpc("rsvp_set", { c: code, item, s: next || "", p: forP || null }).catch(() => setAll((a) => (a ? { ...a, [item]: cur } : a)));
   };
-  return { on, signed, all, answer, refresh: () => bump((x) => x + 1) };
+  return { on, signed, all, answer, forP, setFor, refresh: () => bump((x) => x + 1) };
+}
+
+/** "Answering for": a parent says which player their answers are about, so the coach knows who is out. */
+export function RsvpFor({ R, players }: { R: ReturnType<typeof useRsvps>; players: { id: string; num: string; first: string }[] }) {
+  if (!R.on || !R.signed || !R.all) return null;
+  const named = players.filter((p) => p.first);
+  return <label className="lv-rsvp-for">{tr("Answering for")} <select value={R.forP} onChange={(e) => R.setFor(e.target.value)}>
+    <option value="">{tr("Just me")}</option>{named.map((p) => <option key={p.id} value={p.id}>#{p.num} {p.first}</option>)}</select></label>;
 }
 
 export function RsvpRow({ item, label, R }: { item: string; label: string; R: ReturnType<typeof useRsvps> }) {

@@ -1,7 +1,7 @@
 /** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
 import { useEffect, useRef } from "react";
 import { TeamPlays } from "./Plays";
-import { JobRow, RsvpRow, RsvpSignIn, useJobs, useRsvps } from "./Rsvp";
+import { JobRow, RsvpFor, RsvpRow, RsvpSignIn, useJobs, useRsvps } from "./Rsvp";
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
 import { GameScore } from "../ui/GameScore";
@@ -114,6 +114,7 @@ function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code:
   return <>
     {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
+      <RsvpFor R={R} players={d.players} />
       <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b><span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.opp} R={R} /><JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>
       <RsvpSignIn R={R} team={d.team?.name || tr("the team")} /></section>}
     <section className="lv-card"><div className="lv-h"><h2>{tr("Results")}</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>{tr("All results ›")}</a>}</div>

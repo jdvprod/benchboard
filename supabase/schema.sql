@@ -886,7 +886,33 @@ $$;
 revoke all on function public.job_take(text, text, text, boolean), public.jobs_by_code(text), public.jobs_for_team(text) from public, anon;
 grant execute on function public.job_take(text, text, text, boolean), public.jobs_by_code(text), public.jobs_for_team(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 23 $$;
+-- availability answers can say which player they are for, so coaches know who is out
+alter table public.team_rsvps add column if not exists player_id text check (player_id is null or char_length(player_id) <= 60);
+drop function if exists public.rsvp_set(text, text, text);
+create or replace function public.rsvp_set(c text, item text, s text, p text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare t text; nm text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to answer'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then raise exception 'That team page isn''t shared anymore'; end if;
+  if coalesce(s, '') = '' then delete from team_rsvps where team_id = t and item_id = item and user_id = auth.uid(); return; end if;
+  if s not in ('yes', 'no', 'maybe') then raise exception 'Choose going, can''t go or maybe'; end if;
+  if (select count(*) from team_rsvps where team_id = t and user_id = auth.uid()) >= 300 then raise exception 'Too many answers on this team'; end if;
+  select coalesce(nullif(raw_user_meta_data->>'name', ''), 'A follower') into nm from auth.users where id = auth.uid();
+  insert into team_rsvps (team_id, item_id, user_id, name, status, player_id) values (t, left(item, 60), auth.uid(), left(nm, 60), s, nullif(left(coalesce(p, ''), 60), ''))
+    on conflict (team_id, item_id, user_id) do update set status = excluded.status, name = excluded.name, player_id = excluded.player_id, updated_at = now();
+end $$;
+create or replace function public.rsvps_for_team(t text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select case when auth.uid() is not null and is_member(t) then coalesce((
+    select jsonb_agg(jsonb_build_object('item', item_id, 'name', name, 'status', status, 'player', player_id, 'at', updated_at) order by item_id, status desc, name)
+    from team_rsvps where team_id = t), '[]'::jsonb) end
+$$;
+revoke all on function public.rsvp_set(text, text, text, text) from public, anon;
+grant execute on function public.rsvp_set(text, text, text, text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 24 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

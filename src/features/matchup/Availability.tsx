@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
-import { team } from "../../data/store";
+import { player, team } from "../../data/store";
 import type { Job, ScheduleItem } from "../../data/model";
 
-export interface Rsvp { item: string; name: string; status: "yes" | "no" | "maybe"; at: string }
+export interface Rsvp { item: string; name: string; status: "yes" | "no" | "maybe"; player?: string | null; at: string }
 const LABEL = { yes: "Going", maybe: "Maybe", no: "Can't go" } as const;
 
 /** Bumps when the coach comes back to the app, so answers and sign-ups made meanwhile show up. */
@@ -21,9 +21,12 @@ export function useAvailability(): Rsvp[] | null {
 export function AvailabilityLine({ item, all }: { item: string; all: Rsvp[] | null }) {
   if (!all) return null;
   const mine = all.filter((r) => r.item === item); if (!mine.length) return null;
-  const by = (s: Rsvp["status"]) => mine.filter((r) => r.status === s).map((r) => r.name).sort();
+  const who = (r: Rsvp) => { const p = r.player ? player(r.player) : null; return p ? `#${p.num} ${p.first || ""}`.trim() + ` (${r.name})` : r.name; };
+  const by = (s: Rsvp["status"]) => mine.filter((r) => r.status === s).map(who).sort();
+  const out = mine.filter((r) => r.player && r.status !== "yes").map((r) => ({ p: player(r.player!), s: r.status })).filter((x) => x.p);
   return <details className="mu-avail">
-    <summary>{(["yes", "maybe", "no"] as const).filter((s) => by(s).length).map((s) => `${by(s).length} ${LABEL[s].toLowerCase()}`).join(" · ")}</summary>
+    <summary>{out.length ? `${out.length} ${out.length === 1 ? "player" : "players"} may miss it · ` : ""}{(["yes", "maybe", "no"] as const).filter((s) => by(s).length).map((s) => `${by(s).length} ${LABEL[s].toLowerCase()}`).join(" · ")}</summary>
+    {out.length > 0 && <p className="mu-out"><b>Players who may miss it:</b> {out.map((x) => `#${x.p!.num} ${x.p!.first}${x.s === "maybe" ? " (maybe)" : ""}`).join(", ")}</p>}
     {(["yes", "maybe", "no"] as const).map((s) => by(s).length > 0 && <p key={s}><b>{LABEL[s]}:</b> {by(s).join(", ")}</p>)}
   </details>;
 }
