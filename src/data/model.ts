@@ -150,7 +150,8 @@ export interface EventLog { id: string; matchId: string; device: string; events:
 export interface PlanItem { id: string; text: string; done?: boolean }
 export type OppRoster = Record<string, { name?: string; pos?: string }>;
 export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster }
-export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string }
+export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** volunteer jobs families can sign up for on Floorcall Live */ jobs?: Job[] }
+export interface Job { id: string; name: string; need: number }
 
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;
 export interface Drill { id: string; teamId: string; name: string; category: string; minutes: number; description: string; focus: string[] }

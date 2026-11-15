@@ -914,3 +914,7 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .club-ev .k.match{background:var(--us-soft);color:var(--ink)}.club-ev .k.tournament{background:var(--ink);color:var(--bg)}
 .club-ev.clash{box-shadow:inset 3px 0 0 var(--bad)}.club-ev.clash .k{color:var(--bad)}
 @media (max-width:560px){.club-ev{grid-template-columns:70px minmax(0,1fr)}.club-ev .k{grid-column:2;justify-self:start}}
+
+.mu-sched li:has(.mu-jobs){flex-wrap:wrap}
+.mu-jobs{flex:1 0 100%;font-size:13px;padding:2px 2px 4px}.mu-jobs summary{cursor:pointer;font-weight:600;color:var(--us)}
+.mu-jobs ul{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px}.mu-jobs li{display:flex;align-items:center;justify-content:space-between;gap:8px}

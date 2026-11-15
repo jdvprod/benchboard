@@ -837,7 +837,56 @@ end $$;
 revoke all on function public.plays_publish(text, jsonb), public.plays_by_code(text) from public, anon;
 grant execute on function public.plays_publish(text, jsonb), public.plays_by_code(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 22 $$;
+-- ---------- Volunteer jobs: the coach lists jobs for a match (line judge, scorebook, snacks); families sign up on Live ----------
+-- The jobs themselves travel with the published schedule; this keeps who signed up. Names are for the team's coaches.
+create table if not exists public.team_signups (
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  item_id text not null check (char_length(item_id) between 1 and 60),
+  job_id text not null check (char_length(job_id) between 1 and 40),
+  user_id uuid not null,
+  name text not null,
+  created_at timestamptz not null default now(),
+  primary key (team_id, item_id, job_id, user_id)
+);
+alter table public.team_signups enable row level security; -- through the functions below only
+
+create or replace function public.job_take(c text, item text, job text, take boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+declare t text; nm text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to volunteer'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then raise exception 'That team page isn''t shared anymore'; end if;
+  if not take then delete from team_signups where team_id = t and item_id = item and job_id = job and user_id = auth.uid(); return; end if;
+  if (select count(*) from team_signups where team_id = t and item_id = item and job_id = job) >= 10 then raise exception 'That job is full'; end if;
+  if (select count(*) from team_signups where team_id = t and user_id = auth.uid()) >= 200 then raise exception 'Too many sign-ups on this team'; end if;
+  select coalesce(nullif(raw_user_meta_data->>'name', ''), 'A volunteer') into nm from auth.users where id = auth.uid();
+  insert into team_signups (team_id, item_id, job_id, user_id, name) values (t, left(item, 60), left(job, 40), auth.uid(), left(nm, 60)) on conflict do nothing;
+end $$;
+
+-- Floorcall Live: how many signed up for each job, and whether you did (no names)
+create or replace function public.jobs_by_code(c text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare t text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to volunteer'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then return null; end if;
+  return coalesce((select jsonb_object_agg(item_id || '/' || job_id, jsonb_build_object('n', n, 'mine', mine)) from (
+    select item_id, job_id, count(*) n, bool_or(user_id = auth.uid()) mine from team_signups where team_id = t group by item_id, job_id) x), '{}'::jsonb);
+end $$;
+
+-- the coach app: who signed up for what
+create or replace function public.jobs_for_team(t text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select case when auth.uid() is not null and is_member(t) then coalesce((
+    select jsonb_agg(jsonb_build_object('item', item_id, 'job', job_id, 'name', name, 'at', created_at) order by item_id, job_id, created_at)
+    from team_signups where team_id = t), '[]'::jsonb) end
+$$;
+revoke all on function public.job_take(text, text, text, boolean), public.jobs_by_code(text), public.jobs_for_team(text) from public, anon;
+grant execute on function public.job_take(text, text, text, boolean), public.jobs_by_code(text), public.jobs_for_team(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 23 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

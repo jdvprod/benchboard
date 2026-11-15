@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "22" "schema version is reported"
+check "select schema_version();" "23" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -179,6 +179,17 @@ expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "2" "the co
 expect "$(as $E "select rsvps_for_team('t3') is null;")" "t" "people off the team can't see names"
 as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
 expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
+# volunteer jobs: families sign up for a match's jobs; counts for followers, names for the team's coaches
+as $D "select job_take('p3p3p3', 'sc1', 'line', true);" >/dev/null
+as $E "select job_take('P3P3P3', 'sc1', 'line', true);" >/dev/null
+as $E "select job_take('P3P3P3', 'sc1', 'line', true);" >/dev/null
+expect "$(as $D "select jobs_by_code('P3P3P3')->'sc1/line'->>'n';")" "2" "sign-ups are counted once per person"
+expect "$(as $D "select jobs_by_code('P3P3P3')->'sc1/line'->>'mine';")" "true" "and you see that you signed up"
+expect "$(as $B "select jobs_for_team('t3')->0->>'job';")" "line" "the coach sees who signed up for what"
+expect "$(as $E "select jobs_for_team('t3') is null;")" "t" "people off the team can't see the names"
+as $D "select job_take('P3P3P3', 'sc1', 'line', false);" >/dev/null
+expect "$(as $E "select jobs_by_code('P3P3P3')->'sc1/line'->>'n';")" "1" "a volunteer can drop out"
+expect "$(q -c "set role anon; select jobs_by_code('P3P3P3');" 2>&1 | grep -c 'permission denied')" "1" "volunteering needs an account"
 # team playbook: coaches share plays; signed-in followers read them by the team page code
 as $B "select plays_publish('t3', '[{\"id\":\"pl1\",\"name\":\"Slide vs Central\"}]');" >/dev/null
 expect "$(as $D "select plays_by_code('p3p3p3')->0->>'name';")" "Slide vs Central" "a follower sees the plays the coaches shared"

@@ -353,3 +353,9 @@ p.lv-demo-link{margin:14px 0 6px;font-weight:600;font-size:14px}.lv-demo-link a{
 .lv-play-pick button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .lv-play-bar{display:flex;align-items:center;justify-content:space-between;gap:10px}.lv-play-bar b{font:700 20px var(--display)}
 .lv-play-note{margin:0;color:var(--muted)}
+
+/* volunteer jobs */
+.lv-jobs{grid-column:1/-1;display:grid;gap:6px;background:var(--surface-2);border-radius:10px;padding:8px 10px}
+.lv-jobs-h{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.lv-job{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:40px}.lv-job .btn{min-height:36px}
+.lv-job.mine b{color:var(--us)}

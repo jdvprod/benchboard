@@ -749,6 +749,16 @@ const scenarios = {
     await A.locator(".mu-avail summary").first().click();
     if (process.env.QASHOT2) await A.locator(".card", { hasText: "Schedule" }).first().screenshot({ path: process.env.QASHOT2.replace(".png", "-coach.png") });
     ok("and who", /Going: Dana Chen/.test(await A.locator(".mu-avail").first().innerText()));
+    // volunteer jobs: the coach asks for line judges; the parent signs up on Live; the coach sees her name
+    await A.locator(".mu-jobs summary").first().click(); await A.getByRole("button", { name: "+ Line judge ×2" }).first().click(); await A.waitForTimeout(2600);
+    ok("the coach adds a volunteer job to a match", /Volunteers: 0 of 2 filled/.test(await A.locator(".mu-jobs summary").first().innerText()));
+    await P.reload(); await P.waitForTimeout(1200);
+    ok("families see the job on the schedule", (await P.locator(".lv-job").count()) === 1 && /Line judge\s*0\/2/.test(await P.locator(".lv-job").innerText()), await P.locator(".lv-card").first().innerText().catch(() => ""));
+    await P.getByRole("button", { name: "Sign up for Line judge" }).click(); await P.waitForTimeout(600);
+    ok("a parent signs up", (await P.getByRole("button", { name: "Drop out of Line judge" }).count()) === 1 && /1\/2/.test(await P.locator(".lv-job").innerText()));
+    { const ax = await a11y(P); ok("volunteer sign-up controls all have names", !ax.length, ax.join(" | ")); }
+    await A.reload(); await A.waitForTimeout(1500); await A.locator(".mu-jobs summary").first().click();
+    ok("the coach sees who signed up", /1 of 2 filled/.test(await A.locator(".mu-jobs summary").first().innerText()) && /Line judge.*Dana Chen/s.test(await A.locator(".mu-jobs").first().innerText()));
     // playbook: the coach shares a play; a signed-in parent studies it on the team's Live page
     await go(A, "court"); await A.getByRole("button", { name: "Playbook", exact: true }).click(); await A.waitForTimeout(300);
     await A.getByRole("button", { name: "Slide", exact: true }).click(); await A.locator("input[aria-label='Play name']").fill("Slide vs Central"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(300);

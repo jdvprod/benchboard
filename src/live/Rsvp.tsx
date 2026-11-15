@@ -38,3 +38,31 @@ export function RsvpSignIn({ R, team }: { R: ReturnType<typeof useRsvps>; team: 
   return open ? <MiniAuth kind="parent" title={tr("Tell the coaches if you can make it")} t={tr} onIn={R.refresh} />
     : <button className="ma-link lv-rsvp-in" onClick={() => setOpen(true)}>{tr("Sign in to tell {team}'s coaches if you can make it", { team })}</button>;
 }
+
+/* ---------- volunteer jobs ---------- */
+export interface JobTally { n: number; mine: boolean }
+export function useJobs(code: string) {
+  const [all, setAll] = useState<Record<string, JobTally> | null>(null), [err, setErr] = useState(""), signed = !!currentUser(), on = cloudAvailable();
+  useEffect(() => { if (on && signed) rpc("jobs_by_code", { c: code }).then((d) => setAll(d || {})).catch(() => setAll(null)); }, [code, signed, on]);
+  const take = (item: string, job: string, yes: boolean) => {
+    if (!all) return; const k = item + "/" + job, cur = all[k] || { n: 0, mine: false };
+    setAll({ ...all, [k]: { n: Math.max(0, cur.n + (yes ? 1 : -1)), mine: yes } }); setErr("");
+    rpc("job_take", { c: code, item, job, take: yes }).catch((e) => { setAll((a) => (a ? { ...a, [k]: cur } : a)); setErr(e?.message || tr("Couldn't save. Check your connection.")); });
+  };
+  return { on, signed, all, take, err };
+}
+
+export function JobRow({ item, jobs, J }: { item: string; jobs: { id: string; name: string; need: number }[]; J: ReturnType<typeof useJobs> }) {
+  if (!jobs.length || !J.on || !J.signed || !J.all) return null;
+  return <div className="lv-jobs" role="group" aria-label={tr("Volunteer")}>
+    <span className="lv-jobs-h">{tr("Volunteers needed")}</span>
+    {jobs.map((j) => { const t = J.all![item + "/" + j.id] || { n: 0, mine: false }, full = t.n >= j.need && !t.mine;
+      return <div key={j.id} className={"lv-job" + (t.mine ? " mine" : "") + (t.n >= j.need ? " full" : "")}>
+        <span><b>{j.name}</b> <span className="lv-note">{Math.min(t.n, j.need)}/{j.need}</span></span>
+        {t.mine ? <button className="btn sm" onClick={() => J.take(item, j.id, false)} aria-label={tr("Drop out of {job}", { job: j.name })}>{tr("You're on it")} ✓</button>
+          : full ? <span className="lv-note">{tr("Covered")}</span>
+          : <button className="btn sm primary" onClick={() => J.take(item, j.id, true)} aria-label={tr("Sign up for {job}", { job: j.name })}>{tr("Sign up")}</button>}
+      </div>; })}
+    {J.err && <p className="lv-note" role="alert" style={{ color: "var(--bad)" }}>{J.err}</p>}
+  </div>;
+}
