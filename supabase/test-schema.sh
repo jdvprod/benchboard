@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "18" "schema version is reported"
+check "select schema_version();" "19" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -153,4 +153,18 @@ expect "$(asall $E "select post_update('$PID', null, true);" | grep -c "Only the
 as $B "select post_update('$PID', null, true);" >/dev/null
 expect "$(as $D "select jsonb_array_length(posts_by_code('P3P3P3'));")" "0" "a deleted announcement is gone"
 expect "$(q -c "insert into push_sent values ('$PID', 'post', 't3') returning kind;" | head -1)" "post" "announcements can be pushed once each"
+# availability: followers answer for a scheduled match; counts for everyone signed in, names for the team's coaches only
+as $D "select rsvp_set('p3p3p3', 'sc1', 'yes');" >/dev/null
+as $E "select rsvp_set('P3P3P3', 'sc1', 'maybe');" >/dev/null
+expect "$(as $D "select rsvps_by_code('P3P3P3')->'sc1'->>'yes';")" "1" "a follower's answer is counted"
+expect "$(as $D "select rsvps_by_code('P3P3P3')->'sc1'->>'mine';")" "yes" "and comes back as her own answer"
+expect "$(as $E "select rsvps_by_code('P3P3P3')->'sc1'->>'mine';")" "maybe" "another follower sees only their own answer"
+as $D "select rsvp_set('P3P3P3', 'sc1', 'no');" >/dev/null
+expect "$(as $D "select (rsvps_by_code('P3P3P3')->'sc1'->>'yes') || (rsvps_by_code('P3P3P3')->'sc1'->>'no');")" "01" "changing an answer replaces it"
+expect "$(asall $D "select rsvp_set('P3P3P3', 'sc1', 'later');" | grep -c 'Choose going')" "1" "only going, can't go or maybe are accepted"
+expect "$(q -c "set role anon; select rsvps_by_code('P3P3P3');" 2>&1 | grep -c 'permission denied')" "1" "availability needs an account"
+expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "2" "the coach sees who answered"
+expect "$(as $E "select rsvps_for_team('t3') is null;")" "t" "people off the team can't see names"
+as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
+expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
 echo "schema OK"

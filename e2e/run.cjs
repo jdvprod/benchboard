@@ -732,6 +732,23 @@ const scenarios = {
     await P.goto(teamUrl + "/schedule"); await P.waitForTimeout(800);
     { const f = await download(P, () => P.getByRole("button", { name: "Add to calendar" }).click()); const ics = f.text();
       ok("Add to calendar gives the upcoming matches", f.name.endsWith(".ics") && (ics.match(/BEGIN:VEVENT/g) || []).length === 2 && ics.includes("SUMMARY:Clovis North vs Central") && ics.includes("SUMMARY:Clovis North at Clovis West") && /DTSTART:\d{4}1201T180000/.test(ics), ics.slice(0, 400)); }
+    // availability: a parent says she can make the next match; the coach sees who answered
+    ok("signed out, the schedule invites families to answer", (await P.locator(".lv-rsvp-in").count()) === 1 && (await P.locator(".lv-rsvp").count()) === 0);
+    await P.locator(".lv-rsvp-in").click();
+    await P.getByLabel("Your name").fill("Dana Chen"); await P.getByLabel("Email", { exact: true }).fill("dana-rsvp@e2e.test"); await P.getByLabel("Password", { exact: true }).fill("parent-pass");
+    await P.locator(".ma-check input").first().check(); await P.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(1200);
+    ok("signed in, each upcoming match asks if you can make it", (await P.locator(".lv-rsvp").count()) === 2, String(await P.locator(".lv-rsvp").count()));
+    await P.locator(".lv-rsvp").first().getByRole("button", { name: "Going" }).click(); await P.waitForTimeout(500);
+    ok("an answer is counted and marked as yours", (await P.locator(".lv-rsvp").first().locator("button.yes.on .n").innerText()) === "1");
+    await P.reload(); await P.waitForTimeout(900);
+    if (process.env.QASHOT2) await P.screenshot({ path: process.env.QASHOT2 });
+    ok("the answer is still there after a reload", (await P.locator(".lv-rsvp").first().locator("button.yes.on").count()) === 1);
+    { const ax = await a11y(P); ok("availability buttons all have names", !ax.length, ax.join(" | ")); ok("availability fits a phone", (await overflow(P)) <= 0); }
+    await go(A, "matchup"); await A.waitForTimeout(700);
+    ok("the coach sees how many are going", /1 going/.test(await A.locator(".mu-avail summary").first().innerText().catch(() => "")));
+    await A.locator(".mu-avail summary").first().click();
+    if (process.env.QASHOT2) await A.locator(".card", { hasText: "Schedule" }).first().screenshot({ path: process.env.QASHOT2.replace(".png", "-coach.png") });
+    ok("and who", /Going: Dana Chen/.test(await A.locator(".mu-avail").first().innerText()));
     await P.goto(teamUrl.replace(/#.*$/, "")); await P.waitForTimeout(600);
     ok("Live home lists the teams this phone follows", (await P.locator(".lv-mine a", { hasText: "Clovis North" }).count()) === 1);
     // the coach finishes and texts a recap

@@ -1,4 +1,5 @@
 /** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
+import { RsvpRow, RsvpSignIn, useRsvps } from "./Rsvp";
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
 import { GameScore } from "../ui/GameScore";
@@ -102,11 +103,13 @@ const addDays = (iso: string, n: number) => { const x = new Date(iso + "T12:00")
 function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code: string; all?: boolean }) {
   const today = todayISO();
   const upcoming = (d.team?.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, all ? 50 : 3);
+  const R = useRsvps(code);
   const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
   return <>
     {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
-      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b><span className="lv-ev">{x.event}</span></li>)}</ul></section>}
+      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b><span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.opp} R={R} /></li>)}</ul>
+      <RsvpSignIn R={R} team={d.team?.name || tr("the team")} /></section>}
     <section className="lv-card"><div className="lv-h"><h2>{tr("Results")}</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>{tr("All results ›")}</a>}</div>
       {games.length ? <ul className="lv-games">{games.map((g) => { const r = resultOf(g.R), live = isLive(g); return <li key={g.m.id}><a href={`#/t/${code}/m/${g.m.id}`}>
         <span className="lv-date">{fmtDay(g.m.date)}</span>

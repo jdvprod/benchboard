@@ -673,7 +673,58 @@ end $$;
 revoke all on function public.post_send(text, text, boolean), public.post_update(uuid, boolean, boolean), public.posts_for_team(text), public.posts_by_code(text) from public, anon;
 grant execute on function public.post_send(text, text, boolean), public.post_update(uuid, boolean, boolean), public.posts_for_team(text), public.posts_by_code(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 18 $$;
+-- ---------- Availability: followers tell the coaches whether they can make each scheduled match ----------
+-- Names are for the team's coaches only; everyone else sees counts and their own answer.
+create table if not exists public.team_rsvps (
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  item_id text not null check (char_length(item_id) between 1 and 60),
+  user_id uuid not null,
+  name text not null,
+  status text not null check (status in ('yes', 'no', 'maybe')),
+  updated_at timestamptz not null default now(),
+  primary key (team_id, item_id, user_id)
+);
+alter table public.team_rsvps enable row level security; -- through the functions below only
+
+create or replace function public.rsvp_set(c text, item text, s text) returns void
+language plpgsql security definer set search_path = public as $$
+declare t text; nm text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to answer'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then raise exception 'That team page isn''t shared anymore'; end if;
+  if coalesce(s, '') = '' then delete from team_rsvps where team_id = t and item_id = item and user_id = auth.uid(); return; end if;
+  if s not in ('yes', 'no', 'maybe') then raise exception 'Choose going, can''t go or maybe'; end if;
+  if (select count(*) from team_rsvps where team_id = t and user_id = auth.uid()) >= 300 then raise exception 'Too many answers on this team'; end if;
+  select coalesce(nullif(raw_user_meta_data->>'name', ''), 'A follower') into nm from auth.users where id = auth.uid();
+  insert into team_rsvps (team_id, item_id, user_id, name, status) values (t, left(item, 60), auth.uid(), left(nm, 60), s)
+    on conflict (team_id, item_id, user_id) do update set status = excluded.status, name = excluded.name, updated_at = now();
+end $$;
+
+-- Floorcall Live: counts for each scheduled match and the signed-in person's own answer (no names)
+create or replace function public.rsvps_by_code(c text) returns jsonb
+language plpgsql security definer set search_path = public stable as $$
+declare t text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to answer'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then return null; end if;
+  return coalesce((select jsonb_object_agg(item_id, jsonb_build_object('yes', y, 'no', n, 'maybe', mb, 'mine', mine)) from (
+    select item_id, count(*) filter (where status = 'yes') y, count(*) filter (where status = 'no') n, count(*) filter (where status = 'maybe') mb,
+      max(status) filter (where user_id = auth.uid()) mine from team_rsvps where team_id = t group by item_id) x), '{}'::jsonb);
+end $$;
+
+-- the coach app: who answered what, for the team's coaches and staff
+create or replace function public.rsvps_for_team(t text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select case when auth.uid() is not null and is_member(t) then coalesce((
+    select jsonb_agg(jsonb_build_object('item', item_id, 'name', name, 'status', status, 'at', updated_at) order by item_id, status desc, name)
+    from team_rsvps where team_id = t), '[]'::jsonb) end
+$$;
+revoke all on function public.rsvp_set(text, text, text), public.rsvps_by_code(text), public.rsvps_for_team(text) from public, anon;
+grant execute on function public.rsvp_set(text, text, text), public.rsvps_by_code(text), public.rsvps_for_team(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 19 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

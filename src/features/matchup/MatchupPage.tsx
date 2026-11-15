@@ -1,6 +1,7 @@
 /** Matchups: the schedule, and everything you know about the next opponent from every time you've played them. */
 import { TheirRotations } from "../stats/StatsPage";
 import { parseSchedule } from "./parseSchedule";
+import { AvailabilityLine, useAvailability } from "./Availability";
 import { useState } from "react";
 import { ensureOpponent, get, setOppRoster, matchesOf, newMatch, oppKey, opponentsOf, patch, playerName, replayOf, setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
 import { Match, Opponent, PlanItem, ScheduleItem } from "../../data/model";
@@ -54,6 +55,7 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
   const [pasting, setPasting] = useState(false), [paste, setPaste] = useState("");
   const parsed = pasting ? parseSchedule(paste) : [];
   const save = (list: ScheduleItem[]) => setTeamPatch({ schedule: list });
+  const avail = useAvailability();
   const today = todayISO(), upcoming = items.filter((s) => s.date >= today), past = items.filter((s) => s.date < today);
   const start = (s: ScheduleItem) => { newMatch({ kind: "match", opp: s.opp, date: todayISO(), site: s.site, event: s.event, bestOf: t.settings.bestOf, serve: "us" }); save(items.filter((x) => x.id !== s.id)); setUi({ sel: null, panel: null, follow: null }); go("track"); };
   return <Card title="Schedule" actions={!adding && !pasting ? <div className="row" style={{ gap: 6 }}>{upcoming.length > 0 && <button className="btn sm ghost" onClick={() => { download(`${t.name} schedule.ics`.replace(/[^\w\- .]+/g, ""), scheduleIcs(upcoming, t.name), "text/calendar"); toast("Calendar file saved. Open it to add the games to your calendar, or send it to parents."); }}>Calendar</button>}<button className="btn sm" onClick={() => { setPasting(true); setAdding(false); }}>Paste schedule</button><button className="btn sm" onClick={() => { setAdding(true); setPasting(false); }}>Add match</button></div> : undefined}>
@@ -85,6 +87,7 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
         <button className="mu-sched-main" onClick={() => onOpen(s.opp)}><span className="d"><b>{new Date(s.date + "T12:00").toLocaleDateString([], { month: "short", day: "numeric" })}</b>{new Date(s.date + "T12:00").toLocaleDateString([], { weekday: "short" })}</span>
           <span className="o"><b>{s.site === "away" ? "at " : "vs "}{s.opp}</b><small>{[s.time && fmtTime(s.time), s.event].filter(Boolean).join(" · ") || (s.site ? s.site[0].toUpperCase() + s.site.slice(1) : "")}</small></span></button>
         <span className="row" style={{ flexWrap: "nowrap", gap: 4 }}>{s.date === today && <button className="btn sm primary" onClick={() => start(s)}>Start</button>}<ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => save(items.filter((x) => x.id !== s.id))}>✕</ConfirmButton></span>
+        <AvailabilityLine item={s.id} all={avail} />
       </li>; })}</ul> : !adding && <p className="empty">No upcoming matches. Add your schedule to get a matchup page before every game.</p>}
       {past.length > 0 && <p className="small muted">{past.length} past {past.length === 1 ? "entry" : "entries"} not started. <button className="btn sm ghost" onClick={() => save(upcoming)}>Clear</button></p>}
     </div>

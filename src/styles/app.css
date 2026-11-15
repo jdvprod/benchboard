@@ -889,3 +889,7 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .fr-grade.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.fr-grade.great.on{background:var(--us);border-color:var(--us);color:var(--accent-ink)}.fr-grade.work.on{background:var(--bad);border-color:var(--bad);color:#fff}
 .fr-who summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--us)}.fr-who-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .fr-who-list .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;min-height:34px;padding:3px 12px;font-size:13px;color:var(--ink)}.fr-who-list .chip.on{background:var(--us-soft);border-color:var(--us);font-weight:700}
+
+/* schedule: who can make it */
+.mu-sched li:has(.mu-avail){flex-wrap:wrap}
+.mu-avail{flex:1 0 100%;font-size:13px;padding:2px 2px 4px}.mu-avail summary{cursor:pointer;font-weight:600;color:var(--us)}.mu-avail p{margin:4px 0 0;color:var(--muted)}.mu-avail p b{color:var(--ink)}

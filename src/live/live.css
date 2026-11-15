@@ -336,3 +336,11 @@ p.lv-demo-link{margin:14px 0 6px;font-weight:600;font-size:14px}.lv-demo-link a{
 .lv-grade.great{background:var(--us-soft);border-color:var(--us)}.lv-grade.work{border-color:var(--bad);color:var(--bad)}
 .lv-for{font-size:12.5px;font-weight:600;color:var(--muted)}
 .lv-film-who{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin:4px 0}.lv-film-who select{min-height:38px;border:1px solid var(--line);border-radius:8px;background:var(--surface);padding:0 10px}
+
+/* availability: can you make it? */
+.lv-rsvp{grid-column:1/-1;display:flex;gap:6px}
+.lv-rsvp button{flex:1;min-height:40px;white-space:nowrap;padding:0 8px;border:1px solid var(--line);background:var(--surface);border-radius:999px;font-weight:600;font-size:13.5px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.lv-rsvp button .n{font-size:12px;font-weight:700;background:var(--surface-2);border-radius:999px;padding:0 7px;color:var(--muted)}
+.lv-rsvp button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.lv-rsvp button.yes.on{background:var(--us);border-color:var(--us);color:var(--accent-ink)}
+.lv-rsvp button.on .n{background:rgba(127,127,127,.3);color:inherit}
+.lv-rsvp-in{margin-top:10px}
