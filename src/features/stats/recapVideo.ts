@@ -14,7 +14,9 @@ import { reelMime } from "../../film/reel";
 export const RW = 1080, RH = 1920;
 export interface RecapData {
   us: string; them: string; wonUs: number; wonThem: number; final: boolean; date: string; event: string;
-  sets: { n: number; us: number; them: number; won: boolean }[];
+  sets: { n: number; us: number; them: number; won: boolean; /** a row label in place of "SET n" (season recaps list matches) */ label?: string }[];
+  /** A season recap rather than one match: the record, recent results and the season's leaders. */
+  season?: { name: string; matches: number };
   leaders: { name: string; num: string; v: number; label: string }[];
   nums: { v: string; label: string }[];
   /** Plays cut from the match film (kills, aces, blocks), when the film is a file the browser can read. */
@@ -40,31 +42,53 @@ export function recapPlays(m: Match, R: Replay): RecapPlay[] {
 export const recapLength = (d: RecapData) => T_RESULT + T_SETS + d.leaders.length * T_LEAD + d.plays.length * T_PLAY + (d.nums.length ? T_NUMS : 0) + T_OUT;
 export const canMakeRecap = () => typeof MediaRecorder !== "undefined" && typeof (HTMLCanvasElement.prototype as any).captureStream === "function" && !!reelMime();
 
-export async function recapData(m: Match, R: Replay, withPlays = true): Promise<RecapData> {
-  const t = team()!, A = aggregate(R.sets), M = teamMetrics(A);
-  try { await (document as any).fonts?.ready; } catch { /* fine */ }
+/** Up to three different players who led the team, each in a different stat; `scale` raises the bar for a whole season. */
+function leadersOf(A: ReturnType<typeof aggregate>, scale = 1): RecapData["leaders"] {
   // players whose families asked to stay off public pages are left out
   const lead = (f: (s: Stat) => number, label: string, min: number) => { const e = Object.entries(A.ps).filter(([id]) => player(id) && !player(id)!.hidePublic).map(([id, s]) => [id, f(s)] as [string, number]).sort((a, b) => b[1] - a[1])[0]; return e && e[1] >= min ? { id: e[0], v: +e[1].toFixed(1), label } : null; };
   const seen = new Set<string>(), leaders: RecapData["leaders"] = [];
-  for (const l of [lead((s) => s.K, "KILLS", 3), lead((s) => s.AST, "ASSISTS", 8), lead((s) => s.D, "DIGS", 5), lead((s) => s.SA, "ACES", 2), lead((s) => blocks(s), "BLOCKS", 2)]) {
+  for (const l of [lead((s) => s.K, "KILLS", 3 * scale), lead((s) => s.AST, "ASSISTS", 8 * scale), lead((s) => s.D, "DIGS", 5 * scale), lead((s) => s.SA, "ACES", 2 * scale), lead((s) => blocks(s), "BLOCKS", 2 * scale)]) {
     if (!l || seen.has(l.id) || leaders.length >= 3) continue; seen.add(l.id);
     const p = player(l.id)!; leaders.push({ name: `${p.first} ${p.last}`.trim() || "#" + p.num, num: p.num, v: l.v, label: l.label });
   }
-  const hit = M.hitting, nums: RecapData["nums"] = [];
+  return leaders;
+}
+function numbersOf(A: ReturnType<typeof aggregate>): RecapData["nums"] {
+  const M = teamMetrics(A), hit = M.hitting, nums: RecapData["nums"] = [];
   if (A.T.K) nums.push({ v: String(A.T.K), label: "KILLS" });
   if (hit !== null && A.T.K) nums.push({ v: (hit < 0 ? "-" : "") + Math.abs(hit).toFixed(3).replace(/^0/, ""), label: "HITTING" });
   if (A.T.SA) nums.push({ v: String(A.T.SA), label: "ACES" });
   if (blocks(A.T)) nums.push({ v: String(+blocks(A.T).toFixed(1)), label: "BLOCKS" });
   if (A.T.D) nums.push({ v: String(A.T.D), label: "DIGS" });
   if (M.sideOut !== null) nums.push({ v: Math.round(M.sideOut * 100) + "%", label: "SIDE-OUT" });
+  return nums.slice(0, 6);
+}
+const dispFont = () => getComputedStyle(document.documentElement).getPropertyValue("--display").trim() || "system-ui";
+
+export async function recapData(m: Match, R: Replay, withPlays = true): Promise<RecapData> {
+  const t = team()!, A = aggregate(R.sets);
+  try { await (document as any).fonts?.ready; } catch { /* fine */ }
+  const leaders = leadersOf(A), nums = numbersOf(A);
   const dt = new Date(m.date + "T12:00:00");
   const [logoUs, logoThem] = await Promise.all([canvasImage(t.logo), canvasImage(m.oppLogo)]);
   return {
     us: t.name, them: m.opp || "Opponent", wonUs: R.wonUs, wonThem: R.wonThem, final: R.matchOver || m.status === "done",
     date: isNaN(+dt) ? m.date : dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), event: m.event || "",
     sets: R.sets.filter((s) => s.us + s.them > 0).map((s) => ({ n: s.n, us: s.us, them: s.them, won: s.us > s.them })),
-    leaders, nums: nums.slice(0, 6), plays: withPlays ? recapPlays(m, R) : [], logoUs, logoThem,
-    disp: getComputedStyle(document.documentElement).getPropertyValue("--display").trim() || "system-ui",
+    leaders, nums, plays: withPlays ? recapPlays(m, R) : [], logoUs, logoThem, disp: dispFont(),
+  };
+}
+
+/** A season recap: the record, the last few results, the season's leaders and the team's numbers. `items` newest first. */
+export async function seasonRecapData(items: { m: Match; R: Replay }[], seasonName: string): Promise<RecapData> {
+  const t = team()!, done = items.filter((x) => x.R.matchOver || x.m.status === "done"), A = aggregate(done.flatMap((x) => x.R.sets));
+  try { await (document as any).fonts?.ready; } catch { /* fine */ }
+  const W = done.filter((x) => x.R.wonUs > x.R.wonThem).length, L = done.filter((x) => x.R.wonThem > x.R.wonUs).length;
+  return {
+    us: t.name, them: "", wonUs: W, wonThem: L, final: true, date: seasonName || "Season", event: "",
+    sets: done.slice(0, 6).map((x, i) => ({ n: i + 1, us: x.R.wonUs, them: x.R.wonThem, won: x.R.wonUs > x.R.wonThem, label: (x.m.site === "away" ? "at " : "vs ") + (x.m.opp || "Opponent") })),
+    season: { name: seasonName || "Season", matches: done.length },
+    leaders: leadersOf(A, Math.max(3, Math.round(done.length * 1.5))), nums: numbersOf(A), plays: [], logoUs: await canvasImage(t.logo), logoThem: null, disp: dispFont(),
   };
 }
 
@@ -99,6 +123,16 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
   let at = 0;
   // 1. the result
   scene(t - at, T_RESULT, (a) => {
+    if (d.season) {
+      text(d.season.name.toUpperCase(), 80, 520, fit(d.season.name.toUpperCase(), W - 160, 64), BLUE, { spacing: 10 });
+      text(`${d.season.matches} ${d.season.matches === 1 ? "match" : "matches"}`, 80, 580, 36, GREY, { font: BODY, weight: 600 });
+      const k = ease((a - 0.4) / 0.9);
+      if (d.logoUs) drawLogo(g, d.logoUs, 80, 650, 120);
+      text(d.us.toUpperCase(), d.logoUs ? 230 : 80, 740, fit(d.us.toUpperCase(), W - (d.logoUs ? 310 : 160), 96), "#fff");
+      text(String(Math.round(d.wonUs * k)), 80, 1110, 300, BLUE); text("WINS", 84, 1190, 52, GREY, { spacing: 8 });
+      text(String(Math.round(d.wonThem * k)), W - 80, 1110, 300, "#fff", { align: "right" }); text("LOSSES", W - 84, 1190, 52, GREY, { align: "right", spacing: 8 });
+      return;
+    }
     text(d.final ? (won ? "WIN" : "FINAL") : "IN PROGRESS", 80, 520, 64, BLUE, { spacing: 10 });
     if (d.event) text(d.event, 80, 580, 36, GREY, { font: BODY, weight: 600 });
     const k = ease((a - 0.4) / 0.9), nu = Math.round(d.wonUs * k), nt = Math.round(d.wonThem * k);
@@ -113,7 +147,7 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
   at += T_RESULT;
   // 2. set by set
   scene(t - at, T_SETS, (a) => {
-    text("SET BY SET", 80, 520, 52, BLUE, { spacing: 8 });
+    text(d.season ? "LATEST RESULTS" : "SET BY SET", 80, 520, 52, BLUE, { spacing: 8 });
     const rh = Math.min(210, 1040 / Math.max(1, d.sets.length));
     d.sets.forEach((s, i) => {
       const k = ease((a - 0.15 - i * 0.18) / 0.45), y = 640 + i * rh;
@@ -121,17 +155,24 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
       g.fillStyle = s.won ? "rgba(155,211,242,.16)" : "rgba(255,255,255,.07)"; g.fillRect(80, y, W - 160, rh - 24);
       if (s.won) { g.fillStyle = BLUE; g.fillRect(80, y, 10, rh - 24); }
       const my = y + (rh - 24) / 2 + 34;
-      text("SET " + s.n, 130, my - 6, 44, GREY, { spacing: 4 });
-      text(`${s.us}`, W / 2 + 150, my, 104, s.won ? BLUE : "#fff", { align: "right" });
-      text("–", W / 2 + 200, my - 8, 80, GREY, { align: "center" });
-      text(`${s.them}`, W / 2 + 250, my, 104, s.won ? GREY : "#fff");
+      if (s.label) {
+        const big = Math.min(96, rh * 0.5), lab = s.label.toUpperCase();
+        text(lab, 130, my - 6, fit(lab, W - 560, 44), "#fff", { spacing: 2 });
+        text(s.won ? "W" : s.us === s.them ? "T" : "L", W - 340, my, big, s.won ? BLUE : GREY, { align: "center" });
+        text(`${s.us}–${s.them}`, W - 120, my, big, s.won ? BLUE : "#fff", { align: "right" });
+      } else {
+        text("SET " + s.n, 130, my - 6, 44, GREY, { spacing: 4 });
+        text(`${s.us}`, W / 2 + 150, my, 104, s.won ? BLUE : "#fff", { align: "right" });
+        text("–", W / 2 + 200, my - 8, 80, GREY, { align: "center" });
+        text(`${s.them}`, W / 2 + 250, my, 104, s.won ? GREY : "#fff");
+      }
       g.restore();
     });
   });
   at += T_SETS;
   // 3. top performers, one at a time
   d.leaders.forEach((l, i) => scene(t - at - i * T_LEAD, T_LEAD, (a) => {
-    text("TOP PERFORMER", 80, 520, 52, BLUE, { spacing: 8 });
+    text(d.season ? "SEASON LEADER" : "TOP PERFORMER", 80, 520, 52, BLUE, { spacing: 8 });
     const v = l.v * ease((a - 0.1) / 0.7), shown = Number.isInteger(l.v) ? String(Math.round(v)) : v.toFixed(1);
     text(shown, 70, 1010, 460, "#fff");
     text(l.label, 84, 1110, 84, BLUE, { spacing: 10 });
@@ -175,7 +216,8 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
   scene(t - at, T_OUT + 1, () => {
     if (d.logoUs) drawLogo(g, d.logoUs, W / 2 - 110, 560, 220);
     text(d.us.toUpperCase(), W / 2, 920, fit(d.us.toUpperCase(), W - 160, 120), "#fff", { align: "center" });
-    text(`${d.wonUs}–${d.wonThem} vs ${d.them}`, W / 2, 1010, fit(`${d.wonUs}–${d.wonThem} vs ${d.them}`, W - 200, 60, BODY), GREY, { align: "center", font: BODY, weight: 600 });
+    const line = d.season ? `${d.wonUs}–${d.wonThem} · ${d.season.name}` : `${d.wonUs}–${d.wonThem} vs ${d.them}`;
+    text(line, W / 2, 1010, fit(line, W - 200, 60, BODY), GREY, { align: "center", font: BODY, weight: 600 });
     g.fillStyle = BLUE; g.fillRect(W / 2 - 60, 1090, 120, 6);
     text("STATS BY FLOORCALL", W / 2, 1200, 40, BLUE, { align: "center", spacing: 8 });
     text("getfloorcall.com", W / 2, 1260, 36, GREY, { align: "center", font: BODY, weight: 600 });

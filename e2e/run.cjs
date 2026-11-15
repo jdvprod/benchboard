@@ -790,6 +790,10 @@ const scenarios = {
       ok("Live shows the season in review", /3–0/.test(t) && /Biggest win/i.test(t) && /vs Buchanan/.test(t) && /Kills\s*14/.test(t), t.replace(/\s+/g, " ").slice(0, 300)); }
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "season-review.png"), fullPage: true });
     await go(A, "stats"); { const g = await download(A, () => A.getByRole("button", { name: "Season graphic" }).click(), 15000); ok("season graphic saves", g.name.endsWith(".png") && g.size > 20000, `${g.name} ${g.size}`); if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "season-graphic.png")); }
+    await A.getByRole("button", { name: "Season video" }).click(); await A.waitForTimeout(1200);
+    ok("season video opens with the record", /Season recap video/.test(await A.locator(".rv-side h2").innerText()) && await A.locator(".rv-cv").evaluate((c) => c.width === 1080 && c.getContext("2d").getImageData(60, 70, 1, 1).data[0] > 200));
+    if (process.env.QASHOT7) { for (const [n, ms] of [[0, 1500], [1, 3200], [2, 2600]]) { await A.waitForTimeout(ms); await A.locator(".rv-cv").screenshot({ path: process.env.QASHOT7.replace(".png", "-" + n + ".png") }); } }
+    await A.keyboard.press("Escape"); await A.waitForTimeout(200);
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },

@@ -4,13 +4,14 @@ import { Match } from "../../data/model";
 import { team, toast } from "../../data/store";
 import { Replay } from "../../sports/volleyball/engine";
 import { download } from "../../ui/kit";
-import { canMakeRecap, drawRecap, recapData, RecapData, recapLength, recapPlays, recapPlaysAt, renderRecapVideo, RH, RW, T_PLAY } from "./recapVideo";
+import { canMakeRecap, drawRecap, recapData, seasonRecapData, RecapData, recapLength, recapPlays, recapPlaysAt, renderRecapVideo, RH, RW, T_PLAY } from "./recapVideo";
 
-export function RecapVideo({ m, R, onClose }: { m: Match; R: Replay; onClose: () => void }) {
+/** One match (m and R), or a whole season (season). */
+export function RecapVideo({ m, R, season, onClose }: { m?: Match; R?: Replay; season?: { items: { m: Match; R: Replay }[]; name: string }; onClose: () => void }) {
   const cv = useRef<HTMLCanvasElement>(null), abort = useRef<AbortController | null>(null);
   const [d, setD] = useState<RecapData | null>(null), [frac, setFrac] = useState(-1);
-  const hasFilm = recapPlays(m, R).length > 0, [plays, setPlays] = useState(true);
-  useEffect(() => { let on = true; recapData(m, R, plays).then((x) => on && setD(x)); return () => { on = false; }; }, [m.id, plays]);
+  const hasFilm = !!(m && R) && recapPlays(m, R).length > 0, [plays, setPlays] = useState(true);
+  useEffect(() => { let on = true; (season ? seasonRecapData(season.items, season.name) : recapData(m!, R!, plays)).then((x) => on && setD(x)); return () => { on = false; }; }, [m?.id, plays, season?.name, season?.items.length]);
   useEffect(() => () => abort.current?.abort(), []);
   // the preview loops; it is the same drawing the recording uses
   useEffect(() => {
@@ -32,7 +33,7 @@ export function RecapVideo({ m, R, onClose }: { m: Match; R: Replay; onClose: ()
     if (!d) return; abort.current = new AbortController(); setFrac(0);
     try {
       const b = await renderRecapVideo(d, { onProgress: setFrac, signal: abort.current.signal });
-      const ext = b.type.includes("mp4") ? "mp4" : "webm", name = `${team()!.name} vs ${m.opp} ${m.date} recap.${ext}`.replace(/[^\w\- .]+/g, "");
+      const ext = b.type.includes("mp4") ? "mp4" : "webm", name = (season ? `${team()!.name} ${season.name} season recap.${ext}` : `${team()!.name} vs ${m!.opp} ${m!.date} recap.${ext}`).replace(/[^\w\- .]+/g, "");
       const file = new File([b], name, { type: b.type }), nav: any = navigator;
       if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: name }); setFrac(-1); return; } catch { /* cancelled: save it instead */ } }
       download(name, b, b.type); toast(ext === "mp4" ? "Recap video saved. Post it as a Reel, TikTok or Short." : "Recap video saved as WebM. Instagram and TikTok want MP4: make it in Safari, or convert the file.");
@@ -40,14 +41,15 @@ export function RecapVideo({ m, R, onClose }: { m: Match; R: Replay; onClose: ()
     setFrac(-1);
   };
   const busy = frac >= 0, len = d ? Math.round(recapLength(d)) : 0;
-  return <div className="rv-back" role="dialog" aria-modal="true" aria-label="Recap video" onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
+  return <div className="rv-back" role="dialog" aria-modal="true" aria-label={season ? "Season recap video" : "Recap video"} onClick={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }}>
     <div className="rv">
       <canvas ref={cv} width={RW} height={RH} className="rv-cv" aria-label="Preview of the recap video" />
       <div className="rv-side">
-        <h2>Recap video</h2>
-        <p className="small muted">A {len}-second vertical video for Reels, TikTok, Shorts and stories: the result, each set, your top performers{d?.plays.length ? `, ${d.plays.length} ${d.plays.length === 1 ? "play" : "plays"} from the film` : ""} and the team's numbers. Players marked as kept off public pages are left out.</p>
+        <h2>{season ? "Season recap video" : "Recap video"}</h2>
+        {season && <p className="small muted">A {len}-second vertical video of the season for Reels, TikTok, Shorts and stories: the record, the latest results, the season's leaders and the team's numbers. Players marked as kept off public pages are left out.</p>}
+        {!season && <p className="small muted">A {len}-second vertical video for Reels, TikTok, Shorts and stories: the result, each set, your top performers{d?.plays.length ? `, ${d.plays.length} ${d.plays.length === 1 ? "play" : "plays"} from the film` : ""} and the team's numbers. Players marked as kept off public pages are left out.</p>}
         {hasFilm ? <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={plays} onChange={(e) => setPlays(e.target.checked)} disabled={frac >= 0} /> Include plays from the match film (no sound)</label>
-          : m.video ? <p className="keys" style={{ margin: 0 }}>To add plays from the film, pick the match video file on this match's Film card first. YouTube and Vimeo links can't be cut here.</p> : null}
+          : m?.video ? <p className="keys" style={{ margin: 0 }}>To add plays from the film, pick the match video file on this match's Film card first. YouTube and Vimeo links can't be cut here.</p> : null}
         {canMakeRecap()
           ? busy ? <div className="stack" style={{ gap: 4 }}><div className="meter"><i style={{ width: Math.round(frac * 100) + "%" }} /></div><span className="small muted" role="status">Recording, {Math.round(frac * 100)}% · keep this screen open</span></div>
             : <button className="btn primary" onClick={make} disabled={!d} autoFocus>Make the video</button>
