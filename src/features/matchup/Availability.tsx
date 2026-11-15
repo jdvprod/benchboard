@@ -61,3 +61,14 @@ export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (j
     <p className="keys">Families following your team page sign up on Floorcall Live (free account). They see how many spots are left; you see the names.</p>
   </details>;
 }
+
+/** The next scheduled match and the players whose families said they may miss it (shown on the lineup page). */
+export function NextMatchOuts({ inLineup }: { inLineup: string[] }) {
+  const t = team()!, all = useAvailability(), today = new Date().toISOString().slice(0, 10);
+  const next = (t.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
+  if (!all || !next) return null;
+  const out = all.filter((r) => r.item === next.id && r.player && r.status !== "yes").map((r) => ({ p: player(r.player!), s: r.status })).filter((x) => x.p);
+  if (!out.length) return null;
+  const when = new Date(next.date + "T12:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+  return <p className="banner mu-next-out" role="status"><b>{next.site === "away" ? "At" : "Vs"} {next.opp}, {when}:</b> {out.map((x) => `#${x.p!.num} ${x.p!.first}${x.s === "maybe" ? " (maybe)" : " can't make it"}${inLineup.includes(x.p!.id) ? ", in this lineup" : ""}`).join("; ")}.</p>;
+}

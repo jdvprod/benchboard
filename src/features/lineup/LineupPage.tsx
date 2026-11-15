@@ -11,6 +11,7 @@ import { askJson, aiAvailable, AiError, AI_ERRORS } from "../../ai/client";
 import { lineupPrompt } from "../../ai/prompts";
 import { lineupCardsHtml } from "./lineupCards";
 import { download } from "../../ui/kit";
+import { NextMatchOuts } from "../matchup/Availability";
 
 /** Court order for display: front row P4 P3 P2, back row P5 P6 P1. */
 const FRONT = [3, 2, 1], BACK = [4, 5, 0];
@@ -84,6 +85,7 @@ export function LineupPage() {
   };
 
   return <div className="page">
+    <NextMatchOuts inLineup={[...lu, lib || "", lib2 || ""].filter(Boolean)} />
     <div className="pagehead"><h1>Lineup & rotations</h1>
       <div className="row">
         <button className="btn primary" disabled={!valid} onClick={saveDefault}>Save as starting lineup</button>

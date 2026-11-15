@@ -752,6 +752,9 @@ const scenarios = {
     ok("the coach sees which player may miss a match", /1 player may miss it/.test(await A.locator(".mu-avail summary").nth(1).innerText().catch(() => "")));
     await A.locator(".mu-avail summary").nth(1).click();
     ok("by name and number, with who answered", /Players who may miss it: #7 Maya/.test(await A.locator(".mu-avail").nth(1).innerText()) && /Can't go: #7 Maya \(Dana Chen\)/.test(await A.locator(".mu-avail").nth(1).innerText()), await A.locator(".mu-avail").nth(1).innerText().catch(() => ""));
+    await go(A, "lineup"); await A.waitForTimeout(900);
+    ok("the lineup page only warns about the next match (Maya is only out of the one after)", (await A.locator(".mu-next-out").count()) === 0);
+    await go(A, "matchup"); await A.waitForTimeout(900);
     await A.locator(".mu-avail summary").first().click();
     if (process.env.QASHOT2) await A.locator(".card", { hasText: "Schedule" }).first().screenshot({ path: process.env.QASHOT2.replace(".png", "-coach.png") });
     ok("and who", /Going: Dana Chen/.test(await A.locator(".mu-avail").first().innerText()));
@@ -765,6 +768,9 @@ const scenarios = {
     { const ax = await a11y(P); ok("volunteer sign-up controls all have names", !ax.length, ax.join(" | ")); }
     await A.reload(); await A.waitForTimeout(1500); await A.locator(".mu-jobs summary").first().click();
     ok("the coach sees who signed up", /1 of 2 filled/.test(await A.locator(".mu-jobs summary").first().innerText()) && /Line judge.*Dana Chen/s.test(await A.locator(".mu-jobs").first().innerText()));
+    await P.locator(".lv-rsvp").first().getByRole("button", { name: "Can't go" }).click(); await P.waitForTimeout(500);
+    await go(A, "lineup"); await A.reload(); await A.waitForTimeout(1500);
+    ok("the lineup page warns when a starter may miss the next match", /Vs Central[\s\S]*#7 Maya can.t make it, in this lineup/.test(await A.locator(".mu-next-out").innerText().catch(() => "")), await A.locator(".mu-next-out").innerText().catch(() => "none"));
     // playbook: the coach shares a play; a signed-in parent studies it on the team's Live page
     await go(A, "court"); await A.getByRole("button", { name: "Playbook", exact: true }).click(); await A.waitForTimeout(300);
     await A.getByRole("button", { name: "Slide", exact: true }).click(); await A.locator("input[aria-label='Play name']").fill("Slide vs Central"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(300);
