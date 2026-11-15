@@ -882,3 +882,10 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .rv-cv{display:block;height:min(74vh,640px);width:auto;aspect-ratio:9/16;border-radius:12px;background:#000}
 .rv-side{display:grid;gap:12px;align-content:center}
 @media (max-width:640px){.rv{grid-template-columns:1fr;justify-items:center}.rv-cv{height:min(52vh,460px)}.rv-side{width:100%}}
+
+/* film sessions: the coach's evaluation of each clip */
+.fr-eval{display:grid;gap:8px;margin:8px 0}
+.fr-grade{border:1px solid var(--line);background:var(--surface);border-radius:999px;min-height:36px;padding:4px 14px;font-weight:600;font-size:13.5px;color:var(--ink)}
+.fr-grade.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.fr-grade.great.on{background:var(--us);border-color:var(--us);color:var(--accent-ink)}.fr-grade.work.on{background:var(--bad);border-color:var(--bad);color:#fff}
+.fr-who summary{cursor:pointer;font-size:13.5px;font-weight:600;color:var(--us)}.fr-who-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.fr-who-list .chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;min-height:34px;padding:3px 12px;font-size:13px;color:var(--ink)}.fr-who-list .chip.on{background:var(--us-soft);border-color:var(--us);font-weight:700}

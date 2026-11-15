@@ -5,12 +5,14 @@ import { cloudAvailable, currentUser, rpc } from "../cloud/client";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 import { tr } from "../lib/i18n";
 
-interface Item { label: string; note?: string; url: string; secs: number }
+interface Item { label: string; note?: string; url: string; secs: number; grade?: string; who?: string[] }
+const GRADE: Record<string, string> = { great: "Great rep", good: "Solid", work: "Needs work" };
+const str = (x: unknown) => (typeof x === "string" ? x.slice(0, 40) : "");
 interface Session { title: string; note?: string; team: string; logo?: string | null; opp?: string; date?: string; items: Item[]; watched: number[] }
 const safe = (u: string) => (/^https:\/\//.test(u) || /^http:\/\/(localhost|127\.0\.0\.1)[:/]/.test(u) ? u : "");
 
 export function FilmSessionView({ code, Shell }: { code: string; Shell: any }) {
-  const [, bump] = useState(0), [s, setS] = useState<Session | null | undefined>(undefined), [err, setErr] = useState(""), [i, setI] = useState(0);
+  const [, bump] = useState(0), [s, setS] = useState<Session | null | undefined>(undefined), [err, setErr] = useState(""), [i, setI] = useState(0), [who, setWho] = useState("");
   const vid = useRef<HTMLVideoElement>(null);
   const signed = !!currentUser();
   useEffect(() => {
@@ -25,6 +27,9 @@ export function FilmSessionView({ code, Shell }: { code: string; Shell: any }) {
   if (s === undefined) return <Shell><p className="lv-empty">{tr("Loading…")}</p></Shell>;
   if (!s) return <Shell><p className="lv-empty">{err || tr("This film isn't shared anymore. Ask your coach for a new link.")}</p></Shell>;
   const it = s.items[i], watched = new Set(s.watched || []);
+  const names = [...new Set(s.items.flatMap((x) => (Array.isArray(x.who) ? x.who.map(str).filter(Boolean) : [])))].sort();
+  const mine = (x: Item) => !who || (Array.isArray(x.who) && x.who.map(str).includes(who));
+  const Eval = ({ x }: { x: Item }) => <>{x.grade && GRADE[x.grade] && <span className={"lv-grade " + x.grade}>{tr(GRADE[x.grade])}</span>}{Array.isArray(x.who) && x.who.length > 0 && <span className="lv-for">{tr("For")} {x.who.map(str).filter(Boolean).join(", ")}</span>}</>;
   const mark = (n: number) => { if (watched.has(n)) return; setS({ ...s, watched: [...watched, n] }); rpc("film_watched", { c: code, n }).catch(() => {}); };
   const next = () => { if (i < s.items.length - 1) setI(i + 1); };
   return <Shell team={s.team}><section className="lv-film">
@@ -32,11 +37,12 @@ export function FilmSessionView({ code, Shell }: { code: string; Shell: any }) {
       {s.note && <p className="lv-film-note">{s.note}</p>}</div>
     {it && <div className="lv-film-player">
       <video ref={vid} key={it.url} src={safe(it.url)} controls playsInline autoPlay onEnded={() => { mark(i); next(); }} onTimeUpdate={(e) => { const v = e.target as HTMLVideoElement; if (v.duration && v.currentTime / v.duration > 0.8) mark(i); }} />
-      <div className="lv-film-cap"><b>{i + 1}. {it.label}</b>{it.note && <p>{it.note}</p>}</div>
+      <div className="lv-film-cap"><b>{i + 1}. {it.label}</b><span className="lv-eval"><Eval x={it} /></span>{it.note && <p>{it.note}</p>}</div>
       <div className="row"><button className="btn" disabled={!i} onClick={() => setI(i - 1)}>‹ {tr("Previous")}</button><button className="btn primary" disabled={i >= s.items.length - 1} onClick={next}>{tr("Next clip")} ›</button></div>
     </div>}
-    <ol className="lv-film-list">{s.items.map((x, n) => <li key={n} className={(n === i ? "on " : "") + (watched.has(n) ? "done" : "")}><button onClick={() => setI(n)}>
-      <span className="lv-film-n">{watched.has(n) ? "✓" : n + 1}</span><span><b>{x.label}</b>{x.note && <small>{x.note}</small>}</span><span className="lv-note">{x.secs}s</span></button></li>)}</ol>
+    {names.length > 0 && <label className="lv-film-who">{tr("Show clips for")} <select value={who} onChange={(e) => setWho(e.target.value)}><option value="">{tr("Everyone")}</option>{names.map((n) => <option key={n} value={n}>{n}</option>)}</select></label>}
+    <ol className="lv-film-list">{s.items.map((x, n) => mine(x) && <li key={n} className={(n === i ? "on " : "") + (watched.has(n) ? "done" : "")}><button onClick={() => setI(n)}>
+      <span className="lv-film-n">{watched.has(n) ? "✓" : n + 1}</span><span><b>{x.label}</b><span className="lv-eval"><Eval x={x} /></span>{x.note && <small>{x.note}</small>}</span><span className="lv-note">{x.secs}s</span></button></li>)}</ol>
     <SignedIn onOut={() => location.reload()} t={tr} />
   </section></Shell>;
 }

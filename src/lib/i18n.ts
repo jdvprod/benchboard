@@ -111,6 +111,7 @@ const ES: Record<string, string> = {
   "{n} of {all} watched": "{n} de {all} vistos",
   "Previous": "Anterior",
   "Next clip": "Siguiente clip",
+  "Great rep": "Gran jugada", "Solid": "Bien", "Needs work": "A mejorar", "For": "Para", "Show clips for": "Ver clips de", "Everyone": "Todos",
   "Create a free Floorcall account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de Floorcall para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
   "You'll get {team}'s {what} on this {device}.": "Recibirás avisos de {team} ({what}) en este {device}.", "phone": "teléfono", "device": "dispositivo",
   "match starts and final scores": "inicio y resultado final", "match starts": "inicio de partidos", "final scores": "resultados finales",

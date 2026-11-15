@@ -4,7 +4,10 @@ import type { Clip } from "./clips";
 
 export type Tool = "arrow" | "circle" | "line" | "pen";
 export interface Stroke { tool: Tool; color: string; pts: [number, number][] } // points 0..1 across the frame
-export interface FilmItem { id: string; start: number; end: number; label: string; note?: string; freeze?: { at: number; strokes: Stroke[] } }
+/** The coach's evaluation of a clip: how it went, and which players it is for. */
+export type Grade = "great" | "good" | "work";
+export const GRADES: [Grade, string][] = [["great", "Great rep"], ["good", "Solid"], ["work", "Needs work"]];
+export interface FilmItem { id: string; start: number; end: number; label: string; note?: string; freeze?: { at: number; strokes: Stroke[] }; grade?: Grade; who?: string[] }
 export interface FilmSession { id: string; title: string; note?: string; items: FilmItem[]; code?: string; sharedAt?: number }
 export const PENS = ["#9BD3F2", "#FFFFFF", "#F07167", "#FFD166"];
 

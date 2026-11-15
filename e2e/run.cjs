@@ -980,6 +980,12 @@ const scenarios = {
     await A.getByRole("button", { name: "Save drawing" }).click(); await A.waitForTimeout(200);
     ok("film session: the drawing is saved with the clip", /Edit drawing \(2\)/.test(await A.locator(".fr-items > li").first().innerText()));
     await A.getByLabel("Session title").fill("Points we won vs Central");
+    // the coach evaluates the first clip and says who it is for
+    { const li = A.locator(".fr-items > li").first();
+      await li.getByRole("button", { name: "Great rep" }).click(); await li.locator(".fr-who summary").click(); await li.locator(".fr-who-list .chip").first().click(); await A.waitForTimeout(150);
+      const whoName = (await li.locator(".fr-who-list .chip").first().innerText()).replace(/^#\d+\s*/, "");
+      ok("film session: a clip can be graded and assigned to a player", (await li.getByRole("button", { name: "Great rep" }).getAttribute("aria-pressed")) === "true" && (await li.locator(".fr-who summary").innerText()) === "For " + whoName && /1 great rep/.test(await A.locator(".fr-sess").innerText()));
+      A.whoName = whoName; }
     if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "film-session.png"), fullPage: true });
     await A.getByRole("button", { name: "Send to team" }).click();
     await A.getByRole("button", { name: "Copy link" }).waitFor({ timeout: 90000 });
@@ -993,6 +999,10 @@ const scenarios = {
     await P.locator(".ma-check input").first().check(); await P.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(900);
     ok("team film: the session opens with the coach's notes", /Points we won vs Central/.test(await P.locator(".lv-film-hd").innerText()) && /three steps, arms back early/.test(await P.locator(".lv-film").innerText()), await P.locator("main").innerText().then((x) => x.slice(0, 300)));
     ok("team film: both clips are listed", (await P.locator(".lv-film-list li").count()) === 2);
+    ok("team film: players see the coach's evaluation", (await P.locator(".lv-film-list li").first().locator(".lv-grade.great").innerText()) === "Great rep" && (await P.locator(".lv-film-list li").first().locator(".lv-for").innerText()) === "For " + A.whoName);
+    await P.locator(".lv-film-who select").selectOption(A.whoName); await P.waitForTimeout(150);
+    ok("team film: a player can show only her clips", (await P.locator(".lv-film-list li").count()) === 1);
+    await P.locator(".lv-film-who select").selectOption(""); await P.waitForTimeout(150);
     // how long the recorded clip really runs: play it fast to the end
     const dur = await P.locator(".lv-film-player video").evaluate(async (v) => { v.muted = true; v.playbackRate = 8; const end = new Promise((r) => v.addEventListener("ended", r, { once: true })); await v.play().catch(() => {}); await Promise.race([end, new Promise((r) => setTimeout(r, 6000))]); return v.currentTime; });
     if (process.env.KEEP_FILM) { const u = await P.locator(".lv-film-player video").getAttribute("src"); fs.writeFileSync("/tmp/claude-0/clip0.bin", Buffer.from(await (await fetch(u)).arrayBuffer())); }

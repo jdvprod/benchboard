@@ -2,12 +2,12 @@
  * frozen frame (telestrator); "Send to team" records every clip as a small video, uploads it and shares the session on
  * Floorcall Live, where players and families watch signed in and the coach sees who watched. */
 import { PointerEvent, useEffect, useRef, useState } from "react";
-import { patch, team, toast } from "../../data/store";
+import { patch, player, team, teamPlayers, toast } from "../../data/store";
 import { Match } from "../../data/model";
 import { Card, copyText, plural } from "../../ui/kit";
 import { QrButton } from "../../ui/QrButton";
 import { clock } from "../../film/clips";
-import { drawStrokes, FilmItem, FilmSession, FREEZE, itemLength, PENS, recordItem, sessionLength, Stroke, Tool } from "../../film/session";
+import { drawStrokes, FilmItem, FilmSession, FREEZE, GRADES, itemLength, PENS, recordItem, sessionLength, Stroke, Tool } from "../../film/session";
 import { cloudAvailable, currentUser, publicFileUrl, rpc, uploadFile } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
 import { siteUrl } from "../../cloud/links";
@@ -47,7 +47,7 @@ function SessionEditor({ m, s, src, onBack, nowAt, lead }: { m: Match; s: FilmSe
   const sendIt = async () => {
     if (!src || !s.items.length) return;
     stop.current = new AbortController();
-    const total = sessionLength(s); let done = 0; const out: { label: string; note?: string; url: string; secs: number }[] = [];
+    const total = sessionLength(s); let done = 0; const out: { label: string; note?: string; grade?: string; who?: string[]; url: string; secs: number }[] = [];
     try {
       for (let i = 0; i < s.items.length; i++) {
         const it = s.items[i];
@@ -55,7 +55,7 @@ function SessionEditor({ m, s, src, onBack, nowAt, lead }: { m: Match; s: FilmSe
         setSend({ text: `Uploading clip ${i + 1} of ${s.items.length}`, f: Math.min(0.98, (done + itemLength(it)) / total) });
         const path = `film/${m.teamId}/${s.id}/${i}-${it.id}.${blob.type.includes("mp4") ? "mp4" : "webm"}`;
         await uploadFile(path, blob);
-        out.push({ label: it.label, note: it.note || undefined, url: publicFileUrl(path) + "?v=" + Date.now().toString(36), secs: Math.round(itemLength(it)) });
+        out.push({ label: it.label, note: it.note || undefined, grade: it.grade, who: (it.who || []).map((id) => player(id)).filter(Boolean).map((p) => p!.first || "#" + p!.num), url: publicFileUrl(path) + "?v=" + Date.now().toString(36), secs: Math.round(itemLength(it)) });
         done += itemLength(it);
       }
       const t = team()!;
@@ -69,7 +69,7 @@ function SessionEditor({ m, s, src, onBack, nowAt, lead }: { m: Match; s: FilmSe
     <label className="field"><span className="label">Session title</span><input value={s.title} onChange={(e) => set({ title: e.target.value })} /></label>
     <label className="field"><span className="label">Note to the team (optional)</span><textarea rows={2} value={s.note || ""} onChange={(e) => set({ note: e.target.value })} placeholder="Watch where our blockers' hands are before the hitter swings." /></label>
     <div className="row"><button className="btn sm" disabled={!src} onClick={() => { const t = nowAt(); set({ items: s.items.concat({ id: "i" + Date.now().toString(36), start: Math.max(0, +(t - lead).toFixed(1)), end: +(t + 2).toFixed(1), label: "Clip " + (s.items.length + 1) }) }); }}>Add this moment</button>
-      <span className="small muted">{plural(s.items.length, "clip")} · {clock(sessionLength(s))}</span></div>
+      <span className="small muted">{plural(s.items.length, "clip")} · {clock(sessionLength(s))}{s.items.some((x) => x.grade) ? " · " + GRADES.map(([k, l]) => [s.items.filter((x) => x.grade === k).length, l] as const).filter(([n]) => n).map(([n, l]) => `${n} ${l.toLowerCase()}`).join(", ") : ""}</span></div>
     <ol className="fr-items">{s.items.map((it, i) => <li key={it.id}>
       <div className="fr-item-hd">
         <input className="input fr-item-label" value={it.label} onChange={(e) => setItem(it.id, { label: e.target.value })} aria-label="Clip title" />
@@ -83,6 +83,11 @@ function SessionEditor({ m, s, src, onBack, nowAt, lead }: { m: Match; s: FilmSe
         </span>
       </div>
       <textarea className="input" rows={2} value={it.note || ""} onChange={(e) => setItem(it.id, { note: e.target.value })} placeholder="What to watch for in this clip" aria-label="Coach's note" />
+      <div className="fr-eval">
+        <div className="row" role="group" aria-label={"Evaluation of " + it.label}>{GRADES.map(([k, l]) => <button key={k} className={"fr-grade " + k + (it.grade === k ? " on" : "")} aria-pressed={it.grade === k} onClick={() => setItem(it.id, { grade: it.grade === k ? undefined : k })}>{l}</button>)}</div>
+        <details className="fr-who"><summary>{it.who?.length ? "For " + it.who.map((id) => player(id)?.first || "#" + player(id)?.num).filter(Boolean).join(", ") : "Who is this for?"}</summary>
+          <div className="fr-who-list" role="group" aria-label={"Players in " + it.label}>{teamPlayers().map((p) => { const on = !!it.who?.includes(p.id); return <button key={p.id} className={"chip" + (on ? " on" : "")} aria-pressed={on} onClick={() => setItem(it.id, { who: on ? it.who!.filter((x) => x !== p.id) : (it.who || []).concat(p.id) })}>#{p.num} {p.first}</button>; })}</div></details>
+      </div>
       <div className="row small"><button className="btn sm" disabled={!src} onClick={() => setDraw(it)}>{it.freeze?.strokes.length ? `Edit drawing (${it.freeze.strokes.length})` : "Draw on it"}</button>
         {it.freeze && <span className="muted">Freezes at {clock(it.freeze.at)} for {FREEZE} s</span>}</div>
     </li>)}</ol>
