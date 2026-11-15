@@ -25,6 +25,8 @@ export interface BeachMatch {
   first: Side;                                  // who serves first in set 1 (set 2 flips, set 3 flips back)
   firstServer: [number, number];                // which partner serves first for us (0|1) and for them (2|3)
   events: BeachEvent[];
+  /** The code of this match's live link while it is being shared. */
+  live?: string;
 }
 export interface Line { K: number; AE: number; TA: number; A: number; SE: number; SV: number; B: number; D: number; E: number; PTS: number }
 const line = (): Line => ({ K: 0, AE: 0, TA: 0, A: 0, SE: 0, SV: 0, B: 0, D: 0, E: 0, PTS: 0 });

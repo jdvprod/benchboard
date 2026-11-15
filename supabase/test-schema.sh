@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "20" "schema version is reported"
+check "select schema_version();" "21" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -179,4 +179,16 @@ expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "2" "the co
 expect "$(as $E "select rsvps_for_team('t3') is null;")" "t" "people off the team can't see names"
 as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
 expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
+# beach: a match shared live by link; anyone can watch, only the owner updates or stops it
+BC=$(as $B "select beach_publish(null, 'packed-match-1');")
+expect "${#BC}" "7" "a signed-in scorer gets a link code for a beach match"
+expect "$(q -c "set role anon; select beach_view(lower('$BC'))->>'data';")" "packed-match-1" "anyone with the link can watch, no account"
+as $B "select beach_publish('$BC', 'packed-match-2');" >/dev/null
+expect "$(q -c "set role anon; select beach_view('$BC')->>'data';")" "packed-match-2" "the owner's updates show up"
+expect "$(asall $E "select beach_publish('$BC', 'hijack');" | grep -c "isn't yours")" "1" "nobody else can update it"
+expect "$(q -c "set role anon; select beach_publish(null, 'x');" 2>&1 | grep -c 'permission denied')" "1" "sharing needs an account"
+as $E "select beach_unshare('$BC');" >/dev/null
+expect "$(q -c "set role anon; select beach_view('$BC') is not null;")" "t" "nobody else can take it down"
+as $B "select beach_unshare('$BC');" >/dev/null
+expect "$(q -c "set role anon; select beach_view('$BC') is null;")" "t" "the owner can stop sharing"
 echo "schema OK"

@@ -6,6 +6,7 @@ const teams = new Map(), members = [], records = new Map(), invites = new Map(),
 const otps = new Map(); // email -> one-time sign-in code (new-device check)
 const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
+const beach = new Map(); // beach live shares: code -> {owner, data, updated}
 const interest = []; // college staff -> a player's coaches {id, team_id, code, player, from, name, school, title, email, body, at, read}
 const rsvps = new Map(); // availability: "team|item|user" -> {team_id, item, user, name, status, at}
 const posts = []; // team announcements {id, team_id, body, by, pinned, at, reads:Set}
@@ -44,6 +45,9 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/auth/v1/logout" || p === "/auth/v1/recover") return send(res, 204);
     if (p === "/auth/v1/user" && req.method === "PUT") { const u = users.get(me); if (!u) return send(res, 401, { message: "JWT required" }); if (b.data) u.meta = { ...(u.meta || {}), ...b.data }; if (b.password) u.pw = b.password; return send(res, 200, { id: u.id, email: u.email, user_metadata: u.meta }); }
     // rpc
+    if (p === "/rest/v1/rpc/beach_view") { const s = beach.get(String(b.c).toUpperCase()); return send(res, 200, s ? { data: s.data, updated: s.updated } : null); }
+    if (p === "/rest/v1/rpc/beach_publish") { if (!me) return send(res, 401, { message: "Sign in to share a match live" }); if (b.c) { const s = beach.get(String(b.c).toUpperCase()); if (!s || s.owner !== me) return send(res, 400, { message: "That link isn't yours to update" }); s.data = b.d; s.updated = now(); return send(res, 200, String(b.c).toUpperCase()); } const k = uid().replace(/[^a-z0-9]/gi, "").slice(0, 7).toUpperCase(); beach.set(k, { owner: me, data: b.d, updated: now() }); return send(res, 200, k); }
+    if (p === "/rest/v1/rpc/beach_unshare") { const s = beach.get(String(b.c).toUpperCase()); if (s && s.owner === me) beach.delete(String(b.c).toUpperCase()); return send(res, 200, null); }
     if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!isMember(inv.team_id, me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now() }); return send(res, 200, inv.team_id); }
     const pubEvents = (ev) => (ev || []).filter((e) => e.t !== "TAG");
     const pubUrl = (u) => (typeof u === "string" && /^https?:\/\//.test(u) ? u : null);
@@ -64,7 +68,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 20);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 21);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

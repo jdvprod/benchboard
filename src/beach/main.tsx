@@ -9,6 +9,7 @@ import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pack, pairLine, replay, scoreLine, Side, summary, unpack } from "../sports/beach/engine";
 import { SiteSwitch } from "../ui/SiteSwitch";
+import { GoLive, Watch } from "./Live";
 
 const KEY = "fc-beach";
 const load = (): BeachMatch[] => { try { const v = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -26,7 +27,8 @@ function App() {
   return <div className="bv">
     <header className="bv-top"><a className="bv-brand" href="#/"><b>Floorcall</b><span>Beach</span></a><SiteSwitch here="beach" /></header>
     <main className="bv-main">
-      {route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)
+      {route[0] === "live" ? <Watch code={route[1] || ""} render={(lm, fresh) => <Match m={lm} onChange={() => {}} readOnly live={fresh ? "on" : "stale"} />} />
+        : route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)
         : m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
         : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}
     </main>
@@ -66,7 +68,7 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
     {list.length > 0 && <section className="card">
       <h2>Your matches</h2>
       <ul className="bv-list">{list.map((m) => { const S = replay(m); return <li key={m.id}>
-        <a href={"#/m/" + m.id}><b>{m.us}</b> <span className="muted">vs</span> <b>{m.them}</b><span className="bv-meta">{day(m.at)} · {S.over ? (S.winner === "us" ? "Won " : "Lost ") + S.setsWon.us + "–" + S.setsWon.them : "In progress"}{scoreLine(S) ? " · " + scoreLine(S) : ""}</span></a>
+        <a href={"#/m/" + m.id}><b>{m.us}</b> <span className="muted">vs</span> <b>{m.them}</b><span className="bv-meta">{day(m.at)} · {S.over ? (S.winner === "us" ? "Won " : "Lost ") + S.setsWon.us + "–" + S.setsWon.them : "In progress"}{scoreLine(S) ? " · " + scoreLine(S) : ""}{m.live ? " · sharing live" : ""}</span></a>
         <button className="btn sm" onClick={() => { if (confirm("Delete this match?")) onDelete(m.id); }} aria-label={`Delete ${m.us} vs ${m.them}`}>Delete</button>
       </li>; })}</ul>
     </section>}
@@ -98,7 +100,7 @@ const TOUCH: [Code, string, string, string][] = [["K", "Kill", "pt", "Kill"], ["
 /** Full label on wide screens, a short one on phones; screen readers always get the full one. */
 const Lbl = ({ full, short }: { full: string; short: string }) => (full === short ? <>{full}</> : <><span className="bv-lg">{full}</span><span className="bv-sm" aria-hidden="true">{short}</span></>);
 
-function Match({ m, onChange, readOnly = false }: { m: BeachMatch; onChange: (m: BeachMatch) => void; readOnly?: boolean }) {
+function Match({ m, onChange, readOnly = false, live }: { m: BeachMatch; onChange: (m: BeachMatch) => void; readOnly?: boolean; live?: "on" | "stale" }) {
   const S = replay(m), cur = S.sets[S.set], f = FORMATS[m.format];
   const [copied, setCopied] = useState(false), [linked, setLinked] = useState(false);
   const link = async () => { const url = location.href.split("#")[0] + "#/v/" + pack(m); try { if ((navigator as any).share) await (navigator as any).share({ title: `${m.us} vs ${m.them}`, url }); else { await navigator.clipboard.writeText(url); setLinked(true); setTimeout(() => setLinked(false), 2000); } } catch { /* cancelled or blocked */ } };
@@ -134,7 +136,7 @@ function Match({ m, onChange, readOnly = false }: { m: BeachMatch; onChange: (m:
       </div>)}
     </section>}
 
-    {readOnly ? <section className="bv-bar"><span className="muted small">Shared from Floorcall Beach · {day(m.at)}</span><span className="bv-gap" /><a className="btn primary" href="#/">Score your own match</a></section> : <section className="bv-bar">
+    {readOnly ? <section className="bv-bar">{live ? <span className={"bv-livetag" + (live === "stale" || S.over ? " off" : "")} role="status">{S.over ? "Final" : live === "stale" ? "Reconnecting…" : "Live"}</span> : null}<span className="muted small">{live ? "Updates as the scorer enters points" : "Shared from Floorcall Beach"} · {day(m.at)}</span><span className="bv-gap" /><a className="btn primary" href="#/">Score your own match</a></section> : <section className="bv-bar">
       {!S.over && <><button className="btn" onClick={() => add({ t: "pt", w: "us" })}>+1 {m.us}</button><button className="btn" onClick={() => add({ t: "pt", w: "them" })}>+1 {m.them}</button>
         <button className="btn" onClick={() => add({ t: "to", w: "us" })} disabled={S.timeouts.us >= 1}>Timeout {S.timeouts.us}/1</button>
         <button className="btn" onClick={() => add({ t: "to", w: "them" })} disabled={S.timeouts.them >= 1}>Their timeout {S.timeouts.them}/1</button></>}
@@ -144,6 +146,8 @@ function Match({ m, onChange, readOnly = false }: { m: BeachMatch; onChange: (m:
       <button className="btn" onClick={link}>{linked ? "Link copied" : "Share link"}</button>
       <button className="btn" onClick={() => print()}>Print</button>
     </section>}
+
+    {!readOnly && <GoLive m={m} onChange={onChange} />}
 
     {fresh && !readOnly && <section className="card bv-first">
       <h2>Who serves first for each pair?</h2>

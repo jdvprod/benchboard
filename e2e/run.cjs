@@ -1135,8 +1135,27 @@ const scenarios = {
     ok("a broken share link says so", (await q.getByText("This link didn't open").count()) === 1);
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".bv-box tbody tr", { hasText: "Ava" }).innerText()));
+    // live: the scorer shares a match; a fan follows it on another phone with no account
+    await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
+    await p.getByLabel("Your player 1").fill("Zoe"); await p.getByLabel("Your player 2").fill("Bea"); await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "Go live" }).click(); await p.waitForTimeout(200);
+    ok("going live asks for a free account", (await p.locator(".bv-live .ma").count()) === 1);
+    await p.getByLabel("Your name").fill("Coach Kai"); await p.getByLabel("Email", { exact: true }).fill("kai-beach@e2e.test"); await p.getByLabel("Password", { exact: true }).fill("beach-pass");
+    await p.locator(".ma-check input").first().check(); await p.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await p.waitForTimeout(1500);
+    const liveLink = await p.locator(".bv-link a").getAttribute("href").catch(() => null);
+    ok("signed in, the match gets a live link", /beach\/#\/live\/[A-Z0-9]{5,8}$/.test(liveLink || ""), String(liveLink));
+    { const ax = await a11y(p); ok("live sharing controls all have names", !ax.length, ax.join(" | ")); }
+    const fan = await newPage(browser, { phone: true }); await fan.goto(liveLink); await fan.waitForTimeout(900);
+    ok("a fan opens the live match with no account", (await fan.locator(".bv-livetag").innerText()) === "Live" && (await fan.locator(".bv-pts").allInnerTexts()).join("-") === "0-0" && (await fan.locator(".bv-pad").count()) === 0);
+    await p.locator(".bv-pad", { has: p.getByRole("heading", { name: "Zoe" }) }).getByRole("button", { name: "Ace" }).click();
+    { const t0 = Date.now(); let sc = ""; while (Date.now() - t0 < 12000) { sc = (await fan.locator(".bv-pts").allInnerTexts()).join("-"); if (sc === "1-0") break; await fan.waitForTimeout(400); } ok("the fan's score updates when a point is entered", sc === "1-0" && /Ace, Zoe/.test(await fan.locator(".bv-log").innerText()), sc); }
+    if (process.env.QASHOT4) { await p.screenshot({ path: process.env.QASHOT4, fullPage: true }); await fan.screenshot({ path: process.env.QASHOT4.replace(".png", "-fan.png") }); }
+    await p.getByRole("button", { name: "Stop sharing" }).click(); await p.waitForTimeout(400);
+    { const t0 = Date.now(); let gone = false; while (Date.now() - t0 < 12000) { gone = (await fan.getByText("This match isn't being shared").count()) === 1; if (gone) break; await fan.waitForTimeout(400); } ok("stopping takes the live page down", gone && (await p.getByRole("button", { name: "Go live" }).count()) === 1); }
+    ok("no errors on the fan's phone", fan.errors.length === 0, fan.errors.join("; "));
+    await fan.context().close();
     // no signal at the beach: the site still opens and scores
-    await p.reload(); await p.waitForTimeout(1500);
+    await p.goto(U + "beach/#/"); await p.reload(); await p.waitForTimeout(1500);
     await p.context().setOffline(true);
     await p.reload().catch(() => {}); await p.waitForTimeout(800);
     ok("beach opens with no connection", (await p.getByRole("button", { name: "Start match" }).count()) === 1);

@@ -770,7 +770,46 @@ end $$;
 revoke all on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) from public, anon;
 grant execute on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 20 $$;
+-- ---------- Floorcall Beach: a beach match shared live by a link (anyone with the link can watch; only its owner can update it) ----------
+create table if not exists public.beach_shares (
+  code text primary key,
+  owner uuid not null,
+  data text not null check (char_length(data) between 1 and 20000),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists beach_shares_owner on public.beach_shares (owner);
+alter table public.beach_shares enable row level security; -- through the functions below only
+
+create or replace function public.beach_publish(c text, d text) returns text
+language plpgsql security definer set search_path = public as $$
+declare k text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to share a match live'; end if;
+  if char_length(coalesce(d, '')) = 0 or char_length(d) > 20000 then raise exception 'That match can''t be shared'; end if;
+  if coalesce(c, '') <> '' then
+    update beach_shares set data = d, updated_at = now() where code = upper(c) and owner = auth.uid() returning code into k;
+    if k is null then raise exception 'That link isn''t yours to update'; end if;
+    return k;
+  end if;
+  if (select count(*) from beach_shares where owner = auth.uid()) >= 300 then raise exception 'You have a lot of shared matches. Stop sharing some old ones first.'; end if;
+  k := upper(substr(md5(random()::text || clock_timestamp()::text || auth.uid()::text), 1, 7));
+  insert into beach_shares (code, owner, data) values (k, auth.uid(), d);
+  return k;
+end $$;
+create or replace function public.beach_view(c text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('data', data, 'updated', updated_at) from beach_shares where code = upper(c)
+$$;
+create or replace function public.beach_unshare(c text) returns void
+language sql security definer set search_path = public as $$
+  delete from beach_shares where code = upper(c) and owner = auth.uid()
+$$;
+revoke all on function public.beach_publish(text, text), public.beach_unshare(text) from public, anon;
+grant execute on function public.beach_publish(text, text), public.beach_unshare(text) to authenticated;
+grant execute on function public.beach_view(text) to anon, authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 21 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
