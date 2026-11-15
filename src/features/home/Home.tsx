@@ -16,6 +16,7 @@ import { TournamentToday, todaysTournament } from "../tournament/TournamentPage"
 import { shareFinalGraphic } from "../stats/finalGraphic";
 import { recapText } from "../stats/recap";
 import { RecapVideo } from "../stats/RecapDialog";
+import { NextMatchStatus } from "../matchup/Availability";
 import { liveUrlFor } from "../../cloud/CloudCard";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -59,6 +60,7 @@ export function Home() {
         {next ? <>
           <div className="home-opp">{next.site === "away" ? "at " : "vs "}{next.opp}</div>
           <p className="muted">{next.date === today ? "Today" : fmtDate(next.date)}{next.time ? " · " + fmtTime(next.time) : ""}{next.event ? " · " + next.event : ""}</p>
+          <NextMatchStatus s={next} />
           <p className="small">{vsNext.length ? `You're ${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season.` : "First meeting this season."}</p>
           <div className="row"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{next.date === today && <button className="btn sm primary" onClick={startNext}>Start now</button>}</div>
         </> : todaysTournament() ? <p className="muted" style={{ margin: "6px 0 0" }}>Today's games are in {todaysTournament()!.name} above.</p>

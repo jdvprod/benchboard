@@ -148,10 +148,10 @@ function Rankings({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout) => voi
         <button className="btn sm" disabled={!t.candidates.length} onClick={() => download(`${t.name} rankings.csv`.replace(/[^\w\- .]+/g, ""), tryoutCsv(t), "text/csv")}>Spreadsheet</button>
       </div>
     </div>
-    {!rows.length ? <p className="empty">No players yet.</p> : <div className="tbl"><table className="ty-rank"><thead><tr><th>#</th><th>Bib</th><th className="l">Name</th><th>Pos</th><th>Score</th>{t.skills.map((k) => <th key={k} title={k}>{k.slice(0, 4)}</th>)}<th className="l">Decision</th></tr></thead>
+    {!rows.length ? <p className="empty">No players yet.</p> : <div className="tbl"><table className="ty-rank"><thead><tr><th>#</th><th>Bib</th><th className="l">Name</th><th>Pos</th><th>Score</th>{t.skills.map((k) => <th key={k} title={k} className="sk">{k.slice(0, 4)}</th>)}<th className="l">Decision</th></tr></thead>
       <tbody>{rows.map((r, i) => <tr key={r.c.id} className={r.c.decision}>
         <td>{i + 1}</td><td className="num">{r.c.bib}</td><td className="l"><b>{r.c.name}</b>{r.spread !== null && r.spread >= 1.5 && <span className="ty-split" title="Evaluators disagree by 1.5 or more"> · split</span>}{r.c.note && <div className="small muted">{r.c.note}</div>}</td><td>{r.c.pos || "–"}</td>
-        <td><b>{fmt(r.score)}</b></td>{t.skills.map((k) => <td key={k}>{fmt(r.bySkill[k])}</td>)}
+        <td><b>{fmt(r.score)}</b></td>{t.skills.map((k) => <td key={k} className="sk">{fmt(r.bySkill[k])}</td>)}
         <td className="l"><select className="input ty-dec" aria-label={`Decision for ${r.c.name}`} value={r.c.decision} onChange={(e) => setDec(r.c, e.target.value as Decision)}><option value="">Undecided</option>{DEC.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></td>
       </tr>)}</tbody></table></div>}
     {offers.length > 0 && <Card title={`Make the team (${offers.length} offers)`}>

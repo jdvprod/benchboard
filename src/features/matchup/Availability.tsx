@@ -89,3 +89,15 @@ export function NextMatchOuts({ inLineup }: { inLineup: string[] }) {
   const when = new Date(next.date + "T12:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
   return <p className="banner mu-next-out" role="status"><b>{next.site === "away" ? "At" : "Vs"} {next.opp}, {when}:</b> {out.map((x) => `#${x.p!.num} ${x.p!.first}${x.s === "maybe" ? " (maybe)" : " can't make it"}${inLineup.includes(x.p!.id) ? ", in this lineup" : ""}`).join("; ")}.</p>;
 }
+
+/** One line for Home's next-match card: who answered, who may be out, and open volunteer spots. */
+export function NextMatchStatus({ s }: { s: ScheduleItem }) {
+  const all = useAvailability(), sign = useSignups();
+  if (!all && !sign) return null;
+  const mine = (all || []).filter((r) => r.item === s.id), going = mine.filter((r) => r.status === "yes").length;
+  const out = mine.filter((r) => r.player && r.status !== "yes").map((r) => player(r.player!)).filter(Boolean);
+  const jobs = s.jobs || [], open = jobs.reduce((a, j) => a + Math.max(0, j.need - (sign || []).filter((x) => x.item === s.id && x.job === j.id).length), 0);
+  const bits = [mine.length ? `${going} going` : "", out.length ? `out: ${out.map((p) => "#" + p!.num + " " + p!.first).join(", ")}` : "", jobs.length ? (open ? `${open} volunteer ${open === 1 ? "spot" : "spots"} open` : "volunteers covered") : ""].filter(Boolean);
+  if (!bits.length) return null;
+  return <p className={"small home-avail" + (out.length || open ? " warn" : "")}>{bits.join(" · ")}</p>;
+}

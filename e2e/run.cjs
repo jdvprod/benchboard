@@ -1288,7 +1288,7 @@ const scenarios = {
   async tryoutstaff(browser) {
     const A = await newPage(browser);
     await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
-    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Head Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Email").fill("tryout-head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Head Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(600);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
     await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH\n13 Ava Ramirez S"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
