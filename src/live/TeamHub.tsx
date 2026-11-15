@@ -1,4 +1,5 @@
 /** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
+import { useEffect, useRef } from "react";
 import { TeamPlays } from "./Plays";
 import { RsvpRow, RsvpSignIn, useRsvps } from "./Rsvp";
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
@@ -20,6 +21,9 @@ type Tab = "home" | "schedule" | "stats" | "roster" | "news" | "plays";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
   const team = d.team?.name || "Team", games = seasonGames(d), P = new Map(d.players.map((p) => [p.id, p]));
   const href = (rest = "") => `#/t/${code}${rest ? "/" + rest : ""}`;
+  // on a phone the tabs scroll sideways: keep the open one in view (hooks stay above the early returns below)
+  const tabs = useRef<HTMLElement>(null);
+  useEffect(() => { const a = tabs.current?.querySelector<HTMLElement>("[aria-current=page]"); if (a && tabs.current) tabs.current.scrollLeft = Math.max(0, a.offsetLeft - (tabs.current.clientWidth - a.offsetWidth) / 2); }, [view.tab, view.match, view.player]);
   if (view.match) {
     const g = games.find((x) => x.m.id === view.match);
     if (g) return <GameView g={g} team={team} players={d.players} fresh={fresh} back={{ href: href(), label: team }} logo={d.team?.logo} />;
@@ -33,7 +37,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
       <div className="grow"><h1>{team}</h1><p>{d.season || tr("Season")}{d.team?.level ? " · " + d.team.level : ""}</p></div>
       <div className="lv-rec"><b>{rec.text}</b><span>{tr("Record")}</span></div>
     </header>
-    <nav className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"], ["news", "News"], ["plays", "Plays"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
+    <nav ref={tabs} className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"], ["news", "News"], ["plays", "Plays"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
     {tab === "home" && <Home d={d} games={games} team={team} code={code} fresh={fresh} P={P} />}
     {tab === "schedule" && <Schedule d={d} games={games.filter(isResult)} code={code} all />}
     {tab === "stats" && <SeasonStats games={games} P={P} code={code} />}

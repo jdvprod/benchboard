@@ -25,6 +25,7 @@
 
 .lv-tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--line);margin:0 0 14px}
 .lv-tabs::-webkit-scrollbar{display:none}
+@media (max-width:560px){.lv-tabs{-webkit-mask-image:linear-gradient(90deg,#000 88%,transparent);mask-image:linear-gradient(90deg,#000 88%,transparent);padding-right:24px}}
 .lv-tabs a,.lv-tabs button{flex:none;background:none;border:0;border-bottom:3px solid transparent;padding:11px 12px 9px;font:700 14px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);text-decoration:none;cursor:pointer;margin-bottom:-1px}
 .lv-tabs [aria-current="page"]{color:var(--ink);border-bottom-color:var(--us)}
 
