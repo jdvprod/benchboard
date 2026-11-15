@@ -117,6 +117,7 @@ export function PlayerPage({ id }: { id: string }) {
       </table></div></Card>
       <AiCard key={id} title="Report card" desc="Strengths, growth areas and one measurable goal, written for the player from their numbers." button="Write report card" prompt={() => reportCardPrompt(id)} filename={`${p.first} ${p.last} report card`} />
     </>}
+    <FilmReview id={id} />
     <Recruiting id={id} rows={rows} A={A} />
     <Card title="Coach notes"><textarea className="input" aria-label="Coach notes" rows={3} value={p.notes} onChange={(e) => patch("players", id, { notes: e.target.value })} placeholder="Private notes: what they're working on, role, recruiting contacts (keep health details out)" /></Card>
     <PlayerData id={id} />
@@ -304,4 +305,20 @@ function PlayerCourt({ id, A }: { id: string; A: Agg }) {
       <p className="keys" style={{ marginTop: 8 }}>Use this to see which rotations produce the best swings, and where serve receive leans on this player most.</p>
     </Card>}
   </div>;
+}
+
+/** Every film-session clip a coach tagged for this player, with the grade: the player's film review in one place. */
+function FilmReview({ id }: { id: string }) {
+  const t = team()!, rows = matchesOf(t.id).flatMap((m) => (m.sessions || []).flatMap((s) => s.items.filter((it) => it.who?.includes(id)).map((it) => ({ m, s, it })))).sort((a, b) => b.m.date.localeCompare(a.m.date));
+  if (!rows.length) return null;
+  const n = (g: string) => rows.filter((r) => r.it.grade === g).length;
+  const G: Record<string, string> = { great: "Great rep", good: "Solid", work: "Needs work" };
+  return <Card title="Film review" actions={<span className="small muted">{[["great", "great"], ["good", "solid"], ["work", "needs work"]].filter(([k]) => n(k)).map(([k, l]) => `${n(k)} ${l}`).join(" · ") || `${rows.length} clips`}</span>}>
+    <ul className="fr-player">{rows.slice(0, 20).map(({ m, s, it }) => <li key={s.id + it.id}>
+      {it.grade ? <span className={"fr-grade on " + it.grade}>{G[it.grade]}</span> : <span className="fr-grade">Not graded</span>}
+      <span><b>{it.label}</b> <span className="muted small">vs {m.opp}, {fmtDate(m.date)} · {s.title}</span>{it.note && <span className="small"> {it.note}</span>}</span>
+      <a className="btn sm" href={`#/film/${m.id}`}>Open</a>
+    </li>)}</ul>
+    {rows.length > 20 && <p className="keys">Showing the latest 20 of {rows.length}.</p>}
+  </Card>;
 }

@@ -920,3 +920,4 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .mu-jobs ul{list-style:none;margin:6px 0;padding:0;display:grid;gap:4px}.mu-jobs li{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .mu-out{color:var(--bad)!important}.mu-out b{color:var(--bad)!important}
 .mu-next-out{display:block;border-left:4px solid var(--bad);margin-bottom:12px}
+.fr-player{list-style:none;margin:0;padding:0;display:grid;gap:8px}.fr-player li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.fr-player .fr-grade{min-height:28px;display:inline-flex;align-items:center;padding:2px 10px;font-size:12.5px}

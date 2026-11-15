@@ -1044,8 +1044,8 @@ const scenarios = {
     await A.getByLabel("Session title").fill("Points we won vs Central");
     // the coach evaluates the first clip and says who it is for
     { const li = A.locator(".fr-items > li").first();
-      await li.getByRole("button", { name: "Great rep" }).click(); await li.locator(".fr-who summary").click(); await li.locator(".fr-who-list .chip").first().click(); await A.waitForTimeout(150);
-      const whoName = (await li.locator(".fr-who-list .chip").first().innerText()).replace(/^#\d+\s*/, "");
+      await li.getByRole("button", { name: "Great rep" }).click(); await li.locator(".fr-who summary").click(); await li.locator(".fr-who-list .chip", { hasText: "Maya" }).click(); await A.waitForTimeout(150);
+      const whoName = "Maya";
       ok("film session: a clip can be graded and assigned to a player", (await li.getByRole("button", { name: "Great rep" }).getAttribute("aria-pressed")) === "true" && (await li.locator(".fr-who summary").innerText()) === "For " + whoName && /1 great rep/.test(await A.locator(".fr-sess").innerText()));
       A.whoName = whoName; }
     if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "film-session.png"), fullPage: true });
@@ -1081,6 +1081,9 @@ const scenarios = {
     await A.getByRole("button", { name: "Take down" }).click(); await A.waitForTimeout(400);
     await P.reload(); await P.waitForTimeout(800);
     ok("film session: a taken-down session no longer opens", /isn't shared anymore/.test(await P.locator("main").innerText()));
+    // the player's page collects the clips tagged for her
+    await go(A, "stats"); await A.getByRole("button", { name: "Players", exact: true }).click(); await A.locator("tr.click", { hasText: A.whoName }).first().click(); await A.waitForTimeout(500);
+    ok("a player's page lists the film clips tagged for her, with the grade", /1 great/.test(await A.locator(".card", { hasText: "Film review" }).innerText().catch(() => "")) && (await A.locator(".fr-player li").count()) === 1 && /Points we won vs Central/.test(await A.locator(".fr-player").innerText()));
     ok("film session: no page errors", !A.errors.length && !P.errors.length, [...A.errors, ...P.errors].slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },
