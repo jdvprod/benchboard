@@ -76,11 +76,29 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
         <button className="btn sm" onClick={() => { if (confirm("Delete this match?")) onDelete(m.id); }} aria-label={`Delete ${m.us} vs ${m.them}`}>Delete</button>
       </li>; })}</ul></div>; })}
     </section>}
+    <Pairs list={list} />
     <Totals list={list} />
   </>;
 }
 
 /** Everyone who has played on "your pair" across the matches on this device, added up. */
+/** Each of your pairs (the same two names, either order): record, sets, and how well they side out and score on serve. */
+function Pairs({ list }: { list: BeachMatch[] }) {
+  const by = new Map<string, { name: string; n: number; w: number; l: number; sw: number; sl: number; recv: number; recvWon: number; serve: number; serveWon: number }>();
+  for (const m of list) { const S = replay(m); if (!S.log.length) continue;
+    const k = [m.names[0], m.names[1]].map((x) => x.trim().toLowerCase()).sort().join("|"); if (/player [12]/.test(k)) continue;
+    const e = by.get(k) || { name: m.us, n: 0, w: 0, l: 0, sw: 0, sl: 0, recv: 0, recvWon: 0, serve: 0, serveWon: 0 };
+    e.n++; if (S.over) { if (S.winner === "us") e.w++; else e.l++; } e.sw += S.setsWon.us; e.sl += S.setsWon.them;
+    const r = S.rallies.us; e.recv += r.recv; e.recvWon += r.recvWon; e.serve += r.serve; e.serveWon += r.serveWon; by.set(k, e); }
+  const rows = [...by.values()].sort((a, b) => b.n - a.n);
+  if (rows.length < 1) return null;
+  const pc = (a: number, b: number) => (b ? Math.round((a / b) * 100) + "%" : "–");
+  return <section className="card"><h2>Pairs</h2>
+    <div className="tbl"><table className="bv-box"><thead><tr><th className="l">Pair</th><th title="Matches">M</th><th title="Match record">W–L</th><th title="Sets won and lost">Sets</th><th title="Rallies won when receiving">Side-out</th><th title="Rallies won when serving">Pt-scoring</th></tr></thead>
+      <tbody>{rows.map((r) => <tr key={r.name}><td className="l">{r.name}</td><td>{r.n}</td><td>{r.w}–{r.l}</td><td>{r.sw}–{r.sl}</td><td>{pc(r.recvWon, r.recv)}</td><td>{pc(r.serveWon, r.serve)}</td></tr>)}</tbody></table></div>
+  </section>;
+}
+
 function Totals({ list }: { list: BeachMatch[] }) {
   const by = new Map<string, { name: string; n: number; w: number; l: Line }>();
   for (const m of list) { const S = replay(m); if (!S.log.length) continue;

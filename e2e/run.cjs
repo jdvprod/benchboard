@@ -1186,6 +1186,7 @@ const scenarios = {
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     ok("finished matches are listed on the beach home page", (await p.locator(".bv-list li").innerText()).includes("Won 2–0"));
     ok("matches are grouped by day with the day's record", (await p.locator(".bv-day").count()) === 1 && /· 1–0/.test(await p.locator(".bv-day h3").innerText()));
+    ok("each pair has a record with side-out and point-scoring", /Ava \/ Maya\s+1\s+1–0\s+2–0/.test(await p.locator(".card", { has: p.getByRole("heading", { name: "Pairs", exact: true }) }).innerText()), await p.locator(".card", { has: p.getByRole("heading", { name: "Pairs", exact: true }) }).innerText().catch(() => "none"));
     await p.goto(U + "beach/#/m/" + (await p.evaluate(() => JSON.parse(localStorage.getItem("fc-beach"))[0].id))); await p.waitForTimeout(300);
     await p.evaluate(() => { navigator.share = undefined; navigator.clipboard.writeText = (t) => { window.__copied = t; return Promise.resolve(); }; });
     await p.getByRole("button", { name: "Share link" }).click(); await p.waitForTimeout(200);
@@ -1195,7 +1196,7 @@ const scenarios = {
     await q.goto(U + "beach/#/v/garbage"); await q.waitForTimeout(300);
     ok("a broken share link says so", (await q.getByText("This link didn't open").count()) === 1);
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
-    ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".bv-box tbody tr", { hasText: "Ava" }).innerText()));
+    ok("player totals add up across matches", /Ava\s+1\s+1\s+0\s+0\s+0\s+–\s+1/.test(await p.locator(".card", { has: p.getByRole("heading", { name: "Player totals" }) }).locator("tbody tr", { hasText: "Ava" }).innerText()));
     // live: the scorer shares a match; a fan follows it on another phone with no account
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     await p.getByLabel("Your player 1").fill("Zoe"); await p.getByLabel("Your player 2").fill("Bea"); await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
