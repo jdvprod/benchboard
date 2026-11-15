@@ -761,8 +761,12 @@ const scenarios = {
     // volunteer jobs: the coach asks for line judges; the parent signs up on Live; the coach sees her name
     await A.locator(".mu-jobs summary").first().click(); await A.getByRole("button", { name: "+ Line judge ×2" }).first().click(); await A.waitForTimeout(2600);
     ok("the coach adds a volunteer job to a match", /Volunteers: 0 of 2 filled/.test(await A.locator(".mu-jobs summary").first().innerText()));
+    await A.locator(".mu-jobs").first().getByRole("button", { name: "Ask the families" }).click(); await A.waitForTimeout(800);
     await P.reload(); await P.waitForTimeout(1200);
     ok("families see the job on the schedule", (await P.locator(".lv-job").count()) === 1 && /Line judge\s*0\/2/.test(await P.locator(".lv-job").innerText()), await P.locator(".lv-card").first().innerText().catch(() => ""));
+    await P.goto(teamUrl + "/news"); await P.waitForTimeout(900);
+    ok("asking the families posts the open spots as an announcement", /Volunteers needed for vs Central, .*: 2 line judge\. Sign up on the team's schedule\./.test(await P.locator(".lv-news").innerText().catch(() => "")), await P.locator(".lv-news").innerText().catch(() => "none"));
+    await P.goto(teamUrl + "/schedule"); await P.waitForTimeout(900);
     await P.getByRole("button", { name: "Sign up for Line judge" }).click(); await P.waitForTimeout(600);
     ok("a parent signs up", (await P.getByRole("button", { name: "Drop out of Line judge" }).count()) === 1 && /1\/2/.test(await P.locator(".lv-job").innerText()));
     { const ax = await a11y(P); ok("volunteer sign-up controls all have names", !ax.length, ax.join(" | ")); }

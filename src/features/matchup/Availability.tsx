@@ -1,8 +1,9 @@
 /** Who can make each scheduled match: answers families and players gave on Floorcall Live. Names are shown to the team's staff only. */
 import { useEffect, useState } from "react";
-import { cloudAvailable, currentUser, rpc } from "../../cloud/client";
-import { isLinked } from "../../cloud/sync";
-import { player, team } from "../../data/store";
+import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
+import { isLinked, roleOn } from "../../cloud/sync";
+import { siteUrl } from "../../cloud/links";
+import { player, team, toast } from "../../data/store";
 import type { Job, ScheduleItem } from "../../data/model";
 
 export interface Rsvp { item: string; name: string; status: "yes" | "no" | "maybe"; player?: string | null; at: string }
@@ -47,6 +48,21 @@ export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (j
   const add = (n: string, k: number) => { const nm = n.trim().slice(0, 40); if (!nm || jobs.some((j) => j.name.toLowerCase() === nm.toLowerCase())) return; onSave(jobs.concat({ id: "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: nm, need: Math.max(1, Math.min(10, k)) })); };
   const who = (j: Job) => (signups || []).filter((x) => x.item === s.id && x.job === j.id).map((x) => x.name);
   const filled = jobs.reduce((a, j) => a + Math.min(who(j).length, j.need), 0), needed = jobs.reduce((a, j) => a + j.need, 0);
+  // ask the families: one announcement listing the open spots, with a notification
+  const t = team()!, role = roleOn(t.id), canAsk = cloudAvailable() && !!currentUser() && isLinked(t.id) && (role === "owner" || role === "coach") && !t.sample;
+  const [asking, setAsking] = useState(false);
+  const open = jobs.map((j) => ({ j, left: j.need - Math.min(who(j).length, j.need) })).filter((x) => x.left > 0);
+  const ask = async () => {
+    const when = new Date(s.date + "T12:00").toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const body = `Volunteers needed for ${s.site === "away" ? "at" : "vs"} ${s.opp}, ${when}: ${open.map((x) => `${x.left} ${x.j.name.toLowerCase()}`).join(", ")}. Sign up on the team's schedule.`;
+    setAsking(true);
+    try {
+      const p = await rpc("post_send", { t: t.id, b: body, pin: false });
+      const r = await fn("notify", { action: "send", team_id: t.id, match_id: p.id, kind: "post", title: `${t.name}: volunteers needed`, body: body.slice(0, 200), base: siteUrl("live") }).catch(() => null);
+      toast(r && r.sent ? `Asked. ${r.sent} ${r.sent === 1 ? "device" : "devices"} notified.` : "Posted on your team page.");
+    } catch (e: any) { toast(e?.message || "Couldn't post. Check your connection."); }
+    setAsking(false);
+  };
   return <details className="mu-jobs">
     <summary>{jobs.length ? `Volunteers: ${signups ? `${filled} of ${needed} filled` : `${jobs.length} ${jobs.length === 1 ? "job" : "jobs"}`}` : "Add volunteer jobs"}</summary>
     {jobs.length > 0 && <ul>{jobs.map((j) => { const w = who(j); return <li key={j.id}>
@@ -58,7 +74,8 @@ export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (j
       <input className="input" type="number" min={1} max={10} value={need} onChange={(e) => setNeed(+e.target.value || 1)} aria-label="People needed" style={{ width: 70 }} />
       <button className="btn sm" disabled={!name.trim()}>Add</button>
     </form>
-    <p className="keys">Families following your team page sign up on Floorcall Live (free account). They see how many spots are left; you see the names.</p>
+    {canAsk && open.length > 0 && <button className="btn sm primary" style={{ marginTop: 8 }} disabled={asking} onClick={ask}>{asking ? "Posting…" : "Ask the families"}</button>}
+    <p className="keys">Families following your team page sign up on Floorcall Live (free account). They see how many spots are left; you see the names.{canAsk ? " Ask the families posts an announcement with the open spots." : ""}</p>
   </details>;
 }
 
