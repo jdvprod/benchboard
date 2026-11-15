@@ -6,7 +6,7 @@ export type Decision = "offer" | "maybe" | "cut" | "";
 export interface Candidate { id: string; bib: string; name: string; grade: string; pos: string; note: string; decision: Decision }
 /** ratings[evaluator][candidateId][skill] = 1..5 */
 export type Ratings = Record<string, Record<string, Record<string, number>>>;
-export interface Tryout { id: string; name: string; date: string; skills: string[]; weights: Record<string, number>; candidates: Candidate[]; ratings: Ratings; createdAt: number }
+export interface Tryout { id: string; name: string; date: string; skills: string[]; weights: Record<string, number>; candidates: Candidate[]; ratings: Ratings; createdAt: number; /** shared with the staff by this code */ code?: string; /** opened from someone else's code: rate only */ role?: "evaluator" }
 
 export function newTryout(name: string, date: string, id: string): Tryout {
   return { id, name: name.trim() || "Tryouts", date, skills: DEFAULT_SKILLS.slice(), weights: {}, candidates: [], ratings: {}, createdAt: Date.now() };

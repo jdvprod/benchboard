@@ -915,8 +915,73 @@ $$;
 revoke all on function public.rsvp_set(text, text, text, text) from public, anon;
 grant execute on function public.rsvp_set(text, text, text, text) to authenticated;
 
--- 25: the team page also lists upcoming practices (see season_view)
-create or replace function public.schema_version() returns int language sql immutable as $$ select 25 $$;
+-- ---------- Tryouts shared with evaluators: the head coach shares a code; each evaluator rates on their own phone ----------
+-- Evaluators see the players and their own ratings; only the head coach sees everyone's.
+create table if not exists public.tryouts_cloud (
+  code text primary key,
+  owner uuid not null,
+  data jsonb not null check (length(data::text) <= 200000),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.tryout_ratings (
+  code text not null references public.tryouts_cloud(code) on delete cascade,
+  evaluator uuid not null,
+  name text not null,
+  ratings jsonb not null check (length(ratings::text) <= 200000),
+  updated_at timestamptz not null default now(),
+  primary key (code, evaluator)
+);
+alter table public.tryouts_cloud enable row level security; -- through the functions below only
+alter table public.tryout_ratings enable row level security;
+
+create or replace function public.tryout_publish(c text, d jsonb) returns text
+language plpgsql security definer set search_path = public as $$
+declare k text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to share a tryout'; end if;
+  if jsonb_typeof(d) <> 'object' or length(d::text) > 200000 then raise exception 'That tryout can''t be shared'; end if;
+  if coalesce(c, '') <> '' then
+    update tryouts_cloud set data = d, updated_at = now() where code = upper(c) and owner = auth.uid() returning code into k;
+    if k is null then raise exception 'That tryout isn''t yours to update'; end if;
+    return k;
+  end if;
+  if (select count(*) from tryouts_cloud where owner = auth.uid()) >= 50 then raise exception 'You have a lot of shared tryouts. Stop sharing an old one first.'; end if;
+  k := upper(substr(md5(random()::text || clock_timestamp()::text || auth.uid()::text), 1, 6));
+  insert into tryouts_cloud (code, owner, data) values (k, auth.uid(), d);
+  return k;
+end $$;
+-- an evaluator opens the tryout: the players and skills, plus their own ratings
+create or replace function public.tryout_open(c text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare t tryouts_cloud;
+begin
+  if auth.uid() is null then raise exception 'Sign in to rate at this tryout'; end if;
+  select * into t from tryouts_cloud where code = upper(c);
+  if t.code is null then return null; end if;
+  return jsonb_build_object('code', t.code, 'data', t.data, 'mine', (select ratings from tryout_ratings where code = t.code and evaluator = auth.uid()), 'owner', t.owner = auth.uid());
+end $$;
+create or replace function public.tryout_rate(c text, nm text, r jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null then raise exception 'Sign in to rate at this tryout'; end if;
+  if not exists (select 1 from tryouts_cloud where code = upper(c)) then raise exception 'That tryout isn''t shared anymore'; end if;
+  if jsonb_typeof(r) <> 'object' then raise exception 'Bad ratings'; end if;
+  insert into tryout_ratings (code, evaluator, name, ratings) values (upper(c), auth.uid(), left(coalesce(nullif(btrim(nm), ''), 'Evaluator'), 40), r)
+    on conflict (code, evaluator) do update set ratings = excluded.ratings, name = excluded.name, updated_at = now();
+end $$;
+-- the head coach: everyone's ratings
+create or replace function public.tryout_all(c text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when exists (select 1 from tryouts_cloud where code = upper(c) and owner = auth.uid()) then coalesce((
+    select jsonb_agg(jsonb_build_object('name', name, 'ratings', ratings, 'at', updated_at) order by name) from tryout_ratings where code = upper(c)), '[]'::jsonb) end
+$$;
+create or replace function public.tryout_unshare(c text) returns void
+language sql security definer set search_path = public as $$ delete from tryouts_cloud where code = upper(c) and owner = auth.uid() $$;
+revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) from public, anon;
+grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
+
+-- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators.
+create or replace function public.schema_version() returns int language sql immutable as $$ select 26 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

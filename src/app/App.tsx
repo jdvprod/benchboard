@@ -32,6 +32,7 @@ const PlayerPage = lazy(() => import("../features/player/PlayerPage").then((m) =
 const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ default: m.LivePage })));
 const AdminPage = lazy(() => import("../features/admin/AdminPage").then((m) => ({ default: m.AdminPage })));
 const TryoutsPage = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.TryoutsPage })));
+const JoinTryout = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.JoinTryout })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
@@ -59,6 +60,9 @@ export function App() {
     }, 0);
     return <div className="content"><p className="empty" style={{ padding: 24 }}>Loading the sample season…</p></div>;
   }
+  // an assistant rating at someone else's tryout needs no team of their own (the page signs them in itself)
+  if (route.page === "tryout-join" || (route.page === "tryouts" && route.id?.startsWith("tj-") && user && !t))
+    return <><div className="content solo"><Suspense fallback={<Wait />}>{route.page === "tryout-join" ? <JoinTryout code={route.id || ""} /> : <TryoutsPage id={route.id} />}</Suspense></div><Toast /></>;
   if (!user && (route.page === "account" || (route.page === "join" && route.id && wantsAuthGate()))) {
     if (route.page === "join" && route.id) try { sessionStorage.setItem("bs-join", route.id); } catch { /* ignore */ }
     return <><AuthPage key={route.id || "a"} initial={route.id === "signup" || route.page === "join" ? "signup" : "signin"} onSkip={() => { skipAccounts(); location.hash = "#/track"; }} /><Toast /></>;
@@ -86,6 +90,7 @@ export function App() {
   switch (page) {
     case "club": body = <ClubPage />; break;
     case "tryouts": body = <TryoutsPage id={route.id} />; break;
+    case "tryout-join": body = <JoinTryout code={route.id || ""} />; break;
     case "lineup": body = <LineupPage />; break;
     case "formations": body = <FormationsPage />; break;
     case "labs": body = <LabsPage />; break;

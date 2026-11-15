@@ -1285,6 +1285,34 @@ const scenarios = {
     ok("tryouts are kept on the device", /16U tryouts[\s\S]*4 players · 2 evaluators/.test(await A.locator(".ty-list").innerText()));
     ok("no errors on tryouts", A.errors.length === 0, A.errors.join("; "));
   },
+  async tryoutstaff(browser) {
+    const A = await newPage(browser);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Head Coach"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(600);
+    await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
+    await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH\n13 Ava Ramirez S"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
+    await A.getByRole("button", { name: "Rankings", exact: true }).click(); await A.getByRole("button", { name: "Share with your staff" }).click(); await A.waitForTimeout(500);
+    const code = (await A.locator(".ty-code").innerText()).trim();
+    ok("the head coach gets a code for the staff", /^[A-Z0-9]{6}$/.test(code), code);
+    // an assistant opens the link on her phone, signs in, and rates
+    const B = await newPage(browser, { phone: true }); await B.goto(U + "#/tryout-join/" + code); await B.waitForTimeout(600);
+    ok("opening the link asks the assistant to sign in", (await B.locator(".ma").count()) === 1);
+    await B.getByLabel("Your name").fill("Coach Pat"); await B.getByLabel("Email", { exact: true }).fill("pat-tryout@e2e.test"); await B.getByLabel("Password", { exact: true }).fill("assist-pass");
+    await B.locator(".ma-check input").first().check(); await B.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await B.waitForTimeout(1500);
+    ok("the assistant lands on the tryout to rate, with the players", /16U tryouts/.test(await B.locator("h1").innerText()) && (await B.locator(".ty-rate li").count()) === 2 && (await B.getByRole("button", { name: "Rankings" }).count()) === 0);
+    await B.getByRole("group", { name: /Serve for Ava Ramirez/ }).getByRole("button", { name: "5 of 5" }).click(); await B.getByRole("group", { name: /Serve for Maya Chen/ }).getByRole("button", { name: "2 of 5" }).click(); await B.waitForTimeout(1200);
+    ok("her ratings go to the head coach", /Sent to the head coach/.test(await B.locator(".ty-sync").innerText()));
+    { const ax = await a11y(B); ok("the assistant's rating screen controls all have names", !ax.length, ax.join(" | ")); ok("and it fits a phone", (await overflow(B)) <= 0); }
+    // the head coach adds a player; the assistant gets it when she reopens
+    await A.getByRole("button", { name: /^Players/ }).click(); await A.getByLabel("Players trying out, one per line").fill("14 Lily Torres L"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(1500);
+    await B.goto(U + "#/tryout-join/" + code); await B.waitForTimeout(1200);
+    ok("new players reach the staff, and their ratings stay", (await B.locator(".ty-rate li").count()) === 3 && (await B.getByRole("group", { name: /Serve for Ava Ramirez/ }).getByRole("button", { name: "5 of 5" }).getAttribute("aria-pressed")) === "true");
+    await A.getByRole("button", { name: "Rankings", exact: true }).click(); await A.getByRole("button", { name: "Get your staff's ratings" }).click(); await A.waitForTimeout(600);
+    ok("the head coach pulls everyone's ratings into the rankings", /1 evaluator: Coach Pat/.test(await A.locator(".page").innerText()) && (await A.locator(".ty-rank tbody tr td:nth-child(3) b").first().innerText()) === "Ava Ramirez");
+    ok("no errors", A.errors.length === 0 && B.errors.length === 0, A.errors.concat(B.errors).join("; "));
+    await A.context().close(); await B.context().close();
+  },
   async coachtools(browser) {
     const A = await newPage(browser);
     await go(A, "sample"); await A.waitForFunction(() => !location.hash.includes("sample"), null, { timeout: 8000 }).catch(() => {}); await A.waitForTimeout(800);

@@ -6,6 +6,8 @@ import { Player } from "../../data/model";
 import { currentUser, userMeta } from "../../cloud/client";
 import { go } from "../../app/router";
 import { Card, ConfirmButton, download, fmtDate, Seg } from "../../ui/kit";
+import { JoinTryout, StaffCard, useEvaluatorSync, useStaffPublish } from "./TryoutShare";
+export { JoinTryout };
 import { Candidate, Decision, mergeTryout, newTryout, parseCandidates, rank, Tryout, tryoutCsv } from "./tryouts";
 
 const KEY = "tryouts";
@@ -34,6 +36,9 @@ function TryoutList({ list }: { list: Tryout[] }) {
         </form>
         <p className="keys">Add the players trying out, then every evaluator rates them 1 to 5 on each skill from their own phone. Floorcall ranks them and turns your offers into a roster. Kept on this device; share ratings as a file.</p>
       </Card>
+      <Card title="Rating for another coach?"><form className="row" onSubmit={(e) => { e.preventDefault(); const v = ((e.target as HTMLFormElement).elements.namedItem("jc") as HTMLInputElement).value.trim().toUpperCase(); if (v) go("tryout-join", v); }}>
+        <input name="jc" className="input" placeholder="Code" aria-label="Tryout code" maxLength={8} style={{ textTransform: "uppercase", maxWidth: 160 }} /><button className="btn">Join</button></form>
+        <p className="keys">Enter the code the head coach gave you. Your ratings go to them only.</p></Card>
       <Card title="Your tryouts">{!list.length ? <p className="small muted">None yet.</p> : <ul className="ty-list">{list.map((t) => <li key={t.id}><a href={"#/tryouts/" + t.id}><b>{t.name}</b><span className="small muted">{fmtDate(t.date)} · {t.candidates.length} players · {Object.keys(t.ratings).length} {Object.keys(t.ratings).length === 1 ? "evaluator" : "evaluators"}</span></a></li>)}</ul>}</Card>
     </div>
   </div>;
@@ -42,6 +47,12 @@ function TryoutList({ list }: { list: Tryout[] }) {
 function TryoutView({ t, onChange, onDelete }: { t: Tryout; onChange: (t: Tryout) => void; onDelete: () => void }) {
   const [tab, setTab] = useState<Tab>(t.candidates.length ? "rate" : "players"), [ev, setEv] = useState(myName);
   const setEvName = (n: string) => { setEv(n); try { localStorage.setItem("fc-evaluator", n); } catch { /* fine */ } };
+  const sync = useEvaluatorSync(t, ev); useStaffPublish(t);
+  if (t.role === "evaluator") return <div className="page">
+    <div className="pagehead"><div><a className="small ty-back" href="#/tryouts">‹ All tryouts</a><h1 style={{ margin: 0 }}>{t.name}</h1><span className="muted">{t.candidates.length} players · rating for the head coach</span></div>
+      <span className={"small ty-sync " + sync} role="status">{sync === "saving" ? "Saving…" : sync === "saved" ? "Sent to the head coach" : sync === "offline" ? "Not sent yet: no connection" : ""}</span></div>
+    <Rate t={t} onChange={onChange} ev={ev} setEv={setEvName} lockName />
+  </div>;
   return <div className="page">
     <div className="pagehead"><div><a className="small ty-back" href="#/tryouts">‹ All tryouts</a><h1 style={{ margin: 0 }}>{t.name}</h1><span className="muted">{fmtDate(t.date)} · {t.candidates.length} players</span></div>
       <ConfirmButton className="btn sm ghost" confirmText="Tap again to delete" onConfirm={onDelete}>Delete</ConfirmButton></div>
@@ -49,7 +60,7 @@ function TryoutView({ t, onChange, onDelete }: { t: Tryout; onChange: (t: Tryout
     <div style={{ marginTop: 14 }}>
       {tab === "players" && <Players t={t} onChange={onChange} />}
       {tab === "rate" && <Rate t={t} onChange={onChange} ev={ev} setEv={setEvName} />}
-      {tab === "rank" && <Rankings t={t} onChange={onChange} ev={ev} />}
+      {tab === "rank" && <><StaffCard t={t} onChange={onChange} ev={ev} /><div style={{ height: 14 }} /><Rankings t={t} onChange={onChange} ev={ev} /></>}
     </div>
   </div>;
 }
@@ -82,7 +93,7 @@ function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) 
 }
 
 /** Skill first, then down the list: how tryouts run (a serving station, a passing station). Big buttons for gym use. */
-function Rate({ t, onChange, ev, setEv }: { t: Tryout; onChange: (t: Tryout) => void; ev: string; setEv: (n: string) => void }) {
+function Rate({ t, onChange, ev, setEv, lockName = false }: { t: Tryout; onChange: (t: Tryout) => void; ev: string; setEv: (n: string) => void; lockName?: boolean }) {
   const [skill, setSkill] = useState(t.skills[0] || ""), [q, setQ] = useState("");
   if (!t.candidates.length) return <p className="empty">Add the players trying out first (Players).</p>;
   if (!ev.trim()) return <Card title="Who's rating?"><form className="row" onSubmit={(e) => { e.preventDefault(); const v = ((e.target as HTMLFormElement).elements.namedItem("ev") as HTMLInputElement).value.trim(); if (v) setEv(v.slice(0, 40)); }}>
@@ -98,7 +109,7 @@ function Rate({ t, onChange, ev, setEv }: { t: Tryout; onChange: (t: Tryout) => 
     <div className="row between" style={{ flexWrap: "wrap", gap: 8 }}>
       <label className="field" style={{ minWidth: 200 }}><span className="label">Skill</span><select className="input" value={skill} onChange={(e) => setSkill(e.target.value)}>{t.skills.map((k) => <option key={k} value={k}>{k}</option>)}</select></label>
       <label className="field" style={{ minWidth: 160 }}><span className="label">Find</span><input className="input" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Bib or name" /></label>
-      <span className="small muted">Rating as <b>{ev}</b> · <button className="btn sm ghost" onClick={() => setEv("")}>Change</button> · {done}/{t.candidates.length} rated on {skill}</span>
+      <span className="small muted">Rating as <b>{ev}</b>{!lockName && <> · <button className="btn sm ghost" onClick={() => setEv("")}>Change</button></>} · {done}/{t.candidates.length} rated on {skill}</span>
     </div>
     <ul className="ty-rate">{shown.map((c) => { const v = mine[c.id]?.[skill]; return <li key={c.id} className={typeof v === "number" ? "done" : ""}>
       <span className="ty-who"><b className="num">{c.bib}</b> {c.name}{c.pos && <span className="muted small"> {c.pos}</span>}</span>

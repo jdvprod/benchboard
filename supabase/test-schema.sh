@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "25" "schema version is reported"
+check "select schema_version();" "26" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -181,6 +181,19 @@ as $E "select rsvp_set('P3P3P3', 'sc1', 'no', 'p7');" >/dev/null
 expect "$(as $B "select rsvps_for_team('t3')->>0 is not null and exists (select 1 from jsonb_array_elements(rsvps_for_team('t3')) x where x->>'player' = 'p7' and x->>'status' = 'no');")" "t" "an answer can say which player it is for"
 as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
 expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
+# tryouts: the head coach shares a code; evaluators rate; only the head coach sees everyone's ratings
+TC=$(as $B "select tryout_publish(null, '{\"name\":\"16U\",\"candidates\":[]}');")
+expect "${#TC}" "6" "a tryout gets a six-letter code"
+expect "$(as $D "select tryout_open(lower('$TC'))->'data'->>'name';")" "16U" "an evaluator opens it by code"
+as $D "select tryout_rate('$TC', 'Pat', '{\"c1\":{\"Serve\":4}}');" >/dev/null
+as $E "select tryout_rate('$TC', 'Sam', '{\"c1\":{\"Serve\":2}}');" >/dev/null
+expect "$(as $D "select tryout_open('$TC')->'mine'->'c1'->>'Serve';")" "4" "evaluators get their own ratings back"
+expect "$(as $D "select tryout_all('$TC') is null;")" "t" "evaluators can't see each other's ratings"
+expect "$(as $B "select jsonb_array_length(tryout_all('$TC'));")" "2" "the head coach sees everyone's"
+expect "$(asall $D "select tryout_publish('$TC', '{}');" | grep -c "isn't yours")" "1" "only the head coach updates the players"
+expect "$(q -c "set role anon; select tryout_open('$TC');" 2>&1 | grep -c 'permission denied')" "1" "rating needs an account"
+as $B "select tryout_unshare('$TC');" >/dev/null
+expect "$(as $D "select tryout_open('$TC') is null;")" "t" "unsharing ends it for evaluators"
 # upcoming practices reach the team page: date, time and title only
 q -c "insert into records (store, id, team_id, data, u) values ('plans', 'pl1', 't3', '{\"id\":\"pl1\",\"teamId\":\"t3\",\"date\":\"2099-01-05\",\"start\":\"18:00\",\"title\":\"Serve receive\",\"status\":\"planned\",\"blocks\":[{\"drill\":\"secret\"}]}', 1);" >/dev/null
 expect "$(q -c "set role anon; select season_view('P3P3P3')->'practices'->0->>'title';")" "Serve receive" "upcoming practices are on the team page"
