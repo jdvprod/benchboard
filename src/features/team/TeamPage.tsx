@@ -31,7 +31,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><ImportStats /><Backup /></div>
+        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard /><ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;
@@ -220,4 +220,10 @@ function addPasted(text: string): string {
     else { save("players", { id: uid("p"), teamId: t.id, num: r.num, first: r.first, last: r.last, pos: r.pos || "OH", grad: r.grad, height: r.height, active: true, goals: [], notes: "" } as Player); added++; }
   }
   return `${added} added${updated ? `, ${updated} updated` : ""}.`;
+}
+
+function TryoutsCard() {
+  return <Card title="Tryouts" actions={<a className="btn sm" href="#/tryouts">Open tryouts</a>}>
+    <p className="small muted" style={{ margin: 0 }}>Rate players 1 to 5 on each skill with your staff, rank them, and turn your offers into a roster.</p>
+  </Card>;
 }

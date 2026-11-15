@@ -1251,6 +1251,40 @@ const scenarios = {
     if (process.env.QASHOT6) await A.screenshot({ path: process.env.QASHOT6, fullPage: true });
     ok("no errors on the club page", A.errors.length === 0, A.errors.join("; "));
   },
+  async tryouts(browser) {
+    const A = await newPage(browser, { cloud: false });
+    await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
+    await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
+    await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH 10th\n13 Ava Ramirez S Jr\nLily Torres L\n15 Zoe Grant MB"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
+    ok("tryout players are added from a pasted list, numbered when they have no bib", (await A.locator("table tbody tr").count()) === 4 && (await A.getByLabel("Bib for Lily Torres").inputValue()) === "14");
+    await A.getByRole("button", { name: "Rate", exact: true }).click(); await A.getByLabel("Your name as an evaluator").fill("Coach Kim"); await A.getByRole("button", { name: "Start rating" }).click(); await A.waitForTimeout(200);
+    const rate = async (who, n) => A.getByRole("group", { name: new RegExp(" for " + who) }).getByRole("button", { name: n + " of 5" }).click();
+    await rate("Maya Chen", 5); await rate("Ava Ramirez", 3); await rate("Lily Torres", 2); await rate("Zoe Grant", 4);
+    ok("rating counts progress on the skill", /4\/4 rated on Serve/.test(await A.locator(".page").innerText()));
+    await A.getByLabel("Skill").selectOption("Pass"); await rate("Lily Torres", 5); await rate("Maya Chen", 4);
+    { const ax = await a11y(A); ok("rating controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.QASHOT8) { await A.setViewportSize({ width: 390, height: 844 }); await A.screenshot({ path: process.env.QASHOT8, fullPage: true }); await A.setViewportSize({ width: 1360, height: 900 }); }
+    await A.getByRole("button", { name: "Rankings", exact: true }).click(); await A.waitForTimeout(200);
+    ok("rankings put the best first", (await A.locator(".ty-rank tbody tr td:nth-child(3) b").allInnerTexts()).join(",") === "Maya Chen,Zoe Grant,Lily Torres,Ava Ramirez", (await A.locator(".ty-rank tbody tr td:nth-child(3) b").allInnerTexts()).join(","));
+    // a second evaluator's file merges in
+    const mine = await download(A, () => A.getByRole("button", { name: "Share my ratings" }).click()); const j = JSON.parse(mine.text());
+    ok("an evaluator shares their ratings as a file", j.floorcallTryout === 1 && Object.keys(j.tryout.ratings).join() === "Coach Kim");
+    const ids = Object.fromEntries(j.tryout.candidates.map((c) => [c.name, c.id]));
+    j.tryout.ratings = { "Coach Pat": { [ids["Ava Ramirez"]]: { Serve: 5, Pass: 5 }, [ids["Maya Chen"]]: { Serve: 1, Pass: 1 } } };
+    await A.locator("input[type=file][aria-label='Ratings file']").setInputFiles({ name: "pat.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(j)) }); await A.waitForTimeout(300);
+    ok("another evaluator's ratings merge in and change the order", /2 evaluators: Coach Kim, Coach Pat/.test(await A.locator(".page").innerText()) && (await A.locator(".ty-rank tbody tr td:nth-child(3) b").first().innerText()) === "Ava Ramirez");
+    ok("players the evaluators saw differently are flagged", (await A.locator(".ty-rank tr", { hasText: "Maya Chen" }).locator(".ty-split").count()) === 1);
+    { const csv = await download(A, () => A.getByRole("button", { name: "Spreadsheet" }).click()); ok("rankings export to a spreadsheet", /^Rank,Bib,Name/.test(csv.text()) && /Ava Ramirez/.test(csv.text())); }
+    await A.getByLabel("Decision for Ava Ramirez").selectOption("offer"); await A.getByLabel("Decision for Zoe Grant").selectOption("offer"); await A.waitForTimeout(150);
+    await A.setViewportSize({ width: 390, height: 844 }); await A.waitForTimeout(200); ok("tryouts fit a phone", (await overflow(A)) <= 0);
+    if (process.env.QASHOT8) await A.screenshot({ path: process.env.QASHOT8.replace(".png", "-rank.png"), fullPage: true });
+    await A.setViewportSize({ width: 1360, height: 900 });
+    await A.getByLabel("New team name").fill("Clovis 16 Blue"); await A.getByRole("button", { name: "Create team with 2 players" }).click(); await A.waitForTimeout(500);
+    { const roster = (await A.locator(".page").innerText()) + " " + (await A.locator(".page input").evaluateAll((l) => l.map((x) => x.value).join(" "))); ok("offers become a new team's roster", /Clovis 16 Blue/.test(await A.locator("select[aria-label='Team'] option:checked").first().innerText()) && /Zoe/.test(roster) && /Ava/.test(roster) && !/Maya/.test(roster), roster.slice(0, 300)); }
+    await A.reload(); await A.waitForTimeout(800); await go(A, "tryouts"); await A.waitForTimeout(300);
+    ok("tryouts are kept on the device", /16U tryouts[\s\S]*4 players · 2 evaluators/.test(await A.locator(".ty-list").innerText()));
+    ok("no errors on tryouts", A.errors.length === 0, A.errors.join("; "));
+  },
   async coachtools(browser) {
     const A = await newPage(browser);
     await go(A, "sample"); await A.waitForFunction(() => !location.hash.includes("sample"), null, { timeout: 8000 }).catch(() => {}); await A.waitForTimeout(800);

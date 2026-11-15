@@ -31,6 +31,7 @@ const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then
 const PlayerPage = lazy(() => import("../features/player/PlayerPage").then((m) => ({ default: m.PlayerPage })));
 const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ default: m.LivePage })));
 const AdminPage = lazy(() => import("../features/admin/AdminPage").then((m) => ({ default: m.AdminPage })));
+const TryoutsPage = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.TryoutsPage })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
@@ -84,6 +85,7 @@ export function App() {
   let body;
   switch (page) {
     case "club": body = <ClubPage />; break;
+    case "tryouts": body = <TryoutsPage id={route.id} />; break;
     case "lineup": body = <LineupPage />; break;
     case "formations": body = <FormationsPage />; break;
     case "labs": body = <LabsPage />; break;
