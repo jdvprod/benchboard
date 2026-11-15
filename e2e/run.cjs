@@ -1259,7 +1259,7 @@ const scenarios = {
     ok("voice: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
-  /** paused feature: run with COLLEGE=1 after flipping src/recruit/flags.ts */
+  /** paused feature (college search and messages to coaches): flip COLLEGE_SEARCH in src/recruit/flags.ts, build, then run this scenario by name */
   async _college(browser) {
     const A = await newPage(browser);
     await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
@@ -1298,6 +1298,22 @@ const scenarios = {
     await C.locator(".rc-chips button", { hasText: "2028" }).click(); await C.locator(".rc-chips button", { hasText: "2027" }).click(); await C.waitForTimeout(600); ok("class filter drops her for 2027", (await C.locator(".rc-hit").count()) === 0);
     await C.locator(".rc-chips button", { hasText: "2027" }).click(); await C.getByLabel("Kills / set", { exact: true }).fill("50"); await C.waitForTimeout(600); ok("a stat minimum filters", (await C.locator(".rc-hit").count()) === 0);
     await C.getByLabel("Kills / set", { exact: true }).fill(""); await C.waitForTimeout(600);
+    // the college coach writes to her coaches (never to the player)
+    { const hit = C.locator(".rc-hit", { hasText: "Nia Lopez" });
+      await hit.getByRole("button", { name: "Message Nia's coaches" }).click();
+      await hit.getByLabel(/Message to Clovis North's coaches about Nia/).fill("We watched Nia's clips and would like her at our January clinic.");
+      if (process.env.QASHOT3) await C.screenshot({ path: process.env.QASHOT3 });
+      { const ax = await a11y(C); ok("college message form controls all have names", !ax.length, ax.join(" | ")); }
+      await hit.getByRole("button", { name: "Send" }).click(); await C.waitForTimeout(500);
+      ok("the college coach is told it went to the staff", /Sent to Clovis North's coaching staff/.test(await hit.innerText()));
+      await C.reload(); await C.waitForTimeout(1500);
+      await C.locator(".rc-hit", { hasText: "Nia Lopez" }).getByRole("button", { name: "Message Nia's coaches" }).click(); await C.locator(".rc-contact textarea").fill("Following up."); await C.locator(".rc-contact").getByRole("button", { name: "Send" }).click(); await C.waitForTimeout(400);
+      ok("a second message the same week is refused", /this week/.test(await C.locator(".rc-contact .rc-err").innerText())); }
+    await go(A, "team"); await A.waitForTimeout(900);
+    { const card = A.locator(".card", { hasText: "College interest" });
+      ok("the team's coach gets the message with who sent it and about whom", /Pat Coach, Assistant coach · State University about Nia Lopez/.test(await card.innerText()) && /January clinic/.test(await card.innerText()) && /1 new/.test(await card.innerText()), (await card.innerText().catch(() => "")).slice(0, 300));
+      if (process.env.QASHOT3) await card.screenshot({ path: process.env.QASHOT3.replace(".png", "-inbox.png") });
+      ok("with a reply-by-email link to the school address", ((await card.getByRole("link", { name: "Reply by email" }).getAttribute("href")) || "").startsWith("mailto:pat@state.edu")); }
     await C.getByRole("button", { name: /Add Nia Lopez to watchlist/ }).click(); await C.getByLabel(/Only my watchlist/).check(); await C.waitForTimeout(200);
     ok("watchlist keeps her", (await C.locator(".rc-hit").count()) === 1);
     if (process.env.SHOTS) await C.screenshot({ path: path.join(process.env.SHOTS, "college-search.png"), fullPage: true });

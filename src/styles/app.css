@@ -893,3 +893,8 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 /* schedule: who can make it */
 .mu-sched li:has(.mu-avail){flex-wrap:wrap}
 .mu-avail{flex:1 0 100%;font-size:13px;padding:2px 2px 4px}.mu-avail summary{cursor:pointer;font-weight:600;color:var(--us)}.mu-avail p{margin:4px 0 0;color:var(--muted)}.mu-avail p b{color:var(--ink)}
+
+/* college interest inbox */
+.ci-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}.ci-list li{border-left:3px solid var(--line);padding-left:12px;display:grid;gap:4px}.ci-list li.new{border-left-color:var(--us)}
+.ci-who{font-size:14px}.ci-body{white-space:pre-wrap}
+.card .pill{font-size:12px;font-weight:700;background:var(--us-soft);border:1px solid var(--us);border-radius:999px;padding:2px 10px}

@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "19" "schema version is reported"
+check "select schema_version();" "20" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -115,7 +115,19 @@ as $C "select admin_decide_college('$D', true);" >/dev/null
 expect "$(as $D "select jsonb_array_length(recruit_search('{\"grad\":[2027],\"pos\":[\"OH\"],\"min\":{\"kps\":3}}'));")" "1" "approved staff find listed players by class, position and numbers"
 expect "$(as $D "select jsonb_array_length(recruit_search('{\"min\":{\"kps\":4}}'));")" "0" "number filters exclude players below them"
 expect "$(as $D "select jsonb_array_length(recruit_search('{\"min\":{\"dps\":1}}'));")" "0" "a stat the staff never recorded doesn't pass a filter"
+# college interest: approved staff write to a listed player's coaches; only that team's coaches read it
+expect "$(asall $E "select college_contact('R1R1R1', 'hello');" | grep -c 'College staff only')" "1" "only approved college staff can write"
+as $D "select college_contact('r1r1r1', 'We would like to see Maya at our January clinic.');" >/dev/null
+expect "$(asall $D "select college_contact('R1R1R1', 'again');" | grep -c 'this week')" "1" "one message per player per week"
+TEAM_R1=$(q -c "select team_id from recruit_shares where code = 'R1R1R1';")
+OWNER_R1=$(q -c "select user_id from members where team_id = '$TEAM_R1' and role = 'owner' limit 1;")
+expect "$(as $OWNER_R1 "select college_inbox('$TEAM_R1')->0->>'school';")" "State University" "the team's coach sees who wrote, from which school"
+expect "$(as $OWNER_R1 "select college_inbox('$TEAM_R1')->0->>'player';")" "Maya" "and about which player"
+expect "$(as $E "select college_inbox('$TEAM_R1') is null;")" "t" "people off the team can't read college messages"
+as $OWNER_R1 "select college_inbox_read('$TEAM_R1');" >/dev/null
+expect "$(as $OWNER_R1 "select college_inbox('$TEAM_R1')->0->>'new';")" "false" "messages are marked read"
 q -c "update recruit_shares set listed = false where code = 'R1R1R1';" >/dev/null
+expect "$(asall $D "select college_contact('R1R1R1', 'hi');" | grep -c "isn't listed")" "1" "nobody can write about a player who is no longer listed"
 expect "$(as $D "select jsonb_array_length(recruit_search());")" "0" "unlisted profiles never show in search"
 expect "$(asall $B "select admin_decide_college('$E', true);" | grep -c 'Admins only')" "1" "only admins approve college staff"
 # accounts: the news email list is for admins only

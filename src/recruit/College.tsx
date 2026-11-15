@@ -49,6 +49,20 @@ function Request({ onDone }: { onDone: (s: Status) => void }) {
   </form>;
 }
 
+/** Write to a listed player's coaching staff. Messages never go to the player: the team's coaches read them and decide what to pass on. */
+function Contact({ h }: { h: Hit }) {
+  const [open, setOpen] = useState(false), [text, setText] = useState(""), [busy, setBusy] = useState(false), [msg, setMsg] = useState(""), [sent, setSent] = useState(false);
+  const team = h.team?.name || "the team";
+  if (sent) return <p className="rc-contact-ok" role="status">Sent to {team}'s coaching staff. They have your name, school and email to reply.</p>;
+  if (!open) return <button className="rc-link rc-contact-open" onClick={() => setOpen(true)}>Message {h.player.first}'s coaches</button>;
+  return <form className="rc-contact" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setMsg(""); try { await rpc("college_contact", { c: h.code, b: text }); setSent(true); } catch (x: any) { setMsg(x?.message || "Couldn't send. Try again."); } setBusy(false); }}>
+    <label>Message to {team}'s coaches about {h.player.first}<textarea className="input" rows={4} maxLength={1500} value={text} onChange={(e) => setText(e.target.value)} placeholder="Who you are, what you've seen, and the best way to follow up." required /></label>
+    <p className="rc-contact-note">This goes to the team's coaching staff, not to the player. They get your name, school, title and school email.</p>
+    <div className="rc-contact-btns"><button className="btn primary" disabled={busy || !text.trim()}>{busy ? "Sending…" : "Send"}</button><button type="button" className="btn" onClick={() => setOpen(false)}>Cancel</button></div>
+    {msg && <p className="rc-err" role="alert">{msg}</p>}
+  </form>;
+}
+
 function Search({ me }: { me: Status }) {
   const [grad, setGrad] = useState<number[]>([]), [pos, setPos] = useState<string[]>([]), [q, setQ] = useState(""), [region, setRegion] = useState(""), [min, setMin] = useState<Record<string, string>>({});
   const [sort, setSort] = useState("updated"), [hits, setHits] = useState<Hit[] | null>(null), [err, setErr] = useState(""), [watch, setWatch] = useState<string[]>(readWatch), [onlyWatch, setOnlyWatch] = useState(false);
@@ -88,6 +102,7 @@ function Search({ me }: { me: Status }) {
             <span className="rc-pc-k">{line(h).map(([l, v]) => <span key={l}><b>{v}</b><small>{l}</small></span>)}</span>
             {h.ranks?.[0] && <span className="rc-pc-f">{ord(h.ranks[0].rank)} on the team in {h.ranks[0].label}{h.clips ? ` · ▶ ${h.clips} clips` : ""}</span>}
           </a>
+          <Contact h={h} />
           <button className="rc-star" aria-pressed={watch.includes(h.code)} aria-label={(watch.includes(h.code) ? "Remove " : "Add ") + h.player.first + " " + h.player.last + (watch.includes(h.code) ? " from" : " to") + " watchlist"} onClick={() => star(h.code)}>{watch.includes(h.code) ? "★" : "☆"}</button>
         </div>)}</div>
       </section>

@@ -154,7 +154,8 @@ function Landing() {
       <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
     </div>
     <p className="rc-note">Free with a Floorcall account. Your film never leaves your device.</p>
-  </section></Shell>;
+  </section>
+  {COLLEGE_SEARCH && <p className="rc-note rg-college">College coach? <a href="#/college">Search players whose families chose to be found</a>, and write to their coaches.</p>}</Shell>;
 }
 
 function RecruitApp() {

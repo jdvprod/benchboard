@@ -131,3 +131,11 @@ body{padding-left:0}
 @media (max-width:560px){.rg-cats{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* phones: the email right after "This email", your details after */
 @media (max-width:899px){.rg-mail>.stack{display:contents}.rg-this{order:1}.rg-preview{order:2}.rg-you{order:3}.rg-mail .rc-card{margin-bottom:0}}
+
+/* college staff writing to a player's coaches */
+.rc-hit.rc-pc{display:block}
+.rc-contact-open{display:block;margin:0 14px 12px;font-weight:600;min-height:32px;text-align:left}
+.rc-contact{display:grid;gap:8px;margin:0 14px 14px;padding-top:12px;border-top:1px solid var(--line)}
+.rc-contact label{display:grid;gap:4px;font-size:13px;font-weight:600}.rc-contact textarea{resize:vertical}
+.rc-contact-note,.rc-contact-ok{margin:0;font-size:13px;color:var(--muted)}.rc-contact-ok{margin:0 14px 14px;color:var(--ink);font-weight:600}
+.rc-contact-btns{display:flex;gap:8px}

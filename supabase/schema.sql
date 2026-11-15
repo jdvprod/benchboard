@@ -724,7 +724,53 @@ $$;
 revoke all on function public.rsvp_set(text, text, text), public.rsvps_by_code(text), public.rsvps_for_team(text) from public, anon;
 grant execute on function public.rsvp_set(text, text, text), public.rsvps_by_code(text), public.rsvps_for_team(text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 19 $$;
+-- ---------- College interest: approved college staff write to a listed player's coaches (never to the player) ----------
+create table if not exists public.college_interest (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  code text not null,
+  player text,
+  from_user uuid not null,
+  from_name text, school text, title text, email text,
+  body text not null check (char_length(body) between 1 and 1500),
+  created_at timestamptz not null default now(),
+  read_at timestamptz
+);
+create index if not exists college_interest_team on public.college_interest (team_id, created_at desc);
+alter table public.college_interest enable row level security; -- through the functions below only
+
+create or replace function public.college_contact(c text, b text) returns void
+language plpgsql security definer set search_path = public as $$
+declare s public.college_staff; r public.recruit_shares;
+begin
+  select * into s from college_staff where user_id = auth.uid() and status = 'approved';
+  if s.user_id is null then raise exception 'College staff only'; end if;
+  if char_length(btrim(coalesce(b, ''))) = 0 then raise exception 'Write a message first'; end if;
+  select * into r from recruit_shares where code = upper(c) and listed;
+  if r.code is null then raise exception 'That player isn''t listed anymore'; end if;
+  if exists (select 1 from college_interest where from_user = auth.uid() and code = r.code and created_at > now() - interval '7 days') then raise exception 'You wrote to this player''s coaches this week. They have your message.'; end if;
+  if (select count(*) from college_interest where from_user = auth.uid() and created_at > now() - interval '1 day') >= 25 then raise exception 'That''s a lot of messages for one day. Try again tomorrow.'; end if;
+  insert into college_interest (team_id, code, player, from_user, from_name, school, title, email, body)
+    values (r.team_id, r.code, left(btrim(coalesce(r.data->'player'->>'first', '') || ' ' || coalesce(r.data->'player'->>'last', '')), 80), auth.uid(), s.name, s.school, s.title, s.email, left(btrim(b), 1500));
+end $$;
+
+-- the coach app: messages from college staff about this team's players, for the team's coaches
+create or replace function public.college_inbox(t text) returns jsonb
+language sql security definer set search_path = public stable as $$
+  select case when auth.uid() is not null and can_edit(t) then coalesce((
+    select jsonb_agg(jsonb_build_object('id', id, 'player', player, 'code', code, 'name', from_name, 'school', school, 'title', title, 'email', email, 'body', body, 'at', created_at, 'new', read_at is null) order by created_at desc)
+    from (select * from college_interest where team_id = t order by created_at desc limit 100) x), '[]'::jsonb) end
+$$;
+create or replace function public.college_inbox_read(t text) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not can_edit(t) then return; end if;
+  update college_interest set read_at = now() where team_id = t and read_at is null;
+end $$;
+revoke all on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) from public, anon;
+grant execute on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 20 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
