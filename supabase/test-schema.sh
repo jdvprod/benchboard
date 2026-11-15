@@ -181,6 +181,10 @@ as $E "select rsvp_set('P3P3P3', 'sc1', 'no', 'p7');" >/dev/null
 expect "$(as $B "select rsvps_for_team('t3')->>0 is not null and exists (select 1 from jsonb_array_elements(rsvps_for_team('t3')) x where x->>'player' = 'p7' and x->>'status' = 'no');")" "t" "an answer can say which player it is for"
 as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
 expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
+# upcoming practices reach the team page: date, time and title only
+q -c "insert into records (store, id, team_id, data, u) values ('plans', 'pl1', 't3', '{\"id\":\"pl1\",\"teamId\":\"t3\",\"date\":\"2099-01-05\",\"start\":\"18:00\",\"title\":\"Serve receive\",\"status\":\"planned\",\"blocks\":[{\"drill\":\"secret\"}]}', 1);" >/dev/null
+expect "$(q -c "set role anon; select season_view('P3P3P3')->'practices'->0->>'title';")" "Serve receive" "upcoming practices are on the team page"
+expect "$(q -c "set role anon; select (season_view('P3P3P3')->'practices'->0) ? 'blocks';")" "f" "but not the drills"
 # volunteer jobs: families sign up for a match's jobs; counts for followers, names for the team's coaches
 as $D "select job_take('p3p3p3', 'sc1', 'line', true);" >/dev/null
 as $E "select job_take('P3P3P3', 'sc1', 'line', true);" >/dev/null

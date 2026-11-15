@@ -810,6 +810,16 @@ const scenarios = {
     ok("season video opens with the record", /Season recap video/.test(await A.locator(".rv-side h2").innerText()) && await A.locator(".rv-cv").evaluate((c) => c.width === 1080 && c.getContext("2d").getImageData(60, 70, 1, 1).data[0] > 200));
     if (process.env.QASHOT7) { for (const [n, ms] of [[0, 1500], [1, 3200], [2, 2600]]) { await A.waitForTimeout(ms); await A.locator(".rv-cv").screenshot({ path: process.env.QASHOT7.replace(".png", "-" + n + ".png") }); } }
     await A.keyboard.press("Escape"); await A.waitForTimeout(200);
+    // practices reach the team's Live schedule; a parent says her player will miss one; the coach sees it on the plan
+    await go(A, "practice"); await A.waitForTimeout(400); await A.getByRole("button", { name: "New plan" }).click(); await A.waitForTimeout(300); await A.getByLabel("Date").first().fill(new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10)); await A.waitForTimeout(2800);
+    await P.goto(teamUrl + "/schedule"); await P.reload(); await P.waitForTimeout(1200);
+    { const li = P.locator(".lv-games li", { hasText: "Practice" });
+      ok("upcoming practices show on the Live schedule", (await li.count()) === 1 && (await li.locator(".lv-rsvp").count()) === 1, await P.locator(".lv-games").first().innerText().catch(() => ""));
+      await li.getByRole("button", { name: "Can't go" }).click(); await P.waitForTimeout(500);
+      const ics = await download(P, () => P.getByRole("button", { name: "Add to calendar" }).click()); ok("practices are in the team calendar file", /SUMMARY:Clovis North practice/.test(ics.text())); }
+    await A.reload(); await A.waitForTimeout(1500);
+    await A.locator(".att .mu-avail summary").click().catch(() => {});
+    ok("the coach sees who may miss practice on the plan", /Players who may miss it: #7 Maya/.test(await A.locator(".att .mu-avail").innerText().catch(() => "")), await A.locator(".att").innerText().catch(() => "none"));
     ok("gameday: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
   },

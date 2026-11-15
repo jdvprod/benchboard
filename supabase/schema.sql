@@ -212,6 +212,9 @@ begin
                          from records where store = 'players' and team_id = s.team_id and not deleted and coalesce((data->>'active')::boolean, true)), '[]'::jsonb),
     -- gamecast links the coach shared for this team's matches, so the season page can send families to the live game
     'live', coalesce((select jsonb_agg(jsonb_build_object('matchId', match_id, 'code', code)) from live_shares where team_id = s.team_id), '[]'::jsonb),
+    -- upcoming practices: date, start time and title only (the drills stay with the coaches)
+    'practices', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'date', data->>'date', 'start', data->>'start', 'title', left(coalesce(data->>'title', ''), 80)) order by data->>'date', data->>'start')
+                           from records where store = 'plans' and team_id = s.team_id and not deleted and coalesce(data->>'status', '') <> 'done' and data->>'date' >= to_char(now() at time zone 'America/Los_Angeles' - interval '1 day', 'YYYY-MM-DD')), '[]'::jsonb),
     'at', now()
   ) into out;
   return out;

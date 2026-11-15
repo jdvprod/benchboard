@@ -12,6 +12,7 @@ import { askJson, aiAvailable, AiError, AI_ERRORS } from "../../ai/client";
 import { practiceSuggestPrompt } from "../../ai/prompts";
 import { setUi } from "../../app/ui";
 import { go } from "../../app/router";
+import { AvailabilityLine, useAvailability } from "../matchup/Availability";
 
 const CAT_COLOR: Record<string, string> = {
   "Warm-up": "#C3C8CE", Serving: "#2B79B0", "Serve receive": "#5FA3D3", Setting: "#9BCBEB", Attacking: "#1D5A85", Blocking: "#7D838C",
@@ -238,11 +239,12 @@ function History() {
 /* ---------- attendance ---------- */
 const ATT: Record<string, { next: "in" | "late" | "out" | undefined; label: string }> = { none: { next: "in", label: "—" }, in: { next: "late", label: "Here" }, late: { next: "out", label: "Late" }, out: { next: undefined, label: "Out" } };
 function Attendance({ plan, onChange }: { plan: PracticePlan; onChange: (a: PracticePlan["attendance"]) => void }) {
-  const ps = activePlayers(), a = plan.attendance || {};
+  const ps = activePlayers(), a = plan.attendance || {}, rsvps = useAvailability();
   const counts = { in: 0, late: 0, out: 0 } as Record<string, number>; for (const p of ps) if (a[p.id]) counts[a[p.id]]++;
   const cycle = (id: string) => { const cur = a[id] || "none", nx = ATT[cur].next; const n = { ...a }; if (nx) n[id] = nx; else delete n[id]; onChange(n); };
   return <div className="att">
     <div className="row between"><span className="label">Attendance</span><span className="small muted">{counts.in} here · {counts.late} late · {counts.out} out{ps.length ? "" : ""} <button type="button" className="btn sm ghost" onClick={() => onChange(Object.fromEntries(ps.map((p) => [p.id, "in"])) as any)}>All here</button></span></div>
+    {plan.date >= todayISO() && <AvailabilityLine item={plan.id} all={rsvps} />}
     <div className="att-grid">{ps.map((p) => { const st = a[p.id] || "none"; return <button type="button" key={p.id} className={"att-b " + st} onClick={() => cycle(p.id)} aria-label={`${p.first} ${p.last}: ${ATT[st].label}. Tap to change.`}><b>{p.num}</b><span>{p.first || p.last}</span><i>{ATT[st].label}</i></button>; })}</div>
   </div>;
 }

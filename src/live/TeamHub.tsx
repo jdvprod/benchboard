@@ -100,6 +100,7 @@ function addToCalendar(d: SeasonData, code: string) {
     if (!ours.length) items.push({ uid: "t-" + t.id, date: t.start, title: `${team} · ${t.name}`, where: t.site, note: page });
     for (const g of ours) items.push({ uid: "g-" + g.id, date: g.day || t.start, time: g.time, title: `${team} vs ${g.opp} · ${t.name}`, where: [t.site, g.court ? tr("Court {n}", { n: g.court }) : ""].filter(Boolean).join(" · ") || undefined, note: page, minutes: 60 });
   }
+  for (const p of d.practices || []) if (p.date >= today) items.push({ uid: "p-" + p.id, date: p.date, time: p.start, title: `${team} ${tr("practice")}${p.title && !/^practice$/i.test(p.title) ? ": " + p.title : ""}`, note: page });
   const blob = new Blob([icsFile(team, items)], { type: "text/calendar" }), a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = `${team} schedule.ics`.replace(/[^\w\- .]+/g, ""); document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 }
@@ -108,14 +109,17 @@ const addDays = (iso: string, n: number) => { const x = new Date(iso + "T12:00")
 
 function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code: string; all?: boolean }) {
   const today = todayISO();
-  const upcoming = (d.team?.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, all ? 50 : 3);
+  // matches and practices together; practices show on the full schedule (the home tab keeps to matches)
+  type Up = { id: string; date: string; time: string; opp: string; site: string; event: string; jobs?: any[]; practice?: boolean };
+  const upcoming: Up[] = [...(d.team?.schedule || []).map((x) => x as Up), ...(all ? (d.practices || []).map((p) => ({ id: p.id, date: p.date, time: p.start, opp: p.title, site: "", event: "", practice: true })) : [])]
+    .filter((x) => x.date >= today).sort((a, b) => (a.date + (a.time || "99")).localeCompare(b.date + (b.time || "99"))).slice(0, all ? 60 : 3);
   const R = useRsvps(code), J = useJobs(code);
   const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
   return <>
     {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
       <RsvpFor R={R} players={d.players} />
-      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span><b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b><span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.opp} R={R} /><JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>
+      <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span>{x.practice ? <b className="lv-prac">{tr("Practice")}{x.opp && !/^practice$/i.test(x.opp) ? <span className="lv-ev"> · {x.opp}</span> : null}</b> : <b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b>}<span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.practice ? tr("Practice") : x.opp} R={R} /><JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>
       <RsvpSignIn R={R} team={d.team?.name || tr("the team")} /></section>}
     <section className="lv-card"><div className="lv-h"><h2>{tr("Results")}</h2>{!all && games.length >= 5 && <a href={`#/t/${code}/schedule`}>{tr("All results ›")}</a>}</div>
       {games.length ? <ul className="lv-games">{games.map((g) => { const r = resultOf(g.R), live = isLive(g); return <li key={g.m.id}><a href={`#/t/${code}/m/${g.m.id}`}>
