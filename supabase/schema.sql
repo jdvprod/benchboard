@@ -809,7 +809,35 @@ revoke all on function public.beach_publish(text, text), public.beach_unshare(te
 grant execute on function public.beach_publish(text, text), public.beach_unshare(text) to authenticated;
 grant execute on function public.beach_view(text) to anon, authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 21 $$;
+-- ---------- Team playbook: plays the coaches chose to share; signed-in followers study them on Floorcall Live ----------
+create table if not exists public.team_plays (
+  team_id text primary key references public.teams_cloud(id) on delete cascade,
+  data jsonb not null,
+  updated_at timestamptz not null default now()
+);
+alter table public.team_plays enable row level security; -- through the functions below only
+
+create or replace function public.plays_publish(t text, d jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if auth.uid() is null or not can_edit(t) then raise exception 'Only the team''s coaches can share plays'; end if;
+  if jsonb_typeof(d) <> 'array' or length(d::text) > 100000 then raise exception 'Those plays can''t be shared'; end if;
+  if jsonb_array_length(d) = 0 then delete from team_plays where team_id = t; return; end if;
+  insert into team_plays (team_id, data) values (t, d) on conflict (team_id) do update set data = excluded.data, updated_at = now();
+end $$;
+create or replace function public.plays_by_code(c text) returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare t text;
+begin
+  if auth.uid() is null then raise exception 'Sign in to see the team''s plays'; end if;
+  select team_id into t from season_shares where code = upper(c);
+  if t is null then return null; end if;
+  return coalesce((select data from team_plays where team_id = t), '[]'::jsonb);
+end $$;
+revoke all on function public.plays_publish(text, jsonb), public.plays_by_code(text) from public, anon;
+grant execute on function public.plays_publish(text, jsonb), public.plays_by_code(text) to authenticated;
+
+create or replace function public.schema_version() returns int language sql immutable as $$ select 22 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

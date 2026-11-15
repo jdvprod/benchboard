@@ -1,4 +1,5 @@
 /** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
+import { TeamPlays } from "./Plays";
 import { RsvpRow, RsvpSignIn, useRsvps } from "./Rsvp";
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
@@ -15,7 +16,7 @@ import { tr } from "../lib/i18n";
 import { icsFile, CalItem } from "../lib/ics";
 import { seasonSummary } from "../sports/volleyball/seasonSummary";
 
-type Tab = "home" | "schedule" | "stats" | "roster" | "news";
+type Tab = "home" | "schedule" | "stats" | "roster" | "news" | "plays";
 export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData; fresh: string; view: { tab?: string; match?: string; player?: string } }) {
   const team = d.team?.name || "Team", games = seasonGames(d), P = new Map(d.players.map((p) => [p.id, p]));
   const href = (rest = "") => `#/t/${code}${rest ? "/" + rest : ""}`;
@@ -24,7 +25,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
     if (g) return <GameView g={g} team={team} players={d.players} fresh={fresh} back={{ href: href(), label: team }} logo={d.team?.logo} />;
   }
   if (view.player && P.has(view.player)) return <PlayerSeason p={P.get(view.player)!} games={games} team={team} season={d.season} back={href("roster")} />;
-  const tab = (["home", "schedule", "stats", "roster", "news"].includes(view.tab || "") ? view.tab : "home") as Tab;
+  const tab = (["home", "schedule", "stats", "roster", "news", "plays"].includes(view.tab || "") ? view.tab : "home") as Tab;
   const rec = recordOf(games.filter(isResult).map((g) => g.R));
   return <>
     <header className="lv-team">
@@ -32,12 +33,13 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
       <div className="grow"><h1>{team}</h1><p>{d.season || tr("Season")}{d.team?.level ? " · " + d.team.level : ""}</p></div>
       <div className="lv-rec"><b>{rec.text}</b><span>{tr("Record")}</span></div>
     </header>
-    <nav className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"], ["news", "News"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
+    <nav className="lv-tabs" aria-label={tr("Team sections")}>{([["home", "Home"], ["schedule", "Schedule"], ["stats", "Stats"], ["roster", "Roster"], ["news", "News"], ["plays", "Plays"]] as [Tab, string][]).map(([k, l]) => <a key={k} href={href(k === "home" ? "" : k)} aria-current={tab === k ? "page" : undefined}>{tr(l)}</a>)}</nav>
     {tab === "home" && <Home d={d} games={games} team={team} code={code} fresh={fresh} P={P} />}
     {tab === "schedule" && <Schedule d={d} games={games.filter(isResult)} code={code} all />}
     {tab === "stats" && <SeasonStats games={games} P={P} code={code} />}
     {tab === "roster" && <Roster d={d} games={games} code={code} />}
     {tab === "news" && <TeamNews code={code} team={team} full />}
+    {tab === "plays" && <TeamPlays code={code} team={team} />}
   </>;
 }
 

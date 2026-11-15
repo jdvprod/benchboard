@@ -3,7 +3,24 @@
  * Spots are in rotation order: right back, right front, middle front, left front, left back, middle back. */
 export type PlayKind = "defense" | "block" | "receive" | "attack" | "mine";
 export interface Spot { r: string; name: string; x: number; y: number; to?: [number, number] | null; via?: [number, number] | null; lib?: boolean }
-export interface Play { id: string; kind: PlayKind; name: string; note: string; spots: Spot[]; ball?: [number, number, number] | null }
+export interface Play { id: string; kind: PlayKind; name: string; note: string; spots: Spot[]; ball?: [number, number, number] | null; /** shared with the team on Floorcall Live */ shared?: boolean }
+
+/** Plays arriving from the server are checked before they are drawn: six spots, real numbers, short text. */
+export function cleanPlays(raw: unknown): Play[] {
+  if (!Array.isArray(raw)) return [];
+  const num = (v: unknown, lo: number, hi: number) => (typeof v === "number" && isFinite(v) ? Math.max(lo, Math.min(hi, v)) : null);
+  const xy = (v: unknown): [number, number] | null => { if (!Array.isArray(v)) return null; const x = num(v[0], -3, 12), y = num(v[1], -4, 9); return x === null || y === null ? null : [x, y]; };
+  const str = (v: unknown, n: number) => (typeof v === "string" ? v.slice(0, n) : "");
+  const out: Play[] = [];
+  for (const p of raw.slice(0, 60) as any[]) {
+    if (!p || !Array.isArray(p.spots) || p.spots.length !== 6) continue;
+    const spots: Spot[] = []; for (const s of p.spots) { const at = xy([s?.x, s?.y]); if (!at) break; spots.push({ r: str(s.r, 3), name: str(s.name, 20), x: at[0], y: at[1], to: xy(s.to), via: xy(s.via), lib: !!s.lib }); }
+    if (spots.length !== 6) continue;
+    const b = Array.isArray(p.ball) ? [num(p.ball[0], -3, 12), num(p.ball[1], -4, 22), num(p.ball[2], 0, 8)] : null;
+    out.push({ id: str(p.id, 40) || "p" + out.length, kind: "mine", name: str(p.name, 40) || "Play", note: str(p.note, 600), spots, ball: b && b.every((v) => v !== null) ? (b as [number, number, number]) : null });
+  }
+  return out;
+}
 
 export const KIND_LABEL: Record<PlayKind, string> = { defense: "Defenses", block: "Blocking", receive: "Serve receive", attack: "Hitting plays", mine: "My plays" };
 type XY = [number, number];

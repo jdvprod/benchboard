@@ -749,6 +749,21 @@ const scenarios = {
     await A.locator(".mu-avail summary").first().click();
     if (process.env.QASHOT2) await A.locator(".card", { hasText: "Schedule" }).first().screenshot({ path: process.env.QASHOT2.replace(".png", "-coach.png") });
     ok("and who", /Going: Dana Chen/.test(await A.locator(".mu-avail").first().innerText()));
+    // playbook: the coach shares a play; a signed-in parent studies it on the team's Live page
+    await go(A, "court"); await A.getByRole("button", { name: "Playbook", exact: true }).click(); await A.waitForTimeout(300);
+    await A.getByRole("button", { name: "Slide", exact: true }).click(); await A.locator("input[aria-label='Play name']").fill("Slide vs Central"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(300);
+    await A.getByLabel(/Share with the team on Floorcall Live/).check(); await A.waitForTimeout(700);
+    ok("a saved play can be shared with the team", /Slide vs Central · shared/.test(await A.locator(".pb-group").first().innerText()));
+    await P.goto(teamUrl + "/plays"); await P.waitForTimeout(1000);
+    ok("the shared play shows on the team's Live page on the 3D court", (await P.locator(".lv-play-pick button").allInnerTexts()).join("|") === "Slide vs Central" && (await P.locator(".lv-plays .c3d").count()) === 1 && (await P.locator(".lv-plays .c3d-route").count()) === 3 && /one foot/.test(await P.locator(".lv-play-note").innerText()));
+    await P.getByRole("button", { name: "Run it" }).click(); await P.waitForTimeout(600);
+    ok("a player can run the movement", (await P.locator(".lv-plays .c3d-route").count()) === 0);
+    await P.waitForTimeout(2200);
+    { const ax = await a11y(P); ok("playbook controls on Live all have names", !ax.length, ax.join(" | ")); ok("the Live playbook fits a phone", (await overflow(P)) <= 0); }
+    if (process.env.QASHOT5) await P.screenshot({ path: process.env.QASHOT5, fullPage: true });
+    await A.getByLabel(/Share with the team on Floorcall Live/).uncheck(); await A.waitForTimeout(700);
+    await P.reload(); await P.waitForTimeout(1000);
+    ok("un-sharing takes the play off the team page", (await P.getByText("The coaches haven't shared any plays yet.").count()) === 1);
     await P.goto(teamUrl.replace(/#.*$/, "")); await P.waitForTimeout(600);
     ok("Live home lists the teams this phone follows", (await P.locator(".lv-mine a", { hasText: "Clovis North" }).count()) === 1);
     // the coach finishes and texts a recap

@@ -112,6 +112,7 @@ const ES: Record<string, string> = {
   "Previous": "Anterior",
   "Next clip": "Siguiente clip",
   "Going": "Voy", "Maybe": "Tal vez", "Can't go": "No puedo", "Can you make it?": "¿Puedes ir?", "Tell the coaches if you can make it": "Avisa a los entrenadores si puedes ir", "Sign in to tell {team}'s coaches if you can make it": "Inicia sesión para avisar a los entrenadores de {team} si puedes ir", "the team": "el equipo",
+  "Playbook": "Jugadas", "Plays": "Jugadas", "play": "jugada", "plays": "jugadas", "Run it": "Ver movimiento", "See the team's plays": "Ver las jugadas del equipo", "The coaches haven't shared any plays yet.": "Los entrenadores aún no han compartido jugadas.", "{team}'s coaches share plays here for players and families. Sign in or create a free account to see them.": "Los entrenadores de {team} comparten jugadas aquí para jugadoras y familias. Inicia sesión o crea una cuenta gratis para verlas.",
   "Great rep": "Gran jugada", "Solid": "Bien", "Needs work": "A mejorar", "For": "Para", "Show clips for": "Ver clips de", "Everyone": "Todos",
   "Create a free Floorcall account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de Floorcall para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
   "You'll get {team}'s {what} on this {device}.": "Recibirás avisos de {team} ({what}) en este {device}.", "phone": "teléfono", "device": "dispositivo",

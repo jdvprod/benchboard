@@ -56,7 +56,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
 check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
 check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "21" "schema version is reported"
+check "select schema_version();" "22" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -179,6 +179,13 @@ expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "2" "the co
 expect "$(as $E "select rsvps_for_team('t3') is null;")" "t" "people off the team can't see names"
 as $D "select rsvp_set('P3P3P3', 'sc1', '');" >/dev/null
 expect "$(as $B "select jsonb_array_length(rsvps_for_team('t3'));")" "1" "an answer can be taken back"
+# team playbook: coaches share plays; signed-in followers read them by the team page code
+as $B "select plays_publish('t3', '[{\"id\":\"pl1\",\"name\":\"Slide vs Central\"}]');" >/dev/null
+expect "$(as $D "select plays_by_code('p3p3p3')->0->>'name';")" "Slide vs Central" "a follower sees the plays the coaches shared"
+expect "$(asall $E "select plays_publish('t3', '[]');" | grep -c "Only the team's coaches")" "1" "only coaches share plays"
+expect "$(q -c "set role anon; select plays_by_code('P3P3P3');" 2>&1 | grep -c 'permission denied')" "1" "the playbook needs an account"
+as $B "select plays_publish('t3', '[]');" >/dev/null
+expect "$(as $D "select jsonb_array_length(plays_by_code('P3P3P3'));")" "0" "sharing nothing takes the plays down"
 # beach: a match shared live by link; anyone can watch, only the owner updates or stops it
 BC=$(as $B "select beach_publish(null, 'packed-match-1');")
 expect "${#BC}" "7" "a signed-in scorer gets a link code for a beach match"
