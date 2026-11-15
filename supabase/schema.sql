@@ -915,7 +915,8 @@ $$;
 revoke all on function public.rsvp_set(text, text, text, text) from public, anon;
 grant execute on function public.rsvp_set(text, text, text, text) to authenticated;
 
-create or replace function public.schema_version() returns int language sql immutable as $$ select 24 $$;
+-- 25: the team page also lists upcoming practices (see season_view)
+create or replace function public.schema_version() returns int language sql immutable as $$ select 25 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
