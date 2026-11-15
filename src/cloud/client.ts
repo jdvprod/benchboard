@@ -11,6 +11,9 @@ export type AccountKind = "coach" | "athlete" | "parent" | "fan";
 export interface UserMeta { name?: string; kind?: AccountKind; email_ok?: boolean; teams?: string[]; athlete?: Record<string, unknown> }
 export interface Session { access_token: string; refresh_token: string; expires_at: number; user: { id: string; email: string; terms?: string; meta?: UserMeta } }
 export class CloudError extends Error { constructor(public status: number, message: string) { super(message); } }
+/** The server turns a network away for a few minutes after many share codes that didn't match (so nobody can guess codes). */
+export const TOO_MANY = "Too many codes that didn't match. Wait a few minutes, then check the code with the coach.";
+export const tooMany = (e: unknown) => /Too many codes/.test((e as any)?.message || "");
 
 const read = <T,>(k: string): T | null => { try { const v = localStorage.getItem(k); return v ? (JSON.parse(v) as T) : null; } catch { return null; } };
 const write = (k: string, v: unknown) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, JSON.stringify(v)); } catch { /* ignore */ } };

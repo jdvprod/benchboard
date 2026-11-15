@@ -155,7 +155,8 @@ export async function linkTeam(teamId: string) {
 }
 
 export async function joinWithCode(code: string): Promise<string> {
-  const teamId: string = await rpc("join_team", { invite: code.trim().toUpperCase() });
+  const teamId: string | null = await rpc("join_team", { invite: code.trim().toUpperCase() });
+  if (!teamId) throw new CloudError(400, "That code doesn't match a team. Check it with the coach.");
   if (!S.teams.includes(teamId)) S.teams.push(teamId);
   S.since[teamId] = "1970-01-01T00:00:00Z"; persist();
   await syncNow();

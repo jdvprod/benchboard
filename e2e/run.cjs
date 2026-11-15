@@ -23,7 +23,7 @@ function headersFor(urlPath) {
     if (!/^\s/.test(line)) { const pat = line.trim(); match = pat === urlPath || (pat.endsWith("*") && urlPath.startsWith(pat.slice(0, -1))); continue; }
     if (match) { const i = line.indexOf(":"); out[line.slice(0, i).trim()] = line.slice(i + 1).trim(); }
   }
-  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*").replace("img-src 'self'", "img-src 'self' http://localhost:* http://127.0.0.1:*").replace("media-src 'self'", "media-src 'self' http://localhost:* http://127.0.0.1:*");
+  if (out["Content-Security-Policy"]) out["Content-Security-Policy"] = out["Content-Security-Policy"].replace("connect-src 'self'", "connect-src 'self' http://localhost:* http://127.0.0.1:*").replace("img-src 'self'", "img-src 'self' http://localhost:* http://127.0.0.1:*").replace("media-src 'self'", "media-src 'self' http://localhost:* http://127.0.0.1:*").replace("; upgrade-insecure-requests", ""); // the local test servers are plain http
   return out;
 }
 
@@ -284,6 +284,36 @@ const scenarios = {
     for (const pg of [A, N]) await pg.context().close();
   },
 
+  async xss(browser) {
+    // names are typed by coaches, parents and players: markup in them must show as text everywhere, never become part of the page
+    const N1 = "<img src=x id=pwn>", N2 = '"><b id=pwn2>x', TEAM = "<i id=pwn3>Broncos";
+    const clean = (pg) => pg.evaluate(() => !document.querySelector("#pwn,#pwn2,#pwn3"));
+    const p = await newPage(browser, { cloud: false, phone: true });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click();
+    await p.getByLabel("Team name").fill(TEAM); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click();
+    await p.locator("textarea").first().fill(`7 ${N1} OH\n8 ${N2} S`); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(200);
+    await go(p, "track"); await p.getByPlaceholder("e.g. Buchanan").fill(N2); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(200);
+    await p.locator(".pl", { hasText: "<img" }).first().click(); await p.locator(".actsheet button", { hasText: /^Kill$/ }).click(); await skipIfAsked(p);
+    await go(p, "team"); { const t = await p.evaluate(() => document.body.innerText + [...document.querySelectorAll("input")].map((i) => i.value).join(" ")); ok("markup in a name shows as plain text", t.includes("<img") && t.includes("<b id=pwn2>") && t.includes(TEAM), t.slice(-300)); }
+    let bad = [];
+    for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "live", "film", "tryouts", "settings"]) { await go(p, r); if (!(await clean(p))) bad.push(r); }
+    ok("names never turn into page markup in the coach app", !bad.length, bad.join(", "));
+    await go(p, "tryouts"); await p.getByLabel("Name").fill(N1); await p.getByRole("button", { name: "Start" }).click(); await p.waitForTimeout(300);
+    await p.getByLabel("Players trying out, one per line").fill(`21 ${N1} OH\n22 ${N2} S`); await p.getByRole("button", { name: "Add", exact: true }).click(); await p.waitForTimeout(200);
+    ok("or in tryouts", await clean(p));
+    { const [pop] = await Promise.all([p.waitForEvent("popup", { timeout: 5000 }), p.getByRole("button", { name: "Print rating sheet" }).click()]); await pop.waitForLoadState();
+      ok("or in a printed rating sheet", (await clean(pop)) && (await pop.locator("body").innerText()).includes(N1)); await pop.close(); }
+    ok("no page errors (including blocked scripts)", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+    // Beach: names travel inside a share link, so a link someone else made is untrusted input
+    const pk = Buffer.from(JSON.stringify([1, "bo3", 0, [0, 2], [N1, N2, "Kim", "<script>window.__pwn=1</script>"], N1 + " / " + N2, TEAM, Date.now(), "K0uA2t"])).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const b = await newPage(browser, { phone: true }); await b.goto(U + "beach/#/v/" + pk); await b.waitForTimeout(500);
+    ok("a beach share link with markup in the names opens as text", (await b.locator(".bv-box tbody tr").count()) > 0 && (await clean(b)) && !(await b.evaluate(() => window.__pwn)) && (await b.locator("body").innerText()).includes("<img src=x"));
+    ok("beach: no page errors", !b.errors.length, b.errors.slice(0, 3).join(" | "));
+    await b.context().close();
+  },
+
   async longnames(browser) {
     const p = await newPage(browser, { phone: true }); await p.setViewportSize({ width: 360, height: 740 });
     await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click();
@@ -385,7 +415,7 @@ const scenarios = {
     await p.locator("#auth-name").fill("Test Coach"); await p.locator(".auth-agree input").first().check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
     const users = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json();
     const me = users.find((u) => u.email === "legal@e2e.test");
-    ok("the agreement is recorded with the account", me && me.meta && me.meta.terms_version === "1" && !!me.meta.terms_accepted_at, JSON.stringify(me && me.meta));
+    ok("the agreement is recorded with the account", me && me.meta && me.meta.terms_version === String(require("../package.json").legal.version) && !!me.meta.terms_accepted_at, JSON.stringify(me && me.meta));
     await p.getByLabel("Team name").fill("Legal Eagles"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(900);
     await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill("5 Ana OH\n6 Bea MB"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
     ok("roster permission reminder shows once players are added", (await p.locator(".banner", { hasText: "Permission to record players" }).count()) === 1);

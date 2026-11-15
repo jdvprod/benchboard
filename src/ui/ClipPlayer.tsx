@@ -1,6 +1,7 @@
 /** Plays clips back to back: video files (from a link or this device), YouTube and Vimeo.
  * From a video file it can also save one clip, or the whole reel, as a video file (where the browser can record video). */
 import { useEffect, useRef, useState } from "react";
+import { safeUrl } from "../lib/safeUrl";
 import { Clip, clock, videoKind, vimeoId, youtubeId } from "../film/clips";
 
 export interface ClipPlayerProps {
@@ -90,7 +91,7 @@ export function ClipPlayer({ clips, resolve, title, allowSave, fileName }: ClipP
       {yt && <iframe ref={frame} key={c.id} title={"Clip: " + c.label} onLoad={listen} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
         src={`https://www.youtube-nocookie.com/embed/${yt}?start=${Math.floor(c.start)}&end=${Math.ceil(c.end)}&autoplay=1&playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${encodeURIComponent(location.origin)}`} />}
       {vm && <iframe ref={frame} key={c.id} title={"Clip: " + c.label} onLoad={listen} allow="autoplay; fullscreen; picture-in-picture" allowFullScreen src={`https://player.vimeo.com/video/${vm}?autoplay=1&api=1#t=${Math.floor(c.start)}s`} />}
-      {((kind === "youtube" && !yt) || (kind === "vimeo" && !vm) || kind === "other") && <div className="clip-ext"><p>This video plays on its own site.</p><a className="btn" href={src || c.url} target="_blank" rel="noopener">Open the video ({clock(c.start)})</a></div>}
+      {((kind === "youtube" && !yt) || (kind === "vimeo" && !vm) || kind === "other") && <div className="clip-ext"><p>This video plays on its own site.</p><a className="btn" href={safeUrl(src || c.url)} target="_blank" rel="noopener">Open the video ({clock(c.start)})</a></div>}
     </div>
     <div className="clip-now"><b>{c.label}</b><span>{[c.opp ? "vs " + c.opp : "", c.set ? "Set " + c.set : "", c.score, clock(c.start)].filter(Boolean).join(" · ")}</span><span className="clip-count">{i + 1} of {clips.length}</span></div>
     <div className="row clip-ctrl">

@@ -1,6 +1,6 @@
 /** Data for Floorcall Live: the public season hub and single-game links, polled while a match is live. */
 import { useEffect, useRef, useState } from "react";
-import { cloudAvailable, rpc } from "../cloud/client";
+import { cloudAvailable, rpc, TOO_MANY, tooMany } from "../cloud/client";
 import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";
 import { locale, tr } from "../lib/i18n";
 
@@ -25,7 +25,7 @@ function usePoll<T>(fnName: string, code: string, isActive: (r: T) => boolean, f
       try {
         const r: T | null = await rpc(fnName, { share: code }, true); if (stop) return;
         if (!r || !isActive(r)) setErr(tr(missing)); else { live.current = (r as any).__live ?? false; setD(r); setGot(Date.now()); setErr(""); }
-      } catch { if (!stop) setErr((e) => e || tr("Reconnecting…")); }
+      } catch (x) { if (!stop) setErr((e) => (tooMany(x) ? tr(TOO_MANY) : e || tr("Reconnecting…"))); }
       if (!stop) timer = setTimeout(load, (always || document.visibilityState === "visible") && live.current ? fast : slow);
     };
     if (!code) { setD(null); return () => {}; }

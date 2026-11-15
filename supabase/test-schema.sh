@@ -13,12 +13,15 @@ create schema auth;
 create table auth.users (id uuid primary key, email text, created_at timestamptz not null default now(), raw_user_meta_data jsonb not null default '{}');
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create role anon; create role authenticated;
+-- what Supabase does before our schema runs: anon and authenticated get every new table and function by default
+grant usage on schema public to anon, authenticated;
+alter default privileges in schema public grant select, insert, update, delete on tables to anon, authenticated;
+alter default privileges in schema public grant usage, select on sequences to anon, authenticated;
+alter default privileges in schema public grant execute on functions to anon, authenticated;
 SQL
-q -f "$(dirname "$0")/schema.sql" 2>/dev/null; q -f "$(dirname "$0")/schema.sql" 2>/dev/null
+if q -f "$(dirname "$0")/schema.sql" 2>&1 | grep -E "^psql:.*ERROR"; then echo "FAIL schema.sql has errors"; exit 1; fi; q -f "$(dirname "$0")/schema.sql" 2>/dev/null
 q <<'SQL'
--- Supabase grants table access to these roles and relies on row level security; do the same here
-grant usage on schema public to anon, authenticated; grant select on all tables in schema public to anon;
-grant select, insert, update, delete on all tables in schema public to authenticated;
+-- (Supabase's default grants were set up before the schema ran, above; the schema's own revokes have already applied)
 insert into auth.users values ('11111111-1111-1111-1111-111111111111', 'coach@example.com');
 insert into teams_cloud (id, name, owner) values ('t1', 'Test', '11111111-1111-1111-1111-111111111111');
 insert into records (store, id, team_id, data) values
@@ -36,6 +39,7 @@ insert into push_subs (endpoint, team_id, p256dh, auth) values ('https://push.ex
 insert into push_sent (match_id, kind, team_id) values ('m1', 'start', 't1');
 SQL
 check() { [ "$(q -c "set role anon; $1" | tail -1)" = "$2" ] && echo "ok   $3" || { echo "FAIL $3"; exit 1; }; }
+expect() { [ "$1" = "$2" ] && echo "ok   $3" || { echo "FAIL $3 (got: $1)"; exit 1; }; }
 check "select season_view('s1s1s1')->'players'->0->>'last';" "C" "season page shows last initial only"
 check "select count(*) from jsonb_array_elements(season_view('s1s1s1')->'players') p where p->>'num' = '9' and p->>'first' = '' and p->>'last' = '';" "1" "players kept off public pages show only their number"
 check "select watch('l1l1l1')::text like '%private%';" "f" "live link never includes match notes or film tags"
@@ -53,10 +57,10 @@ check "select season_view('s1s1s1')->'matches'->0->'oppRoster'->'11'->>'pos';" "
 check "select recruit_view('r1r1r1')->>'html';" "<p>profile</p>" "recruit link returns the page"
 check "select recruit_view('r1r1r1')->'data'->'player'->>'first';" "Maya" "recruit link returns the profile data"
 check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting board lists shared profiles with their clip count"
-check "select count(*) from recruit_boards;" "0" "anon can't read boards directly"
-check "select count(*) from push_subs;" "0" "anon can't read notification subscriptions"
-check "select count(*) from records;" "0" "anon can't read records directly"
-check "select schema_version();" "27" "schema version is reported"
+expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
+expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
+expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
+check "select schema_version();" "28" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -92,7 +96,8 @@ expect "$(as $B "select is_admin();")" "f" "is_admin says no for coaches"
 q -c "insert into admins values ('cccccccc-cccc-cccc-cccc-cccccccccccc');" >/dev/null
 C=cccccccc-cccc-cccc-cccc-cccccccccccc
 q -c "set role anon; insert into app_errors (version, message, page) values ('2.1.0', 'x is undefined', 'stats');" >/dev/null
-expect "$(q -c "set role anon; select count(*) from app_errors;" | tail -1)" "0" "crash reports can be sent but not read by visitors"
+expect "$(q -c "select count(*) from app_errors;")" "1" "visitors can send a crash report"
+expect "$(q -c "set role anon; select count(*) from app_errors;" 2>&1 | grep -c 'permission denied')" "1" "but not read them"
 expect "$(q -c "set role anon; insert into app_errors (message) values (repeat('x', 400));" 2>&1 | grep -c 'row-level security')" "1" "oversized crash reports are refused"
 expect "$(as $C "select (admin_overview()->>'users')::int >= 2;")" "t" "admins see the overview"
 expect "$(as $C "select admin_overview()->'errors'->0->>'message';")" "x is undefined" "admins see crash reports"
@@ -103,7 +108,7 @@ expect "$(q -c "select data ? 'photo' from records where id = 'p1';")" "f" "taki
 expect "$(asall $B "select admin_remove_picture('t1/x.jpg');" | grep -c 'Admins only')" "1" "coaches can't take pictures down"
 q -c "set role anon; select recruit_seen('r1r1r1'); select recruit_seen('r1r1r1');" >/dev/null
 expect "$(q -c "select views from recruit_shares where code = 'R1R1R1';")" "2" "profile views are counted"
-expect "$(q -c "set role anon; select count(*) from recruit_shares;" | tail -1)" "0" "visitors can't read view counts"
+expect "$(q -c "set role anon; select count(*) from recruit_shares;" 2>&1 | grep -c 'permission denied')" "1" "visitors can't read view counts"
 # college coach search: listed profiles, approved .edu staff only
 q -c "update recruit_shares set listed = true, data = '{\"player\":{\"first\":\"Maya\",\"num\":\"7\",\"grad\":2027,\"pos\":\"OH\"},\"team\":{\"name\":\"Test\"},\"season\":{\"sets\":3,\"kps\":3.2,\"hitting\":0.31},\"clips\":[]}' where code = 'R1R1R1';" >/dev/null
 q -c "insert into auth.users (id, email) values ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'coach@state.edu'), ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'scout@gmail.com');" >/dev/null
@@ -232,4 +237,41 @@ as $E "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is not null;")" "t" "nobody else can take it down"
 as $B "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is null;")" "t" "the owner can stop sharing"
+# ---------- security invariants: these hold for every table and function, including ones added later ----------
+expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
+expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"
+expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,watch" "without an account only the public page functions run"
+expect "$(q -c "select coalesce(string_agg(table_name || ':' || privilege_type, ','), '') from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public';")" "app_errors:INSERT" "without an account no table can be read or changed"
+expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_bump(uuid)', 'execute');")" "f" "the AI counter is server-only"
+expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read team data directly"
+expect "$(q -c "set role anon; select admin_overview();" 2>&1 | grep -c 'permission denied')" "1" "anon can't call admin functions"
+expect "$(q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$E', false); select admin_overview();" 2>&1 | grep -c 'Admins only')" "1" "signed-in non-admins are turned away by admin functions"
+# deleting an account takes every row that points at it
+G=99999999-9999-9999-9999-999999999999
+q -c "insert into auth.users (id, email) values ('$G', 'leaving@example.com');
+  insert into team_rsvps (team_id, item_id, user_id, name, status) values ('t1', 'm1', '$G', 'Leaving L', 'yes');
+  insert into team_signups (team_id, item_id, job_id, user_id, name) values ('t1', 'm1', 'j1', '$G', 'Leaving L');
+  insert into push_subs (endpoint, team_id, p256dh, auth, user_id) values ('https://push.example/leaving', 't1', 'k', 'a', '$G');
+  insert into tryouts_cloud (code, owner, data) values ('LEAVE1', '$G', '{}');
+  insert into tryout_ratings (code, evaluator, name, ratings) values ('LEAVE1', '$G', 'Leaving L', '{}');
+  insert into beach_shares (code, owner, data) values ('LEAVE2', '$G', 'x');
+  insert into team_posts (team_id, body, author) values ('t1', 'kept for the team', '$G');" > /dev/null
+as $G "select delete_my_account();" > /dev/null
+expect "$(q -c "select (select count(*) from team_rsvps where user_id = '$G') + (select count(*) from team_signups where user_id = '$G') + (select count(*) from push_subs where user_id = '$G') + (select count(*) from tryouts_cloud where owner = '$G') + (select count(*) from tryout_ratings where evaluator = '$G') + (select count(*) from beach_shares where owner = '$G') + (select count(*) from auth.users where id = '$G');")" "0" "deleting an account removes its answers, sign-ups, tryouts, shares and subscriptions"
+expect "$(q -c "select count(*) from team_posts where body = 'kept for the team' and author is null;")" "1" "the team keeps announcements, without the author's account"
+# guessing codes: 20 different wrong codes from one network, then even a right code waits; other networks are unaffected
+H1="select set_config('request.headers', '{\"x-forwarded-for\": \"203.0.113.9, 10.0.0.1\"}', false);"
+H2="select set_config('request.headers', '{\"cf-connecting-ip\": \"198.51.100.4\"}', false);"
+GOOD="$(q -c "select code from season_shares limit 1;")"
+q -c "set role anon; $H1 select season_view('NOPE' || g) from generate_series(1, 19) g;" > /dev/null
+expect "$(q -c "set role anon; $H1 select season_view('NOPE1') is null; select count(*) >= 0 from (select season_view('NOPE1')) x;" | tail -1)" "t" "the same wrong code again doesn't count twice"
+expect "$(q -c "set role anon; $H1 select (season_view('$GOOD'))->'team' is not null;" | tail -1)" "t" "19 different misses still lets the right code in"
+q -c "set role anon; $H1 select watch('NOPE20');" > /dev/null
+expect "$(q -c "set role anon; $H1 select season_view('$GOOD');" 2>&1 | grep -c 'Too many codes')" "1" "after 20 different wrong codes the network waits"
+expect "$(q -c "set role anon; $H1 select beach_view('ZZZZ');" 2>&1 | grep -c 'Too many codes')" "1" "the wait covers every kind of code"
+expect "$(q -c "set role anon; $H2 select (season_view('$GOOD'))->'team' is not null;" | tail -1)" "t" "another network is unaffected"
+expect "$(q -c "select count(*) from code_misses where code ~ 'NOPE';")" "0" "only hashes of the codes are kept"
+expect "$(q -c "set role anon; select count(*) from code_misses;" 2>&1 | grep -c 'permission denied')" "1" "nobody reads the miss list"
+expect "$(as $E "select code_miss('x');" 2>&1 | grep -c 'permission denied')" "1" "and nobody adds to it by hand"
+q -c "delete from code_misses;"
 echo "schema OK"

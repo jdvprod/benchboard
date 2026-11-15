@@ -7,7 +7,7 @@ import "./recruit.css";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
-import { cloudAvailable, consumeAuthRedirect, rpc } from "../cloud/client";
+import { cloudAvailable, consumeAuthRedirect, rpc, TOO_MANY, tooMany } from "../cloud/client";
 import { ClipPlayer } from "../ui/ClipPlayer";
 import { Clip, videoKind } from "../film/clips";
 import { fmtAvg, fmtHit, fmtNum, fmtPct } from "../sports/volleyball/metrics";
@@ -35,7 +35,7 @@ function useRpc<T>(fn: string, code: string, ok: (r: T) => boolean, missing: str
   const [d, setD] = useState<T | null>(null), [err, setErr] = useState("");
   useEffect(() => {
     if (!cloudAvailable()) { setErr("This site isn't connected yet."); return; }
-    rpc(fn, { share: code }, true).then((r: any) => (r && ok(r) ? setD(r) : setErr(missing))).catch(() => setErr("Couldn't load it. Check your connection."));
+    rpc(fn, { share: code }, true).then((r: any) => (r && ok(r) ? setD(r) : setErr(missing))).catch((e) => setErr(tooMany(e) ? TOO_MANY : "Couldn't load it. Check your connection."));
   }, [code]);
   return { d, err };
 }
@@ -136,7 +136,7 @@ function Landing() {
     const c = code.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length < 4) { setErr("Codes are 6 letters and numbers."); return; }
     setBusy(true); setErr("");
     try { const p: any = await rpc("recruit_view", { share: c }, true); if (p?.html || p?.data) { location.hash = "#/p/" + c; return; } const b: any = await rpc("recruit_board", { share: c }, true); if (b?.team) { location.hash = "#/b/" + c; return; } setErr("No profile or board uses that code."); }
-    catch { setErr("Couldn't check the code. Check your connection."); }
+    catch (e) { setErr(tooMany(e) ? TOO_MANY : "Couldn't check the code. Check your connection."); }
     setBusy(false);
   };
   return <Shell><section className="rc-landing">

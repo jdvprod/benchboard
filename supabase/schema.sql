@@ -124,13 +124,42 @@ drop policy if exists "shares delete" on public.live_shares;
 create policy "shares delete" on public.live_shares for delete using (can_edit(team_id));
 
 -- join a team with an invite code
+-- ---------- guessing share codes (version 28) ----------
+-- Share codes are short so families can type them. To stop anyone trying codes until one works, each network may try
+-- 20 different wrong codes in 10 minutes, then has to wait. Only a one-way hash of the network address is kept, for an hour.
+create table if not exists public.code_misses (k text not null, code text not null, at timestamptz not null default now());
+create index if not exists code_misses_k on public.code_misses (k, at);
+alter table public.code_misses enable row level security;  -- no policies: only the functions below touch it
+create or replace function public.code_key() returns text
+language plpgsql stable security definer set search_path = public as $$
+declare h jsonb; ip text;
+begin
+  begin h := nullif(current_setting('request.headers', true), '')::jsonb; exception when others then h := null; end;
+  ip := coalesce(h->>'cf-connecting-ip', nullif(trim(split_part(h->>'x-forwarded-for', ',', 1)), ''), h->>'x-real-ip', auth.uid()::text, 'local');
+  return md5('floorcall-codes:' || ip);
+end $$;
+create or replace function public.code_gate() returns void
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if (select count(distinct code) from code_misses where k = code_key() and at > now() - interval '10 minutes') >= 20 then
+    raise exception 'Too many codes that didn''t match. Wait a few minutes, then check the code with the coach.' using errcode = 'P0429';
+  end if;
+end $$;
+create or replace function public.code_miss(c text) returns void
+language plpgsql volatile security definer set search_path = public as $$
+begin
+  insert into code_misses (k, code) values (code_key(), md5(upper(trim(coalesce(c, '')))));
+  if random() < 0.05 then delete from code_misses where at < now() - interval '1 hour'; end if;
+end $$;
+
 create or replace function public.join_team(invite text) returns text
 language plpgsql security definer set search_path = public as $$
 declare t text; r text;
 begin
   if auth.uid() is null then raise exception 'Sign in first'; end if;
+  perform code_gate();
   select team_id, role into t, r from invites where code = upper(trim(invite));
-  if t is null then raise exception 'That code doesn''t match a team'; end if;
+  if t is null then perform code_miss(invite); return null; end if;  -- the app says the code doesn't match
   insert into members (team_id, user_id, role, email)
   values (t, auth.uid(), r, (select email from auth.users where id = auth.uid()))
   on conflict (team_id, user_id) do nothing;
@@ -159,11 +188,12 @@ language sql immutable as $$
 $$;
 
 create or replace function public.watch(share text) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public as $$
 declare s live_shares; out jsonb;
 begin
+  perform code_gate();
   select * into s from live_shares where code = upper(trim(share));
-  if s.code is null then return null; end if;
+  if s.code is null then perform code_miss(share); return null; end if;
   select jsonb_build_object(
     'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'level', data->>'level', 'logo', public_url(data->>'logo')) from records where store = 'teams' and id = s.team_id and not deleted),
     -- only what the gamecast shows: never the coach's match notes, film link or scouting
@@ -195,11 +225,12 @@ create policy "season shares delete" on public.season_shares for delete using (c
 
 -- everything the season hub shows: results, schedule, every match's plays, roster with last initials only
 create or replace function public.season_view(share text) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public as $$
 declare s season_shares; out jsonb;
 begin
+  perform code_gate();
   select * into s from season_shares where code = upper(trim(share));
-  if s.code is null then return null; end if;
+  if s.code is null then perform code_miss(share); return null; end if;
   select jsonb_build_object(
     'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'logo', public_url(data->>'logo'), 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
@@ -263,9 +294,14 @@ create policy "recruit delete" on public.recruit_shares for delete using (can_ed
 -- the profile as data (stats, game log, highlight clips) for Floorcall Recruit; html stays as the printable sheet
 alter table public.recruit_shares add column if not exists data jsonb;
 create or replace function public.recruit_view(share text) returns jsonb
-language sql stable security definer set search_path = public as $$
-  select jsonb_build_object('html', html, 'data', data, 'updated_at', updated_at) from recruit_shares where code = upper(trim(share));
-$$;
+language plpgsql volatile security definer set search_path = public as $$
+declare out jsonb;
+begin
+  perform code_gate();
+  select jsonb_build_object('html', html, 'data', data, 'updated_at', updated_at) into out from recruit_shares where code = upper(trim(share));
+  if out is null then perform code_miss(share); end if;
+  return out;
+end $$;
 grant execute on function public.recruit_view(text) to anon, authenticated;
 -- how often a profile is opened, so the family and coach know when colleges are looking (the page counts once per visit)
 alter table public.recruit_shares add column if not exists views int not null default 0;
@@ -291,11 +327,12 @@ drop policy if exists "boards delete" on public.recruit_boards;
 create policy "boards delete" on public.recruit_boards for delete using (can_edit(team_id));
 -- only players who already have a shared profile (which needs the family's consent) appear
 create or replace function public.recruit_board(share text) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public as $$
 declare b recruit_boards; out jsonb;
 begin
+  perform code_gate();
   select * into b from recruit_boards where code = upper(trim(share));
-  if b.code is null then return null; end if;
+  if b.code is null then perform code_miss(share); return null; end if;
   select jsonb_build_object(
     'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level') from records where store = 'teams' and id = b.team_id and not deleted),
     'players', coalesce((select jsonb_agg(jsonb_build_object('code', r.code, 'updated_at', r.updated_at, 'player', r.data->'player', 'profile', jsonb_build_object('club', r.data->'profile'->'club', 'video', r.data->'profile'->'video'), 'season', r.data->'season', 'clips', jsonb_array_length(coalesce(r.data->'clips', '[]'::jsonb))))
@@ -578,8 +615,9 @@ language plpgsql security definer set search_path = public as $$
 declare d jsonb; w int[];
 begin
   if auth.uid() is null then raise exception 'Sign in to watch'; end if;
+  perform code_gate();
   select data into d from film_sessions where code = upper(c);
-  if d is null then return null; end if;
+  if d is null then perform code_miss(c); return null; end if;
   insert into film_views (code, user_id) values (upper(c), auth.uid()) on conflict (code, user_id) do update set last_at = now() returning watched into w;
   return d || jsonb_build_object('watched', to_jsonb(coalesce(w, '{}')));
 end $$;
@@ -803,9 +841,14 @@ begin
   return k;
 end $$;
 create or replace function public.beach_view(c text) returns jsonb
-language sql stable security definer set search_path = public as $$
-  select jsonb_build_object('data', data, 'updated', updated_at) from beach_shares where code = upper(c)
-$$;
+language plpgsql volatile security definer set search_path = public as $$
+declare out jsonb;
+begin
+  perform code_gate();
+  select jsonb_build_object('data', data, 'updated', updated_at) into out from beach_shares where code = upper(trim(c));
+  if out is null then perform code_miss(c); end if;
+  return out;
+end $$;
 create or replace function public.beach_unshare(c text) returns void
 language sql security definer set search_path = public as $$
   delete from beach_shares where code = upper(c) and owner = auth.uid()
@@ -954,12 +997,13 @@ begin
 end $$;
 -- an evaluator opens the tryout: the players and skills, plus their own ratings
 create or replace function public.tryout_open(c text) returns jsonb
-language plpgsql stable security definer set search_path = public as $$
+language plpgsql volatile security definer set search_path = public as $$
 declare t tryouts_cloud;
 begin
   if auth.uid() is null then raise exception 'Sign in to rate at this tryout'; end if;
+  perform code_gate();
   select * into t from tryouts_cloud where code = upper(c);
-  if t.code is null then return null; end if;
+  if t.code is null then perform code_miss(c); return null; end if;
   return jsonb_build_object('code', t.code, 'data', t.data, 'mine', (select ratings from tryout_ratings where code = t.code and evaluator = auth.uid()), 'owner', t.owner = auth.uid());
 end $$;
 create or replace function public.tryout_rate(c text, nm text, r jsonb) returns void
@@ -983,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 27 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 28 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -999,7 +1043,49 @@ begin
   delete from public.teams_cloud where owner = me;   -- cascades to members, records, invites and share links
   delete from public.members where user_id = me;
   delete from public.ai_usage where user_id = me;
+  -- everything else kept with the account: answers, sign-ups, ratings, shares, subscriptions, messages sent
+  delete from public.team_rsvps where user_id = me;
+  delete from public.team_signups where user_id = me;
+  delete from public.team_post_reads where user_id = me;
+  delete from public.film_views where user_id = me;
+  delete from public.push_subs where user_id = me;
+  delete from public.tryout_ratings where evaluator = me;
+  delete from public.tryouts_cloud where owner = me;
+  delete from public.beach_shares where owner = me;
+  delete from public.college_interest where from_user = me;
+  -- the team keeps its announcements and invite codes; they just stop pointing at this account
+  update public.team_posts set author = null where author = me;
+  update public.invites set created_by = null where created_by = me;
+  update public.app_errors set uid = null where uid = me;
   delete from auth.users where id = me;
 end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
+-- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
+-- Row security already guards the tables; this takes the defaults away as well and gives back exactly what each role uses.
+-- Anyone (no account): the public pages only.
+revoke execute on all functions in schema public from public, anon;
+grant execute on function public.watch(text), public.season_view(text), public.recruit_view(text), public.recruit_seen(text),
+  public.recruit_board(text), public.beach_view(text), public.schema_version(), public.server_time() to anon;
+-- Signed in: every function (each checks who is calling), except the server-only AI counter.
+grant execute on all functions in schema public to authenticated;
+revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text) from authenticated;
+-- Functions added later start closed to anyone without an account.
+alter default privileges in schema public revoke execute on functions from public, anon;
+-- Tables: no account needed only to send a crash report; everything else goes through the functions above.
+revoke all on all tables in schema public from anon;
+revoke all on all sequences in schema public from anon;
+grant insert on public.app_errors to anon;
+grant usage on sequence public.app_errors_id_seq to anon;
+-- Uploaded pictures and film: anyone can open a file by its link (they're on public pages), but listing a bucket's
+-- contents is for the team's own staff. Uploads need read access to replace a file, so staff keep it.
+do $do$ begin
+  if exists (select 1 from pg_namespace where nspname = 'storage') then
+    drop policy if exists "media read" on storage.objects;
+    create policy "media read" on storage.objects for select to authenticated using (bucket_id = 'media' and public.is_member((storage.foldername(name))[1]));
+    drop policy if exists "film read" on storage.objects;
+    create policy "film read" on storage.objects for select to authenticated using (bucket_id = 'film' and public.is_member((storage.foldername(name))[1]));
+  end if;
+end $do$;

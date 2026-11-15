@@ -1,9 +1,13 @@
 # Cloudflare headers. Security for every page; the page and service worker always fresh; hashed chunks cached forever.
 /*
+  Strict-Transport-Security: max-age=63072000; includeSubDomains
   X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Cross-Origin-Resource-Policy: same-site
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(self), geolocation=(), payment=(), usb=()
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://en.wikipedia.org https://www.wikidata.org https://commons.wikimedia.org; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; media-src 'self' blob: https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co https://api.anthropic.com https://en.wikipedia.org https://www.wikidata.org https://commons.wikimedia.org; frame-src 'self' https://www.youtube-nocookie.com https://www.youtube.com https://player.vimeo.com; media-src 'self' blob: https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; upgrade-insecure-requests
 /sw.js
   Cache-Control: no-cache
 /live/sw.js

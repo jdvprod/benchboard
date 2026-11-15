@@ -9,7 +9,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { getLang, initLang, Lang, setLang, tr } from "../lib/i18n";
-import { cloudAvailable, consumeAuthRedirect, currentUser, rpc, updateMeta, userMeta } from "../cloud/client";
+import { cloudAvailable, consumeAuthRedirect, currentUser, rpc, TOO_MANY, tooMany, updateMeta, userMeta } from "../cloud/client";
 import { applyTheme } from "../app/theme";
 import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
@@ -75,7 +75,7 @@ function Landing() {
       const s: any = await rpc("season_view", { share: c }, true); if (s?.team) { location.hash = `#/t/${c}`; return; }
       const w: any = await rpc("watch", { share: c }, true); if (w?.match) { location.hash = `#/g/${c}`; return; }
       setErr(tr("No team or game uses that code. Check it with the coach."));
-    } catch { setErr(tr("Couldn't check the code. Check your connection.")); }
+    } catch (e) { setErr(tooMany(e) ? tr(TOO_MANY) : tr("Couldn't check the code. Check your connection.")); }
     setBusy(false);
   };
   return <Shell><section className="lv-hero">

@@ -1,5 +1,6 @@
 /** Film index for one match: every play with its video time, filterable by player and play type, linked to the match video. */
 import { useState } from "react";
+import { safeUrl } from "../../lib/safeUrl";
 import { eventsOf, patch, player, playerName, team, toast } from "../../data/store";
 import { Match } from "../../data/model";
 import { Replay, LogEntry } from "../../sports/volleyball/engine";
@@ -36,12 +37,12 @@ const parseClock = (x: string): number | null => { const p = x.trim().split(":")
 export function videoAt(url: string, sec: number): string {
   const s = Math.max(0, Math.floor(sec));
   try {
-    const u = new URL(url);
+    const u = new URL(safeUrl(url)); // only http(s): a "javascript://youtu.be/..." link is still a script
     if (/youtu\.?be/.test(u.hostname)) { u.searchParams.set("t", s + "s"); return u.toString(); }
     if (/vimeo\.com/.test(u.hostname)) { u.hash = "t=" + s + "s"; return u.toString(); }
     if (/\.(mp4|webm|mov|m4v)$/i.test(u.pathname)) { u.hash = "t=" + s; return u.toString(); }
     return u.toString();
-  } catch { return url; }
+  } catch { return safeUrl(url); }
 }
 
 export function FilmCard({ m, R }: { m: Match; R: Replay }) {

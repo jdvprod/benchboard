@@ -25,7 +25,7 @@
 </div>
 
 <h2>1. Who we are</h2>
-<p>Floorcall ("Floorcall", "we", "us") is operated by %LEGAL_OWNER%. This policy explains what information the Floorcall app and website collect, how it is used and shared, and the choices you have. It applies to the app, the public pages it creates (live gamecasts, season pages and recruiting profiles) and this website. Questions: <a href="mailto:%LEGAL_EMAIL%">%LEGAL_EMAIL%</a>.</p>
+<p>Floorcall ("Floorcall", "we", "us") is operated by %LEGAL_OWNER%. This policy explains what information the Floorcall app and website collect, how it is used and shared, and the choices you have. It applies to the app, the pages it creates (live gamecasts, season pages, team pages on Floorcall Live, recruiting profiles and Floorcall Beach matches), Floorcall Recruit, Floorcall Beach and this website. Questions: <a href="mailto:%LEGAL_EMAIL%">%LEGAL_EMAIL%</a>.</p>
 
 <h2>2. Information we collect</h2>
 <h3>Account information</h3>
@@ -39,11 +39,27 @@
 <li>Coach notes about players.</li>
 <li>Recruiting profile details if a coach fills them in, which can include a player's email, phone, GPA, measurables, club team and highlight video link.</li>
 </ul>
+<h3>Information families, players and staff add</h3>
+<p>People signed in to Floorcall can take part in a team's page on Floorcall Live. When they do, we keep:</p>
+<ul>
+<li><b>Availability:</b> the answer (yes, no or maybe) for a match or practice, the name they gave, and which player it's for if they picked one. The team's coaches see these answers.</li>
+<li><b>Volunteer sign-ups:</b> the job (for example snack bar or line judge), the date and the name they gave. The team's coaches see who signed up; other families see only how many spots are filled.</li>
+<li><b>Announcements:</b> coaches post announcements; we record which accounts have opened each one so the app can mark new posts. Announcements are one-way: nobody can reply to them or message players through Floorcall.</li>
+<li><b>Film sessions:</b> which clips a signed-in viewer has watched, so the coach can see who has caught up.</li>
+<li><b>Notifications:</b> if someone turns on match notifications, the browser's push subscription, the team, and whether they want start and final alerts.</li>
+</ul>
+<h3>Tryouts</h3>
+<p>A coach running tryouts can enter the players trying out (name, bib number, position and grade) and ratings and notes from each evaluator. If the head coach shares the tryout with other evaluators, each evaluator's name, ratings and notes are kept with the tryout so the head coach can combine them. Only the coach who shared it and the evaluators with the code can open it; the head coach can stop sharing at any time, which deletes the shared copy.</p>
+<h3>Floorcall Beach</h3>
+<p>Beach matches are kept on the scorer's device. A share link carries the match (the players' names as typed, the score and stats) inside the link itself; we don't store it. If the scorer chooses "Go live", the match is kept on our servers while it's shared, so anyone with the live link can follow it, and is deleted when they stop sharing.</p>
+<h3>College coaches</h3>
+<p>College staff who apply for access to Floorcall Recruit give their name, school, title and work email, which we review before approving. When they write to a listed player's coaches, we keep the message, who sent it and when it was read. Messages go to the player's coaches, never to the player.</p>
 <p>Please don't enter sensitive information such as medical or health details, government ID numbers or financial information. Floorcall isn't designed to store it.</p>
 <h3>Information stored on your device</h3>
 <p>Floorcall works offline, so it keeps your data in your browser's storage (IndexedDB and local storage) on your device. This storage is used only to run the app (your teams, settings, sign-in session and sync queue). We don't use advertising or tracking cookies, and we don't use third-party analytics.</p>
 <h3>Technical information</h3>
 <p>Like any website, the services that host Floorcall receive technical information when your device connects, such as your IP address, browser type and the time of the request. They use it to deliver the site, keep it secure and troubleshoot.</p>
+<p>To stop anyone from guessing share codes, when a code doesn't match we keep a one-way hash of the network address it came from (not the address itself) for up to an hour. If the app hits an error, it can send us a crash report with the error message, the app version, the screen it happened on and the browser type, never team data.</p>
 <h3>AI features</h3>
 <p>Some features (for example "Ask your stats", report cards and timeout talking points) use an AI model. They run only when someone taps the button. When they run, a summary of the relevant team statistics is sent to our AI provider to generate the answer. Players appear in it only by jersey number and first name; it can also include match and scouting notes the coaches wrote, but never last names, contact details or the private notes coaches keep about players. We count AI requests per account to enforce a daily limit.</p>
 
@@ -69,10 +85,13 @@
 <tr><td>Season page</td><td>Anyone with the team's season link</td><td>First name, last initial, jersey number, position and season stats</td></tr>
 <tr><td>Recruiting profile</td><td>Anyone with that player's profile link</td><td>Full name and the details the coach chose to include. Coaches must confirm the player and a parent or guardian (if the player is under 18) agreed before publishing.</td></tr>
 <tr><td>Team film session</td><td>People signed in to Floorcall who have the session's link (the coach shares it with the team)</td><td>The clips the coach chose, with the coach's notes and drawings. The coach sees the names of people who opened it and how many clips they watched.</td></tr>
+<tr><td>Team page on Floorcall Live</td><td>Anyone with the team's season link sees the schedule, scores and practice times; signed-in accounts with the link also see announcements, the shared playbook and practice plans, and can answer availability and volunteer</td><td>The same as the season page. Availability answers and volunteer names are shown only to the team's coaches.</td></tr>
+<tr><td>Beach live match</td><td>Anyone with that match's link, while the scorer shares it</td><td>The names the scorer typed, the score and the stats for that match</td></tr>
+<tr><td>Shared tryout</td><td>The head coach and evaluators signed in with the tryout code</td><td>Names, bibs, positions and grades of the players trying out, and the ratings and notes evaluators enter</td></tr>
 <tr><td>Profile views</td><td>The player's coaches</td><td>How many times a shared profile was opened and when it was last opened. Visitors aren't identified.</td></tr>
 </table>
 <p>If a family agrees to statistics but not to team pages, the coach can keep their player off public pages: gamecasts and the season page then show only the jersey number, and share graphics leave the player out. Coaches' private match notes and film notes never appear on public pages.</p>
-<p>Links are hard to guess but not password-protected: anyone who has a link can open it. Coaches can stop sharing a profile at any time.</p>
+<p>Links aren't password-protected: anyone who has a link can open it. Codes can't practically be guessed: after 20 wrong codes from one network in 10 minutes, Floorcall makes that network wait. Coaches can stop sharing a profile at any time.</p>
 
 <h2>5. How information is shared</h2>
 <ul>
@@ -90,7 +109,7 @@
 </ul>
 
 <h2>6. How long we keep information</h2>
-<p>We keep account and team information while your account or team exists. When you delete players, matches, a team or your account, the information is removed from our active systems. It may remain in encrypted backups for a limited time before they are overwritten. Information stored on your device stays there until you delete it in the app or clear your browser's data.</p>
+<p>We keep account and team information while your account or team exists. When you delete players, matches, a team or your account, the information is removed from our active systems. Deleting your account also deletes your availability answers, volunteer sign-ups, tryout ratings, shared tryouts and beach matches, notification subscriptions and messages you sent as college staff; announcements you posted stay with the team without your account attached. Hashes of wrong share codes are deleted within an hour. It may remain in encrypted backups for a limited time before they are overwritten. Information stored on your device stays there until you delete it in the app or clear your browser's data.</p>
 
 <h2>7. Your choices and rights</h2>
 <ul>
@@ -105,7 +124,7 @@
 <p>To make a request, email <a href="mailto:%LEGAL_EMAIL%">%LEGAL_EMAIL%</a>. We'll verify the request comes from you (or from the coach or school responsible for a team) and respond within the time the law requires.</p>
 
 <h2>8. Security</h2>
-<p>Information travels over encrypted connections (HTTPS). Access to team data is enforced by the database itself: only members of a team can read it, and only owners and coaches can change it. Passwords are hashed. No system is perfectly secure; if a breach affects your information, we'll notify you as the law requires.</p>
+<p>Information travels over encrypted connections (HTTPS, required by the browser on every visit). Access to team data is enforced by the database itself: only members of a team can read it, and only owners and coaches can change it. Visitors without an account can reach only the public pages above, nothing else in the database. A new device has to confirm a code we email before it can sign in. The app's pages only run Floorcall's own code, which keeps other sites' scripts out. Passwords are hashed. No system is perfectly secure; if a breach affects your information, we'll notify you as the law requires.</p>
 
 <h2>9. International use</h2>
 <p>Floorcall is run from the United States and our providers may process information in the United States and other countries. Where required, we use appropriate safeguards for transfers.</p>
