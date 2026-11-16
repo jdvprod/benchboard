@@ -17,6 +17,8 @@ export interface ClipQuery {
   clutch?: boolean; // either team at 20 or more (15 in a fifth set)
   tags?: boolean; // film tags / notes
   note?: string; // tag text to look for
+  pointsOnly?: boolean; // only plays that ended a rally
+  ids?: string[]; // exactly these plays (a run of points, or plays the AI picked)
 }
 export interface QueryPlayer { id: string; first: string; last: string; num: string }
 export interface Parsed { q: ClipQuery; chips: string[]; empty: boolean }
@@ -100,7 +102,7 @@ export function parseQuery(text: string, roster: QueryPlayer[] = []): Parsed {
   // plays
   const codes = new Set<string>();
   for (const [re, c, label] of PLAYS) if (re.test(s)) { c.forEach((x) => codes.add(x)); chips.push(label); s = s.replace(new RegExp(re.source, "g"), " "); }
-  if (/\bevery point\b|\ball points\b|\bpoints?\b|\brallies\b/.test(s) && !codes.size && !q.won) { q.won = undefined; chips.push("Every point"); (q as any).pointsOnly = true; }
+  if (/\bevery point\b|\ball points\b|\bpoints?\b|\brallies\b/.test(s) && !codes.size && !q.won) { q.won = undefined; chips.push("Every point"); q.pointsOnly = true; }
   if (codes.size) q.codes = [...codes];
   // "#7" means their player when only their plays are asked for, otherwise ours
   const theirsOnly = !!q.codes && q.codes.every((c) => c === "OK" || c === "OA" || c === "OE");
@@ -109,12 +111,13 @@ export function parseQuery(text: string, roster: QueryPlayer[] = []): Parsed {
     const p = roster.find((r) => r.num === n); if (p && !q.players.includes(p.id)) { q.players.push(p.id); chips.push(`#${p.num} ${p.first}`); }
   }
   if (q.ctx && !q.codes) q.codes = ["K", "KT", "AE", "AB", "TA"]; // "off perfect passes" means attacks
-  const empty = !q.codes && !q.players.length && !q.opp.length && !q.zones.length && !q.sets.length && !q.rots.length && !q.won && !q.serving && !q.ctx && !q.clutch && !q.tags && !(q as any).pointsOnly;
+  const empty = !q.codes && !q.players.length && !q.opp.length && !q.zones.length && !q.sets.length && !q.rots.length && !q.won && !q.serving && !q.ctx && !q.clutch && !q.tags && !q.pointsOnly;
   return { q, chips: [...new Set(chips)], empty };
 }
 
 /** Does a log line pass the query? */
 export function matchQuery(q: ClipQuery, l: LogEntry): boolean {
+  if (q.ids) return (l.kind === "stat" || l.kind === "tag") && q.ids.includes(l.id);
   if (l.kind === "tag") {
     if (!q.tags && !q.note) return false;
     if (q.note && !l.note.toLowerCase().includes(q.note.toLowerCase())) return false;
@@ -124,7 +127,7 @@ export function matchQuery(q: ClipQuery, l: LogEntry): boolean {
   if (l.kind !== "stat") return false;
   if (q.tags && !q.codes) return false;
   if (q.codes && !q.codes.includes(l.t)) return false;
-  if ((q as any).pointsOnly && !l.w) return false;
+  if (q.pointsOnly && !l.w) return false;
   if (q.players.length && !(l.p && q.players.includes(l.p))) return false;
   if (q.opp.length && !(l.op && q.opp.includes(l.op))) return false;
   if (q.zones.length && !(typeof l.z === "number" && q.zones.includes(l.z))) return false;

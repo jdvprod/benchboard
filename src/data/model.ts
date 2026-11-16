@@ -139,7 +139,11 @@ export interface Match {
   /** Film sessions built in Film Room for the team (src/film/session.ts). */
   sessions?: import("../film/session").FilmSession[];
   /** Rallies found from the referee's whistle, seconds into the video. */
-  rallies?: { start: number; end: number }[];
+  rallies?: { start: number; end: number; h?: number }[];
+  /** No whistles heard: the loudest crowd moments instead, as clips (src/film/rallies.ts loudMoments). */
+  moments?: { start: number; end: number; h?: number }[];
+  /** The film breakdown's write-up, when the coach asked the AI for one (src/film/breakdown.ts). */
+  review?: { at: number; summary: string; notes: Record<string, string> };
 }
 
 /** Events recorded on one device for one match. Several devices can record the same match. */

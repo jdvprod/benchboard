@@ -950,12 +950,43 @@ const scenarios = {
     ok("clip search: says what it can find when the words make no sense", /Try naming a play/.test(await p.locator(".fr-find").innerText()));
     await p.getByRole("tab", { name: "Rallies" }).click();
     ok("rallies: each rally lists its plays", (await p.locator(".fr-rallies li").count()) === 2 && /Zoe/.test(await p.locator(".fr-rallies li").nth(1).innerText()), await p.locator(".fr-rallies").innerText());
+    ok("big moments: every rally is rated, with the best ones on top", /Best rallies/.test(await p.locator(".fr-best").innerText()) && (await p.locator(".fr-heat").count()) === 2);
+    await p.getByRole("radio", { name: "Best first" }).click().catch(async () => p.locator(".fr-best").getByRole("button", { name: "Best first" }).click());
+    ok("big moments: best first reorders the list", (await p.locator(".fr-rallies li").count()) === 2);
     { const ax = await a11y(p); ok("film room controls all have names", !ax.length, ax.join(" | ")); }
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-room.png"), fullPage: true });
+    await p.getByRole("button", { name: "Make a film session of them" }).click(); await p.waitForTimeout(300);
+    ok("big moments: one tap makes a film session of the best rallies", /best rallies/.test(await p.getByLabel("Session title").inputValue()) && (await p.locator(".fr-items > li").count()) === 2, await p.locator(".fr-side").innerText().then((t) => t.slice(0, 200)));
+    // breakdown: three serve errors by Zoe make a finding, with its clips and a film session
+    await p.getByRole("tab", { name: "Stat" }).click(); await p.locator(".fr-top h1").click();
+    for (const t of [32, 32.5, 33]) { await at(t); await p.keyboard.type("8"); await p.waitForTimeout(900); await p.keyboard.press("n"); await p.keyboard.press("Escape"); }
+    await p.evaluate(() => localStorage.setItem("bs-ai-key", "sk-ant-test"));
+    await p.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "We beat Central but gave away free points from the line.", notes: { "err-serve": "Zoe, watch your toss drift right on each of these." } }) }], stop_reason: "end_turn" }) }));
+    await p.getByRole("tab", { name: "Breakdown" }).click(); await p.waitForTimeout(300);
+    { const t = await p.locator(".fr-bd").innerText(); ok("breakdown: finds the serve errors and who made them", /Serve errors gave them 3 points/.test(t) && /#8 Zoe had 3 of them/.test(t), t.slice(0, 300)); }
+    await p.getByRole("button", { name: "Watch 3 clips" }).click(); await p.waitForTimeout(400);
+    ok("breakdown: a finding plays as clips", (await p.locator(".fr-bd video").count()) >= 1 && /1 of 3/.test(await p.locator(".fr-bd").innerText()));
+    await p.getByRole("button", { name: "Write it up with AI" }).click(); await p.waitForTimeout(800);
+    ok("breakdown: the AI writes the summary and the clip notes", /gave away free points/.test(await p.locator(".fr-bd-sum").innerText()) && /toss drift right/.test(await p.locator(".fr-bd-list").innerText()));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-breakdown.png"), fullPage: true });
+    await p.getByRole("button", { name: "Make a film session from this" }).click(); await p.waitForTimeout(300);
+    ok("breakdown: one tap makes the film review session, notes and all", /film review/.test(await p.getByLabel("Session title").inputValue()) && (await p.locator(".fr-items > li").count()) === 3 && /toss drift/.test(await p.locator(".fr-items textarea").first().inputValue()) && /free points/.test(await p.getByLabel("Note to the team (optional)").inputValue()));
+    await p.evaluate(() => localStorage.removeItem("bs-ai-key"));
     await go(p, "track");
     ok("film room: a film game never becomes the live match", (await p.locator(".fr-stage").count()) === 0 && !(await p.getByRole("button", { name: "End match" }).count()));
     await go(p, "film");
     ok("film room: the game is listed under Your film", /vs Central/.test(await p.locator(".fr-list").first().innerText()) && /2 rallies/.test(await p.locator(".fr-list").first().innerText()));
+    // search across the season
+    await p.getByLabel("Search all your film").fill("Maya's kills vs Central"); await p.getByRole("button", { name: "Search", exact: true }).click(); await p.waitForTimeout(300);
+    { const u = await p.locator(".fr-season .fr-understood").innerText(); ok("season search: reads the player, the play and the opponent", /Kills/.test(u) && /#7 Maya/.test(u) && /vs Central/.test(u), u); }
+    ok("season search: finds the play and its match", /1 play in 1 match/.test(await p.locator(".fr-season").innerText()) && (await p.getByRole("button", { name: "Watch 1 clip back to back" }).count()) === 1);
+    await p.locator(".fr-group-t").first().click();
+    ok("season search: a match opens to its plays with video times", /0:04/.test(await p.locator(".fr-season .fr-rows").innerText()));
+    await p.getByRole("button", { name: "Watch 1 clip back to back" }).click(); await p.waitForTimeout(500);
+    ok("season search: clips play from the season view", (await p.locator(".fr-season video").count()) >= 1);
+    await p.getByLabel("Search all your film").fill("blocks vs Buchanan"); await p.getByRole("button", { name: "Search", exact: true }).click(); await p.waitForTimeout(200);
+    ok("season search: an opponent never played says so", /No matches against Buchanan yet/.test(await p.locator(".fr-season").innerText()));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-season.png"), fullPage: true });
     ok("film: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },

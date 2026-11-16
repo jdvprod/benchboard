@@ -95,3 +95,81 @@ test("clip search: block touches are their own play", () => {
   assert.deepEqual(parseQuery("all block touches").q.codes, ["BT"]);
   assert.ok(parseQuery("blocks").q.codes!.includes("BT"));
 });
+
+/* ---------- big moments ---------- */
+import { bestOf, hypeScores, loudMoments, withHype, Frame as F2 } from "../src/film/rallies";
+/** Frames every 32 ms with a quiet floor and loud bursts at the given times (seconds, length 2 s). */
+const crowd = (secs: number, bursts: [number, number][]): F2[] => { const out: F2[] = []; for (let t = 0; t < secs; t += 0.032) { const b = bursts.find(([at]) => t >= at && t < at + 2); out.push({ t, peak: 0, band: 0, level: 0, loud: b ? b[1] : 1 + ((t * 7) % 1) * 0.2 }); } return out; };
+
+test("big moments: the rally the crowd went wild for ranks first", () => {
+  const rallies = [{ start: 10, end: 18 }, { start: 30, end: 36 }, { start: 50, end: 70 }, { start: 90, end: 95 }];
+  const fr = crowd(120, [[37, 30], [71, 6], [96, 2]]); // huge cheer after rally 2, medium after the long rally 3
+  const h = hypeScores(fr, rallies);
+  assert.equal(h.indexOf(Math.max(...h)), 1, "the cheer wins");
+  assert.ok(h[2] > h[0] && h[2] > h[3], "a long rally with a cheer beats a short quiet one");
+  assert.ok(h.every((x) => x >= 0 && x <= 1));
+  const best = bestOf(withHype(fr, rallies), 2);
+  assert.deepEqual(best.map((r) => r.start), [30, 50], "best two, in film order");
+  assert.deepEqual(hypeScores(fr, []), []);
+});
+
+test("big moments: with no whistles, loud bursts become clips leading up to them", () => {
+  const fr = crowd(300, [[40, 12], [41.5, 12], [150, 20], [240, 5], [260, 1.1]]);
+  const ms = loudMoments(fr, { duration: 300 });
+  assert.equal(ms.length, 3, "two bursts 1.5 s apart are one moment; a burst at the usual level isn't a moment");
+  assert.ok(ms[0].start < 41 && ms[0].start >= 30 && ms[0].end > 41, "the clip leads up to the cheer");
+  assert.equal(Math.max(...ms.map((m) => m.h!)), ms[1].h, "the loudest is rated highest");
+  assert.deepEqual(loudMoments(crowd(5, [])), []);
+});
+
+/* ---------- season search ---------- */
+import { inScope, parseScope, searchSeason } from "../src/film/library";
+test("season search: reads which matches from the words, leaves the plays", () => {
+  const opps = ["Buchanan", "Clovis West", "Bu"];
+  let r = parseScope("Maya's kills vs Buchanan", opps, "2026-11-15");
+  assert.deepEqual(r.scope.opps, ["Buchanan"]); assert.equal(r.rest, "Maya's kills");
+  r = parseScope("aces in the last 3 matches against clovis west", opps, "2026-11-15");
+  assert.deepEqual(r.scope.opps, ["Clovis West"]); assert.equal(r.scope.last, 3); assert.equal(r.rest, "aces");
+  r = parseScope("shanks last match", opps, "2026-11-15"); assert.equal(r.scope.last, 1); assert.equal(r.rest, "shanks");
+  r = parseScope("blocks vs Buchanan Hills in set 2", ["Clovis West"], "2026-11-15"); assert.deepEqual(r.scope.opps, ["Buchanan Hills"]); assert.equal(r.rest, "blocks in set 2");
+  assert.deepEqual(inScope([{ date: "2026-10-01", opp: "Clovis West" }], r.scope), [], "an opponent never played finds nothing");
+  assert.equal(inScope([{ date: "2026-10-01", opp: "Clovis West" }], parseScope("vs clovis", [], "2026-11-15").scope).length, 1, "part of a name is enough");
+  r = parseScope("blocks this month", opps, "2026-11-15"); assert.equal(r.scope.since, "2026-10-15");
+  r = parseScope("all solo blocks this season", opps, "2026-11-15"); assert.equal(r.rest, "all solo blocks"); assert.equal(r.scope.opps.length, 0, "a two-letter name never matches inside words");
+  const ms = [{ date: "2026-10-01", opp: "Buchanan" }, { date: "2026-11-10", opp: "Clovis West" }, { date: "2026-11-01", opp: "Buchanan" }];
+  assert.deepEqual(inScope(ms, parseScope("last 2 matches", opps, "2026-11-15").scope).map((m) => m.date), ["2026-11-10", "2026-11-01"]);
+  assert.deepEqual(inScope(ms, parseScope("vs buchanan", opps, "2026-11-15").scope).map((m) => m.date), ["2026-11-01", "2026-10-01"]);
+});
+test("season search: groups matching plays by match, newest first", () => {
+  let ts = 1; const e = (x: any) => ({ id: "x" + ts, ts: ts++, ...x }) as MatchEvent;
+  const a = replay([e({ t: "NS", serve: "us" }), e({ t: "SA", p: "p1" }), e({ t: "SA", p: "p2" })]), b = replay([e({ t: "NS", serve: "us" }), e({ t: "K", p: "p1" })]);
+  const ms = [{ id: "a", date: "2026-10-01", opp: "Buchanan", log: a.log }, { id: "b", date: "2026-11-01", opp: "Clovis", log: b.log }];
+  const g = searchSeason(ms, parseQuery("Maya", roster).q, parseScope("", [], "2026-11-15").scope);
+  assert.deepEqual(g.map((x) => [x.m.id, x.rows.length]), [["b", 1], ["a", 1]]);
+  assert.equal(searchSeason(ms, parseQuery("aces", roster).q, parseScope("", [], "2026-11-15").scope)[0].rows.length, 2);
+});
+
+/* ---------- film breakdown ---------- */
+import { breakdown, cleanReview } from "../src/film/breakdown";
+test("breakdown: finds the leaks, their best hitter, a run and what to keep doing, each as clips", () => {
+  let ts = 1; const e = (x: any) => ({ id: "b" + ts, ts: ts++, ...x }) as MatchEvent;
+  const evs: MatchEvent[] = [e({ t: "NS", serve: "us", lu: ["p1", "p2", "a", "b", "c", "d"] })];
+  for (let i = 0; i < 3; i++) evs.push(e({ t: "SEN", p: "p2" }));          // 3 serve errors by Ava
+  for (let i = 0; i < 2; i++) evs.push(e({ t: "OK", op: "7" }));
+  evs.push(e({ t: "OK", op: "7" }), e({ t: "OK", op: "9" }));                  // their #7: 3 kills; run of 7 against us so far
+  for (let i = 0; i < 4; i++) evs.push(e({ t: "K", p: "p1" }));               // Maya 4 kills
+  evs.push(e({ t: "P0", p: "p1" }), e({ t: "OA", op: "3" }), e({ t: "P0", p: "p2" }));
+  const R = replay(evs), name = (id: string) => ({ p1: "#12 Maya", p2: "#7 Ava" } as any)[id] || id;
+  const fs = breakdown(R.log, name), byId = Object.fromEntries(fs.map((f) => [f.id, f]));
+  assert.ok(byId["err-serve"], "serve errors"); assert.match(byId["err-serve"].why, /#7 Ava had 3/);
+  assert.ok(byId["receive"]); assert.equal(byId["receive"].n, 3);
+  assert.ok(byId["their-7"]); assert.match(byId["their-7"].title, /Their #7: 3 kills/);
+  assert.ok(byId["run"]); assert.match(byId["run"].title, /7 in a row in set 1/); assert.equal(byId["run"].q.ids!.length, 7);
+  assert.ok(byId["star-p1"]); assert.match(byId["star-p1"].title, /#12 Maya scored 4/);
+  assert.deepEqual(fs.map((f) => f.tone), fs.map((f) => f.tone).slice().sort((a, b) => ["fix", "scout", "keep"].indexOf(a) - ["fix", "scout", "keep"].indexOf(b)), "fixes first, then scouting, then keep doing");
+  // every finding's search finds exactly its plays
+  for (const f of fs) assert.equal(R.log.filter((l) => matchQuery(f.q, l)).length, f.n, f.id);
+  assert.deepEqual(breakdown(replay([e({ t: "NS", serve: "us" })]).log, name), [], "nothing to say before any points");
+  const c = cleanReview({ summary: " Tough night. ", notes: { "err-serve": "Toss.", bogus: "x", run: 5 } }, fs);
+  assert.deepEqual(c, { summary: "Tough night.", notes: { "err-serve": "Toss." } });
+});
