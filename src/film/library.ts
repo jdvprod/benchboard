@@ -46,3 +46,17 @@ export function inScope<M extends { date: string; opp: string }>(ms: M[], sc: Sc
 export function searchSeason(ms: LibMatch[], q: ClipQuery, sc: Scope): { m: LibMatch; rows: LogEntry[] }[] {
   return inScope(ms, sc).map((m) => ({ m, rows: m.log.filter((l) => matchQuery(q, l)) })).filter((g) => g.rows.length);
 }
+
+/** Their players against us, across matches: kills, aces and where the kills went. For scouting before a rematch. */
+export interface Hitter { num: string; kills: number; aces: number; zones: Record<number, number>; topZone: number | null; matches: number }
+export function scoutHitters(logs: LogEntry[][]): Hitter[] {
+  const by = new Map<string, Hitter & { seen: Set<number> }>();
+  logs.forEach((log, mi) => { for (const l of log) {
+    if (l.kind !== "stat" || !l.op || (l.t !== "OK" && l.t !== "OA")) continue;
+    const h = by.get(l.op) || { num: l.op, kills: 0, aces: 0, zones: {}, topZone: null, matches: 0, seen: new Set<number>() };
+    if (l.t === "OK") { h.kills++; if (typeof l.z === "number") h.zones[l.z] = (h.zones[l.z] || 0) + 1; } else h.aces++;
+    h.seen.add(mi); by.set(l.op, h);
+  } });
+  return [...by.values()].map(({ seen, ...h }) => { const z = Object.entries(h.zones).sort((a, b) => b[1] - a[1])[0]; return { ...h, matches: seen.size, topZone: z && z[1] >= 2 ? +z[0] : null }; })
+    .sort((a, b) => b.kills + b.aces - (a.kills + a.aces) || +a.num - +b.num);
+}

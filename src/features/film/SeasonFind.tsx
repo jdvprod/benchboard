@@ -8,7 +8,9 @@ import { ReelMaker } from "../../film/ReelMaker";
 import { go } from "../../app/router";
 import { Clip, clipsFrom, clock, filmTiming, videoTime } from "../../film/clips";
 import { aiQueryPrompt, cleanAiQuery, ClipQuery, parseQuery, QueryPlayer } from "../../film/query";
-import { inScope, parseScope, Scope, searchSeason } from "../../film/library";
+import { inScope, parseScope, Scope, scoutHitters, searchSeason } from "../../film/library";
+import { setUi, ui } from "../../app/ui";
+import { useEffect } from "react";
 import { aiAvailable, askJson } from "../../ai/client";
 import { describe, label, resolve } from "./words";
 
@@ -37,6 +39,13 @@ export function SeasonFind() {
     setBusy(false);
   };
 
+  // a player's page sends a question here
+  useEffect(() => { if (ui.filmAsk) { const q = ui.filmAsk; setUi({ filmAsk: "" }); run(q); } }, []);
+  const scout = useMemo(() => {
+    if (!hit || hit.scope.opps.length !== 1) return null;
+    const ms = inScope(all, { ...hit.scope, last: null, since: null }).map((m) => replayOf(m)).filter(Boolean);
+    return ms.length ? { opp: hit.scope.opps[0], n: ms.length, hitters: scoutHitters(ms.map((R) => R!.log)).filter((h) => h.kills + h.aces > 0).slice(0, 6) } : null;
+  }, [hit]);
   const groups = useMemo(() => {
     if (!hit) return [];
     const ms = all.map((m) => { const R = replayOf(m); return R ? { m, R, id: m.id, date: m.date, opp: m.opp, log: R.log } : null; }).filter(Boolean) as any[];
@@ -70,6 +79,12 @@ export function SeasonFind() {
       {(needFile > 0 || noVideo > 0) && total > 0 && <p className="small muted">{[needFile ? `${plural(needFile, "clip")} need${needFile === 1 ? "s" : ""} the game video picked again (videos stay on the device they were chosen on)` : "", noVideo ? `${plural(noVideo, "play")} from matches with no video` : ""].filter(Boolean).join(". ")}.</p>}
       {play && <ClipPlayer key={hit.title} clips={playable} resolve={resolve} allowSave title={hit.title} fileName={(c) => `${hit.title}${c ? " " + c.label + " vs " + c.opp : ""}`.replace(/[^\w\- .#]+/g, "")} />}
       {reelFor && <ReelMaker id={reelFor} pool={playable} onClose={() => setReelFor(null)} />}
+      {scout && scout.hitters.length > 0 && <div className="fr-scout">
+        <b className="small">Their players against us ({plural(scout.n, "match", "matches")} vs {scout.opp})</b>
+        <table><thead><tr><th>Player</th><th className="num">Kills</th><th className="num">Aces</th><th>Kills land</th><th /></tr></thead>
+          <tbody>{scout.hitters.map((h) => <tr key={h.num}><td>#{h.num}</td><td className="num">{h.kills}</td><td className="num">{h.aces}</td><td className="small">{h.topZone ? `Mostly area ${h.topZone}` : h.kills ? "All over" : "–"}</td>
+            <td>{h.kills > 0 && <button className="btn sm" onClick={() => run(`their kills from #${h.num} vs ${scout.opp}`)}>#{h.num}'s kills</button>}</td></tr>)}</tbody></table>
+      </div>}
       <ul className="fr-groups">{groups.map((g) => { const on = open === g.m.id; return <li key={g.m.id}>
         <div className="fr-group-hd">
           <button className="fr-group-t" aria-expanded={on} onClick={() => setOpen(on ? null : g.m.id)}><b>vs {g.m.opp}</b><span className="small muted">{fmtDate(g.m.date)} · {plural(g.rows.length, "play")}{!g.m.video ? " · no video" : ""}</span></button>

@@ -4,7 +4,7 @@ import { go } from "./router";
 import { setUi } from "./ui";
 
 const NEWS: { id: string; title: string; body: string; page?: string; cta?: string }[] = [
-  { id: "filmreview", title: "Film breakdown", body: "Film Room now reviews each match for you: where points went, the stuck rotation, their best hitter, what to keep doing. Every finding plays as clips and becomes a film session in one tap.", page: "film", cta: "Open Film Room" },
+  { id: "filmreview", title: "Film breakdown", body: "Film Room now reviews each match: where points went, the stuck rotation, their best hitter, what to keep doing. Ask it questions like “why did we lose set 2?” and it shows you the plays.", page: "film", cta: "Open Film Room" },
   { id: "filmsearch", title: "Search all your film", body: "Ask across the whole season: “Maya's kills vs Buchanan”, “aces in the last 3 matches”. And Best rallies ranks every rally by the crowd's reaction, no stats needed.", page: "film", cta: "Search your film" },
   { id: "tryouts", title: "Tryouts", body: "Rate players skill by skill with your staff on their phones, rank them, and turn offers into a roster.", page: "tryouts", cta: "Open tryouts" },
   { id: "playbook", title: "Playbook in 3D", body: "Defenses, blocking and hitting plays on a court you can turn. Draw routes, run them, save a picture, share with the team.", page: "court", cta: "Open the playbook" },

@@ -10,5 +10,6 @@ export const ui = {
   statsSeason: "" as string,
   prevRally: false,                    // stats-only device: put the next entry in the rally that just ended
   courtTab: "tendency" as "tendency" | "playbook" | "boards",
+  filmAsk: "" as string,               // a question for Film Room's season search, from a player page
 };
 export function setUi(p: Partial<typeof ui>) { Object.assign(ui, p); emit(); }

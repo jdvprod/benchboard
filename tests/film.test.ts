@@ -173,3 +173,26 @@ test("breakdown: finds the leaks, their best hitter, a run and what to keep doin
   const c = cleanReview({ summary: " Tough night. ", notes: { "err-serve": "Toss.", bogus: "x", run: 5 } }, fs);
   assert.deepEqual(c, { summary: "Tough night.", notes: { "err-serve": "Toss." } });
 });
+
+/* ---------- ask the film, scouting ---------- */
+import { askPrompt, cleanAsk, filmDigest } from "../src/film/askFilm";
+import { scoutHitters } from "../src/film/library";
+test("ask the film: a compact play list in, only real plays out", () => {
+  let ts = 1; const e = (x: any) => ({ id: "q" + ts, ts: ts++, ...x }) as MatchEvent;
+  const R = replay([e({ t: "NS", serve: "us", lu: ["p1", "p2", "a", "b", "c", "d"] }), e({ t: "K", p: "p1" }), e({ t: "OK", op: "7" }), e({ t: "D", p: "p2" })]);
+  const d = filmDigest(R.log, (id) => (id === "p1" ? "#12 Maya" : "#7 Ava"), (c) => ({ K: "Kill", OK: "Their kill", D: "Dig" } as any)[c] || c);
+  assert.equal(d.length, 3);
+  assert.match(d[0], /^q2 \| S1 \| 1-0 \(our point\) \| #12 Maya \| Kill/);
+  assert.match(d[1], /their #7 \| Their kill/);
+  assert.match(askPrompt("why did we lose?", "Central", "1-2", d), /Coach's question: "why did we lose\?"/);
+  const c = cleanAsk({ answer: " Their #7. ", plays: ["q3", "nope", "q3", 5] }, R.log);
+  assert.deepEqual(c, { answer: "Their #7.", plays: ["q3"] });
+  assert.deepEqual(cleanAsk(null, R.log), { answer: "", plays: [] });
+});
+test("scouting: their hitters across matches, with where the kills land", () => {
+  let ts = 1; const e = (x: any) => ({ id: "s" + ts, ts: ts++, ...x }) as MatchEvent;
+  const a = replay([e({ t: "NS", serve: "us" }), e({ t: "OK", op: "7" }), e({ t: "OK", op: "7" }), e({ t: "OA", op: "3" })]).log;
+  const b = replay([e({ t: "NS", serve: "us" }), e({ t: "OK", op: "7" }), e({ t: "OK", op: "11" })]).log;
+  const h = scoutHitters([a, b]);
+  assert.deepEqual(h.map((x) => [x.num, x.kills, x.aces, x.matches]), [["7", 3, 0, 2], ["3", 0, 1, 1], ["11", 1, 0, 1]]);
+});

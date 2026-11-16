@@ -961,7 +961,12 @@ const scenarios = {
     await p.getByRole("tab", { name: "Stat" }).click(); await p.locator(".fr-top h1").click();
     for (const t of [32, 32.5, 33]) { await at(t); await p.keyboard.type("8"); await p.waitForTimeout(900); await p.keyboard.press("n"); await p.keyboard.press("Escape"); }
     await p.evaluate(() => localStorage.setItem("bs-ai-key", "sk-ant-test"));
-    await p.route("https://api.anthropic.com/**", (r) => r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify({ summary: "We beat Central but gave away free points from the line.", notes: { "err-serve": "Zoe, watch your toss drift right on each of these." } }) }], stop_reason: "end_turn" }) }));
+    await p.route("https://api.anthropic.com/**", (r) => {
+      const prompt = JSON.parse(r.request().postData() || "{}").messages?.[0]?.content || "";
+      const ids = [...prompt.matchAll(/^(\S+) \| S\d .*Serve error/gm)].map((x) => x[1]);
+      const reply = /Coach's question/.test(prompt) ? { answer: "Zoe missed three serves in a row in set 1, the only points Central scored.", plays: ids } : { summary: "We beat Central but gave away free points from the line.", notes: { "err-serve": "Zoe, watch your toss drift right on each of these." } };
+      return r.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ content: [{ type: "text", text: JSON.stringify(reply) }], stop_reason: "end_turn" }) });
+    });
     await p.getByRole("tab", { name: "Breakdown" }).click(); await p.waitForTimeout(300);
     { const t = await p.locator(".fr-bd").innerText(); ok("breakdown: finds the serve errors and who made them", /Serve errors gave them 3 points/.test(t) && /#8 Zoe had 3 of them/.test(t), t.slice(0, 300)); }
     await p.getByRole("button", { name: "Watch 3 clips" }).click(); await p.waitForTimeout(400);
@@ -969,6 +974,8 @@ const scenarios = {
     await p.getByRole("button", { name: "Write it up with AI" }).click(); await p.waitForTimeout(800);
     ok("breakdown: the AI writes the summary and the clip notes", /gave away free points/.test(await p.locator(".fr-bd-sum").innerText()) && /toss drift right/.test(await p.locator(".fr-bd-list").innerText()));
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-breakdown.png"), fullPage: true });
+    await p.getByLabel("Ask about this match").fill("Where did their points come from?"); await p.getByRole("button", { name: "Ask", exact: true }).click(); await p.waitForTimeout(800);
+    ok("ask the film: answers in words and pulls the plays it's talking about", /missed three serves/.test(await p.locator(".fr-answer").innerText()) && /points to 3 plays/.test(await p.locator(".fr-answer").innerText()) && (await p.locator(".fr-answer video").count()) >= 1, await p.locator(".fr-askfilm").innerText());
     await p.getByRole("button", { name: "Make a film session from this" }).click(); await p.waitForTimeout(300);
     ok("breakdown: one tap makes the film review session, notes and all", /film review/.test(await p.getByLabel("Session title").inputValue()) && (await p.locator(".fr-items > li").count()) === 3 && /toss drift/.test(await p.locator(".fr-items textarea").first().inputValue()) && /free points/.test(await p.getByLabel("Note to the team (optional)").inputValue()));
     await p.evaluate(() => localStorage.removeItem("bs-ai-key"));
@@ -987,6 +994,11 @@ const scenarios = {
     await p.getByLabel("Search all your film").fill("blocks vs Buchanan"); await p.getByRole("button", { name: "Search", exact: true }).click(); await p.waitForTimeout(200);
     ok("season search: an opponent never played says so", /No matches against Buchanan yet/.test(await p.locator(".fr-season").innerText()));
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-season.png"), fullPage: true });
+    await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "Search Maya's film" }).click(); await p.waitForTimeout(400);
+    ok("a player's page opens a search of their film", /#\/film$/.test(p.url()) && (await p.getByLabel("Search all your film").inputValue()) === "Maya's plays this season" && /1 play in 1 match/.test(await p.locator(".fr-season").innerText()), p.url());
+    if (process.env.SHOTS) { await p.setViewportSize({ width: 390, height: 844 }); await p.locator(".fr-list button", { hasText: "vs Central" }).first().click(); await p.waitForTimeout(400); await p.getByRole("tab", { name: "Breakdown" }).click(); await p.waitForTimeout(300);
+      ok("film room fits a phone", await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)); await p.screenshot({ path: path.join(process.env.SHOTS, "film-phone.png"), fullPage: true }); await p.setViewportSize({ width: 1360, height: 900 }); }
     ok("film: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },

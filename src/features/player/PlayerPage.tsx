@@ -11,6 +11,7 @@ import { LineChart } from "../../ui/charts";
 import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
+import { setUi } from "../../app/ui";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked, recruitViews, setRecruitListed, shareRecruit, unshareRecruit } from "../../cloud/sync";
 import { LEGAL } from "../../app/legal";
@@ -200,7 +201,7 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
         <label className="small row" style={{ gap: 6 }}><input type="checkbox" checked={!pr.clipsOff} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), clipsOff: e.target.checked ? undefined : true } })} /> Include clips on the shared profile</label>
         {preview && <div style={{ marginTop: 8 }}><ClipPlayer clips={picked} title={`${p.first} ${p.last} · highlights`} /></div>}
       </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
-      {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <button className="btn sm" style={{ marginTop: 8 }} onClick={() => setReel(true)}>Make highlight video</button>}
+      {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => setReel(true)}>Make highlight video</button><button className="btn sm" onClick={() => { setUi({ filmAsk: `${p.first || "#" + p.num}'s plays this season` }); go("film"); }}>Search {p.first || "their"}'s film</button></div>}
     </div>
     <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">Floorcall's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free with an account.</p>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />

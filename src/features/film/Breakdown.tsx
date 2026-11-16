@@ -10,6 +10,9 @@ import { ClipPlayer } from "../../ui/ClipPlayer";
 import { clipsFrom, clock, filmTiming, videoTime } from "../../film/clips";
 import { matchQuery } from "../../film/query";
 import { breakdown, breakdownPrompt, cleanReview, Finding, Tone } from "../../film/breakdown";
+import { askPrompt, cleanAsk, filmDigest } from "../../film/askFilm";
+import { ACTIONS } from "../../sports/volleyball/actions";
+import { playName } from "../../film/clips";
 import { itemFrom } from "../../film/session";
 import { aiAvailable, AiError, askJson } from "../../ai/client";
 import { addToSession, saveSession } from "./Sessions";
@@ -47,10 +50,12 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
     toast(`Made “${s.title}” with ${plural(items.length, "clip")}`); onAdded(s.id);
   };
 
-  if (!fs.length) return <div className="stack"><p className="empty">{R.log.some((l) => l.kind === "stat" && l.w)
+  const ask = <AskFilm m={m} R={R} T={T} onAdded={onAdded} />;
+  if (!fs.length) return <div className="stack">{R.log.some((l) => l.kind === "stat") && ask}<p className="empty">{R.log.some((l) => l.kind === "stat" && l.w)
     ? "Nothing stood out in this match yet: no run of errors, no rotation stuck, no hitter who hurt us. Find clips has every play."
     : "Stat this game (or line the video up with your live stats) and the breakdown writes itself: where points went, the rotation that got stuck, their best hitter and what to keep doing. “Best rallies” in Rallies works without any stats."}</p></div>;
   return <div className="stack fr-bd">
+    {ask}
     <div className="fr-bd-hd">
       <p className="small muted">What the film says about this match, from your stats. Each finding plays as clips.</p>
       <div className="row">
@@ -76,5 +81,39 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
             <button className="num fr-time" disabled={!m.video} onClick={() => onSeek(Math.max(0, at - lead))}>{m.video ? clock(Math.max(0, at - lead)) : "S" + l.set}</button><span>{label(l)}</span><span className={"small " + (s.w ? "pt-" + s.w : "muted")}>{s.w ? `${s.us}–${s.them}` : "S" + l.set}</span></li>; })}</ul>}
         </>}
       </li>; })}</ol>
+  </div>;
+}
+
+/* ---------- ask about this match ---------- */
+function AskFilm({ m, R, T, onAdded }: { m: Match; R: Replay; T: ReturnType<typeof filmTiming>; onAdded: (sessionId: string) => void }) {
+  const [text, setText] = useState(""), [busy, setBusy] = useState(false), [res, setRes] = useState<{ q: string; answer: string; plays: string[] } | null>(null), [err, setErr] = useState("");
+  if (!aiAvailable()) return null;
+  const lead = m.film ? 5 : 8;
+  const run = async (q: string) => {
+    setText(q); setBusy(true); setErr("");
+    try {
+      const digest = filmDigest(R.log, playerTag, (c) => playName(c, (ACTIONS as any)[c]?.long));
+      const x = await askJson<any>(askPrompt(q, m.opp, `${R.wonUs}–${R.wonThem} in sets, ${R.sets.map((s) => `${s.us}-${s.them}`).join(", ")}`, digest), { tier: "default" });
+      const c = cleanAsk(x, R.log); if (!c.answer) throw new Error("empty");
+      setRes({ q, ...c });
+    } catch (e) { setErr(e instanceof AiError ? e.message : "Couldn't answer that right now. Try asking another way."); }
+    setBusy(false);
+  };
+  const rows = res ? R.log.filter((l) => res.plays.includes(l.id)) : [];
+  const clips = res && m.video ? clipsFrom(m, T, rows, () => true, label, lead, 2) : [], playable = clips.filter((c) => resolve(c));
+  return <div className="fr-askfilm">
+    <form className="fr-ask" onSubmit={(e) => { e.preventDefault(); if (text.trim()) run(text.trim()); }}>
+      <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="Ask about this match: “why did we lose set 2?”" aria-label="Ask about this match" />
+      <button className="btn primary" disabled={busy || !text.trim()}>{busy ? "Watching…" : "Ask"}</button>
+    </form>
+    {!res && !busy && <div className="fr-examples">{["Why did we lose the close set?", "How did serve receive go?", "Who hurt us most?", "What went right late in sets?"].map((x) => <button key={x} className="fr-ex" onClick={() => run(x)}>{x}</button>)}</div>}
+    {err && <p className="small bad">{err}</p>}
+    {res && <div className="fr-answer">
+      <p>{res.answer}</p>
+      <span className="small muted">Answered with AI from this match's stats. {rows.length ? `It points to ${plural(rows.length, "play")}.` : ""}</span>
+      {rows.length > 0 && m.video && <div className="row"><button className="btn sm" onClick={() => { const s = addToSession(m, "new", clips.map((c, i) => ({ ...itemFrom(c), note: i === 0 ? res.answer : undefined })), `vs ${m.opp}: ${res.q.replace(/\?$/, "")}`); toast(`Made “${s.title}”`); onAdded(s.id); }}>Make a film session of these</button></div>}
+      {playable.length > 0 && <ClipPlayer key={res.q + res.plays.join()} clips={playable} resolve={resolve} allowSave title={res.q} fileName={(c) => `${res.q} vs ${m.opp}${c ? " " + c.label : ""}`.replace(/[^\w\- .#]+/g, "")} />}
+      {!playable.length && rows.length > 0 && <ul className="log film fr-rows">{rows.map((l) => { const s = l as any; return <li key={l.id}><span className="num fr-time">S{l.set}</span><span>{label(l)}</span><span className={"small " + (s.w ? "pt-" + s.w : "muted")}>{s.w ? `${s.us}–${s.them}` : ""}</span></li>; })}</ul>}
+    </div>}
   </div>;
 }
