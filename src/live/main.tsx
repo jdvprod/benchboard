@@ -5,7 +5,7 @@
  *   #/                  enter a code from the coach */
 import "../styles/app.css";
 import "./live.css";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { getLang, initLang, Lang, setLang, tr } from "../lib/i18n";
@@ -17,7 +17,7 @@ import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
 import { TeamLogo } from "../ui/Logo";
 import { DemoGame } from "./Demo";
-import { FilmSessionView } from "./FilmSession";
+const FilmSessionView = lazy(() => import("./FilmSession").then((m) => ({ default: m.FilmSessionView })));
 import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 import { SiteSwitch } from "../ui/SiteSwitch";
@@ -103,7 +103,7 @@ function LiveApp() {
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "demo") return <DemoGame Shell={Shell} />;
-  if (r[0] === "film" && r[1]) return <FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} />;
+  if (r[0] === "film" && r[1]) return <Suspense fallback={null}><FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} /></Suspense>;
   return <Landing />;
 }
 

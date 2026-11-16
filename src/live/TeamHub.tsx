@@ -1,6 +1,7 @@
 /** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
-import { useEffect, useRef } from "react";
-import { TeamPlays } from "./Plays";
+import { lazy, Suspense, useEffect, useRef } from "react";
+/** The playbook (with its 3D court) loads only when someone opens Plays. */
+const TeamPlays = lazy(() => import("./Plays").then((m) => ({ default: m.TeamPlays })));
 import { JobRow, RsvpFor, RsvpRow, RsvpSignIn, useJobs, useRsvps } from "./Rsvp";
 import { aggregate, recordOf, resultOf, Stat } from "../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, playerMetrics } from "../sports/volleyball/metrics";
@@ -43,7 +44,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
     {tab === "stats" && <SeasonStats games={games} P={P} code={code} />}
     {tab === "roster" && <Roster d={d} games={games} code={code} />}
     {tab === "news" && <TeamNews code={code} team={team} full />}
-    {tab === "plays" && <TeamPlays code={code} team={team} />}
+    {tab === "plays" && <Suspense fallback={<p className="lv-note">{tr("Loading…")}</p>}><TeamPlays code={code} team={team} /></Suspense>}
   </>;
 }
 
