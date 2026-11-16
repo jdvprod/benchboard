@@ -1,6 +1,8 @@
-/** Home (the Track tab when no match is live): next match, last match, season snapshot, what to work on. */
+/** Home: the dashboard the app opens to. What's live, next and last; every section with what's waiting in it; the season so far. */
 import { lazy, Suspense, useState } from "react";
-import { ensureOpponent, matchesOf, newMatch, oppKey, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
+import { all, currentMatch, ensureOpponent, matchesOf, newMatch, oppKey, opponentsOf, plansOf, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
+import { Icon } from "../../ui/icons";
+import { feePlayers, summary as feeSummary } from "../club/fees";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
@@ -8,7 +10,6 @@ import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/met
 import { Card, copyText, fmtDate, plural } from "../../ui/kit";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
-import { StartMatch } from "../track/TrackPage";
 import { focusAreas } from "../practice/focus";
 import { matchReportHtml } from "../stats/matchReport";
 import { download } from "../../ui/kit";
@@ -54,8 +55,9 @@ export function Home() {
     {recap && last && <Suspense fallback={null}><RecapVideo m={last.m} R={last.R} onClose={() => setRecap(false)} /></Suspense>}
     <div className="home-head">
       <div><h1>{t.name}</h1><p className="muted">{t.level}{done.length ? ` · ${W}–${L}${T ? "–" + T : ""} this season` : ""}</p></div>
-      <button className="btn primary" onClick={() => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Start a match</button>
+      {!currentMatch() && <button className="btn primary" onClick={() => go("track")}>Start a match</button>}
     </div>
+    <LiveNow />
     {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
     <Setup />
     {!t.sample && <WhatsNew />}
@@ -81,6 +83,7 @@ export function Home() {
         </> : <p className="muted" style={{ marginTop: 6 }}>Your most recent result shows up here.</p>}
       </section>
     </div>
+    <Sections next={next} games={games.length} M={M} />
     {games.length > 0 && <section className="card">
       <div className="row between" style={{ marginBottom: 10 }}><h3>Season so far</h3><button className="btn sm ghost" onClick={() => { setUi({ statsScope: "season" }); go("stats"); }}>All stats</button></div>
       <div className="home-kpis">
@@ -94,8 +97,46 @@ export function Home() {
     {focus.length > 0 && <Card title="What to work on" actions={<button className="btn sm" onClick={() => go("practice")}>Plan practice</button>}>
       <ul className="recs">{focus.map((f, i) => <li key={i}><span><b>{f.cat}:</b> {f.text}</span></li>)}</ul>
     </Card>}
-    <StartMatch formOnly />
   </div>;
+}
+
+/** A match being tracked right now: one tap back to it. */
+function LiveNow() {
+  const m = currentMatch(); if (!m) return null;
+  const R = replayOf(m), cur = R?.sets[R.sets.length - 1];
+  return <button className="home-live" onClick={() => go(m.kind === "match" ? "track" : "practice")}>
+    <span className="home-live-dot" aria-hidden="true" />
+    <span><b>{m.kind === "match" ? `Match in progress vs ${m.opp}` : `Practice in progress: ${m.opp}`}</b>
+      {R && cur ? <span className="small"> · sets {R.wonUs}–{R.wonThem} · set {R.sets.length} {cur.us}–{cur.them}</span> : null}</span>
+    <span className="home-live-go">Resume</span>
+  </button>;
+}
+
+/** Every section of the app, each with what's waiting in it. */
+function Sections({ next, games, M }: { next?: { date: string; opp: string; time?: string }; games: number; M: ReturnType<typeof teamMetrics> }) {
+  const t = team()!, today = todayISO();
+  const day = (d: string) => (d === today ? "today" : new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }));
+  const plan = plansOf().filter((p) => p.status === "planned" && p.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const players = teamPlayers().filter((p) => p.active).length;
+  const fees = t.fees ? feeSummary(t.fees, feePlayers(t.fees, teamPlayers())) : null;
+  const film = matchesOf().filter((m) => m.video).length;
+  const teams = all("teams").filter((x) => !x.sample).length;
+  const tiles: [string, string, string, string][] = [
+    ["track", "Track", currentMatch()?.kind === "match" ? "A match is in progress" : next && next.date === today ? `vs ${next.opp} today` : "Start a match or scrimmage", "track"],
+    ["lineup", "Lineup", t.defLineup ? "Starting six set · rotations and subs" : "Set your starting six", "lineup"],
+    ["matchup", "Matchup", next ? `Next: vs ${next.opp}, ${day(next.date)}` : opponentsOf().length ? `${plural(opponentsOf().length, "opponent")} scouted` : "Schedule and scouting", "matchup"],
+    ["practice", "Practice", plan ? `Next practice ${day(plan.date)} · ${plural(plan.blocks.length, "block")}` : "Plan a practice", "practice"],
+    ["stats", "Stats", games ? `Hitting ${fmtHit(M.hitting)} · ${plural(games, "match", "matches")}` : "Your numbers after the first match", "stats"],
+    ["court", "Court", "Rotations, plays and the 3D court", "court"],
+    ["team", "Team", `${plural(players, "player")}${fees && fees.owing ? ` · ${plural(fees.owing, "family", "families")} owe fees` : ""}`, "team"],
+    ["film", "Film", film ? `${plural(film, "match", "matches")} of film · breakdowns` : "Stat a game from video", "film"],
+    ["live", "Live", "Share games and your season page with families", "live"],
+    ["tryouts", "Tryouts", "Rate players with your staff", "tryouts"],
+    ...(teams > 1 ? [["club", "Club", `${teams} teams: calendar, leaders, fees`, "club"] as [string, string, string, string]] : []),
+    ["settings", "Settings", "Account, backups and preferences", "settings"],
+  ];
+  return <nav className="home-tiles" aria-label="Sections">{tiles.map(([icon, title, sub, page]) =>
+    <a key={page} className="home-tile" href={"#/" + page}><i aria-hidden="true"><Icon name={icon} /></i><span><b>{title}</b><small>{sub}</small></span></a>)}</nav>;
 }
 
 const TARGETS: ["hitting" | "sideOut" | "pointScoring" | "passAvg" | "serveIn" | "firstBallSO", string, number, (v: number | null) => string, number][] = [
@@ -133,7 +174,7 @@ function Setup() {
     ["Add your roster", players ? `${plural(players, "player")} so far` : "Type them in, paste a list, or import a CSV", players >= 6, () => go("team")],
     ["Set your starting lineup", "So the app tracks rotations and who's serving", !!t.defLineup, () => go("lineup")],
     ["Add your schedule", "Get a scouting page before every game", !!(t.schedule?.length || t.tournaments?.length), () => go("matchup")],
-    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth" })],
+    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
     ["Invite your assistant", "Sign in, then share an invite code from the Team tab", cloudAvailable() && !!currentUser() && isLinked(t.id), () => go(currentUser() ? "team" : "account")],
   ];
   const done = steps.filter((x) => x[2]).length;

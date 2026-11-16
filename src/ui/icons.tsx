@@ -1,5 +1,8 @@
 /** Line icons for navigation (drawn here so the app has no icon dependency). */
 const P: Record<string, string> = {
+  home: '<path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 9.8V20h13V9.8"/><path d="M10 20v-5.5h4V20"/>',
+  club: '<circle cx="8" cy="8" r="2.6"/><circle cx="16.5" cy="9" r="2.2"/><path d="M3 19c.6-3.2 2.6-5 5-5s4.4 1.8 5 5M13.5 14.6c.9-.7 1.9-1 3-1 2.2 0 3.8 1.6 4.3 4.4"/>',
+  tryouts: '<rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5V2.5h6v1M8.5 10l1.5 1.5 3-3M8.5 16h7"/>',
   track: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18M12 4v16"/>',
   lineup: '<circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="12" cy="16" r="2"/><path d="M3 3h18v18H3z"/>',
   practice: '<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2.5v3M16 2.5v3M4 9h16M8 13h5M8 17h8"/>',

@@ -115,14 +115,39 @@ const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip
 
 /* ---------- scenarios ---------- */
 const scenarios = {
+  async home(browser) {
+    const p = await newPage(browser, { cloud: false, phone: true });
+    await p.goto(U); await p.getByRole("button", { name: "Use without an account" }).click();
+    await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
+    await p.goto(U); await p.waitForTimeout(400);
+    ok("the app opens to Home", (await p.getByRole("heading", { name: "Clovis North", level: 1 }).count()) === 1 && (await p.locator(".home-tiles .home-tile").count()) >= 10 && (await p.locator(".nav .tab[aria-current=page]").innerText()).includes("Home"));
+    ok("Home: a tile for every section, with what's in it", /Set your starting six/.test(await p.locator(".home-tiles").innerText()) && /Plan a practice/.test(await p.locator(".home-tiles").innerText()));
+    await p.locator(".home-tile", { hasText: "Practice" }).click(); await p.waitForTimeout(300);
+    ok("Home: a tile opens its section", /#\/practice$/.test(p.url()));
+    await p.getByRole("link", { name: "Home" }).click(); await p.waitForTimeout(200);
+    await p.getByRole("button", { name: "Start a match" }).click(); await p.waitForTimeout(300);
+    ok("Home: Start a match goes to Track's start form", /#\/track$/.test(p.url()) && (await p.getByPlaceholder("e.g. Buchanan").count()) === 1);
+    await p.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300);
+    await go(p, "home"); await p.waitForTimeout(200);
+    ok("Home: a live match shows at the top with Resume", /Match in progress vs Buchanan/.test(await p.locator(".home-live").innerText()) && (await p.getByRole("button", { name: "Start a match" }).count()) === 0);
+    await p.goto(U); await p.waitForTimeout(500);
+    ok("reopening the app mid-match goes straight to the match", (await p.locator(".pl").count()) > 0 || (await p.getByText(/Set your starting lineup|lineup/i).count()) > 0);
+    await go(p, "home"); await p.locator(".home-live").click(); await p.waitForTimeout(200);
+    ok("Home: Resume opens the match", /#\/track$/.test(p.url()));
+    ok("Home fits a phone", (await overflow(p)) <= 1); { const ax = await a11y(p); ok("Home: controls all have names", !ax.length, ax.join(" | ")); }
+    ok("Home: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    await p.context().close();
+  },
+
   async gallery(browser) {
     // phone screenshots of every page of the sample season, to look at by eye (SHOTS=dir)
     const p = await newPage(browser, { phone: true }); await go(p, "sample"); await p.waitForTimeout(900);
-    for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "film", "tryouts", "club", "settings", "live"]) {
+    for (const r of ["home", "track", "lineup", "matchup", "practice", "stats", "court", "team", "film", "tryouts", "club", "settings", "live"]) {
       await go(p, r); await p.waitForTimeout(500);
       if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "g-" + r + ".png"), fullPage: true });
     }
     ok("gallery: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+    if (process.env.SHOTS) { const d = await newPage(browser, {}); await go(d, "sample"); await d.waitForTimeout(900); await go(d, "home"); await d.waitForTimeout(500); await d.screenshot({ path: path.join(process.env.SHOTS, "g-home-desktop.png"), fullPage: true }); await d.context().close(); }
   },
   async tour(browser) {
     for (const opts of [{}, { phone: true }, { phone: true, dark: true }, { tablet: true }]) {
@@ -543,7 +568,7 @@ const scenarios = {
       const dim = await p.evaluate(async (b64) => { const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode(); return img.width + "x" + img.height; }, fs.readFileSync(g.path).toString("base64"));
       ok("a player's stat graphic saves as a 1080×1350 image", g.name.endsWith(".png") && dim === "1080x1350" && g.size > 20000, `${g.name} ${dim} ${g.size}`);
       if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic.png")); }
-    await go(p, "track"); ok("imports don't tick off 'Track your first match'", (await p.locator(".setup-list li.ok", { hasText: "Track your first match" }).count()) === 0 && (await p.locator(".setup-list li", { hasText: "Track your first match" }).count()) === 1);
+    await go(p, "home"); ok("imports don't tick off 'Track your first match'", (await p.locator(".setup-list li.ok", { hasText: "Track your first match" }).count()) === 0 && (await p.locator(".setup-list li", { hasText: "Track your first match" }).count()) === 1);
     ok("imports: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
@@ -1396,11 +1421,11 @@ const scenarios = {
   async tryouts(browser) {
     const A = await newPage(browser, { cloud: false });
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
-    await go(A, "track"); await A.waitForTimeout(300);
+    await go(A, "home"); await A.waitForTimeout(300);
     ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
     await A.locator(".news-card").getByRole("button", { name: "Set up fees" }).click(); await A.waitForTimeout(400);
     ok("and its links go straight there", /#\/team$/.test(A.url()) && (await A.getByRole("heading", { name: "Player fees" }).count()) === 1, A.url());
-    await go(A, "track"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
+    await go(A, "home"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
     ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
     await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH 10th\n13 Ava Ramirez S Jr\nLily Torres L\n15 Zoe Grant MB"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);

@@ -8,6 +8,7 @@ import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
 import { Toast } from "../ui/kit";
 import { TrackPage } from "../features/track/TrackPage";
+import { Home } from "../features/home/Home";
 import { Welcome } from "../features/team/Welcome";
 import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -37,7 +38,7 @@ const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ d
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
-const NAV: [string, string, string?][] = [["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
+const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
 
 export function App() {
   useVersion();
@@ -107,7 +108,9 @@ export function App() {
     case "admin": body = <AdminPage />; break;
     case "player": body = <PlayerPage id={route.id!} />; break;
     case "live": body = <LivePage />; break;
-    default: body = <TrackPage />;
+    case "track": body = <TrackPage />; break;
+    // opening the app mid-match (no page in the link) goes straight back to the match
+    default: body = !location.hash.replace(/^#\/?/, "") && currentMatch()?.kind === "match" ? <TrackPage /> : <div className="page"><Home /></div>;
   }
   return <>
     <nav className="nav" aria-label="Sections">
@@ -116,7 +119,7 @@ export function App() {
       {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <SiteSwitch here="app" />
       <AccountChip />
-      <a className="tab" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
+      <a className="tab wide-only" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
     </nav>
     <div className="content">
       <div className="mobilebar"><b>Floorcall</b>{switcher("")}{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>

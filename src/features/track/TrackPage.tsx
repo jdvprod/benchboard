@@ -6,7 +6,9 @@ import { Card, fmtDate, Seg } from "../../ui/kit";
 import { Tracker } from "./Tracker";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
-import { Home } from "../home/Home";
+import { todaysTournament } from "../../tournament/today";
+import { lazy, Suspense } from "react";
+const TournamentToday = lazy(() => import("../tournament/TournamentPage").then((m) => ({ default: m.TournamentToday })));
 
 export function TrackPage() {
   const m = currentMatch();
@@ -15,7 +17,11 @@ export function TrackPage() {
     <StartMatch />
   </div>;
   if (m) return <div className="page"><Tracker m={m} /></div>;
-  return <div className="page"><Home /></div>;
+  // nothing live: start one (the dashboard is Home)
+  return <div className="page stack">
+    {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
+    <StartMatch />
+  </div>;
 }
 
 export const FORMATS: [number, string][] = [[3, "Best of 3"], [5, "Best of 5"], [2, "2 sets (pool)"]];
