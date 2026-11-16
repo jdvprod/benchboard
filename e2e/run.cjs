@@ -987,6 +987,16 @@ const scenarios = {
     ok("film room: a film game never becomes the live match", (await p.locator(".fr-stage").count()) === 0 && !(await p.getByRole("button", { name: "End match" }).count()));
     await go(p, "film");
     ok("film room: the game is listed under Your film", /vs Central/.test(await p.locator(".fr-list").first().innerText()) && /2 rallies/.test(await p.locator(".fr-list").first().innerText()));
+    // a second game with film: the season's best rallies come from both
+    await p.getByLabel("Game video file").setInputFiles(path.join(__dirname, "fixtures", "game.webm"));
+    await p.getByPlaceholder("e.g. Buchanan").fill("North"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(600);
+    await p.locator(".fr-stage video").evaluate((v) => v.readyState >= 1 ? 0 : new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true })));
+    await p.getByRole("button", { name: "Find rallies from the whistle" }).click();
+    await p.waitForFunction(() => /found\)/.test(document.querySelector(".fr-tools")?.textContent || ""), null, { timeout: 30000 }).catch(() => {});
+    await go(p, "film"); await p.waitForTimeout(300);
+    { const card = p.locator(".card", { hasText: "Best of the season" }); ok("best of the season: rallies from every match with film", /from 2 matches of film/.test(await card.innerText()) && (await card.getByRole("button", { name: "Watch the season's best 4" }).count()) === 1, await card.innerText().catch(() => "no card"));
+      await card.getByRole("button", { name: "Watch the season's best 4" }).click(); await p.waitForTimeout(400);
+      ok("best of the season: plays back to back across matches", (await card.locator("video").count()) >= 1 && /vs (Central|North)/.test(await card.innerText())); }
     // search across the season
     await p.getByLabel("Search all your film").fill("Maya's kills vs Central"); await p.getByRole("button", { name: "Search", exact: true }).click(); await p.waitForTimeout(300);
     { const u = await p.locator(".fr-season .fr-understood").innerText(); ok("season search: reads the player, the play and the opponent", /Kills/.test(u) && /#7 Maya/.test(u) && /vs Central/.test(u), u); }

@@ -224,3 +224,10 @@ test("film sessions tag each clip with the player who made the play", async () =
   assert.deepEqual(itemFrom(c).who, ["p1"]);
   assert.equal(itemFrom({ ...c, p: undefined }).who, undefined);
 });
+test("season best: the top rallies across matches, a few per match, in date order", async () => {
+  const { seasonBest } = await import("../src/film/library");
+  const R = (h: number, start: number) => ({ start, end: start + 5, h });
+  const ms = [{ id: "a", date: "2026-10-01", rallies: [R(1, 10), R(0.9, 20), R(0.8, 30), R(0.7, 40), R(0.95, 50)] }, { id: "b", date: "2026-09-01", rallies: [R(0.85, 5), { start: 9, end: 12 }] }, { id: "c", date: "2026-11-01", moments: [R(0.99, 60)] }];
+  const b = seasonBest(ms, 5, 3);
+  assert.deepEqual(b.map((x) => x.m.id + "@" + x.r.start), ["b@5", "a@10", "a@20", "a@50", "c@60"]);
+});

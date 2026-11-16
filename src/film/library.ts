@@ -60,3 +60,10 @@ export function scoutHitters(logs: LogEntry[][]): Hitter[] {
   return [...by.values()].map(({ seen, ...h }) => { const z = Object.entries(h.zones).sort((a, b) => b[1] - a[1])[0]; return { ...h, matches: seen.size, topZone: z && z[1] >= 2 ? +z[0] : null }; })
     .sort((a, b) => b.kills + b.aces - (a.kills + a.aces) || +a.num - +b.num);
 }
+
+/** The season's biggest rallies: each match's rated rallies (or loud moments), best first, at most `perMatch` from one
+ * match so one wild game doesn't fill the reel, then back in date order. */
+export function seasonBest<M extends { id: string; date: string; rallies?: { start: number; end: number; h?: number }[]; moments?: { start: number; end: number; h?: number }[] }>(ms: M[], n = 15, perMatch = 4): { m: M; r: { start: number; end: number; h?: number }; i: number }[] {
+  const all = ms.flatMap((m) => { const rs = m.rallies?.length ? m.rallies : m.moments || []; return rs.map((r, i) => ({ m, r, i })).filter((x) => typeof x.r.h === "number").sort((a, b) => b.r.h! - a.r.h!).slice(0, perMatch); });
+  return all.sort((a, b) => b.r.h! - a.r.h! || a.m.date.localeCompare(b.m.date)).slice(0, n).sort((a, b) => a.m.date.localeCompare(b.m.date) || a.r.start - b.r.start);
+}

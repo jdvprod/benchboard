@@ -22,7 +22,7 @@ import { aiAvailable, askJson } from "../../ai/client";
 import { addToSession, sessionsOf, SessionsPanel } from "./Sessions";
 import { itemFrom } from "../../film/session";
 import { describe, label, resolve } from "./words";
-import { SeasonFind } from "./SeasonFind";
+import { SeasonBest, SeasonFind } from "./SeasonFind";
 import { Breakdown } from "./Breakdown";
 
 const srcOf = (m: Match) => (!m.video ? null : m.video.startsWith(LOCAL) ? localVideo(m.id) : videoKind(m.video) === "file" ? m.video : null);
@@ -54,6 +54,7 @@ function FilmHome() {
       <p>Stat a whole game from its video. Floorcall finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
     </header>
     <SeasonFind />
+    <SeasonBest />
     <div className="grid2" style={{ alignItems: "start" }}>
       <Card title="Stat a game from film">
         <div className="stack">

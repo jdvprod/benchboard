@@ -8,7 +8,7 @@ import { ReelMaker } from "../../film/ReelMaker";
 import { go } from "../../app/router";
 import { Clip, clipsFrom, clock, filmTiming, videoTime } from "../../film/clips";
 import { aiQueryPrompt, cleanAiQuery, ClipQuery, parseQuery, QueryPlayer } from "../../film/query";
-import { inScope, parseScope, Scope, scoutHitters, searchSeason } from "../../film/library";
+import { inScope, parseScope, Scope, scoutHitters, searchSeason, seasonBest } from "../../film/library";
 import { setUi, ui } from "../../app/ui";
 import { useEffect } from "react";
 import { aiAvailable, askJson } from "../../ai/client";
@@ -93,5 +93,24 @@ export function SeasonFind() {
         {on && <ul className="log film fr-rows">{g.rows.slice(0, 200).map((l) => { const s = l as any; return <li key={l.id}><span className="num fr-time">{g.m.video ? clock(Math.max(0, videoTime(g.T, l.id) - (g.m.film ? 5 : 8))) : "S" + l.set}</span><span>{label(l)}</span><span className={"small " + (s.w ? "pt-" + s.w : "muted")}>{s.w ? `${s.us}–${s.them}` : "S" + l.set}</span></li>; })}</ul>}
       </li>; })}</ul>
     </div>}
+  </Card>;
+}
+
+/** Film Room home → Best of the season: the biggest rallies from every match with film, back to back. */
+export function SeasonBest() {
+  const [n, setN] = useState(15), [play, setPlay] = useState(false);
+  const ms = matchesOf().filter((m) => m.kind === "match" && m.video && (m.rallies?.some((r) => typeof r.h === "number") || m.moments?.length));
+  if (ms.length < 2) return null;
+  const best = seasonBest(ms, n);
+  const clips: Clip[] = best.map(({ m, r, i }) => ({ id: `${m.id}:best${i}`, matchId: m.id, url: m.video!, start: r.start, end: r.end, label: `vs ${m.opp}, ${m.rallies?.length ? "rally" : "moment"} ${i + 1}`, t: "RALLY", date: m.date, opp: m.opp }));
+  const playable = clips.filter((c) => resolve(c)), away = clips.length - playable.length;
+  return <Card title="Best of the season" className="fr-season-best">
+    <p className="small muted">The biggest rallies from {plural(ms.length, "match", "matches")} of film, by the crowd's reaction and how long the ball stayed up. At most four from any one match.</p>
+    <div className="row">
+      <label className="row small" style={{ gap: 6 }}>Top <select className="input" style={{ width: "auto" }} value={n} onChange={(e) => { setN(+e.target.value); setPlay(false); }} aria-label="How many rallies">{[10, 15, 20, 30].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+      {playable.length > 0 && <button className={"btn" + (play ? "" : " primary")} onClick={() => setPlay(!play)}>{play ? "Hide" : `Watch the season's best ${playable.length}`}</button>}
+    </div>
+    {away > 0 && <p className="small muted">{plural(away, "rally", "rallies")} need{away === 1 ? "s" : ""} the game video picked again (videos stay on the device they were chosen on).</p>}
+    {play && <ClipPlayer key={n} clips={playable} resolve={resolve} allowSave title="Best of the season" fileName={(c) => `Best of the season${c ? " " + c.label : ""}`.replace(/[^\w\- .#]+/g, "")} />}
   </Card>;
 }
