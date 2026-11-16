@@ -44,7 +44,8 @@ export const itemLength = (it: FilmItem) => Math.max(0, it.end - it.start) + (it
 export const sessionLength = (s: FilmSession) => s.items.reduce((a, it) => a + itemLength(it), 0);
 
 /** An item from a found clip. */
-export const itemFrom = (c: Clip): FilmItem => ({ id: "i" + Math.random().toString(36).slice(2, 9), start: c.start, end: c.end, label: c.label });
+/** The player who made the play is tagged, so players can filter a session to their own clips. */
+export const itemFrom = (c: Clip): FilmItem => ({ id: "i" + Math.random().toString(36).slice(2, 9), start: c.start, end: c.end, label: c.label, ...(c.p ? { who: [c.p] } : {}) });
 
 // MP4 first: it plays on every phone (iPhones included) and can be scrubbed; WebM where the browser can't record MP4
 const mimeOf = () => ["video/mp4;codecs=avc1,mp4a", "video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((t) => { try { return MediaRecorder.isTypeSupported(t); } catch { return false; } }) || "";

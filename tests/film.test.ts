@@ -217,3 +217,10 @@ test("film to practice: each finding brings the drill that answers it", async ()
   const all = blocksFor([F("err-serve"), F("receive"), F("run"), F("late"), F("rot-2")], drills, "Central", uid, ["d3"]);
   assert.deepEqual(all.map((b) => b.drillId), ["d2", "d4", "d5"], "one block per drill, skipping what the plan has");
 });
+
+test("film sessions tag each clip with the player who made the play", async () => {
+  const { itemFrom } = await import("../src/film/session");
+  const c = { id: "m:1", matchId: "m", url: "x.mp4", start: 1, end: 3, label: "#7 Maya · Kill", t: "K", p: "p1", date: "2026-11-01", opp: "C" };
+  assert.deepEqual(itemFrom(c).who, ["p1"]);
+  assert.equal(itemFrom({ ...c, p: undefined }).who, undefined);
+});

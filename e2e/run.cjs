@@ -1142,7 +1142,7 @@ const scenarios = {
     await A.getByLabel("Session title").fill("Points we won vs Central");
     // the coach evaluates the first clip and says who it is for
     { const li = A.locator(".fr-items > li").first();
-      await li.getByRole("button", { name: "Great rep" }).click(); await li.locator(".fr-who summary").click(); await li.locator(".fr-who-list .chip", { hasText: "Maya" }).click(); await A.waitForTimeout(150);
+      await li.getByRole("button", { name: "Great rep" }).click(); await li.locator(".fr-who summary").click(); { const chip = li.locator(".fr-who-list .chip", { hasText: "Maya" }); if ((await chip.getAttribute("aria-pressed")) !== "true") await chip.click(); } await A.waitForTimeout(150);
       const whoName = "Maya";
       ok("film session: a clip can be graded and assigned to a player", (await li.getByRole("button", { name: "Great rep" }).getAttribute("aria-pressed")) === "true" && (await li.locator(".fr-who summary").innerText()) === "For " + whoName && /1 great rep/.test(await A.locator(".fr-sess").innerText()));
       A.whoName = whoName; }
