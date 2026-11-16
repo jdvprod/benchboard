@@ -79,7 +79,8 @@ if (args.has("--watch")) {
   const { port } = await ctx.serve({ servedir: dist, port: 5173 });
   console.log(`Floorcall running at http://localhost:${port}`);
 } else {
-  await esbuild.build(options);
+  const result = await esbuild.build({ ...options, metafile: !!process.env.META });
+  if (process.env.META) writeFileSync(process.env.META, JSON.stringify(result.metafile));
   if (!existsSync(path.join(dist, "app.js"))) throw new Error("build failed");
   // precache lazily loaded chunks too, so exports work offline
   const chunkDir = path.join(dist, "chunks");

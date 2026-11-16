@@ -8,7 +8,6 @@ import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
 import { Toast } from "../ui/kit";
 import { TrackPage } from "../features/track/TrackPage";
-import { TeamPage } from "../features/team/TeamPage";
 import { Welcome } from "../features/team/Welcome";
 import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -33,6 +32,7 @@ const LivePage = lazy(() => import("../features/live/LivePage").then((m) => ({ d
 const AdminPage = lazy(() => import("../features/admin/AdminPage").then((m) => ({ default: m.AdminPage })));
 const TryoutsPage = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.TryoutsPage })));
 const JoinTryout = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.JoinTryout })));
+const TeamPage = lazy(() => import("../features/team/TeamPage").then((m) => ({ default: m.TeamPage })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 

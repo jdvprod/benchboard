@@ -1,5 +1,5 @@
 /** Home (the Track tab when no match is live): next match, last match, season snapshot, what to work on. */
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { ensureOpponent, matchesOf, newMatch, oppKey, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
@@ -9,13 +9,16 @@ import { Card, copyText, fmtDate, plural } from "../../ui/kit";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
 import { StartMatch } from "../track/TrackPage";
-import { focusAreas } from "../practice/PracticePage";
+import { focusAreas } from "../practice/focus";
 import { matchReportHtml } from "../stats/matchReport";
 import { download } from "../../ui/kit";
-import { TournamentToday, todaysTournament } from "../tournament/TournamentPage";
+import { todaysTournament } from "../../tournament/today";
+/** Loaded only on a tournament day. */
+const TournamentToday = lazy(() => import("../tournament/TournamentPage").then((m) => ({ default: m.TournamentToday })));
 import { shareFinalGraphic } from "../stats/finalGraphic";
 import { recapText } from "../stats/recap";
-import { RecapVideo } from "../stats/RecapDialog";
+/** The recap video maker loads when a coach opens it. */
+const RecapVideo = lazy(() => import("../stats/RecapDialog").then((m) => ({ default: m.RecapVideo })));
 import { NextMatchStatus } from "../matchup/Availability";
 import { WhatsNew } from "../../app/whatsNew";
 import { liveUrlFor } from "../../cloud/CloudCard";
@@ -48,12 +51,12 @@ export function Home() {
   const star = lastA ? Object.entries(lastA.ps).map(([id, s]) => [id, s.K + s.SA + s.BS + s.BA / 2 - s.AE - s.SE - s.SEN - s.SEO] as [string, number]).sort((a, b) => b[1] - a[1])[0] : null;
 
   return <div className="stack">
-    {recap && last && <RecapVideo m={last.m} R={last.R} onClose={() => setRecap(false)} />}
+    {recap && last && <Suspense fallback={null}><RecapVideo m={last.m} R={last.R} onClose={() => setRecap(false)} /></Suspense>}
     <div className="home-head">
       <div><h1>{t.name}</h1><p className="muted">{t.level}{done.length ? ` · ${W}–${L}${T ? "–" + T : ""} this season` : ""}</p></div>
       <button className="btn primary" onClick={() => document.getElementById("start-match")?.scrollIntoView({ behavior: "smooth", block: "start" })}>Start a match</button>
     </div>
-    <TournamentToday />
+    {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
     <Setup />
     {!t.sample && <WhatsNew />}
     <div className="home-top">

@@ -1,7 +1,7 @@
 /** Live stat tracking for a match, drill session or scrimmage. */
 import { useWakeLock } from "../../ui/wakeLock";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { roleOn } from "../../cloud/sync";
 import { setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers, appendEvents, deleteEvent, eventsOf, isMine, patch, patchEvent, player, playerName, replayOf, save, team, toast, undoLast } from "../../data/store";
 import { asksLoc, Match } from "../../data/model";
@@ -20,7 +20,8 @@ import { timeoutPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { SplitEditor, SplitState } from "../practice/SplitEditor";
 import { parseQuick, QUICK_HELP, spokenToCodes } from "../../sports/volleyball/quickcodes";
-import { PlanPanel } from "../matchup/MatchupPage";
+/** The match plan opens from the bench; it lives with Matchup and loads when first opened. */
+const PlanPanel = lazy(() => import("../matchup/MatchupPage").then((m) => ({ default: m.PlanPanel })));
 import { KEYMAP, useStatKeys } from "./keys";
 
 /** This device's job for a real match (scrimmages and drills always track everything). */
@@ -264,7 +265,7 @@ function Panels({ m, R, c }: { m: Match; R: Replay; c: SetState }) {
   if (p === "sub" && c.lu) return <SubPanel m={m} c={c} />;
   if (p === "tag") return <TagPanel m={m} R={R} />;
   if (p === "teams" && m.scrim) return <TeamsPanel m={m} />;
-  if (p === "plan" && !m.scrim) return <PlanPanel m={m} onClose={() => setUi({ panel: null })} />;
+  if (p === "plan" && !m.scrim) return <Suspense fallback={<p className="muted">Loading the plan…</p>}><PlanPanel m={m} onClose={() => setUi({ panel: null })} /></Suspense>;
   if (p === "job" && m.kind === "match" && !m.scrim) return <JobPanel m={m} />;
   return null;
 }

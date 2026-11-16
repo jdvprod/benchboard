@@ -9,8 +9,8 @@ import { FORMATS, SCORING, parseScoring } from "../track/TrackPage";
 import { isOn, nextGame, OurResult, sortGames, standings, TGame, TOther, Tournament } from "../../tournament/model";
 import { parseSetScores } from "../../import/statsImport";
 
-export const tournamentsOf = (): Tournament[] => (team()?.tournaments || []).slice().sort((a, b) => b.start.localeCompare(a.start));
-export const todaysTournament = (): Tournament | null => tournamentsOf().find((t) => isOn(t, todayISO())) || null;
+import { todaysTournament, tournamentsOf } from "../../tournament/today";
+export { todaysTournament, tournamentsOf };
 const saveT = (t: Tournament) => { const all = team()!.tournaments || []; setTeamPatch({ tournaments: all.some((x) => x.id === t.id) ? all.map((x) => (x.id === t.id ? t : x)) : all.concat(t) }); };
 export const fmtClock = (t?: string) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
 const fmtDay = (d: string) => new Date(d + "T12:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
