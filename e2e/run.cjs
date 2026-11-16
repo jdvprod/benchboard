@@ -227,7 +227,7 @@ const scenarios = {
     }
     ok("match ends 3–0", (await p.locator(".banner", { hasText: "Match over" }).count()) === 1);
     await p.getByRole("button", { name: "Finish" }).click(); await p.waitForTimeout(200);
-    ok("home shows last match W 3–0", (await p.locator(".home-last", { hasText: "3–0 vs Rival Prep" }).count()) === 1);
+    ok("home shows last match W 3–0", /W\s*3–0\s*vs Rival Prep/.test(await p.locator(".hm-score").innerText()), await p.locator(".hm-score").innerText().catch(() => ""));
     // stats for the match
     await go(p, "stats"); await p.getByRole("button", { name: "One match", exact: true }).click(); await p.waitForTimeout(150);
     await p.getByRole("button", { name: "Players", exact: true }).click();
@@ -278,7 +278,7 @@ const scenarios = {
     await p.locator("button.ctrl", { hasText: "Fix score" }).click(); await p.getByRole("button", { name: /End set · Club 16s serve next/ }).click(); await p.getByRole("button", { name: /End at 0–4\?/ }).click(); await p.waitForTimeout(200);
     ok("pool play ends 1–1 after two sets", (await p.locator(".banner", { hasText: "Match over. Split 1–1." }).count()) === 1, await p.locator(".banner").first().innerText().catch(() => ""));
     await p.getByRole("button", { name: "Finish" }).click(); await p.waitForTimeout(200);
-    ok("home shows the tie", (await p.locator(".home-last", { hasText: "T 1–1 vs Pool Team" }).count()) === 1 && (await p.getByText("0–0–1 this season").count()) === 1);
+    ok("home shows the tie", /T\s*1–1\s*vs Pool Team/.test(await p.locator(".hm-score").innerText()) && /0–0–1/.test(await p.locator(".hm-record").innerText()));
     ok("formats: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
@@ -553,7 +553,7 @@ const scenarios = {
     ok("player not on the roster was added", (await p.locator(".card", { hasText: "Roster" }).locator("tbody tr").count()) === 5);
     await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.waitForTimeout(200);
     { const row = (await p.locator("tr", { hasText: "Maya" }).first().innerText()).split(/\s+/); ok("Maya's season kills add up across the imported files (12 + 9 + 14)", row.includes("35"), row.join(" ")); }
-    await go(p, "home"); ok("record counts the imported results", (await p.locator("h1 + p", { hasText: "3–0 this season" }).count()) === 1 || (await p.getByText("3–0 this season").count()) > 0);
+    await go(p, "home"); ok("record counts the imported results", /3–0/.test(await p.locator(".hm-record").innerText().catch(() => "")));
     // importing the same file again skips it
     await go(p, "team"); await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt")]); await p.waitForTimeout(300);
     await card.locator(".imp-file").first().getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
