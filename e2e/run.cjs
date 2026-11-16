@@ -548,7 +548,7 @@ const scenarios = {
     ok("player not on the roster was added", (await p.locator(".card", { hasText: "Roster" }).locator("tbody tr").count()) === 5);
     await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.waitForTimeout(200);
     { const row = (await p.locator("tr", { hasText: "Maya" }).first().innerText()).split(/\s+/); ok("Maya's season kills add up across the imported files (12 + 9 + 14)", row.includes("35"), row.join(" ")); }
-    await go(p, "track"); ok("record counts the imported results", (await p.locator("h1 + p", { hasText: "3–0 this season" }).count()) === 1 || (await p.getByText("3–0 this season").count()) > 0);
+    await go(p, "home"); ok("record counts the imported results", (await p.locator("h1 + p", { hasText: "3–0 this season" }).count()) === 1 || (await p.getByText("3–0 this season").count()) > 0);
     // importing the same file again skips it
     await go(p, "team"); await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt")]); await p.waitForTimeout(300);
     await card.locator(".imp-file").first().getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
@@ -890,7 +890,7 @@ const scenarios = {
     // the coach finishes and texts a recap
     await go(A, "track"); for (let set = 0; set < 3; set++) { for (let i = 0; i < 30; i++) { if (await A.locator(".banner", { hasText: /to Clovis|Match over/ }).count()) break; await A.getByRole("button", { name: "Their error", exact: true }).click(); await skipIfAsked(A); } if (await A.locator(".banner", { hasText: "Match over" }).count()) break; const nx = A.getByRole("button", { name: /serve$/ }); if (await nx.count()) await nx.first().click(); }
     await A.getByRole("button", { name: "Finish" }).click(); await A.waitForTimeout(300);
-    await go(A, "track"); await A.getByRole("button", { name: "Text recap" }).click(); await A.waitForTimeout(400);
+    await go(A, "home"); await A.getByRole("button", { name: "Text recap" }).click(); await A.waitForTimeout(400);
     { const txt = await A.evaluate(() => navigator.clipboard.readText()); ok("text recap has the result, set scores and the box score link", /^Final: Clovis North def\. Buchanan 3–0 \(25-0, 25-0, 25-0\)/.test(txt) && /Box score: http.*\/live\/#\/g\//.test(txt), txt); }
     // history imported: the season reads as a story on Live, and as a graphic for the coach
     await go(A, "team"); await A.locator("input[type=file][multiple]").setInputFiles(path.join(__dirname, "fixtures/game-log.csv")); await A.waitForTimeout(600);
