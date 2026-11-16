@@ -72,7 +72,7 @@ export function SettingsPage() {
     <AdminLink />
     <SetupCheck />
     <Card title="Your data">
-      <p className="small">Saved on this device: {counts.teams} teams, {counts.players} players, {counts.matches} matches and practices, {counts.events.toLocaleString()} recorded plays.</p>
+      <p className="small">Saved on this device: {counts.teams} {counts.teams === 1 ? "team" : "teams"}, {counts.players} {counts.players === 1 ? "player" : "players"}, {counts.matches} {counts.matches === 1 ? "match or practice" : "matches and practices"}, {counts.events.toLocaleString()} recorded plays.</p>
       <p className="small muted" style={{ marginTop: 6 }}>{state.persistent ? "Your browser has agreed to keep this data." : "Your browser may clear this data if space runs low."} Save a backup from Team → Backup to move data to another device or keep a copy.</p>
       <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => go("team")}>Backup & restore</button><button className="btn sm" onClick={() => { location.reload(); toast("Reloaded"); }}>Reload app</button></div>
     </Card>

@@ -16,7 +16,8 @@ import { siteUrl } from "../../cloud/links";
 import { ClubEvent, clubEvents, clubIcs, clubLeaders, homeClashes, LeaderRow } from "./club";
 
 type Tab = "teams" | "calendar" | "leaders" | "announce";
-const teamsOfClub = () => all("teams").filter((t) => !t.sample).sort((a, b) => a.name.localeCompare(b.name) || (a.level || "").localeCompare(b.level || ""));
+/** Your real teams; the sample team stands in until you add one, so the page can be explored. */
+const teamsOfClub = () => { const ts = all("teams"), real = ts.filter((t) => !t.sample); return (real.length ? real : ts).slice().sort((a, b) => a.name.localeCompare(b.name) || (a.level || "").localeCompare(b.level || "")); };
 const label = (t: Team) => (t.level ? `${t.name} ${t.level}` : t.name);
 const gamesOf = (t: Team) => matchesOf(t.id).filter((m) => m.kind === "match" && (!t.activeSeasonId || m.seasonId === t.activeSeasonId)).map((m) => ({ m, R: replayOf(m)! })).filter((x) => x.R);
 const open = (id: string, page = "track") => { setPrefs({ teamId: id }); go(page); };
@@ -27,6 +28,7 @@ export function ClubPage() {
   return <div className="page">
     <div className="pagehead"><h1>Club</h1><a className="btn sm" href="#/tryouts">Tryouts</a><span className="muted">{teams.length} {teams.length === 1 ? "team" : "teams"} · {tot.W}–{tot.L} combined</span></div>
     {!teams.length ? <p className="empty">Add a team to see it here.</p> : <>
+      {teams.every((t) => t.sample) && <p className="banner small">This is the sample team. Add your own teams and they replace it here.</p>}
       <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"]]} />
       <div style={{ marginTop: 14 }}>
         {tab === "teams" && <Teams teams={teams} />}

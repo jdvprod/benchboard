@@ -115,12 +115,21 @@ const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip
 
 /* ---------- scenarios ---------- */
 const scenarios = {
+  async gallery(browser) {
+    // phone screenshots of every page of the sample season, to look at by eye (SHOTS=dir)
+    const p = await newPage(browser, { phone: true }); await go(p, "sample"); await p.waitForTimeout(900);
+    for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "film", "tryouts", "club", "settings", "live"]) {
+      await go(p, r); await p.waitForTimeout(500);
+      if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "g-" + r + ".png"), fullPage: true });
+    }
+    ok("gallery: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
+  },
   async tour(browser) {
     for (const opts of [{}, { phone: true }, { phone: true, dark: true }, { tablet: true }]) {
       const tag = opts.phone ? (opts.dark ? "phone dark" : "phone") : opts.tablet ? "tablet" : "desktop", p = await newPage(browser, opts);
       await go(p, "sample"); await p.waitForTimeout(900);
       ok(`${tag}: sample team loads on Track`, (await p.locator(".board").count()) > 0);
-      for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "settings", "labs", "live", "account"]) {
+      for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "film", "tryouts", "settings", "labs", "live", "account"]) {
         await go(p, r);
         ok(`${tag}: ${r} renders`, (await p.locator(".page, .content, .auth, main").count()) > 0);
         { const cx = await contrast(p); ok(`${tag}: ${r} text has enough contrast`, !cx.length, cx.slice(0, 3).join(" | ")); }

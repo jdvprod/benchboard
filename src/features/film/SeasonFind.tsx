@@ -64,7 +64,7 @@ export function SeasonFind() {
   return <Card title="Search all your film" className="fr-season">
     <p className="small muted">One question across every match{withVideo ? `, with ${plural(withVideo, "match", "matches")} of video` : ""}. Name plays, players, opponents and when.</p>
     <form className="fr-ask" onSubmit={(e) => { e.preventDefault(); if (text.trim()) run(text.trim()); }}>
-      <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="“Maya's kills vs Buchanan”, “aces in the last 3 matches”" aria-label="Search all your film" />
+      <input className="input" value={text} onChange={(e) => setText(e.target.value)} placeholder="“Maya's kills vs Buchanan”" aria-label="Search all your film" />
       <button className="btn primary" disabled={busy || !text.trim()}>{busy ? "Thinking…" : "Search"}</button>
     </form>
     <div className="fr-examples">{examples.map((x) => <button key={x} className="fr-ex" onClick={() => run(x)}>{x}</button>)}</div>
