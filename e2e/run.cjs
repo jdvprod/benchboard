@@ -293,6 +293,36 @@ const scenarios = {
     for (const pg of [A, N]) await pg.context().close();
   },
 
+  async fees(browser) {
+    const p = await newPage(browser, { cloud: false, phone: true });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click();
+    await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click();
+    await p.locator("textarea").first().fill("7 Maya Chen OH\n12 Sofia Nguyen MB\n3 Lily Torres L"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(200);
+    const card = p.locator(".card", { has: p.getByRole("heading", { name: "Player fees" }) });
+    await card.getByLabel("Fee per player").fill("$450"); await card.getByLabel("Due date (optional)").fill("2026-12-01");
+    await card.getByRole("button", { name: "Start tracking fees" }).click(); await p.waitForTimeout(200);
+    ok("fees: a season fee starts every family at owes", /\$0 of \$1,350 collected/.test(await card.innerText()) && (await card.locator(".fee-st.owes").count()) === 3, await card.innerText());
+    await card.locator(".fee-row", { hasText: "Maya" }).click();
+    await card.getByLabel("Amount Maya paid").fill("200"); await card.getByLabel("How they paid (optional)").fill("Venmo"); await card.getByRole("button", { name: "Record payment" }).click(); await p.waitForTimeout(150);
+    await card.getByLabel("Amount Maya paid").fill("250"); await card.getByRole("button", { name: "Record payment" }).click(); await p.waitForTimeout(150);
+    ok("fees: payments add up to paid", /\$450 of \$1,350 collected/.test(await card.innerText()) && (await card.locator(".fee-row", { hasText: "Maya" }).locator(".fee-st.paid").count()) === 1 && /2 families still owe \$900/.test(await card.innerText()));
+    await card.locator(".fee-row", { hasText: "Maya" }).click(); await card.locator(".fee-row", { hasText: "Lily" }).click();
+    await card.getByText("Different amount, waiver or note").click(); await card.getByLabel("Amount waived").fill("450"); await card.getByLabel("Note (coaches only)").fill("Scholarship"); await card.getByRole("button", { name: "Save", exact: true }).click(); await p.waitForTimeout(150);
+    ok("fees: a waiver clears what a family owes", (await card.locator(".fee-row", { hasText: "Lily" }).locator(".fee-st.waived").count()) === 1 && /1 family still owes \$450/.test(await card.innerText()));
+    await card.getByLabel("Only who owes").check(); await p.waitForTimeout(100);
+    ok("fees: filter to who owes", (await card.locator(".fee-row").count()) === 1 && /Sofia/.test(await card.locator(".fee-list").innerText()));
+    { const [d] = await Promise.all([p.waitForEvent("download"), card.getByRole("button", { name: "Download spreadsheet" }).click()]); const csv = fs.readFileSync(await d.path(), "utf8");
+      ok("fees: the spreadsheet has every family", /^Number,First,Last,Owed,Paid,Balance/.test(csv) && /7,Maya,Chen,450\.00,450\.00,0\.00,paid/.test(csv) && /Venmo/.test(csv), csv.slice(0, 300)); }
+    ok("fees: fits a phone", (await overflow(p)) <= 1);
+    { const ax = await a11y(p); ok("fees: controls all have names", !ax.length, ax.join(" | ")); }
+    await go(p, "club"); await p.getByRole("button", { name: "Fees", exact: true }).click(); await p.waitForTimeout(200);
+    ok("fees: the club sees every team's collections", /\$450 of \$900 collected across 1 team/.test(await p.locator(".page").innerText()) && /1 of 3/.test(await p.locator(".page").innerText()), await p.locator(".page").innerText());
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "fees-club.png"), fullPage: true });
+    await go(p, "team"); if (process.env.SHOTS) await card.screenshot({ path: path.join(process.env.SHOTS, "fees.png") });
+    await p.context().close();
+  },
+
   async xss(browser) {
     // names are typed by coaches, parents and players: markup in them must show as text everywhere, never become part of the page
     const N1 = "<img src=x id=pwn>", N2 = '"><b id=pwn2>x', TEAM = "<i id=pwn3>Broncos";
@@ -1274,7 +1304,7 @@ const scenarios = {
     ok("after the next side-out the other partner serves", (await p.locator(".bv-note").innerText()).includes("Maya serves"));
     for (let i = 0; i < 3; i++) await p.getByRole("button", { name: "+1 Ava / Maya" }).click();
     await p.waitForTimeout(150);
-    ok("at 7 points it says to switch sides", (await p.locator(".bv-note.sw").count()) === 1 && /far side/.test(await p.locator(".bv-sand").getAttribute("aria-label")));
+    ok("at 7 points it says to switch sides, full width and readable", (await p.locator(".bv-note.bv-alert").count()) === 1 && (await p.locator(".bv-note.bv-alert").evaluate((e) => e.getBoundingClientRect().width)) > 250 && /far side/.test(await p.locator(".bv-sand").getAttribute("aria-label")));
     const box = await p.locator(".bv-box tbody tr").first().innerText();
     ok("the box score counts each player's touches", /Ava\s+1\s+0\s+0\s+0\s+–\s+1/.test(box), box);
     ok("side-out and point-scoring show for each pair", (await p.locator(".bv-so > div").count()) === 2 && /side-out/.test(await p.locator(".bv-so").innerText()));
@@ -1368,8 +1398,8 @@ const scenarios = {
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "track"); await A.waitForTimeout(300);
     ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
-    await A.locator(".news-card").getByRole("button", { name: "Open the playbook" }).click(); await A.locator(".pb").waitFor({ timeout: 5000 }).catch(() => {});
-    ok("and its links go straight there", (await A.locator(".pb").count()) === 1);
+    await A.locator(".news-card").getByRole("button", { name: "Set up fees" }).click(); await A.waitForTimeout(400);
+    ok("and its links go straight there", /#\/team$/.test(A.url()) && (await A.getByRole("heading", { name: "Player fees" }).count()) === 1, A.url());
     await go(A, "track"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
     ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);

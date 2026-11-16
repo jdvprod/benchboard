@@ -142,8 +142,8 @@ function Match({ m, onChange, readOnly = false, live }: { m: BeachMatch; onChang
     </section>
 
     {S.over ? <p className="bv-note win" role="status">{S.winner === "us" ? m.us : m.them} win{" "}{S.setsWon[S.winner!]}–{S.setsWon[S.winner === "us" ? "them" : "us"]} ({scoreLine(S)}).</p>
-      : S.set > 0 && cur.us + cur.them === 0 ? (() => { const d = S.sets[S.set - 1]; return <p className="bv-note sw" role="status">Set {S.set} to {d.us > d.them ? m.us : m.them}, {Math.max(d.us, d.them)}–{Math.min(d.us, d.them)}. Switch sides. {m.names[S.server]} serves first in set {S.set + 1}, played to {f.to[S.set]}.</p>; })()
-      : S.switchNow ? <p className="bv-note sw" role="status">Switch sides. {cur.us + cur.them} points played; the next switch is at {cur.us + cur.them + f.sw[S.set]}.</p>
+      : S.set > 0 && cur.us + cur.them === 0 ? (() => { const d = S.sets[S.set - 1]; return <p className="bv-note bv-alert" role="status">Set {S.set} to {d.us > d.them ? m.us : m.them}, {Math.max(d.us, d.them)}–{Math.min(d.us, d.them)}. Switch sides. {m.names[S.server]} serves first in set {S.set + 1}, played to {f.to[S.set]}.</p>; })()
+      : S.switchNow ? <p className="bv-note bv-alert" role="status">Switch sides. {cur.us + cur.them} points played; the next switch is at {cur.us + cur.them + f.sw[S.set]}.</p>
       : <p className="bv-note" role="status"><b>{m.names[S.server]}</b> serves. {last ? "Last point: " + last.text + "." : `Set to ${f.to[S.set]}, win by 2. Sides switch every ${f.sw[S.set]} points.`}</p>}
 
     <Sand m={m} S={S} />

@@ -62,6 +62,8 @@ export interface Team {
   subPlan?: { id: string; rot: number; out: string; in: string }[];
   /** Getting-started checklist dismissed. */
   setupDone?: boolean;
+  /** Player fees ledger (src/features/club/fees.ts). Coaches only; never published. */
+  fees?: import("../features/club/fees").Fees | null;
   /** Season targets the team is chasing, shown on Home. */
   targets?: Partial<Record<"hitting" | "sideOut" | "pointScoring" | "passAvg" | "serveIn" | "firstBallSO", number>>;
   /** Upcoming matches. */

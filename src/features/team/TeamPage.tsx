@@ -22,6 +22,7 @@ import { scoutPrompt } from "../../ai/prompts";
 import { CloudCard } from "../../cloud/CloudCard";
 import { Announcements } from "./Announcements";
 import { isLinked } from "../../cloud/sync";
+import { FeesCard } from "../club/FeesCard";
 
 export function TeamPage({ sub }: { sub?: string }) {
   if (sub === "new") return <div className="page"><Card title="Add a team"><NewTeamForm /></Card></div>;
@@ -31,7 +32,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard /><ImportStats /><Backup /></div>
+        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard /><FeesCard /><ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;

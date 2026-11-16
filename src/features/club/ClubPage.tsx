@@ -14,8 +14,9 @@ import { isLinked, roleOn } from "../../cloud/sync";
 import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
 import { siteUrl } from "../../cloud/links";
 import { ClubEvent, clubEvents, clubIcs, clubLeaders, homeClashes, LeaderRow } from "./club";
+import { feePlayers, fmtMoney, stillOwe, summary } from "./fees";
 
-type Tab = "teams" | "calendar" | "leaders" | "announce";
+type Tab = "teams" | "calendar" | "leaders" | "announce" | "fees";
 /** Your real teams; the sample team stands in until you add one, so the page can be explored. */
 const teamsOfClub = () => { const ts = all("teams"), real = ts.filter((t) => !t.sample); return (real.length ? real : ts).slice().sort((a, b) => a.name.localeCompare(b.name) || (a.level || "").localeCompare(b.level || "")); };
 const label = (t: Team) => (t.level ? `${t.name} ${t.level}` : t.name);
@@ -29,12 +30,13 @@ export function ClubPage() {
     <div className="pagehead"><h1>Club</h1><a className="btn sm" href="#/tryouts">Tryouts</a><span className="muted">{teams.length} {teams.length === 1 ? "team" : "teams"} · {tot.W}–{tot.L} combined</span></div>
     {!teams.length ? <p className="empty">Add a team to see it here.</p> : <>
       {teams.every((t) => t.sample) && <p className="banner small">This is the sample team. Add your own teams and they replace it here.</p>}
-      <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"]]} />
+      <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"], ["fees", "Fees"]]} />
       <div style={{ marginTop: 14 }}>
         {tab === "teams" && <Teams teams={teams} />}
         {tab === "calendar" && <Calendar teams={teams} />}
         {tab === "leaders" && <Leaders teams={teams} />}
         {tab === "announce" && <Announce teams={teams} />}
+        {tab === "fees" && <FeesTab teams={teams} />}
       </div>
     </>}
   </div>;
@@ -137,5 +139,25 @@ function Announce({ teams }: { teams: Team[] }) {
     {done && done.length > 0 && <p className="small" role="status">Posted on {done.join(", ")}.</p>}
     {err && <p className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</p>}
     <p className="keys">Each team's followers get it on their team page on Floorcall Live, the same as an announcement from that team. One way: nobody can reply.</p>
+  </div>;
+}
+
+/** Fees across the club: what each team has collected and what's still owed. Each team's ledger is on its Team page. */
+function FeesTab({ teams }: { teams: Team[] }) {
+  const rows = teams.map((t) => ({ t, S: t.fees ? summary(t.fees, feePlayers(t.fees, teamPlayers(t.id))) : null }));
+  const on = rows.filter((r) => r.S), due = on.reduce((a, r) => a + r.S!.due, 0), got = on.reduce((a, r) => a + r.S!.got, 0), owing = on.reduce((a, r) => a + r.S!.owing, 0);
+  return <div className="stack">
+    {on.length > 0 && <section className="card"><div className="fee-sum">
+      <div><b className="num">{fmtMoney(got)}</b><span className="small muted"> of {fmtMoney(due)} collected across {on.length} {on.length === 1 ? "team" : "teams"}</span></div>
+      <div className="fee-bar" role="img" aria-label={`${due ? Math.round((got / due) * 100) : 100} percent collected`}><i style={{ width: (due ? Math.min(100, Math.round((got / due) * 100)) : 100) + "%" }} /></div>
+      <span className="small">{owing ? stillOwe(owing, due - got) : "Everyone has paid."}</span>
+    </div></section>}
+    <section className="card"><div className="tbl"><table>
+      <thead><tr><th className="l">Team</th><th>Paid</th><th>Owed</th><th title="Families who still owe">Owing</th><th /></tr></thead>
+      <tbody>{rows.map(({ t, S }) => <tr key={t.id}><td className="l">{label(t)}</td>
+        {S ? <><td className="num">{fmtMoney(S.got)}</td><td className="num">{fmtMoney(S.left)}</td><td className="num">{S.owing} of {S.n}</td></> : <td colSpan={3} className="small muted">Not tracking fees</td>}
+        <td><button className="btn sm" onClick={() => open(t.id, "team")}>{S ? "Open" : "Set up"}</button></td></tr>)}</tbody>
+    </table></div>
+    <p className="small muted" style={{ marginTop: 8 }}>Each team's fees are on its Team page. Coaches on a team see its fees; families never do. Floorcall doesn't take payments.</p></section>
   </div>;
 }
