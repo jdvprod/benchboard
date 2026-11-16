@@ -2,7 +2,7 @@
 const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
-const teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
+const fees = new Map(), teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
 const otps = new Map(); // email -> one-time sign-in code (new-device check)
 const admins = new Set(), appErrors = [], staff = new Map();
 const files = new Map(); // storage: "media/<team>/<file>" -> { type, data }
@@ -38,6 +38,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/__mock/pushes") return send(res, 200, { subs: [...pushSubs.values()], pushes }); // test inspection only
     if (p === "/__mock/make-admin") { const u = [...users.values()].find((x) => x.email === url.searchParams.get("email")); if (u) admins.add(u.id); return send(res, u ? 204 : 404); }
     if (p === "/__mock/otp") return send(res, 200, { code: otps.get(url.searchParams.get("email")) || null }); // test inspection only: "read the email"
+    if (p === "/__mock/records") return send(res, 200, [...records.values()]); // test inspection only
     if (p === "/__mock/users") return send(res, 200, [...users.values()].map((u) => ({ email: u.email, meta: u.meta }))); // test inspection only
     if (!req.headers.apikey) return send(res, 401, { message: "no apikey" });
     // auth
@@ -72,7 +73,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 28);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 29);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -166,6 +167,9 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p.startsWith("/storage/v1/object/") && req.method === "POST") { const path = p.slice("/storage/v1/object/".length), team = path.split("/")[1]; if (!canEdit(team, me)) return send(res, 403, { message: "new row violates row-level security policy" }); files.set(path, { type: req.headers["content-type"], data: raw }); return send(res, 200, { Key: path }); }
     const P = q(url);
     if (p === "/rest/v1/teams_cloud" && req.method === "POST") { if (teams.has(b.id)) return send(res, 409, { message: "duplicate key" }); teams.set(b.id, { ...b, owner: me }); members.push({ team_id: b.id, user_id: me, role: "owner", email: users.get(me).email, joined_at: now() }); return send(res, 201); }
+    // player fees: the owner and coaches only (as row-level security does)
+    if (p === "/rest/v1/team_fees" && req.method === "POST") { for (const r of b) { if (!canEdit(r.team_id, me)) return send(res, 403, { message: "new row violates row-level security policy" }); fees.set(r.team_id, { team_id: r.team_id, data: r.data, u: r.u }); } return send(res, 201, null); }
+    if (p === "/rest/v1/team_fees" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, canEdit(t, me) && fees.has(t) ? [fees.get(t)] : []); }
     if (p === "/rest/v1/records" && req.method === "POST") {
       for (const r of b) { if (!canEdit(r.team_id, me)) return send(res, 403, { message: "new row violates row-level security policy" }); const k = r.store + "|" + r.id, old = records.get(k); if (old && r.u < old.u) continue; records.set(k, { ...r, updated_at: now() }); }
       return send(res, 201);

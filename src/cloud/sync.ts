@@ -15,7 +15,9 @@ import { CloudError, cloudAvailable, currentUser, rest, rpc, upsert } from "./cl
 const KEY = "bs-sync";
 const SYNCED: StoreName[] = ["teams", "seasons", "players", "matches", "logs", "opponents", "drills", "plans", "boards"];
 interface Dirty { store: StoreName; id: string; team: string; deleted: boolean; u: number }
-interface SyncState { teams: string[]; since: Record<string, string>; dirty: Record<string, Dirty>; roles?: Record<string, string>; rolesFor?: string }
+interface SyncState { teams: string[]; since: Record<string, string>; dirty: Record<string, Dirty>; roles?: Record<string, string>; rolesFor?: string;
+  /** Player fees, synced apart from the team record: the version this device has, and versions waiting to go up. */
+  feesU?: Record<string, number>; feesDirty?: Record<string, number> }
 
 const load = (): SyncState => { try { return { teams: [], since: {}, dirty: {}, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return { teams: [], since: {}, dirty: {} }; } };
 const S: SyncState = load();
@@ -56,7 +58,7 @@ async function push() {
       const chunk = items.slice(i, i + 200);
       const rows = chunk.map((d) => {
         const cur: any = d.deleted ? null : get(d.store, d.id);
-        return { store: d.store, id: d.id, team_id: d.team, data: cur, u: cur?._u || d.u, deleted: d.deleted || !cur };
+        return { store: d.store, id: d.id, team_id: d.team, data: d.store === "teams" ? withoutFees(cur) : cur, u: cur?._u || d.u, deleted: d.deleted || !cur };
       });
       try { await upsert("records", rows, "store,id"); }
       catch (e) {
@@ -97,7 +99,9 @@ export function applyRemote(r: { store: StoreName; id: string; data: any; u: num
   if (local && (local._u || 0) >= r.u) return false;        // already have this version or a newer one
   if (r.deleted) { if (local) { remove(r.store, r.id, true, true); return true; } return false; }
   if (!r.data) return false;
-  save(r.store, { ...r.data, _u: r.u }, true, true);
+  // a team record never carries fees (they sync on their own, coaches only): keep this device's
+  const data = r.store === "teams" ? { ...withoutFees(r.data), ...(local?.fees !== undefined ? { fees: local.fees } : {}) } : r.data;
+  save(r.store, { ...data, _u: r.u }, true, true);
   return true;
 }
 
@@ -129,6 +133,7 @@ export function syncNow(): Promise<void> {
       const blocked = await push();
       let changed = false;
       for (const t of S.teams) changed = (await pull(t)) || changed;
+      for (const t of S.teams) changed = (await syncFees(t).catch(() => false)) || changed;
       if (changed) { if (!state.prefs.teamId || !get("teams", state.prefs.teamId)) state.prefs.teamId = S.teams.find((t) => get("teams", t)) || state.prefs.teamId; }
       setStatus(blocked ? { state: "error", error: "You have view-only access to this team, so changes made on this device stay here." } : { state: "idle", last: Date.now() });
       if (!blocked) await announce((t) => roleOn(t), (t) => S.teams.includes(t)).catch(() => {});
@@ -288,4 +293,28 @@ export function startSync() {
 export async function deleteAccount() {
   await rpc("delete_my_account", {});
   S.teams = []; S.since = {}; S.dirty = {}; S.roles = {}; persist();
+}
+
+/* ---------- player fees: owner and coaches only ---------- */
+const withoutFees = (v: any) => { if (!v || !("fees" in v)) return v; const { fees, ...rest } = v; void fees; return rest; };
+/** Call after changing a team's fees on this device. */
+export function markFeesDirty(teamId: string) {
+  if (!isLinked(teamId)) return;
+  const u = Date.now(); S.feesDirty = { ...(S.feesDirty || {}), [teamId]: u }; S.feesU = { ...(S.feesU || {}), [teamId]: u }; persist(); schedulePush();
+}
+/** Push this device's fees if they changed, otherwise take the newer copy from the cloud. Viewers never ask. */
+async function syncFees(teamId: string): Promise<boolean> {
+  const role = roleOn(teamId); if (role !== "owner" && role !== "coach") return false;
+  const t: any = get("teams", teamId); if (!t) return false;
+  const dirty = S.feesDirty?.[teamId];
+  if (dirty) {
+    await upsert("team_fees", [{ team_id: teamId, data: t.fees ?? null, u: dirty }], "team_id");
+    if (S.feesDirty?.[teamId] === dirty) { const d = { ...S.feesDirty }; delete d[teamId]; S.feesDirty = d; persist(); }
+    return false;
+  }
+  const rows: any[] = await rest(`team_fees?select=data,u&team_id=eq.${encodeURIComponent(teamId)}`);
+  const r = rows[0]; if (!r || +r.u <= (S.feesU?.[teamId] || 0)) return false;
+  save("teams", { ...t, fees: r.data ?? null }, true, true);
+  S.feesU = { ...(S.feesU || {}), [teamId]: +r.u }; persist();
+  return true;
 }

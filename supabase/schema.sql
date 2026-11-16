@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 28 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 29 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1061,6 +1061,23 @@ begin
 end $$;
 revoke execute on function public.delete_my_account() from public, anon;
 grant execute on function public.delete_my_account() to authenticated;
+
+-- ---------- player fees (version 29) ----------
+-- A team's fee ledger is for its owner and coaches only. View-only members get every other team record, so fees
+-- travel in their own table instead of inside the team record.
+create table if not exists public.team_fees (
+  team_id text primary key references public.teams_cloud(id) on delete cascade,
+  data jsonb,
+  u bigint not null default 0,
+  updated_at timestamptz not null default now(),
+  updated_by uuid default auth.uid()
+);
+alter table public.team_fees enable row level security;
+drop policy if exists "fees: coaches" on public.team_fees;
+create policy "fees: coaches" on public.team_fees for all to authenticated using (public.can_edit(team_id)) with check (public.can_edit(team_id));
+grant select, insert, update, delete on public.team_fees to authenticated;
+-- fees never belong in the shared team record
+update public.records set data = data - 'fees' where store = 'teams' and data ? 'fees';
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.

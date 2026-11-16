@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "28" "schema version is reported"
+check "select schema_version();" "29" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -79,6 +79,15 @@ as $B "update records set data = '{}' where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "view-only members can't change data"
 as $A "update records set data = '{\"first\":\"Old\"}', u = 3 where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "an older edit never overwrites a newer one"
+# player fees: the owner and coaches only; view-only members never see them, and they never ride along in the team record
+as $A "insert into team_fees (team_id, data, u) values ('t2', '{\"amt\": 450}', 10);" >/dev/null
+expect "$(as $A "select data->>'amt' from team_fees where team_id = 't2';")" "450" "a team's owner keeps its fees"
+expect "$(as $B "select count(*) from team_fees where team_id = 't2';")" "0" "view-only members can't read fees"
+expect "$(as $B "insert into team_fees (team_id, data) values ('t2', '{}') on conflict (team_id) do update set data = '{}';" | grep -c 'row-level security')" "1" "or write them"
+expect "$(q -c "set role anon; select count(*) from team_fees;" 2>&1 | grep -c 'permission denied')" "1" "visitors can't touch fees"
+q -c "insert into records (store, id, team_id, data, u) values ('teams', 't2', 't2', '{\"name\":\"Mine\",\"fees\":{\"amt\":1}}', 6) on conflict (store, id) do update set data = excluded.data;" >/dev/null
+q -f "$(dirname "$0")/schema.sql" >/dev/null 2>&1
+expect "$(q -c "select (data ? 'fees')::text || ':' || (data->>'name') from records where store = 'teams' and id = 't2';")" "false:Mine" "running the schema strips fees out of shared team records"
 # deleting an account removes the user, the teams they own (and everything in them) and their memberships
 q -c "insert into teams_cloud (id, name, owner) values ('t3', 'Theirs', '$B');" >/dev/null
 q -c "insert into members (team_id, user_id, role) values ('t3', '$A', 'coach') on conflict do nothing;" >/dev/null

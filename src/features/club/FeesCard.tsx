@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
 import { Card, ConfirmButton, download, plural } from "../../ui/kit";
+import { markFeesDirty, roleOn } from "../../cloud/sync";
 import { addPayment, balance, feePlayers, stillOwe, Fees, feesCsv, FeeStatus, fmtMoney, owed, paid, parseMoney, reminder, removePayment, setLine, status, summary } from "./fees";
 
 const LABEL: Record<FeeStatus, string> = { paid: "Paid", partial: "Partly paid", owes: "Owes", over: "Overpaid", waived: "Waived" };
@@ -10,7 +11,8 @@ export function FeesCard() {
   const t = team()!, f = t.fees || null, players = feePlayers(f, teamPlayers());
   const [amt, setAmt] = useState(""), [due, setDue] = useState(""), [label, setLabel] = useState("");
   const [open, setOpen] = useState<string | null>(null), [only, setOnly] = useState(false), [edit, setEdit] = useState(false), [amounts, setAmounts] = useState(false);
-  const save = (x: Fees | null) => setTeamPatch({ fees: x });
+  const save = (x: Fees | null) => { setTeamPatch({ fees: x }); markFeesDirty(t.id); };
+  if (roleOn(t.id) === "viewer") return null; // fees are for the team's coaches
 
   if (!f || edit) {
     const start = () => { const a = parseMoney(amt || String(f?.amt ?? "")); if (a === null) { toast("Enter the fee in dollars, like 450"); return; } save({ ...(f || { lines: {} }), amt: a, due: due || f?.due || undefined, label: (label || f?.label || "").trim() || undefined }); setEdit(false); toast(f ? "Fee updated" : "Tracking fees"); };

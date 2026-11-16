@@ -144,7 +144,7 @@ function Announce({ teams }: { teams: Team[] }) {
 
 /** Fees across the club: what each team has collected and what's still owed. Each team's ledger is on its Team page. */
 function FeesTab({ teams }: { teams: Team[] }) {
-  const rows = teams.map((t) => ({ t, S: t.fees ? summary(t.fees, feePlayers(t.fees, teamPlayers(t.id))) : null }));
+  const rows = teams.filter((t) => roleOn(t.id) !== "viewer").map((t) => ({ t, S: t.fees ? summary(t.fees, feePlayers(t.fees, teamPlayers(t.id))) : null }));
   const on = rows.filter((r) => r.S), due = on.reduce((a, r) => a + r.S!.due, 0), got = on.reduce((a, r) => a + r.S!.got, 0), owing = on.reduce((a, r) => a + r.S!.owing, 0);
   return <div className="stack">
     {on.length > 0 && <section className="card"><div className="fee-sum">

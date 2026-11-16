@@ -1753,6 +1753,15 @@ const scenarios = {
     await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
     ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact", "Sign-up emails"].includes(x)) && notOk.includes("Sign-up emails"), notOk.join(", "));
+    // player fees sync to the team's coaches, and only to them
+    { await go(A, "team"); const card = A.locator(".card", { has: A.getByRole("heading", { name: "Player fees" }) });
+      await card.getByLabel("Fee per player").fill("300"); await card.getByRole("button", { name: "Start tracking fees" }).click(); await A.waitForTimeout(150);
+      await card.locator(".fee-row", { hasText: "Maya" }).first().click(); await card.getByLabel("Amount Maya paid").fill("100"); await card.getByRole("button", { name: "Record payment" }).click(); await A.waitForTimeout(2500);
+      await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
+      await go(B, "team"); await B.getByRole("button", { name: "Sync now" }).click(); await B.waitForTimeout(1000); await B.reload(); await B.waitForTimeout(800);
+      ok("fees: the assistant coach sees the payments", /\$100 of/.test(await B.locator(".card", { has: B.getByRole("heading", { name: "Player fees" }) }).innerText().catch(() => "")));
+      const recs = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/records`)).json();
+      ok("fees: never inside the shared team record", recs.filter((r) => r.store === "teams").every((r) => !("fees" in (r.data || {}))) && recs.some((r) => r.store === "teams")); }
     // a view-only parent account can follow along but can't change the team's data
     await go(A, "team"); await A.getByRole("button", { name: "Invite view-only" }).click(); await A.waitForTimeout(300);
     const vcode = (await A.locator(".hint b").first().innerText()).trim();
@@ -1761,6 +1770,7 @@ const scenarios = {
     await V.getByRole("button", { name: "Join team" }).click(); await V.waitForTimeout(1500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     await go(V, "track"); ok("viewer sees the view-only note", (await V.locator(".banner", { hasText: "View-only." }).count()) === 1);
+    await go(V, "team"); ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid")); await go(V, "track");
     await V.locator(".pl", { hasText: "Maya" }).first().click(); await V.locator(".actsheet button", { hasText: /^Kill$/ }).click(); await skipIfAsked(V); await V.waitForTimeout(2500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     ok("viewer's sync says it's view-only instead of failing forever", (await V.getByText("view-only access").count()) > 0);
