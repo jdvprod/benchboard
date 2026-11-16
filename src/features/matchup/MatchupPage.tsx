@@ -120,6 +120,7 @@ function Matchup({ h, next }: { h: H2H; next?: ScheduleItem }) {
         <button className="btn primary" onClick={startNow}>Start match vs {o.name}</button>
         {games.length > 0 && <button className="btn" onClick={() => { download(`${t.name} vs ${o.name} scouting sheet.html`.replace(/[^\w\- .]+/g, ""), scoutingSheet(h), "text/html"); toast("Scouting sheet saved. Open it to print or share with your staff."); }}>Scouting sheet</button>}
         <button className="btn" onClick={() => { setUi({ courtTab: "tendency" }); go("court", o.id); }}>Tendency court</button>
+        {games.some((g) => g.m.video) && <button className="btn" onClick={() => { setUi({ filmAsk: `every point vs ${o.name}` }); go("film"); }}>Film vs {o.name}</button>}
       </div>
     </section>
     {!games.length ? <GamePlan o={o} h={h} /> : <>
@@ -177,11 +178,12 @@ function Threats({ A, o }: { A: Agg; o: Opponent }) {
   const setName = (n: string, field: "name" | "pos", v: string) => patch("opponents", o.id, { roster: { ...ro, [n]: { ...ro[n], [field]: v } } });
   const rows = Object.entries(A.opp).map(([n, x]) => ({ n, ...x, pts: x.K + x.A })).sort((a, b) => b.pts - a.pts || a.E - b.E).slice(0, 8);
   const max = Math.max(1, ...rows.map((r) => r.pts));
+  const hasFilm = matchesOf().some((m) => m.video && oppKey(m.opp) === oppKey(o.name));
   return <Card title="Their threats">
     {rows.length ? <div className="tbl"><table>
-      <thead><tr><th className="l">#</th><th className="l">Name · pos</th><th className="l" style={{ width: "24%" }}>Points</th><th>K</th><th>Ace</th><th>Err</th><th className="l">Hot zone</th></tr></thead>
+      <thead><tr><th className="l">#</th><th className="l">Name · pos</th><th className="l" style={{ width: "24%" }}>Points</th><th>K</th><th>Ace</th><th>Err</th><th className="l">Hot zone</th><th /></tr></thead>
       <tbody>{rows.map((r) => { const z = Object.entries(r.z).filter((x) => x[0] !== "out").sort((a, b) => b[1] - a[1])[0];
-        return <tr key={r.n}><td className="l"><b>#{r.n}</b></td><td className="l"><input className="input mu-name" key={o.id + r.n} defaultValue={[ro[r.n]?.name, ro[r.n]?.pos].filter(Boolean).join(" · ")} placeholder="Add name" aria-label={`Name for their #${r.n}`} onBlur={(e) => { const [nm, ...ps] = e.target.value.split("·").map((x) => x.trim()); setName(r.n, "name", nm || ""); if (ps.length) setName(r.n, "pos", ps.join(" ")); }} /></td><td className="l"><div className="mu-bar"><i style={{ width: (100 * r.pts) / max + "%" }} /></div></td><td>{r.K}</td><td>{r.A}</td><td>{r.E}</td><td className="l">{z ? "Z" + z[0] : "—"}</td></tr>; })}</tbody>
+        return <tr key={r.n}><td className="l"><b>#{r.n}</b></td><td className="l"><input className="input mu-name" key={o.id + r.n} defaultValue={[ro[r.n]?.name, ro[r.n]?.pos].filter(Boolean).join(" · ")} placeholder="Add name" aria-label={`Name for their #${r.n}`} onBlur={(e) => { const [nm, ...ps] = e.target.value.split("·").map((x) => x.trim()); setName(r.n, "name", nm || ""); if (ps.length) setName(r.n, "pos", ps.join(" ")); }} /></td><td className="l"><div className="mu-bar"><i style={{ width: (100 * r.pts) / max + "%" }} /></div></td><td>{r.K}</td><td>{r.A}</td><td>{r.E}</td><td className="l">{z ? "Z" + z[0] : "—"}</td><td>{r.K > 0 && hasFilm && <button className="btn sm ghost" onClick={() => { setUi({ filmAsk: `their kills from #${r.n} vs ${o.name}` }); go("film"); }} aria-label={`Watch their #${r.n}'s kills`}>Watch</button>}</td></tr>; })}</tbody>
     </table></div> : <p className="empty">Tap their jersey number after their kills and aces to see who hurts you.</p>}
   </Card>;
 }

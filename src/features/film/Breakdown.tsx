@@ -1,15 +1,16 @@
 /** Film Room → Breakdown: the film review a coach would build before practice, from the match's stats. Each finding
  * plays as clips; one tap turns the whole breakdown into a film session for the team, and the AI can write it up. */
 import { useState } from "react";
-import { patch, player, toast } from "../../data/store";
-import { Match } from "../../data/model";
+import { drillsOf, patch, plansOf, player, save, team, toast, todayISO, uid } from "../../data/store";
+import { go } from "../../app/router";
+import { Match, PracticePlan } from "../../data/model";
 import { aggregate, Replay } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/metrics";
 import { plural } from "../../ui/kit";
 import { ClipPlayer } from "../../ui/ClipPlayer";
 import { clipsFrom, clock, filmTiming, videoTime } from "../../film/clips";
 import { matchQuery } from "../../film/query";
-import { breakdown, breakdownPrompt, cleanReview, Finding, Tone } from "../../film/breakdown";
+import { blocksFor, breakdown, breakdownPrompt, cleanReview, drillCategory, Finding, Tone } from "../../film/breakdown";
 import { askPrompt, cleanAsk, filmDigest } from "../../film/askFilm";
 import { ACTIONS } from "../../sports/volleyball/actions";
 import { playName } from "../../film/clips";
@@ -21,11 +22,23 @@ import { label, resolve } from "./words";
 const TONE: Record<Tone, string> = { fix: "Fix", scout: "Scout", keep: "Keep doing" };
 /** Clips per finding in a session: enough to see the pattern, short enough that players watch it. */
 const PER = 6;
+const dayName = (iso: string) => new Date(iso + "T12:00:00").toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+/** Put film findings into the next practice that hasn't happened yet, or a new one tomorrow. Returns what happened, for the toast. */
+export function toPractice(m: Match, fs: Finding[]): string {
+  const today = todayISO(), next = plansOf().filter((p) => p.status === "planned" && p.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
+  const t = team()!, tomorrow = (() => { const d = new Date(today + "T12:00:00"); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
+  const plan: PracticePlan = next ? { ...next, blocks: next.blocks.slice() } : { id: uid("pl"), teamId: t.id, seasonId: t.activeSeasonId, date: tomorrow, title: `After ${m.opp}`, start: "15:30", blocks: [], notes: "", status: "planned", createdAt: Date.now() };
+  const add = blocksFor(fs, drillsOf(), m.opp, () => uid("b"), plan.blocks.map((b) => b.drillId || ""));
+  if (!add.length) return fs.some((f) => drillCategory(f)) ? (next ? `${dayName(plan.date)}'s practice already has those drills.` : "Your drill library has no drill for that yet. Add one in Practice → Drills.") : "Nothing to drill: these are things to keep doing.";
+  plan.blocks = plan.blocks.concat(add); save("plans", plan);
+  return `Added ${add.map((b) => b.title).join(", ")} to ${next ? dayName(plan.date) + "'s practice" : "a new practice for " + dayName(plan.date)}.`;
+}
 export const playerTag = (id: string) => { const p = player(id); return p ? `#${p.num} ${p.first}` : "A player"; };
 
 export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T: ReturnType<typeof filmTiming>; onSeek: (t: number) => void; onAdded: (sessionId: string) => void }) {
   const fs = breakdown(R.log, playerTag);
-  const [open, setOpen] = useState<string | null>(null), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [open, setOpen] = useState<string | null>(null), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [planned, setPlanned] = useState("");
+  const plan = (x: Finding[]) => setPlanned(toPractice(m, x));
   const review = m.review, lead = m.film ? 5 : 8;
   const clipsOf = (f: Finding) => m.video ? clipsFrom(m, T, R.log.filter((l) => matchQuery(f.q, l)), () => true, label, lead, 2) : [];
   const noteOf = (f: Finding) => review?.notes[f.id] || f.note;
@@ -60,10 +73,12 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
       <p className="small muted">What the film says about this match, from your stats. Each finding plays as clips.</p>
       <div className="row">
         <button className="btn primary" onClick={() => makeSession()} disabled={!m.video}>Make a film session from this</button>
+        {fs.some((f) => drillCategory(f)) && <button className="btn" onClick={() => plan(fs)}>Plan practice from this</button>}
         {aiAvailable() && <button className="btn" onClick={write} disabled={busy}>{busy ? "Writing…" : review ? "Write it up again" : "Write it up with AI"}</button>}
       </div>
       {!m.video && <p className="small muted">Add the game's video to watch these as clips.</p>}
       {err && <p className="small bad">{err}</p>}
+      {planned && <div className="fr-planned" role="status"><span>{planned}</span><button className="btn sm" onClick={() => go("practice")}>Open practice</button></div>}
     </div>
     {review?.summary && <blockquote className="fr-bd-sum"><p>{review.summary}</p><span className="small muted">Written with AI from the findings below. Check it before you share it.</span></blockquote>}
     <ol className="fr-bd-list">{fs.map((f) => { const on = open === f.id, clips = on ? clipsOf(f) : [], playable = clips.filter((c) => resolve(c));
@@ -74,6 +89,7 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
         <div className="row">
           <button className="btn sm" aria-expanded={on} onClick={() => setOpen(on ? null : f.id)}>{on ? "Hide" : m.video ? `Watch ${plural(f.n, "clip")}` : `Show ${plural(f.n, "play")}`}</button>
           {m.video && <button className="btn sm" onClick={() => makeSession(f)}>Film session of just this</button>}
+          {drillCategory(f) && <button className="btn sm" onClick={() => plan([f])}>Drill it at practice</button>}
         </div>
         {on && <>
           {playable.length > 0 && <ClipPlayer key={f.id} clips={playable} resolve={resolve} allowSave title={`${f.title} · vs ${m.opp}`} fileName={(c) => `${f.title} vs ${m.opp}${c ? " " + c.label : ""}`.replace(/[^\w\- .#]+/g, "")} />}

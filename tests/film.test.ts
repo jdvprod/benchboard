@@ -196,3 +196,24 @@ test("scouting: their hitters across matches, with where the kills land", () => 
   const h = scoutHitters([a, b]);
   assert.deepEqual(h.map((x) => [x.num, x.kills, x.aces, x.matches]), [["7", 3, 0, 2], ["3", 0, 1, 1], ["11", 1, 0, 1]]);
 });
+
+test("film to practice: each finding brings the drill that answers it", async () => {
+  const { blockFor, blocksFor } = await import("../src/film/breakdown");
+  const drills = [
+    { id: "d1", name: "Serve to zones", category: "Serving", minutes: 10, description: "Call a zone." },
+    { id: "d2", name: "Serve under pressure", category: "Serving", minutes: 8, description: "Miss and the team runs." },
+    { id: "d3", name: "Three-person serve receive", category: "Serve receive", minutes: 15, description: "Grade every pass." },
+    { id: "d4", name: "Wash drill (6 v 6)", category: "Game play", minutes: 20, description: "Two in a row." },
+    { id: "d5", name: "Rotation scrimmage", category: "Game play", minutes: 20, description: "Play out a weak rotation." },
+  ];
+  let n = 0; const uid = () => "b" + ++n;
+  const F = (id: string, tone: any = "fix", title = "T") => ({ id, tone, title, why: "", q: { codes: null, players: [], opp: [], zones: [], sets: [], rots: [] }, n: 1, note: "", cost: 1 });
+  assert.equal(blockFor(F("err-serve"), drills, "Central", uid)!.title, "Serve under pressure", "serve errors bring the pressure drill");
+  const rot = blockFor(F("rot-3"), drills, "Central", uid)!;
+  assert.equal(rot.title, "Rotation scrimmage"); assert.match(rot.notes, /^From film vs Central: T\. Start every rally in rotation 3\./);
+  assert.equal(blockFor(F("late"), drills, "Central", uid)!.title, "Wash drill (6 v 6)");
+  assert.equal(blockFor(F("star-p1", "keep"), drills, "Central", uid), null, "keep doing needs no drill");
+  assert.equal(blockFor(F("err-net"), drills, "Central", uid), null, "no blocking drill in the library");
+  const all = blocksFor([F("err-serve"), F("receive"), F("run"), F("late"), F("rot-2")], drills, "Central", uid, ["d3"]);
+  assert.deepEqual(all.map((b) => b.drillId), ["d2", "d4", "d5"], "one block per drill, skipping what the plan has");
+});

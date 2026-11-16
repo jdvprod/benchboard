@@ -974,6 +974,10 @@ const scenarios = {
     await p.getByRole("button", { name: "Write it up with AI" }).click(); await p.waitForTimeout(800);
     ok("breakdown: the AI writes the summary and the clip notes", /gave away free points/.test(await p.locator(".fr-bd-sum").innerText()) && /toss drift right/.test(await p.locator(".fr-bd-list").innerText()));
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-breakdown.png"), fullPage: true });
+    await p.getByRole("button", { name: "Drill it at practice" }).first().click(); await p.waitForTimeout(200);
+    ok("film to practice: a finding brings its drill to the next practice", /Added Serve under pressure to a new practice for/.test(await p.locator(".fr-planned").innerText()), await p.locator(".fr-planned").innerText());
+    await p.getByRole("button", { name: "Plan practice from this" }).click(); await p.waitForTimeout(200);
+    ok("film to practice: it doesn't add the same drill twice", /already has those drills/.test(await p.locator(".fr-planned").innerText()), await p.locator(".fr-planned").innerText());
     await p.getByLabel("Ask about this match").fill("Where did their points come from?"); await p.getByRole("button", { name: "Ask", exact: true }).click(); await p.waitForTimeout(800);
     ok("ask the film: answers in words and pulls the plays it's talking about", /missed three serves/.test(await p.locator(".fr-answer").innerText()) && /points to 3 plays/.test(await p.locator(".fr-answer").innerText()) && (await p.locator(".fr-answer video").count()) >= 1, await p.locator(".fr-askfilm").innerText());
     await p.getByRole("button", { name: "Make a film session from this" }).click(); await p.waitForTimeout(300);
@@ -994,6 +998,11 @@ const scenarios = {
     await p.getByLabel("Search all your film").fill("blocks vs Buchanan"); await p.getByRole("button", { name: "Search", exact: true }).click(); await p.waitForTimeout(200);
     ok("season search: an opponent never played says so", /No matches against Buchanan yet/.test(await p.locator(".fr-season").innerText()));
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "film-season.png"), fullPage: true });
+    await go(p, "matchup"); await p.waitForTimeout(300);
+    await p.getByRole("button", { name: "Film vs Central" }).click(); await p.waitForTimeout(400);
+    ok("matchup opens every point of film against that team", (await p.getByLabel("Search all your film").inputValue()) === "every point vs Central" && /5 plays in 1 match/.test(await p.locator(".fr-season").innerText()), await p.locator(".fr-season").innerText().catch(() => p.url()));
+    await go(p, "practice"); await p.waitForTimeout(300);
+    { const v = await p.evaluate(() => [...document.querySelectorAll("input, textarea")].map((x) => x.value).join(" | ")); ok("film to practice: the practice plan shows the drill and why", v.includes("Serve under pressure") && v.includes("From film vs Central: Serve errors gave them 3 points"), v.slice(0, 300)); }
     await go(p, "stats"); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.locator("tr.click", { hasText: "Maya" }).first().click(); await p.waitForTimeout(300);
     await p.getByRole("button", { name: "Search Maya's film" }).click(); await p.waitForTimeout(400);
     ok("a player's page opens a search of their film", /#\/film$/.test(p.url()) && (await p.getByLabel("Search all your film").inputValue()) === "Maya's plays this season" && /1 play in 1 match/.test(await p.locator(".fr-season").innerText()), p.url());

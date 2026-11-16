@@ -86,3 +86,35 @@ export function cleanReview(x: any, fs: Finding[]): { summary: string; notes: Re
   if (x && typeof x.notes === "object") for (const [k, v] of Object.entries(x.notes)) if (ids.has(k) && typeof v === "string" && v.trim()) notes[k] = v.trim().slice(0, 400);
   return { summary: typeof x?.summary === "string" ? x.summary.trim().slice(0, 800) : "", notes };
 }
+
+/* ---------- from film to practice ---------- */
+/** Which part of the drill library answers a finding. Keep-doing findings need no drill. */
+export function drillCategory(f: Finding): string | null {
+  if (f.tone === "keep") return null;
+  const id = f.id;
+  if (id === "err-serve") return "Serving";
+  if (id === "err-attack") return "Attacking";
+  if (id === "err-handling") return "Setting";
+  if (id === "err-net") return "Blocking";
+  if (id === "err-dig" || id.startsWith("their-")) return "Defense";
+  if (id === "receive") return "Serve receive";
+  return "Game play"; // a stuck rotation, a run, finishing sets
+}
+export interface DrillLike { id: string; name: string; category: string; minutes: number; description: string }
+export interface BlockLike { id: string; title: string; category: string; minutes: number; notes: string; drillId: string | null }
+/** A practice block for a finding: the team's drill in that category that fits best, with a note tying it to the film.
+ * `uid` makes the block id. Null when the team has no drill for it. */
+export function blockFor(f: Finding, drills: DrillLike[], opp: string, uid: () => string): BlockLike | null {
+  const cat = drillCategory(f); if (!cat) return null;
+  const inCat = drills.filter((d) => d.category === cat); if (!inCat.length) return null;
+  const want = f.id.startsWith("rot-") ? /rotation/i : f.id === "late" || f.id === "run" ? /wash|pressure|game/i : f.id === "err-serve" ? /pressure/i : f.id === "receive" ? /receive|serve receive/i : null;
+  const d = (want && inCat.find((x) => want.test(x.name + " " + x.description))) || inCat[0];
+  const focus = f.id.startsWith("rot-") ? ` Start every rally in rotation ${f.id.slice(4)}.` : f.id.startsWith("their-") ? ` Coach hits ${f.title.split(":")[0].replace("Their ", "their ")}'s shots.` : "";
+  return { id: uid(), title: d.name, category: d.category, minutes: d.minutes, notes: `From film vs ${opp}: ${f.title}.${focus} ${d.description}`.trim(), drillId: d.id };
+}
+/** Blocks for a whole breakdown: one per kind of drill, fixes first, skipping ones the plan already has. */
+export function blocksFor(fs: Finding[], drills: DrillLike[], opp: string, uid: () => string, have: string[] = []): BlockLike[] {
+  const out: BlockLike[] = [], used = new Set(have);
+  for (const f of fs) { const b = blockFor(f, drills, opp, uid); if (b && !used.has(b.drillId!)) { used.add(b.drillId!); out.push(b); } }
+  return out;
+}

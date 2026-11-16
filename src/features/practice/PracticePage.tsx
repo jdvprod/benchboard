@@ -108,7 +108,7 @@ function FocusCard({ onPlan }: { onPlan: (p: PracticePlan) => void }) {
     setBusy(false);
   };
   return <Card title="What to work on" actions={<div className="row"><button className="btn sm" disabled={!drills.length} onClick={quick}>Build plan</button><button className="btn sm" disabled={busy} onClick={ai}>{busy ? "Thinking…" : "AI plan"}</button></div>}>
-    {f.length ? <ul className="recs">{f.map((x, i) => <li key={i}><span><b>{x.cat}:</b> {x.text}</span></li>)}</ul> : <p className="small muted">Once you've tracked a match, this lists what your stats say to practice.</p>}
+    {f.length ? <ul className="recs">{f.map((x, i) => <li key={i}><span><b>{x.cat}:</b> {x.text}</span></li>)}</ul> : <p className="small muted">{matchesOf().some((x) => x.kind === "match" && replayOf(x)?.log.some((l) => l.kind === "stat")) ? "Nothing in your recent matches stands out yet. A match's film Breakdown can send drills here too." : "Once you've tracked a match, this lists what your stats say to practice."}</p>}
     {err && <p className="hint warn">{err}</p>}
   </Card>;
 }

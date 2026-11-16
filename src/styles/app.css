@@ -971,3 +971,4 @@ tr.cmp-worst td{background:color-mix(in srgb,var(--bad) 10%,transparent)}
 .fr-answer{display:grid;gap:8px}.fr-answer p{margin:0;font-size:15px;line-height:1.5}
 .fr-scout{display:grid;gap:6px;margin-top:8px}.fr-scout table{width:100%;border-collapse:collapse;font-size:14px}.fr-scout td,.fr-scout th{padding:6px 8px;border-top:1px solid var(--line);text-align:left}.fr-scout td.num,.fr-scout th.num{text-align:right}
 @media (max-width:520px){.fr-tabs button{padding:8px 10px}}
+.fr-planned{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--us-soft);border:1px solid var(--us);border-radius:10px;padding:8px 12px;font-size:14px}
