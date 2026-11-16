@@ -1,6 +1,7 @@
 import { recordOf } from "../../sports/volleyball/engine";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
+import { FEES } from "../../app/flags";
 import { LogoPicker, PhotoPicker, teamLogoPick } from "../../ui/Pictures";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
@@ -32,7 +33,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard /><FeesCard /><ImportStats /><Backup /></div>
+        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard />{FEES && <FeesCard />}<ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;

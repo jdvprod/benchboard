@@ -3,6 +3,7 @@ import { lazy, Suspense, useState } from "react";
 import { all, currentMatch, ensureOpponent, matchesOf, newMatch, oppKey, opponentsOf, plansOf, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
 import { Icon } from "../../ui/icons";
 import { feePlayers, summary as feeSummary } from "../club/fees";
+import { FEES } from "../../app/flags";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { isLinked } from "../../cloud/sync";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
@@ -51,65 +52,108 @@ export function Home() {
   const lastA = last ? aggregate(last.R.sets) : null, lastM = lastA ? teamMetrics(lastA) : null;
   const star = lastA ? Object.entries(lastA.ps).map(([id, s]) => [id, s.K + s.SA + s.BS + s.BA / 2 - s.AE - s.SE - s.SEN - s.SEO] as [string, number]).sort((a, b) => b[1] - a[1])[0] : null;
 
-  return <div className="stack">
+  const lastResult = last ? resultOf(last.R) : null;
+  const streak = (() => { let k: string | null = null, n = 0; for (const g of done) { const r = g.R.wonUs > g.R.wonThem ? "W" : g.R.wonThem > g.R.wonUs ? "L" : "T"; if (!k) k = r; if (r !== k) break; n++; } return k && n > 1 ? `${k === "W" ? "Won" : k === "L" ? "Lost" : "Tied"} ${n} straight` : ""; })();
+
+  return <div className="hm">
     {recap && last && <Suspense fallback={null}><RecapVideo m={last.m} R={last.R} onClose={() => setRecap(false)} /></Suspense>}
-    <div className="home-head">
-      <div><h1>{t.name}</h1><p className="muted">{t.level}{done.length ? ` · ${W}–${L}${T ? "–" + T : ""} this season` : ""}</p></div>
-      {!currentMatch() && <button className="btn primary" onClick={() => go("track")}>Start a match</button>}
-    </div>
-    <LiveNow />
+    <header className="hm-head">
+      <div className="hm-title"><h1>{t.name}</h1><p>{[t.sample ? "Sample team" : t.level, fmtDate(today)].filter(Boolean).join(" · ")}</p></div>
+      {done.length > 0 && <div className="hm-record" aria-label={`Season record ${W} wins, ${L} losses${T ? `, ${T} ties` : ""}`}>
+        <b className="num">{W}–{L}{T ? "–" + T : ""}</b><span>{streak || "this season"}</span></div>}
+    </header>
     {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
+    <UpNext next={next} vs={vsNext.length ? `${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season` : "First meeting this season"} onStart={startNext} />
     <Setup />
     {!t.sample && <WhatsNew />}
-    <div className="home-top">
-      <section className="card home-next">
-        <div className="label">Next match</div>
-        {next ? <>
-          <div className="home-opp">{next.site === "away" ? "at " : "vs "}{next.opp}</div>
-          <p className="muted">{next.date === today ? "Today" : fmtDate(next.date)}{next.time ? " · " + fmtTime(next.time) : ""}{next.event ? " · " + next.event : ""}</p>
-          <NextMatchStatus s={next} />
-          <p className="small">{vsNext.length ? `You're ${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season.` : "First meeting this season."}</p>
-          <div className="row"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{next.date === today && <button className="btn sm primary" onClick={startNext}>Start now</button>}</div>
-        </> : todaysTournament() ? <p className="muted" style={{ margin: "6px 0 0" }}>Today's games are in {todaysTournament()!.name} above.</p>
-          : <><p className="muted" style={{ margin: "6px 0 10px" }}>Nothing scheduled.</p><button className="btn sm" onClick={() => go("matchup")}>Add your schedule</button></>}
-      </section>
-      <section className="card home-last">
-        <div className="label">Last match</div>
-        {last && lastM ? <>
-          <div className="home-opp"><span className={resultOf(last.R) === "W" ? "w" : resultOf(last.R) === "L" ? "l" : ""}>{resultOf(last.R) || ""}</span> {last.R.wonUs}–{last.R.wonThem} vs {last.m.opp}</div>
-          <p className="muted">{fmtDate(last.m.date)} · {last.R.sets.map((s) => `${s.us}-${s.them}`).join(", ")}{!last.R.matchOver ? " · ended early" : ""}</p>
-          <p className="small">Hitting {fmtHit(lastM.hitting)} · side-out {fmtPct(lastM.sideOut)} · pass {fmtAvg(lastM.passAvg)}{star && star[1] > 0 ? ` · Top: ${playerName(star[0])}` : ""}</p>
-          <div className="row"><button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button><button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button><button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button><button className="btn sm" onClick={() => setRecap(true)}>Recap video</button><button className="btn sm" onClick={() => shareRecap(last.m, last.R)}>Text recap</button></div>
-        </> : <p className="muted" style={{ marginTop: 6 }}>Your most recent result shows up here.</p>}
-      </section>
-    </div>
-    <Sections next={next} games={games.length} M={M} />
-    {games.length > 0 && <section className="card">
-      <div className="row between" style={{ marginBottom: 10 }}><h3>Season so far</h3><button className="btn sm ghost" onClick={() => { setUi({ statsScope: "season" }); go("stats"); }}>All stats</button></div>
-      <div className="home-kpis">
-        {([["Hitting", fmtHit(M.hitting), chron.map((x) => x.hitting)], ["Side-out", fmtPct(M.sideOut), chron.map((x) => x.sideOut)], ["Pass avg", fmtAvg(M.passAvg), chron.map((x) => x.passAvg)], ["Serve in", fmtPct(M.serveIn), chron.map((x) => x.serveIn)]] as [string, string, (number | null)[]][]).map(([l, v, sp]) =>
-          <div key={l} className="home-kpi"><span className="label">{l}</span><b>{v}</b><Spark vals={sp} /></div>)}
-        <div className="home-kpi"><span className="label">Leaders</span>
-          {[["K", (s: any) => s.K], ["Aces", (s: any) => s.SA], ["Digs", (s: any) => s.D]].map(([l, f]) => { const x = leaders(f as any); return x ? <span key={l as string} className="small"><b>{x[1]}</b> {l as string} · {playerName(x[0])}</span> : null; })}</div>
+    <div className="hm-week-narrow"><Week /></div>
+    <div className="hm-grid">
+      <div className="hm-main">
+        <section className="hm-sec" aria-labelledby="hm-last">
+          <div className="hm-sec-hd"><h2 id="hm-last">Last result</h2>{last && <span className="muted small">{fmtDate(last.m.date)}{last.m.event ? " · " + last.m.event : ""}</span>}</div>
+          {last && lastM ? <>
+            <div className="hm-score">
+              <span className={"hm-wl " + (lastResult === "W" ? "w" : lastResult === "L" ? "l" : "t")}>{lastResult || "–"}</span>
+              <span className="hm-sets num">{last.R.wonUs}–{last.R.wonThem}</span>
+              <span className="hm-opp">vs {last.m.opp}</span>
+            </div>
+            <ol className="hm-setline num" aria-label="Set scores">{last.R.sets.map((x, k) => <li key={k} className={x.us > x.them ? "w" : ""}><small>S{k + 1}</small>{x.us}–{x.them}</li>)}{!last.R.matchOver && <li className="muted"><small>&nbsp;</small>ended early</li>}</ol>
+            <dl className="hm-line">
+              <div><dt>Hitting</dt><dd className="num">{fmtHit(lastM.hitting)}</dd></div>
+              <div><dt>Side-out</dt><dd className="num">{fmtPct(lastM.sideOut)}</dd></div>
+              <div><dt>Pass avg</dt><dd className="num">{fmtAvg(lastM.passAvg)}</dd></div>
+              {star && star[1] > 0 && <div><dt>Top player</dt><dd>{playerName(star[0])}</dd></div>}
+            </dl>
+            <div className="hm-actions">
+              <button className="btn sm primary" onClick={() => { setUi({ statsScope: "m:" + last.m.id }); go("stats"); }}>Full stats</button>
+              <button className="btn sm" onClick={() => download(`${t.name} vs ${last.m.opp} ${last.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(last.m, last.R), "text/html")}>Match report</button>
+              <button className="btn sm" onClick={() => shareFinalGraphic(last.m, last.R)}>Share graphic</button>
+              <button className="btn sm" onClick={() => setRecap(true)}>Recap video</button>
+              <button className="btn sm" onClick={() => shareRecap(last.m, last.R)}>Text recap</button>
+            </div>
+          </> : <p className="muted">Your most recent result shows up here after your first match.</p>}
+        </section>
+        {games.length > 0 && <section className="hm-sec" aria-labelledby="hm-season">
+          <div className="hm-sec-hd"><h2 id="hm-season">Season</h2><button className="btn sm ghost" onClick={() => { setUi({ statsScope: "season" }); go("stats"); }}>All stats</button></div>
+          <dl className="hm-kpis">
+            {([["Hitting", fmtHit(M.hitting), chron.map((x) => x.hitting)], ["Side-out", fmtPct(M.sideOut), chron.map((x) => x.sideOut)], ["Pass avg", fmtAvg(M.passAvg), chron.map((x) => x.passAvg)], ["Serve in", fmtPct(M.serveIn), chron.map((x) => x.serveIn)]] as [string, string, (number | null)[]][]).map(([l, v, sp]) =>
+              <div key={l}><dt>{l}</dt><dd className="num">{v}</dd><Spark vals={sp} /></div>)}
+          </dl>
+          <ul className="hm-leaders">{([["Kills", (x: any) => x.K], ["Aces", (x: any) => x.SA], ["Digs", (x: any) => x.D], ["Blocks", (x: any) => x.BS + x.BA]] as [string, (x: any) => number][]).map(([l, f]) => { const x = leaders(f); return x ? <li key={l}><span className="muted">{l}</span><b>{playerName(x[0])}</b><span className="num">{x[1]}</span></li> : null; })}</ul>
+        </section>}
+        {focus.length > 0 && <section className="hm-sec" aria-labelledby="hm-work">
+          <div className="hm-sec-hd"><h2 id="hm-work">What to work on</h2><button className="btn sm ghost" onClick={() => go("practice")}>Plan practice</button></div>
+          <ul className="hm-work">{focus.map((f, i) => <li key={i}><b>{f.cat}</b><span>{f.text}</span></li>)}</ul>
+        </section>}
+        {games.length > 0 && <TeamGoals M={M} />}
       </div>
-    </section>}
-    {games.length > 0 && <TeamGoals M={M} />}
-    {focus.length > 0 && <Card title="What to work on" actions={<button className="btn sm" onClick={() => go("practice")}>Plan practice</button>}>
-      <ul className="recs">{focus.map((f, i) => <li key={i}><span><b>{f.cat}:</b> {f.text}</span></li>)}</ul>
-    </Card>}
+      <aside className="hm-rail">
+        <Week />
+        <Sections next={next} games={games.length} M={M} />
+      </aside>
+    </div>
   </div>;
 }
 
-/** A match being tracked right now: one tap back to it. */
-function LiveNow() {
-  const m = currentMatch(); if (!m) return null;
-  const R = replayOf(m), cur = R?.sets[R.sets.length - 1];
-  return <button className="home-live" onClick={() => go(m.kind === "match" ? "track" : "practice")}>
-    <span className="home-live-dot" aria-hidden="true" />
-    <span><b>{m.kind === "match" ? `Match in progress vs ${m.opp}` : `Practice in progress: ${m.opp}`}</b>
-      {R && cur ? <span className="small"> · sets {R.wonUs}–{R.wonThem} · set {R.sets.length} {cur.us}–{cur.them}</span> : null}</span>
-    <span className="home-live-go">Resume</span>
-  </button>;
+/** The black band at the top: the match in progress, or the next one. */
+function UpNext({ next, vs, onStart }: { next?: { date: string; opp: string; time?: string; site?: string; event?: string; id: string }; vs: string; onStart: () => void }) {
+  const m = currentMatch(), today = todayISO();
+  if (m) { const R = replayOf(m), cur = R?.sets[R.sets.length - 1];
+    return <button className="hm-band live home-live" onClick={() => go(m.kind === "match" ? "track" : "practice")}>
+      <span className="hm-band-tag"><i className="home-live-dot" aria-hidden="true" />{m.kind === "match" ? "Live" : "Practice"}</span>
+      <span className="hm-band-main"><b>{m.kind === "match" ? `Match in progress vs ${m.opp}` : `Practice in progress: ${m.opp}`}</b>
+        {R && cur ? <small className="num">Set {R.sets.length} · {cur.us}–{cur.them} · sets {R.wonUs}–{R.wonThem}</small> : null}</span>
+      <span className="hm-band-go">Resume</span>
+    </button>; }
+  if (!next) return <div className="hm-band quiet"><span className="hm-band-main"><b>No matches scheduled</b><small>Add your schedule to get a scouting page before every game.</small></span><div className="hm-band-acts"><button className="btn sm" onClick={() => go("matchup")}>Add your schedule</button><button className="btn sm primary" onClick={() => go("track")}>Start a match</button></div></div>;
+  const days = Math.round((new Date(next.date + "T12:00:00").getTime() - new Date(today + "T12:00:00").getTime()) / 864e5);
+  return <section className="hm-band" aria-label="Next match">
+    <span className="hm-band-tag">{days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`}</span>
+    <span className="hm-band-main"><b>{next.site === "away" ? "at " : "vs "}{next.opp}</b>
+      <small>{[fmtDate(next.date), next.time ? fmtTime(next.time) : "", next.event, vs].filter(Boolean).join(" · ")}</small>
+      <NextMatchStatus s={next as any} /></span>
+    <div className="hm-band-acts"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{days === 0 ? <button className="btn sm primary" onClick={onStart}>Start now</button> : <button className="btn sm primary" onClick={() => go("track")}>Start a match</button>}</div>
+  </section>;
+}
+
+/** The next seven days: matches, practices and tournaments, by day. */
+function Week() {
+  const t = team()!, today = todayISO(), end = (() => { const d = new Date(today + "T12:00:00"); d.setDate(d.getDate() + 6); return d.toISOString().slice(0, 10); })();
+  type Row = { date: string; time?: string; title: string; sub: string; go: () => void; kind: "match" | "practice" | "tournament" };
+  const rows: Row[] = [
+    ...(t.schedule || []).filter((x) => x.date >= today && x.date <= end).map((x): Row => ({ date: x.date, time: x.time, title: (x.site === "away" ? "at " : "vs ") + x.opp, sub: [x.time ? fmtTime(x.time) : "", x.event].filter(Boolean).join(" · ") || "Match", go: () => go("matchup", ensureOpponent(x.opp).id), kind: "match" })),
+    ...plansOf().filter((p) => p.status === "planned" && p.date >= today && p.date <= end).map((p): Row => ({ date: p.date, time: p.start, title: p.title || "Practice", sub: [p.start ? fmtTime(p.start) : "", plural(p.blocks.length, "block")].filter(Boolean).join(" · "), go: () => go("practice"), kind: "practice" })),
+    ...(t.tournaments || []).filter((x) => x.start <= end && (x.end || x.start) >= today).map((x): Row => ({ date: x.start < today ? today : x.start, title: x.name, sub: "Tournament", go: () => go("tournament", x.id), kind: "tournament" })),
+  ].sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+  const dow = (d: string) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" });
+  return <section className="hm-sec hm-week" aria-label="This week">
+    <div className="hm-sec-hd"><h2>This week</h2></div>
+    {rows.length ? <ul>{rows.map((r, i) => <li key={i}><button onClick={r.go}>
+      <span className={"hm-day" + (r.date === today ? " today" : "")}><small>{dow(r.date)}</small><b className="num">{+r.date.slice(8)}</b></span>
+      <span className="hm-ev"><b>{r.title}</b><small>{r.sub}</small></span>
+      <span className={"hm-kind " + r.kind}>{r.kind === "match" ? "Match" : r.kind === "practice" ? "Practice" : "Tournament"}</span>
+    </button></li>)}</ul> : <p className="muted small">Nothing in the next seven days. Add matches in Matchup or plan a practice.</p>}
+  </section>;
 }
 
 /** Every section of the app, each with what's waiting in it. */
@@ -118,25 +162,27 @@ function Sections({ next, games, M }: { next?: { date: string; opp: string; time
   const day = (d: string) => (d === today ? "today" : new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }));
   const plan = plansOf().filter((p) => p.status === "planned" && p.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
   const players = teamPlayers().filter((p) => p.active).length;
-  const fees = t.fees ? feeSummary(t.fees, feePlayers(t.fees, teamPlayers())) : null;
+  const fees = FEES && t.fees ? feeSummary(t.fees, feePlayers(t.fees, teamPlayers())) : null;
   const film = matchesOf().filter((m) => m.video).length;
   const teams = all("teams").filter((x) => !x.sample).length;
-  const tiles: [string, string, string, string][] = [
-    ["track", "Track", currentMatch()?.kind === "match" ? "A match is in progress" : next && next.date === today ? `vs ${next.opp} today` : "Start a match or scrimmage", "track"],
-    ["lineup", "Lineup", t.defLineup ? "Starting six set · rotations and subs" : "Set your starting six", "lineup"],
-    ["matchup", "Matchup", next ? `Next: vs ${next.opp}, ${day(next.date)}` : opponentsOf().length ? `${plural(opponentsOf().length, "opponent")} scouted` : "Schedule and scouting", "matchup"],
-    ["practice", "Practice", plan ? `Next practice ${day(plan.date)} · ${plural(plan.blocks.length, "block")}` : "Plan a practice", "practice"],
-    ["stats", "Stats", games ? `Hitting ${fmtHit(M.hitting)} · ${plural(games, "match", "matches")}` : "Your numbers after the first match", "stats"],
-    ["court", "Court", "Rotations, plays and the 3D court", "court"],
-    ["team", "Team", `${plural(players, "player")}${fees && fees.owing ? ` · ${plural(fees.owing, "family", "families")} owe fees` : ""}`, "team"],
-    ["film", "Film", film ? `${plural(film, "match", "matches")} of film · breakdowns` : "Stat a game from video", "film"],
-    ["live", "Live", "Share games and your season page with families", "live"],
-    ["tryouts", "Tryouts", "Rate players with your staff", "tryouts"],
-    ...(teams > 1 ? [["club", "Club", `${teams} teams: calendar, leaders, fees`, "club"] as [string, string, string, string]] : []),
-    ["settings", "Settings", "Account, backups and preferences", "settings"],
+  const rows: [string, string, string][] = [
+    ["track", "Track", currentMatch()?.kind === "match" ? "A match is in progress" : next && next.date === today ? `vs ${next.opp} today` : "Start a match or scrimmage"],
+    ["lineup", "Lineup", t.defLineup ? "Starting six set" : "Set your starting six"],
+    ["matchup", "Matchup", next ? `vs ${next.opp}, ${day(next.date)}` : opponentsOf().length ? `${plural(opponentsOf().length, "opponent")} scouted` : "Schedule and scouting"],
+    ["practice", "Practice", plan ? `${day(plan.date)}, ${plural(plan.blocks.length, "block")}` : "Plan a practice"],
+    ["stats", "Stats", games ? `Hitting ${fmtHit(M.hitting)} over ${plural(games, "match", "matches")}` : "After your first match"],
+    ["court", "Court", "Rotations, plays, 3D court"],
+    ["team", "Team", `${plural(players, "player")}${fees && fees.owing ? `, ${plural(fees.owing, "family", "families")} owe fees` : ""}`],
+    ["film", "Film", film ? `${plural(film, "match", "matches")} of film` : "Stat a game from video"],
+    ["live", "Live", "What families see"],
+    ["tryouts", "Tryouts", "Rate players with your staff"],
+    ...(teams > 1 ? [["club", "Club", `${teams} teams`] as [string, string, string]] : []),
+    ["settings", "Settings", "Account, backups, display"],
   ];
-  return <nav className="home-tiles" aria-label="Sections">{tiles.map(([icon, title, sub, page]) =>
-    <a key={page} className="home-tile" href={"#/" + page}><i aria-hidden="true"><Icon name={icon} /></i><span><b>{title}</b><small>{sub}</small></span></a>)}</nav>;
+  return <nav className="hm-sec hm-goto" aria-label="Go to">
+    <div className="hm-sec-hd"><h2>Go to</h2></div>
+    <ul>{rows.map(([page, title, sub]) => <li key={page}><a href={"#/" + page}><i aria-hidden="true"><Icon name={page} /></i><b>{title}</b><small>{sub}</small><svg className="hm-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></a></li>)}</ul>
+  </nav>;
 }
 
 const TARGETS: ["hitting" | "sideOut" | "pointScoring" | "passAvg" | "serveIn" | "firstBallSO", string, number, (v: number | null) => string, number][] = [
@@ -148,14 +194,14 @@ function TeamGoals({ M }: { M: ReturnType<typeof teamMetrics> }) {
   const [edit, setEdit] = useState(false);
   const active = TARGETS.filter(([k]) => tg[k] != null);
   const list = active.length ? active : TARGETS.slice(0, 4);
-  return <Card title="Team goals" actions={<button className="btn sm ghost" onClick={() => setEdit(!edit)}>{edit ? "Done" : active.length ? "Edit" : "Set goals"}</button>}>
+  return <section className="hm-sec" aria-labelledby="hm-goals"><div className="hm-sec-hd"><h2 id="hm-goals">Team goals</h2><button className="btn sm ghost" onClick={() => setEdit(!edit)}>{edit ? "Done" : active.length ? "Edit" : "Set goals"}</button></div>
     {edit ? <div className="pf-grid">{TARGETS.map(([k, label, def, f]) => <label key={k} className="field"><span className="label">{label}</span>
       <input inputMode="decimal" defaultValue={tg[k] != null ? (k === "hitting" ? String(tg[k]).replace(/^0/, "") : k === "passAvg" ? String(tg[k]) : Math.round(tg[k]! * 100) + "%") : ""} placeholder={"e.g. " + f(def)}
         onBlur={(e) => { const raw = e.target.value.trim(); const n = { ...tg }; if (!raw) delete n[k]; else { let v = parseFloat(raw.replace("%", "")); if (k !== "hitting" && k !== "passAvg" && v > 1) v /= 100; if (isFinite(v)) n[k] = v; } setTeamPatch({ targets: n }); }} /></label>)}</div>
       : <div className="goals-grid">{list.map(([k, label, def, f]) => { const target = tg[k] ?? def, v = (M as any)[k] as number | null, hit = v != null && v >= target, prog = v == null ? 0 : Math.max(0, Math.min(1, target > 0 ? v / target : 0));
         return <div key={k} className="goal"><div className="row between"><span><b>{label}</b> <span className="small muted">goal {f(target)}</span></span><span className={hit ? "hi" : ""}>{f(v)}{hit ? " ✓" : ""}</span></div><div className="meter"><i style={{ width: prog * 100 + "%" }} /></div></div>; })}
         {!active.length && <p className="small muted">Suggested goals. Tap Set goals to make them yours.</p>}</div>}
-  </Card>;
+  </section>;
 }
 
 /** Copy (or share from the phone) a text recap with the gamecast link when the match was shared. */

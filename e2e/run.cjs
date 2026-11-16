@@ -114,15 +114,17 @@ const squashed = (p) => p.evaluate(() => [...document.querySelectorAll("body *")
 const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip" }); if (await s.count()) await s.first().click(); };
 
 /* ---------- scenarios ---------- */
+/** Built-but-held features (src/app/flags.ts): their tests run only when they're on. */
+const FEES_ON = /FEES = true/.test(fs.readFileSync(path.join(__dirname, "..", "src/app/flags.ts"), "utf8"));
 const scenarios = {
   async home(browser) {
     const p = await newPage(browser, { cloud: false, phone: true });
     await p.goto(U); await p.getByRole("button", { name: "Use without an account" }).click();
     await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
     await p.goto(U); await p.waitForTimeout(400);
-    ok("the app opens to Home", (await p.getByRole("heading", { name: "Clovis North", level: 1 }).count()) === 1 && (await p.locator(".home-tiles .home-tile").count()) >= 10 && (await p.locator(".nav .tab[aria-current=page]").innerText()).includes("Home"));
-    ok("Home: a tile for every section, with what's in it", /Set your starting six/.test(await p.locator(".home-tiles").innerText()) && /Plan a practice/.test(await p.locator(".home-tiles").innerText()));
-    await p.locator(".home-tile", { hasText: "Practice" }).click(); await p.waitForTimeout(300);
+    ok("the app opens to Home", (await p.getByRole("heading", { name: "Clovis North", level: 1 }).count()) === 1 && (await p.locator(".hm-goto a").count()) >= 10 && (await p.locator(".nav .tab[aria-current=page]").innerText()).includes("Home"));
+    ok("Home: a tile for every section, with what's in it", /Set your starting six/.test(await p.locator(".hm-goto").innerText()) && /Plan a practice/.test(await p.locator(".hm-goto").innerText()));
+    await p.locator(".hm-goto a", { hasText: "Practice" }).click(); await p.waitForTimeout(300);
     ok("Home: a tile opens its section", /#\/practice$/.test(p.url()));
     await p.getByRole("link", { name: "Home" }).click(); await p.waitForTimeout(200);
     await p.getByRole("button", { name: "Start a match" }).click(); await p.waitForTimeout(300);
@@ -147,7 +149,9 @@ const scenarios = {
       if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "g-" + r + ".png"), fullPage: true });
     }
     ok("gallery: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
-    if (process.env.SHOTS) { const d = await newPage(browser, {}); await go(d, "sample"); await d.waitForTimeout(900); await go(d, "home"); await d.waitForTimeout(500); await d.screenshot({ path: path.join(process.env.SHOTS, "g-home-desktop.png"), fullPage: true }); await d.context().close(); }
+    if (process.env.SHOTS) { const d = await newPage(browser, {}); await go(d, "sample"); await d.waitForTimeout(900); await go(d, "home"); await d.waitForTimeout(500); await d.screenshot({ path: path.join(process.env.SHOTS, "g-home-desktop.png"), fullPage: true });
+      await d.locator(".nav .tm-btn").click(); await d.waitForTimeout(250); await d.screenshot({ path: path.join(process.env.SHOTS, "g-teammenu.png"), clip: { x: 0, y: 0, width: 520, height: 420 } }); await d.keyboard.press("Escape");
+      await d.getByRole("button", { name: "Collapse the sidebar" }).click(); await d.waitForTimeout(400); await d.screenshot({ path: path.join(process.env.SHOTS, "g-folded.png") }); await d.context().close(); }
   },
   async tour(browser) {
     for (const opts of [{}, { phone: true }, { phone: true, dark: true }, { tablet: true }]) {
@@ -319,6 +323,7 @@ const scenarios = {
   },
 
   async fees(browser) {
+    if (!FEES_ON) { ok("fees are on hold (src/app/flags.ts), so nothing shows", true); return; }
     const p = await newPage(browser, { cloud: false, phone: true });
     await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click();
     await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(300);
@@ -1397,7 +1402,18 @@ const scenarios = {
     await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
     await go(A, "team/new"); await A.getByLabel("Team name").fill("Clovis 15 Blue"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Fresno 11:00 AM\n12/5 vs Clovis West 3:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
-    ok("with two teams the team menu offers the club view", (await A.locator("select[aria-label='Team'] option[value='__club']").count()) >= 1);
+    { const btn = A.locator(".tm-btn:visible"), before = await btn.innerText();
+      await btn.click(); await A.waitForTimeout(150);
+      ok("with two teams the team menu lists both and offers the club view", (await A.locator(".tm-menu [role=menuitemradio]").count()) === 2 && (await A.getByRole("menuitem", { name: "All teams overview" }).count()) === 1 && (await A.getByRole("menuitem", { name: "Add a team" }).count()) === 1);
+      ok("the team menu opens on the current team, checked", /Clovis 15 Blue/.test(await A.evaluate(() => document.activeElement?.textContent || "")) && (await A.locator(".tm-menu [aria-checked=true]").innerText()).includes("Clovis 15 Blue"));
+      await A.keyboard.press("Escape"); ok("Esc closes it and returns focus to the button", (await A.locator(".tm-menu").count()) === 0 && await btn.evaluate((e) => e === document.activeElement));
+      await btn.click(); await A.locator(".tm-menu [role=menuitemradio]", { hasText: "Clovis 16 Black" }).click(); await A.waitForTimeout(250);
+      ok("picking a team switches to it", /Clovis 16 Black/.test(await btn.innerText()) && !/Clovis 16 Black/.test(before));
+      await btn.click(); await A.locator(".tm-menu [role=menuitemradio]", { hasText: "Clovis 15 Blue" }).click(); await A.waitForTimeout(250);
+      await A.getByRole("button", { name: "Collapse the sidebar" }).click(); await A.waitForTimeout(250);
+      ok("the sidebar folds to icons, and remembers", await A.evaluate(() => document.body.classList.contains("nav-mini")) && (await A.locator(".nav .tab span").first().isVisible()) === false);
+      await A.reload(); await A.waitForTimeout(400); ok("…after a reload too", await A.evaluate(() => document.body.classList.contains("nav-mini")));
+      await A.getByRole("button", { name: "Expand the sidebar" }).click(); await A.waitForTimeout(250); }
     await go(A, "club"); await A.waitForTimeout(500);
     ok("club shows every team", (await A.locator(".club-card").count()) === 2 && /2 teams/.test(await A.locator(".pagehead").innerText()));
     await A.getByRole("button", { name: "Calendar", exact: true }).click(); await A.waitForTimeout(200);
@@ -1423,8 +1439,8 @@ const scenarios = {
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "home"); await A.waitForTimeout(300);
     ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
-    await A.locator(".news-card").getByRole("button", { name: "Set up fees" }).click(); await A.waitForTimeout(400);
-    ok("and its links go straight there", /#\/team$/.test(A.url()) && (await A.getByRole("heading", { name: "Player fees" }).count()) === 1, A.url());
+    await A.locator(".news-card").getByRole("button", { name: "Open the playbook" }).click(); await A.locator(".pb").waitFor({ timeout: 5000 }).catch(() => {});
+    ok("and its links go straight there", (await A.locator(".pb").count()) === 1);
     await go(A, "home"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
     ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
@@ -1461,7 +1477,7 @@ const scenarios = {
     if (process.env.QASHOT8) await A.screenshot({ path: process.env.QASHOT8.replace(".png", "-rank.png"), fullPage: true });
     await A.setViewportSize({ width: 1360, height: 900 });
     await A.getByLabel("New team name").fill("Clovis 16 Blue"); await A.getByRole("button", { name: "Create team with 2 players" }).click(); await A.waitForTimeout(500);
-    { const roster = (await A.locator(".page").innerText()) + " " + (await A.locator(".page input").evaluateAll((l) => l.map((x) => x.value).join(" "))); ok("offers become a new team's roster", /Clovis 16 Blue/.test(await A.locator("select[aria-label='Team'] option:checked").first().innerText()) && /Zoe/.test(roster) && /Ava/.test(roster) && !/Maya/.test(roster), roster.slice(0, 300)); }
+    { const roster = (await A.locator(".page").innerText()) + " " + (await A.locator(".page input").evaluateAll((l) => l.map((x) => x.value).join(" "))); ok("offers become a new team's roster", /Clovis 16 Blue/.test(await A.locator(".tm-btn:visible").innerText()) && /Zoe/.test(roster) && /Ava/.test(roster) && !/Maya/.test(roster), roster.slice(0, 300)); }
     await A.reload(); await A.waitForTimeout(800); await go(A, "tryouts"); await A.waitForTimeout(300);
     ok("tryouts are kept on the device", /16U tryouts[\s\S]*4 players · 2 evaluators/.test(await A.locator(".ty-list").innerText()));
     ok("no errors on tryouts", A.errors.length === 0, A.errors.join("; "));
@@ -1779,7 +1795,7 @@ const scenarios = {
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
     ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact", "Sign-up emails"].includes(x)) && notOk.includes("Sign-up emails"), notOk.join(", "));
     // player fees sync to the team's coaches, and only to them
-    { await go(A, "team"); const card = A.locator(".card", { has: A.getByRole("heading", { name: "Player fees" }) });
+    if (FEES_ON) { await go(A, "team"); const card = A.locator(".card", { has: A.getByRole("heading", { name: "Player fees" }) });
       await card.getByLabel("Fee per player").fill("300"); await card.getByRole("button", { name: "Start tracking fees" }).click(); await A.waitForTimeout(150);
       await card.locator(".fee-row", { hasText: "Maya" }).first().click(); await card.getByLabel("Amount Maya paid").fill("100"); await card.getByRole("button", { name: "Record payment" }).click(); await A.waitForTimeout(2500);
       await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
@@ -1795,7 +1811,7 @@ const scenarios = {
     await V.getByRole("button", { name: "Join team" }).click(); await V.waitForTimeout(1500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     await go(V, "track"); ok("viewer sees the view-only note", (await V.locator(".banner", { hasText: "View-only." }).count()) === 1);
-    await go(V, "team"); ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid")); await go(V, "track");
+    if (FEES_ON) await go(V, "team"); if (FEES_ON) ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid")); await go(V, "track");
     await V.locator(".pl", { hasText: "Maya" }).first().click(); await V.locator(".actsheet button", { hasText: /^Kill$/ }).click(); await skipIfAsked(V); await V.waitForTimeout(2500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
     ok("viewer's sync says it's view-only instead of failing forever", (await V.getByText("view-only access").count()) > 0);

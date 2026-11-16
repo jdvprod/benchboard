@@ -28,6 +28,8 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
    - `ai`: paste `supabase/functions/ai/index.ts` and turn **off** "Verify JWT" (the function checks the sign-in itself). Secret: `ANTHROPIC_API_KEY`.
    - `notify`: paste `supabase/functions/notify/index.ts`, and turn **off** "Verify JWT" for it. Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (make them in the app: Settings → Setup check → Make notification keys) and `VAPID_SUBJECT` (`mailto:` + your contact email).
 
+   - **Updating a function later** (only when `supabase/functions/...` changes): Edge Functions → click the function → **Code** → select all, paste the new `index.ts` from the repo → **Deploy**. Secrets stay as they are. Or from a terminal with the Supabase CLI: `supabase functions deploy ai --no-verify-jwt` (and the same for `notify`).
+
 5. **Make yourself an admin** (SQL Editor, after you've created your account in the app):
    `insert into public.admins select id from auth.users where email = 'you@example.com';`
    Settings in the app then shows **Admin**: sign-ups, active teams, live matches, crash reports, and every uploaded photo and logo with a **Take down** button.
@@ -36,7 +38,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
-3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all five: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live and Floorcall Recruit.
+3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all six: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`, `beach.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live and Floorcall Recruit.
 4. Releases: `git push origin main:live` (the app, Floorcall Live and Floorcall Recruit all go out together).
 
 Worked when: getfloorcall.com shows the product page, app.getfloorcall.com opens the app, live.getfloorcall.com shows "Follow the game, point by point", and a made-up address shows "That page isn't here."

@@ -15,6 +15,7 @@ import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/clie
 import { siteUrl } from "../../cloud/links";
 import { ClubEvent, clubEvents, clubIcs, clubLeaders, homeClashes, LeaderRow } from "./club";
 import { feePlayers, fmtMoney, stillOwe, summary } from "./fees";
+import { FEES } from "../../app/flags";
 
 type Tab = "teams" | "calendar" | "leaders" | "announce" | "fees";
 /** Your real teams; the sample team stands in until you add one, so the page can be explored. */
@@ -30,13 +31,13 @@ export function ClubPage() {
     <div className="pagehead"><h1>Club</h1><a className="btn sm" href="#/tryouts">Tryouts</a><span className="muted">{teams.length} {teams.length === 1 ? "team" : "teams"} · {tot.W}–{tot.L} combined</span></div>
     {!teams.length ? <p className="empty">Add a team to see it here.</p> : <>
       {teams.every((t) => t.sample) && <p className="banner small">This is the sample team. Add your own teams and they replace it here.</p>}
-      <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"], ["fees", "Fees"]]} />
+      <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"], ...(FEES ? [["fees", "Fees"] as [Tab, string]] : [])]} />
       <div style={{ marginTop: 14 }}>
         {tab === "teams" && <Teams teams={teams} />}
         {tab === "calendar" && <Calendar teams={teams} />}
         {tab === "leaders" && <Leaders teams={teams} />}
         {tab === "announce" && <Announce teams={teams} />}
-        {tab === "fees" && <FeesTab teams={teams} />}
+        {FEES && tab === "fees" && <FeesTab teams={teams} />}
       </div>
     </>}
   </div>;

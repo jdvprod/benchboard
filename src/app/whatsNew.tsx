@@ -4,7 +4,7 @@ import { go } from "./router";
 import { setUi } from "./ui";
 
 const NEWS: { id: string; title: string; body: string; page?: string; cta?: string }[] = [
-  { id: "fees", title: "Player fees", body: "Track the season fee for every family on the Team page: payments, waivers, who still owes, a reminder to paste in your team chat, and a spreadsheet. The Club page adds it up across teams.", page: "team", cta: "Set up fees" },
+  // { id: "fees", ... } returns with the fees feature (src/app/flags.ts)
   { id: "filmreview", title: "Film breakdown", body: "Film Room now reviews each match: where points went, the stuck rotation, their best hitter, what to keep doing. Ask it “why did we lose set 2?” and it shows you the plays. Each fix sends the right drill to your next practice.", page: "film", cta: "Open Film Room" },
   { id: "filmsearch", title: "Search all your film", body: "Ask across the whole season: “Maya's kills vs Buchanan”, “aces in the last 3 matches”. Best rallies ranks every rally by the crowd's reaction, no stats needed, and Best of the season pulls the top ones from every match.", page: "film", cta: "Search your film" },
   { id: "tryouts", title: "Tryouts", body: "Rate players skill by skill with your staff on their phones, rank them, and turn offers into a roster.", page: "tryouts", cta: "Open tryouts" },

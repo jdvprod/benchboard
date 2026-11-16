@@ -177,7 +177,9 @@ export interface Stroke { tool: "pen" | "arrow" | "dot" | "hl"; color: string; p
 
 export interface Prefs { theme: "system" | "light" | "dark"; size: "normal" | "large"; teamId: string | null; focus?: boolean; quick?: boolean; labsFocus?: boolean; offline?: boolean;
   /** This device's job when several coaches track one match: everything, only the score, or chosen stats that don't change the score. */
-  job?: "all" | "score" | "stats"; jobGroups?: string[] }
+  job?: "all" | "score" | "stats"; jobGroups?: string[];
+  /** The sidebar folded to icons (wide screens). */
+  navMini?: boolean }
 
 export const STORES = ["teams", "seasons", "players", "matches", "logs", "opponents", "drills", "plans", "boards", "kv"] as const;
 export type StoreName = (typeof STORES)[number];

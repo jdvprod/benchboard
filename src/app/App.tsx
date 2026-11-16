@@ -9,6 +9,7 @@ import { Icon } from "../ui/icons";
 import { Toast } from "../ui/kit";
 import { TrackPage } from "../features/track/TrackPage";
 import { Home } from "../features/home/Home";
+import { TeamMenu } from "./TeamMenu";
 import { Welcome } from "../features/team/Welcome";
 import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -44,6 +45,7 @@ export function App() {
   useVersion();
   const route = useRoute(), t = team();
   useEffect(() => { applyTheme(t?.color || "#2A78AE", state.prefs.theme, state.prefs.size, HOST_THEME); }, [t?.color, state.prefs.theme, state.prefs.size]);
+  useEffect(() => { document.body.classList.toggle("nav-mini", !!state.prefs.navMini); }, [state.prefs.navMini]);
   // public pages moved to their own sites: Floorcall Live and Floorcall Recruit (old links keep working)
   if ((route.page === "watch" || route.page === "season" || route.page === "recruit") && route.id) {
     location.replace(siteUrl(route.page === "recruit" ? "recruit" : "live", (route.page === "watch" ? "g/" : route.page === "season" ? "t/" : "p/") + route.id));
@@ -80,13 +82,6 @@ export function App() {
   const page = route.page;
   const showBoard = !!currentMatch() && ["track", "practice", "lineup", "formations", "stats", "court", "matchup"].includes(page) && !(page === "practice" && currentMatch()?.kind === "match");
   const teams = all("teams").sort((a, b) => a.createdAt - b.createdAt);
-  const switcher = (cls: string) => (
-    <select className={cls} value={t.id} aria-label="Team" onChange={(e) => { if (e.target.value === "__new") location.hash = "#/team/new"; else if (e.target.value === "__club") location.hash = "#/club"; else setPrefs({ teamId: e.target.value }); }}>
-      {teams.map((x) => <option key={x.id} value={x.id}>{x.name}{x.level ? " · " + x.level : ""}</option>)}
-      {teams.filter((x) => !x.sample).length > 1 && <option value="__club">All teams overview</option>}
-      <option value="__new">+ Add a team</option>
-    </select>
-  );
   let body;
   switch (page) {
     case "club": body = <ClubPage />; break;
@@ -115,14 +110,15 @@ export function App() {
   return <>
     <nav className="nav" aria-label="Sections">
       <div className="brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
-      <div className="teamswitch">{switcher("")}</div>
-      {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
+      <div className="teamswitch"><TeamMenu compact={!!state.prefs.navMini} /></div>
+      {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} title={state.prefs.navMini ? l : undefined} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <SiteSwitch here="app" />
       <AccountChip />
-      <a className="tab wide-only" href="#/settings" aria-current={page === "settings" ? "page" : undefined}><Icon name="settings" /><span>Settings</span></a>
+      <a className="tab wide-only" href="#/settings" aria-current={page === "settings" ? "page" : undefined} title={state.prefs.navMini ? "Settings" : undefined}><Icon name="settings" /><span>Settings</span></a>
+      <button className="tab wide-only nav-fold" onClick={() => { document.body.classList.add("nav-anim"); setTimeout(() => document.body.classList.remove("nav-anim"), 300); setPrefs({ navMini: !state.prefs.navMini }); }} aria-label={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"} title={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />{state.prefs.navMini ? <path d="m13 10 2 2-2 2" /> : <path d="m16 10-2 2 2 2" />}</svg><span>Collapse</span></button>
     </nav>
     <div className="content">
-      <div className="mobilebar"><b>Floorcall</b>{switcher("")}{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
+      <div className="mobilebar"><b>Floorcall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
       {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Floorcall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
       <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{body}</Suspense></ErrorBoundary>
