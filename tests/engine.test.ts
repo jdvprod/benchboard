@@ -550,3 +550,15 @@ test("voice entry: speech becomes type-in codes", () => {
   assert.equal(spokenToCodes("um nice"), "");
   for (const s of ["7k", "12ace ok11", "4p3 1ast 7k", "23bs", "oe", "8se u"]) assert.equal(parseQuick(s).errors.length, 0, s);
 });
+
+test("blocks are whole numbers: each blocker gets the block, the team gets one point", async () => {
+  const { blocks, pointsWon, teamBlocks, teamPointsWon } = await import("../src/sports/volleyball/metrics");
+  const R = replay([ev("NS", { serve: "us", lu: LU }), ev("BA", { p: "mb1" }), ev("BA", { p: "opp" }), ev("BS", { p: "mb2" }), ev("K", { p: "oh1" })]);
+  const A = aggregate(R.sets);
+  assert.equal(R.sets[0].us, 3, "a two-person block is one point");
+  assert.equal(blocks(A.ps.mb1), 1); assert.equal(blocks(A.ps.opp), 1); assert.equal(blocks(A.ps.mb2), 1);
+  assert.equal(pointsWon(A.ps.mb1), 1, "each blocker is credited with the point");
+  assert.equal(teamBlocks(A), 2, "the team won two points by blocking");
+  assert.equal(teamPointsWon(A), 3);
+  for (const s of Object.values(A.ps)) assert.ok(Number.isInteger(blocks(s)) && Number.isInteger(pointsWon(s)), "never half a block");
+});

@@ -2,7 +2,7 @@
 import { player, team } from "../../data/store";
 import { Match } from "../../data/model";
 import { aggregate, momentum, Replay, Stat } from "../../sports/volleyball/engine";
-import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
+import { teamBlocks, blocks, fmtAvg, fmtHit, fmtNum, fmtPct, hitting, passAvg, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
 import { sideNames } from "../../app/Scoreboard";
 import { rate, situations } from "../../sports/volleyball/situations";
 
@@ -43,7 +43,7 @@ table{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:ta
 <section><h3>Team</h3><div class="ks">
 <div class="k"><div class="l">Kills</div><div class="v">${T.K}</div><div class="s">hitting ${fmtHit(M.hitting)}</div></div>
 <div class="k"><div class="l">Aces</div><div class="v">${T.SA}</div><div class="s">serving ${fmtPct(M.serveIn)} in</div></div>
-<div class="k"><div class="l">Blocks</div><div class="v">${fmtNum(blocks(T))}</div><div class="s">${T.BS} solo</div></div>
+<div class="k"><div class="l">Blocks</div><div class="v">${teamBlocks(A)}</div><div class="s">${T.BS} solo</div></div>
 <div class="k"><div class="l">Digs</div><div class="v">${T.D}</div><div class="s">${fmtNum(M.perSet?.D ?? null)} per set</div></div>
 <div class="k"><div class="l">Passing</div><div class="v">${fmtAvg(M.passAvg)}</div><div class="s">${fmtPct(M.perfectPass)} perfect</div></div>
 <div class="k"><div class="l">Side-out</div><div class="v">${fmtPct(M.sideOut)}</div><div class="s">on their serve</div></div></div></section>

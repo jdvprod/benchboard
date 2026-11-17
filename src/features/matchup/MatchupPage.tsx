@@ -6,7 +6,7 @@ import { useState } from "react";
 import { ensureOpponent, get, setOppRoster, matchesOf, newMatch, oppKey, opponentsOf, patch, playerName, replayOf, setTeamPatch, team, teamPlayers, toast, todayISO, uid } from "../../data/store";
 import { Match, Opponent, PlanItem, ScheduleItem } from "../../data/model";
 import { aggregate, Agg, Replay, resultOf } from "../../sports/volleyball/engine";
-import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, playerMetrics, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
+import { teamBlocks, blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, playerMetrics, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
 import { tendencies, ALL_ZONES } from "../../sports/volleyball/tendencies";
 import { Card, ConfirmButton, download, fmtDate, Seg } from "../../ui/kit";
 import { CourtSvg } from "../../ui/court";
@@ -159,7 +159,7 @@ function Compare({ A, season }: { A: Agg; season: Agg }) {
     ["Pass average", M.passAvg, S.passAvg, (v) => fmtAvg(v), true],
     ["Serve in %", M.serveIn, S.serveIn, fmtPct, true],
     ["Aces per set", per(A, A.T.SA), per(season, season.T.SA), (v) => fmtNum(v, 2), true],
-    ["Blocks per set", per(A, blocks(A.T)), per(season, blocks(season.T)), (v) => fmtNum(v, 2), true],
+    ["Blocks per set", per(A, teamBlocks(A)), per(season, teamBlocks(season)), (v) => fmtNum(v, 2), true],
     ["Errors per set", M.perSet?.errors ?? null, S.perSet?.errors ?? null, (v) => fmtNum(v, 1), false],
     ["Their kills per set", per(A, A.team.OK), per(season, season.team.OK), (v) => fmtNum(v, 1), false],
   ];

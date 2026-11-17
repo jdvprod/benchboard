@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { currentMatch, get, matchesOf, playerName, replayOf, team } from "../../data/store";
 import { aggregate, momentum, runOf, serverOf, Stat } from "../../sports/volleyball/engine";
-import { blocks, fmtAvg, fmtHit, fmtPct, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
+import { teamBlocks, blocks, fmtAvg, fmtHit, fmtPct, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
 import { Card, fmtDate } from "../../ui/kit";
 import { MomentumChart } from "../../ui/charts";
 import { logText } from "../track/Tracker";
@@ -24,7 +24,7 @@ export function LivePage() {
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <div className="k" key={label}><div className="label">{label}</div><b style={{ fontFamily: "var(--display)", fontSize: 26 }}>{+top[1].toFixed(1)}</b><div className="small">{playerName(top[0], "full")}</div></div> : null; };
   const them = A.team, oppAces = them.OA, oppKills = them.OK;
   const cmp: [string, string, string][] = [
-    ["Kills", String(A.T.K), String(oppKills)], ["Aces", String(A.T.SA), String(oppAces)], ["Blocks", String(blocks(A.T)), "—"],
+    ["Kills", String(A.T.K), String(oppKills)], ["Aces", String(A.T.SA), String(oppAces)], ["Blocks", String(teamBlocks(A)), "—"],
     ["Errors given", String(M.freePoints.ours), String(M.freePoints.theirs)], ["Hitting %", fmtHit(M.hitting), "—"], ["Side-out %", fmtPct(M.sideOut), fmtPct(ratio(A.psc.n - A.psc.w, A.psc.n))], ["Pass average", fmtAvg(M.passAvg), "—"], ["Serve errors", String(serveErrors(A.T)), "—"],
   ];
 

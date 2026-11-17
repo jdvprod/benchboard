@@ -7,7 +7,7 @@ import { ACTIONS } from "../../sports/volleyball/actions";
 import { clipsFrom, filmTiming, highlightPick, LOCAL, playName, videoKind } from "../../film/clips";
 import { localVideo } from "../../film/localVideos";
 import { aggregate, Replay, Stat } from "../../sports/volleyball/engine";
-import { blocks, teamMetrics } from "../../sports/volleyball/metrics";
+import { teamBlocks, blocks, teamMetrics } from "../../sports/volleyball/metrics";
 import { canvasImage, drawLogo } from "../../lib/image";
 import { reelMime } from "../../film/reel";
 
@@ -58,7 +58,7 @@ function numbersOf(A: ReturnType<typeof aggregate>): RecapData["nums"] {
   if (A.T.K) nums.push({ v: String(A.T.K), label: "KILLS" });
   if (hit !== null && A.T.K) nums.push({ v: (hit < 0 ? "-" : "") + Math.abs(hit).toFixed(3).replace(/^0/, ""), label: "HITTING" });
   if (A.T.SA) nums.push({ v: String(A.T.SA), label: "ACES" });
-  if (blocks(A.T)) nums.push({ v: String(+blocks(A.T).toFixed(1)), label: "BLOCKS" });
+  if (teamBlocks(A)) nums.push({ v: String(teamBlocks(A)), label: "BLOCKS" });
   if (A.T.D) nums.push({ v: String(A.T.D), label: "DIGS" });
   if (M.sideOut !== null) nums.push({ v: Math.round(M.sideOut * 100) + "%", label: "SIDE-OUT" });
   return nums.slice(0, 6);

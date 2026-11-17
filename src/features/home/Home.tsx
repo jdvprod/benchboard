@@ -50,7 +50,7 @@ export function Home() {
   const leaders = (f: (s: any) => number) => Object.entries(A.ps).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0];
   const startNext = () => { if (!next) return; newMatch({ kind: "match", opp: next.opp, date: today, site: next.site, event: next.event, bestOf: t.settings.bestOf, serve: "us" }); if (next.date === today) setTeamPatch({ schedule: (t.schedule || []).filter((x) => x.id !== next.id) }); setUi({ sel: null, panel: null, follow: null }); };
   const lastA = last ? aggregate(last.R.sets) : null, lastM = lastA ? teamMetrics(lastA) : null;
-  const star = lastA ? Object.entries(lastA.ps).map(([id, s]) => [id, s.K + s.SA + s.BS + s.BA / 2 - s.AE - s.SE - s.SEN - s.SEO] as [string, number]).sort((a, b) => b[1] - a[1])[0] : null;
+  const star = lastA ? Object.entries(lastA.ps).map(([id, s]) => [id, s.K + s.SA + s.BS + s.BA - s.AE - s.SE - s.SEN - s.SEO] as [string, number]).sort((a, b) => b[1] - a[1])[0] : null;
 
   const lastResult = last ? resultOf(last.R) : null;
   const streak = (() => { let k: string | null = null, n = 0; for (const g of done) { const r = g.R.wonUs > g.R.wonThem ? "W" : g.R.wonThem > g.R.wonUs ? "L" : "T"; if (!k) k = r; if (r !== k) break; n++; } return k && n > 1 ? `${k === "W" ? "Won" : k === "L" ? "Lost" : "Tied"} ${n} straight` : ""; })();

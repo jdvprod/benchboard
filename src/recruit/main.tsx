@@ -63,7 +63,7 @@ function Profile({ code }: { code: string }) {
   const contact = mail(pr.email);
   type G = RecruitData["games"][number];
   const allCols: [string, (g: G) => string | number, (g: G) => number][] = [["SP", (g) => g.sets, () => 1], ["K", (g) => g.K, (g) => g.K + g.TA], ["E", (g) => g.AE, (g) => g.TA], ["TA", (g) => g.TA, (g) => g.TA], ["Hit%", (g) => (g.TA ? fmtHit((g.K - g.AE) / g.TA) : "–"), (g) => g.TA],
-    ["A", (g) => g.SA, (g) => g.SA + g.SE], ["Rec", (g) => g.R, (g) => g.R], ["Pass", (g) => (g.R ? fmtAvg(g.RS / g.R) : "–"), (g) => g.R], ["D", (g) => g.D, (g) => g.D], ["Blk", (g) => fmtNum(g.BS + g.BA / 2), (g) => g.BS + g.BA], ["Ast", (g) => g.AST, (g) => g.AST]];
+    ["A", (g) => g.SA, (g) => g.SA + g.SE], ["Rec", (g) => g.R, (g) => g.R], ["Pass", (g) => (g.R ? fmtAvg(g.RS / g.R) : "–"), (g) => g.R], ["D", (g) => g.D, (g) => g.D], ["Blk", (g) => g.BS + g.BA, (g) => g.BS + g.BA], ["Ast", (g) => g.AST, (g) => g.AST]];
   // columns the staff never recorded for this player are left out
   const cols = allCols.filter(([, , has]) => games.some((g) => has(g) > 0)).map(([h, f]) => [h, f] as [string, (g: G) => string | number]);
   return <Shell crumb={t.name}>

@@ -8,7 +8,10 @@ export const ratio = (a: number, b: number): number | null => (b ? a / b : null)
 export const serveErrors = (s: Stat) => s.SE + s.SEN + s.SEO;
 export const serveAttempts = (s: Stat) => s.SA + s.SI + serveErrors(s);
 export const miscErrors = (s: Stat) => s.CE + s.EE + s.PE;
-export const blocks = (s: Stat) => s.BS + s.BA / 2;
+/** A player's blocks: every block they were part of, solo or with a teammate. Whole numbers, never half a block. */
+export const blocks = (s: Stat) => s.BS + s.BA;
+/** The team's blocks: points actually won by a block. A two-person block is one point, not two (the engine counts it once). */
+export const teamBlocks = (A: Agg) => A.src.us.BLK ?? A.T.BS + Math.ceil(A.T.BA / 2);
 export const hitting = (s: Pick<Stat, "K" | "AE" | "TA">) => ratio(s.K - s.AE, s.TA);
 export const killPct = (s: Stat) => ratio(s.K, s.TA);
 export const attackErrPct = (s: Stat) => ratio(s.AE, s.TA);
@@ -21,8 +24,10 @@ export const serveInPct = (s: Stat, served = 0) => ratio(serves(s, served) - ser
 export const aceErrorRatio = (s: Stat) => ratio(s.SA, serveErrors(s));
 /** (aces − errors) ÷ attempts, the serving version of hitting %. */
 export const serveEfficiency = (s: Stat, served = 0) => ratio(s.SA - serveErrors(s), serves(s, served));
-/** Points a player directly produced. */
-export const pointsWon = (s: Stat) => s.K + s.SA + s.BS + s.BA / 2;
+/** Points a player directly produced: kills, aces and blocks (each blocker on a shared block gets the point). */
+export const pointsWon = (s: Stat) => s.K + s.SA + s.BS + s.BA;
+/** Points the team won by its own play: kills, aces and block points. */
+export const teamPointsWon = (A: Agg) => A.T.K + A.T.SA + teamBlocks(A);
 /** Points a player directly gave away. */
 export const errorsGiven = (s: Stat) => s.AE + serveErrors(s) + s.P0 + s.BE + s.BHE + s.DE + miscErrors(s);
 /** Points won minus errors given: a simple all-around rating. */
@@ -74,7 +79,7 @@ export function teamMetrics(A: Agg): TeamMetrics {
     inSystemPct: inSystemPct(A), hitInSystem: hitCtx(inSystem(A)), hitOutOfSystem: hitCtx(outOfSystem(A)), hitTransition: hitCtx(transition(A)),
     digSuccess: digSuccess(A), freeBallWin: ratio(A.fbr.w, A.fbr.n),
     soByPass: { P3: ratio(A.soByPass.P3.w, A.soByPass.P3.n), P2: ratio(A.soByPass.P2.w, A.soByPass.P2.n), P1: ratio(A.soByPass.P1.w, A.soByPass.P1.n), P0: ratio(A.soByPass.P0.w, A.soByPass.P0.n) },
-    perSet: sets ? { K: per(T.K), SA: per(T.SA), BLK: per(blocks(T)), D: per(T.D), AST: per(T.AST), errors: per(teamErrorsGiven(A)) } : null,
+    perSet: sets ? { K: per(T.K), SA: per(T.SA), BLK: per(teamBlocks(A)), D: per(T.D), AST: per(T.AST), errors: per(teamErrorsGiven(A)) } : null,
     freePoints: { theirs: A.team.OE, ours: teamErrorsGiven(A) },
   };
 }

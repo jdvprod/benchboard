@@ -1,9 +1,9 @@
 /** Every stat a coach can pick from: one list feeds the stat dropdown, the "choose your stats" table and its printout. */
 import { Agg, Stat } from "../../sports/volleyball/engine";
-import { blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, killPct, miscErrors, netPoints, passAvg, perfectPassPct, ratio, serveErrors } from "../../sports/volleyball/metrics";
+import { blocks, teamBlocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, killPct, miscErrors, netPoints, passAvg, perfectPassPct, ratio, serveErrors } from "../../sports/volleyball/metrics";
 
 /** What one row of numbers is about: the team, or one player, over some sets. */
-export interface Subject { s: Stat; served: number; sets: number; pm?: { w: number; l: number } }
+export interface Subject { s: Stat; served: number; sets: number; pm?: { w: number; l: number }; /** the team row: points won by blocks */ blkPts?: number }
 export type Fmt = "int" | "hit" | "pct" | "avg" | "dec" | "signed";
 export interface StatDef { key: string; label: string; short: string; group: string; fmt: Fmt; get: (x: Subject) => number | null; lowIsGood?: boolean; desc?: string }
 
@@ -46,12 +46,12 @@ export const STATS: StatDef[] = [
   { key: "DE", label: "Dig errors", short: "Dig E", group: "Defense", fmt: "int", get: ({ s }) => s.DE, lowIsGood: true },
   { key: "dps", label: "Digs per set", short: "Dig/S", group: "Defense", fmt: "dec", get: (x) => per(x.s.D, x) },
 
-  { key: "BLK", label: "Total blocks", short: "Blk", group: "Block", fmt: "dec", get: ({ s }) => blocks(s), desc: "Solos plus half of each assist" },
+  { key: "BLK", label: "Total blocks", short: "Blk", group: "Block", fmt: "int", get: (x) => x.blkPts ?? blocks(x.s), desc: "Solo blocks plus block assists. For the team, points won by a block" },
   { key: "BS", label: "Solo blocks", short: "Solo", group: "Block", fmt: "int", get: ({ s }) => s.BS },
   { key: "BA", label: "Block assists", short: "B Ast", group: "Block", fmt: "int", get: ({ s }) => s.BA },
   { key: "BT", label: "Block touches", short: "Touch", group: "Block", fmt: "int", get: ({ s }) => s.BT || 0 },
   { key: "BE", label: "Block / net errors", short: "Blk E", group: "Block", fmt: "int", get: ({ s }) => s.BE, lowIsGood: true },
-  { key: "bps", label: "Blocks per set", short: "Blk/S", group: "Block", fmt: "dec", get: (x) => per(blocks(x.s), x) },
+  { key: "bps", label: "Blocks per set", short: "Blk/S", group: "Block", fmt: "dec", get: (x) => per(x.blkPts ?? blocks(x.s), x) },
 
   { key: "ERR", label: "Total errors", short: "Errors", group: "Errors", fmt: "int", get: ({ s }) => totalErrors(s), lowIsGood: true, desc: "Every error that gave them a point" },
   { key: "eps", label: "Errors per set", short: "Err/S", group: "Errors", fmt: "dec", get: (x) => per(totalErrors(x.s), x), lowIsGood: true },
@@ -75,7 +75,7 @@ export function fmtStat(d: StatDef, v: number | null): string {
 }
 
 const Z = {} as Stat;
-export const teamSubject = (A: Agg): Subject => ({ s: A.T, served: A.psc.n, sets: A.sets });
+export const teamSubject = (A: Agg): Subject => ({ s: A.T, served: A.psc.n, sets: A.sets, blkPts: teamBlocks(A) });
 export const playerSubject = (A: Agg, id: string): Subject => ({ s: A.ps[id] || Z, served: A.srv[id]?.n || 0, sets: A.setsPlayed[id] || 0, pm: A.pm[id] });
 
 /** Ready-made picks so a coach starts from something sensible. */

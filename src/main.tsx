@@ -17,8 +17,17 @@ consumeAuthRedirect().finally(() => {
 if ("serviceWorker" in navigator && location.protocol.startsWith("http") && location.hostname !== "localhost") {
   window.addEventListener("load", () => {
     const hadController = !!navigator.serviceWorker.controller;
-    navigator.serviceWorker.register("sw.js").catch(() => {});
-    // a new version took over: say so once (pages already load network-first, so it's in use after this reload)
-    navigator.serviceWorker.addEventListener("controllerchange", () => { if (hadController) toast("Floorcall updated to the latest version"); });
+    const reg = navigator.serviceWorker.register("sw.js").catch(() => null);
+    // An installed app can stay open for days, so look for a new version whenever it comes back to the screen.
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") reg.then((r) => r?.update()).catch(() => {}); });
+    // A new version took over. Switch to it the next time the coach comes back to the app (never mid-tap or mid-typing),
+    // or right away if nothing's on screen yet. Everything is saved as it's entered, so reloading loses nothing.
+    let ready = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (!hadController || ready) return; ready = true;
+      if (document.visibilityState === "hidden") { location.reload(); return; }
+      toast("A new version of Floorcall is ready. It switches over the next time you come back to the app.");
+      document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") location.reload(); });
+    });
   });
 }

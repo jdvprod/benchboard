@@ -10,7 +10,7 @@ import type { Roster } from "./GameView";
 type Logos = { us?: string | null; them?: string | null };
 interface Cat { key: string; title: string; ours: (s: Stat) => number; line: (s: Stat) => string; theirs?: (o: Opp) => number; theirLine?: (o: Opp) => string; theirTeam?: (A: Agg) => number }
 interface Opp { K: number; A: number; E: number; P: number }
-const pts = (s: Stat) => s.K + s.SA + s.BS + s.BA / 2;
+const pts = (s: Stat) => s.K + s.SA + s.BS + s.BA; // each blocker on a shared block gets the point
 const n1 = (v: number) => String(+v.toFixed(1));
 
 const CATS: Cat[] = [

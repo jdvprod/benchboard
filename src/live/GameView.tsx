@@ -2,7 +2,7 @@
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { useState } from "react";
 import { aggregate, LogEntry, momentum, serverOf, Stat } from "../sports/volleyball/engine";
-import { blocks, fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveErrors, serves, teamMetrics } from "../sports/volleyball/metrics";
+import { teamPointsWon, teamBlocks, blocks, fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveErrors, serves, teamMetrics } from "../sports/volleyball/metrics";
 import { MomentumChart } from "../ui/charts";
 import { GameScore } from "../ui/GameScore";
 import { fmtDay, Game, isLive, LPlayer, pname } from "./data";
@@ -119,13 +119,13 @@ function BoxScore({ g, team, P, follow, logo }: { g: Game; team: string; P: Map<
   const byNum = (a: string, b: string) => (+P.get(a)!.num || 0) - (+P.get(b)!.num || 0);
   const played = (id: string) => !!(A.setsPlayed[id] || A.ps[id]);
   const starters = [...P.keys()].filter((id) => start.has(id)).sort(byNum), bench = [...P.keys()].filter((id) => !start.has(id)).sort((a, b) => (+played(b) - +played(a)) || byNum(a, b));
-  const pts = (s: Stat) => s.K + s.SA + s.BS + s.BA / 2;
+  const pts = (s: Stat) => s.K + s.SA + s.BS + s.BA; // each blocker on a shared block gets the point
   const COLS: [string, string, (s: Stat, served: number) => string | number][] = [
     ["K", "Kills", (s) => s.K], ["E", "Attack errors", (s) => s.AE], ["TA", "Attack attempts", (s) => s.TA], ["PCT", "Hitting percentage", (s) => (s.TA ? fmtHit(hitting(s)) : "–")],
     ["AST", "Assists", (s) => s.AST], ["SA", "Service aces", (s) => s.SA], ["SE", "Service errors", (s) => serveErrors(s)],
     ["REC", "Serve receptions", (s) => s.R], ["RE", "Reception errors", (s) => s.P0], ["PASS", "Pass average, 0–3", (s) => (s.R ? fmtAvg(passAvg(s)) : "–")],
     ["DIG", "Digs", (s) => s.D], ["BS", "Solo blocks", (s) => s.BS], ["BA", "Block assists", (s) => s.BA], ["BT", "Block touches", (s) => s.BT || 0],
-    ["BLK", "Total blocks", (s) => +blocks(s).toFixed(1)], ["PTS", "Points: kills + aces + solo blocks + half of block assists", (s) => +pts(s).toFixed(1)],
+    ["BLK", "Total blocks: solo plus assists", (s) => blocks(s)], ["PTS", "Points: kills + aces + blocks", (s) => pts(s)],
   ];
   const head = (label: string) => <tr className="lv-ebox-sec"><th className="nm" scope="col">{label}</th><th scope="col" title={tr("Sets played")}>SP</th>{COLS.map(([k, t]) => <th key={k} scope="col" title={tr(t)}>{k}</th>)}</tr>;
   const line = (id: string) => {
@@ -141,7 +141,7 @@ function BoxScore({ g, team, P, follow, logo }: { g: Game; team: string; P: Map<
       {starters.length > 0 && <><thead>{head(tr("Starters"))}</thead><tbody>{starters.map(line)}</tbody></>}
       <thead>{head(starters.length ? tr("Bench") : tr("Players"))}</thead><tbody>{bench.map(line)}</tbody>
       <tfoot>
-        <tr className="tot"><th className="nm" scope="row">{tr("Team")}</th><td>{A.sets}</td>{COLS.map(([k, , f]) => <td key={k}>{f(A.T, A.psc.n)}</td>)}</tr>
+        <tr className="tot"><th className="nm" scope="row">{tr("Team")}</th><td>{A.sets}</td>{COLS.map(([k, , f]) => <td key={k}>{k === "BLK" ? teamBlocks(A) : k === "PTS" ? teamPointsWon(A) : f(A.T, A.psc.n)}</td>)}</tr>
       </tfoot>
     </table></div>
     <p className="lv-note">{tr("{them}: {k} kills, {a} aces, {e} errors. SP = sets played. PCT = (kills − errors) ÷ attempts.", { them, k: A.team.OK, a: A.team.OA, e: A.team.OE })}</p>
@@ -177,7 +177,7 @@ function TeamStats({ g, team }: { g: Game; team: string }) {
     [tr("Points"), A.us, A.them, (v) => String(v ?? "—"), true],
     [tr("Kills"), A.T.K, A.team.OK, (v) => String(v ?? "—"), true],
     [tr("Aces"), A.T.SA, A.team.OA, (v) => String(v ?? "—"), true],
-    [tr("Blocks"), blocks(A.T), null, (v) => (v == null ? "—" : String(+v.toFixed(1))), true],
+    [tr("Blocks"), teamBlocks(A), null, (v) => (v == null ? "—" : String(v)), true],
     [tr("Errors (points given)"), M.freePoints.ours, M.freePoints.theirs, (v) => String(v ?? "—"), false],
     [tr("Side-out %"), M.sideOut, ratio(A.psc.n - A.psc.w, A.psc.n), fmtPct, true],
     [tr("Serve in %"), M.serveIn, null, fmtPct, true],

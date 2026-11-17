@@ -4,7 +4,7 @@ import { activePlayers, matchesOf, oppKey, opponentsOf, player, playerName, repl
 import { Match } from "../data/model";
 import { aggregate, Agg, runOf, serverOf, Stat, zoneOf } from "../sports/volleyball/engine";
 import { CONTEXT_LABEL, AttackContext } from "../sports/volleyball/actions";
-import { blocks, fmtAvg, fmtHit, fmtPct, hitting, passAvg, playerMetrics, ratio, serveAttempts, serveErrors, serveInPct, teamErrorsGiven, teamMetrics } from "../sports/volleyball/metrics";
+import { teamBlocks, blocks, fmtAvg, fmtHit, fmtPct, hitting, passAvg, playerMetrics, ratio, serveAttempts, serveErrors, serveInPct, teamErrorsGiven, teamMetrics } from "../sports/volleyball/metrics";
 import { flags } from "../sports/volleyball/flags";
 import { tendencies } from "../sports/volleyball/tendencies";
 
@@ -16,7 +16,7 @@ export function statLine(s: Stat) {
 }
 export function teamLine(A: Agg) {
   const M = teamMetrics(A), T = A.T;
-  return `hitting ${fmtHit(M.hitting)} (${T.K}K ${T.AE}E ${T.TA}TA), in-system ${fmtHit(M.hitInSystem)}, out-of-system ${fmtHit(M.hitOutOfSystem)}, transition ${fmtHit(M.hitTransition)}; serving ${fmtPct(M.serveIn)} in, ${T.SA} aces, ${serveErrors(T)} errors; pass avg ${fmtAvg(M.passAvg)} (${fmtPct(M.perfectPass)} perfect); side-out ${pct(A.so.w, A.so.n)}, side-out after 3/2/1 pass ${fmtPct(M.soByPass.P3)}/${fmtPct(M.soByPass.P2)}/${fmtPct(M.soByPass.P1)}; first-ball side-out ${fmtPct(M.firstBallSO)}; point-scoring ${pct(A.psc.w, A.psc.n)}; digs ${T.D}, dig errors ${T.DE}; blocks ${blocks(T)}; free balls won ${A.fbr.w}/${A.fbr.n}; points we gave away ${teamErrorsGiven(A)}; their errors ${A.team.OE}`;
+  return `hitting ${fmtHit(M.hitting)} (${T.K}K ${T.AE}E ${T.TA}TA), in-system ${fmtHit(M.hitInSystem)}, out-of-system ${fmtHit(M.hitOutOfSystem)}, transition ${fmtHit(M.hitTransition)}; serving ${fmtPct(M.serveIn)} in, ${T.SA} aces, ${serveErrors(T)} errors; pass avg ${fmtAvg(M.passAvg)} (${fmtPct(M.perfectPass)} perfect); side-out ${pct(A.so.w, A.so.n)}, side-out after 3/2/1 pass ${fmtPct(M.soByPass.P3)}/${fmtPct(M.soByPass.P2)}/${fmtPct(M.soByPass.P1)}; first-ball side-out ${fmtPct(M.firstBallSO)}; point-scoring ${pct(A.psc.w, A.psc.n)}; digs ${T.D}, dig errors ${T.DE}; blocks ${teamBlocks(A)}; free balls won ${A.fbr.w}/${A.fbr.n}; points we gave away ${teamErrorsGiven(A)}; their errors ${A.team.OE}`;
 }
 
 export function snapshot(m: Match): string {
