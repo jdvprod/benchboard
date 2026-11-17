@@ -1,6 +1,7 @@
 /** Film Room home → Search all your film: one question across every match ("Maya's kills vs Buchanan",
  * "aces in the last 3 matches"), with the clips back to back and a highlight video for one player. */
 import { useMemo, useState } from "react";
+import type { LogEntry } from "../../sports/volleyball/engine";
 import { eventsOf, matchesOf, opponentsOf, player, replayOf, teamPlayers, todayISO } from "../../data/store";
 import { Card, fmtDate, plural } from "../../ui/kit";
 import { ClipPlayer } from "../../ui/ClipPlayer";
@@ -90,7 +91,7 @@ export function SeasonFind() {
           <button className="fr-group-t" aria-expanded={on} onClick={() => setOpen(on ? null : g.m.id)}><b>vs {g.m.opp}</b><span className="small muted">{fmtDate(g.m.date)} · {plural(g.rows.length, "play")}{!g.m.video ? " · no video" : ""}</span></button>
           <button className="btn sm" onClick={() => go("film", g.m.id)}>Open in Film Room</button>
         </div>
-        {on && <ul className="log film fr-rows">{g.rows.slice(0, 200).map((l) => { const s = l as any; return <li key={l.id}><span className="num fr-time">{g.m.video ? clock(Math.max(0, videoTime(g.T, l.id) - (g.m.film ? 5 : 8))) : "S" + l.set}</span><span>{label(l)}</span><span className={"small " + (s.w ? "pt-" + s.w : "muted")}>{s.w ? `${s.us}–${s.them}` : "S" + l.set}</span></li>; })}</ul>}
+        {on && <ul className="log film fr-rows">{g.rows.slice(0, 200).map((l: LogEntry) => { const s = l as any; return <li key={l.id}><span className="num fr-time">{g.m.video ? clock(Math.max(0, videoTime(g.T, l.id) - (g.m.film ? 5 : 8))) : "S" + l.set}</span><span>{label(l)}</span><span className={"small " + (s.w ? "pt-" + s.w : "muted")}>{s.w ? `${s.us}–${s.them}` : "S" + l.set}</span></li>; })}</ul>}
       </li>; })}</ul>
     </div>}
   </Card>;
