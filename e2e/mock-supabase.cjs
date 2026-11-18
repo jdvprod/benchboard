@@ -190,7 +190,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     }
     if (p === "/rest/v1/invites" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); invites.set(b.code, b); return send(res, 201); }
     if (p === "/rest/v1/members" && req.method === "GET" && P.user_id) { return send(res, 200, members.filter((m) => m.user_id === val(P.user_id) && m.user_id === me)); }
-    if (p === "/rest/v1/members" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, isMember(t, me) ? members.filter((m) => m.team_id === t) : []); }
+    if (p === "/rest/v1/members" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, members.filter((m) => m.team_id === t && (canEdit(t, me) || m.user_id === me))); }
     if (p === "/rest/v1/recruit_boards" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, [...boards.values()].filter((x) => x.team_id === t && isMember(t, me))); }
     if (p === "/rest/v1/recruit_boards" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); boards.set(b.code, b); return send(res, 201); }
     if (p === "/rest/v1/recruit_shares" && req.method === "GET") { const t = val(P.team_id), pl = val(P.player_id); return send(res, 200, [...recruits.values()].filter((r) => r.team_id === t && r.player_id === pl && isMember(t, me))); }

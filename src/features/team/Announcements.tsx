@@ -40,14 +40,14 @@ export function Announcements() {
         <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={pin} onChange={(e) => setPin(e.target.checked)} /> Pin to the top</label>
         <button className="btn primary sm" disabled={busy || !text.trim()} onClick={send}>{busy ? "Sending…" : "Send to followers"}</button>
       </div>
-    </div> : <p className="small muted">Coaches on this team can send announcements.</p>}
+    </div> : null}
     {err && <p className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</p>}
     {posts && posts.length > 0 && <ul className="ann-list">{posts.map((p) => <li key={p.id} className={p.pinned ? "pin" : ""}>
       <p>{p.body}</p>
       <div className="ann-meta"><span>{p.pinned ? "Pinned · " : ""}{p.by} · {when(p.at)} · read by {p.reads}</span>
         {can && <span className="row" style={{ gap: 6 }}><button className="btn sm ghost" onClick={() => change(p, { pin: !p.pinned })}>{p.pinned ? "Unpin" : "Pin"}</button><ConfirmButton className="btn sm ghost" confirmText="Delete for everyone?" onConfirm={() => change(p, { del: true })}>Delete</ConfirmButton></span>}</div>
     </li>)}</ul>}
-    {posts && !posts.length && <p className="small muted">Nothing sent yet.</p>}
-    <p className="small muted">Followers get a notification and read it on your team page on Floorcall Live (they need a free account). Messages go one way: nobody can reply here, and there are no private messages with players.</p>
+    {posts && !posts.length && <p className="small muted">{can ? "Nothing sent yet." : "No announcements yet. Your coaches' messages show up here and on Floorcall Live."}</p>}
+    {can && <p className="small muted">Followers get a notification and read it on your team page on Floorcall Live (they need a free account). Messages go one way: nobody can reply here, and there are no private messages with players.</p>}
   </Card>;
 }

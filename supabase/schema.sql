@@ -1121,7 +1121,8 @@ $$;
 drop policy if exists "teams create" on public.teams_cloud;
 create policy "teams create" on public.teams_cloud for insert with check (owner = auth.uid() and public.coach_ok());
 drop policy if exists "members read" on public.members;
-create policy "members read" on public.members for select using (is_member(team_id) or user_id = auth.uid());
+-- coaches see who's on the team; players and families see only their own membership (no one else's email)
+create policy "members read" on public.members for select using (can_edit(team_id) or user_id = auth.uid());
 drop policy if exists "records read" on public.records;
 create policy "records read" on public.records for select using (
   is_member(team_id) and (can_edit(team_id) or store not in ('opponents', 'drills', 'plans', 'boards')));

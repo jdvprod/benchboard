@@ -8,7 +8,7 @@ import { siteUrl } from "./links";
 import { announce } from "./notify";
 import { uploadPending } from "./media";
 import { autoLogo } from "./autoLogo";
-import { all, emit, get, hooks, remove, save, setClockOffset, state } from "../data/store";
+import { all, emit, get, hooks, patch, remove, save, setClockOffset, state } from "../data/store";
 import { StoreName } from "../data/model";
 import { CloudError, cloudAvailable, currentUser, rest, rpc, upsert } from "./client";
 
@@ -205,6 +205,7 @@ const code = (n = 6) => { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; let s = 
 export async function createInvite(teamId: string, role: "coach" | "viewer" = "coach") {
   const c = code(6);
   await rest("invites", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, role }) });
+  if (get("teams", teamId) && !get("teams", teamId)!.invited) patch("teams", teamId, { invited: true });
   return c;
 }
 export type Member = { user_id: string; role: string; email: string | null; status?: "active" | "pending" };

@@ -84,6 +84,7 @@ expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "v
 as $A "insert into records (store, id, team_id, data, u) values ('opponents', 'o1', 't2', '{\"name\":\"Them\",\"scout\":\"private\"}', 5), ('drills', 'd1', 't2', '{}', 5), ('matches', 'm9', 't2', '{}', 5);" >/dev/null
 expect "$(as $B "select string_agg(store, ',' order by store) from records where team_id = 't2';")" "matches,players" "view-only members (players, families) never see scouting or drills"
 expect "$(as $A "select count(*) from records where team_id = 't2';")" "4" "the team's coaches see everything"
+expect "$(as $B "select count(*) from members where team_id = 't2';")" "1" "players and families see only their own membership, not other people's emails"
 C=12121212-1212-1212-1212-121212121212; q -c "insert into auth.users values ('$C', 'c@example.com');"
 as $A "insert into invites (code, team_id, role) values ('COACH1', 't2', 'coach');" >/dev/null
 expect "$(as $C "select join_team('coach1');")" "t2" "a coach code joins the team"

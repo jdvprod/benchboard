@@ -25,7 +25,7 @@ export function SettingsPage() {
     <Card title="Look">
       <SetRow title="Theme"><Seg value={p.theme} onChange={(v) => setPrefs({ theme: v })} options={[["light", "Light"], ["dark", "Dark"]]} label="Theme" /></SetRow>
       <SetRow title="Text and button size" sub="Large is easier to hit on a tablet courtside."><Seg value={p.size} onChange={(v) => setPrefs({ size: v })} options={[["normal", "Normal"], ["large", "Large"]]} label="Size" /></SetRow>
-      <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>
+      {!isViewer(t.id) && <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>}
     </Card>
     {!isViewer(t.id) && <Card title={`Tracking · ${t.name}`}>
       <SetRow title="What to track" sub="Full stats has every button. Basic stats is the box score: kills, attempts, errors, aces, serve errors, assists, blocks and digs. Points only just keeps score, rally by rally. You can also switch on the Track screen."><Seg value={s.trackMode || "full"} onChange={(v) => setSettings({ trackMode: v })} options={TRACK_MODES.map(([k, l]) => [k, l] as [typeof k, string])} label="What to track" /></SetRow>
@@ -48,7 +48,7 @@ export function SettingsPage() {
     {t && !isViewer(t.id) && <Card title="Players' view">
       <SetRow title="See what players see" sub="Players and families who join with a view-only code get Home, Stats and the Team tab: results, the roster, everyone's stats and your announcements. They never see tracking, scouting, practice plans, drills or the court."><button className="btn sm" onClick={() => { setUi({ previewPlayer: true }); go("home"); }}>Preview</button></SetRow>
     </Card>}
-    <CloudSettings />
+    <CloudSettings admin={admin} />
     {admin && <section className="set-admin" aria-label="Admin">
       <div className="set-admin-hd"><b>Admin</b><span>Only Floorcall admins see this part.</span></div>
       <AdminLink />
@@ -66,7 +66,7 @@ export function SettingsPage() {
   </div>;
 }
 
-function CloudSettings() {
+function CloudSettings({ admin }: { admin: boolean }) {
   const own = (() => { try { return JSON.parse(localStorage.getItem("bs-cloud-config") || "null"); } catch { return null; } })();
   const [url, setUrl] = useState(own?.url || ""), [key, setKeyV] = useState(own?.key || ""), [open, setOpen] = useState(!!own);
   const user = currentUser();
@@ -74,7 +74,7 @@ function CloudSettings() {
     <SetRow title="Account" sub={cloudAvailable() ? (user ? "Signed in as " + user.email + ". Sync and sharing are on the Team tab." : "Sign in on the Team tab to sync teams and share them with other coaches.") : "Cloud sync isn't set up in this version."}>
       {user ? <button className="btn sm" onClick={() => { signOut(); toast("Signed out"); }}>Sign out</button> : <button className="btn sm" onClick={() => go("team")}>Team tab</button>}
     </SetRow>
-    {!open ? <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => setOpen(true)}>Use my own Supabase project</button> : <div className="stack" style={{ marginTop: 8 }}>
+    {!admin && !own ? null : !open ? <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => setOpen(true)}>Use my own Supabase project</button> : <div className="stack" style={{ marginTop: 8 }}>
       <p className="small muted">For developers and testing. Paste the Project URL and anon public key from Supabase → Project Settings → API. Leave empty to use the app's built-in project.</p>
       <div className="two">
         <label className="field"><span className="label">Project URL</span><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" /></label>

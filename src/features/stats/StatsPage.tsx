@@ -4,7 +4,7 @@ import { aggregate, Agg, recordOf, Stat } from "../../sports/volleyball/engine";
 import { AttackContext, CONTEXT_LABEL } from "../../sports/volleyball/actions";
 import { teamPointsWon, errorsGiven, blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtRatio, fmtSigned, hitting, passAvg, perfectPassPct, playerMetrics, ratio, serveAttempts, serveEfficiency, serveErrors, serveInPct, serves, teamMetrics, netPoints } from "../../sports/volleyball/metrics";
 import { flags } from "../../sports/volleyball/flags";
-import { Card, copyText, download, fmtDate, Kpi, Seg } from "../../ui/kit";
+import { Card, copyText, download, fmtDate, Kpi, plural, Seg } from "../../ui/kit";
 import { Diverge, LineChart, StackBar } from "../../ui/charts";
 import { AiCard } from "../../ui/ai";
 import { reportPrompt, seasonPrompt, snapshot, statLine } from "../../ai/prompts";
@@ -106,14 +106,14 @@ function Overview({ S, A }: { S: Scope; A: Agg }) {
     {single && <AiCard key={single.m.id} title={single.m.kind === "match" ? "Match report" : "Practice report"} desc="What decided it, standouts, concerns and practice priorities, written from the stats. Saved with the match." button="Write the report" prompt={() => reportPrompt(single.m)} saved={single.m.report} savedAt={single.m.reportAt} onSave={(text) => patch("matches", single.m.id, { report: text, reportAt: Date.now() })} filename={`${t.name} vs ${single.m.opp} report`} />}
     {single && <Card title="Match notes"><textarea className="input" aria-label="Match notes" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, their tendencies, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
     <div className="kpis">
-      <Kpi label="Hitting %" value={fmtHit(M.hitting)} delta={dv(M.hitting, B?.hitting, fmtHit, true)} sub={`${T.K} kills · ${T.AE} errors · ${T.TA} att`} />
+      <Kpi label="Hitting %" value={fmtHit(M.hitting)} delta={dv(M.hitting, B?.hitting, fmtHit, true)} sub={`${plural(T.K, "kill")} · ${plural(T.AE, "error")} · ${T.TA} att`} />
       <Kpi label="Side-out" value={fmtPct(M.sideOut)} delta={dv(M.sideOut, B?.sideOut, fmtPct, true)} sub={A.so.n ? `${A.so.w} of ${A.so.n} on their serve` : "from tracked matches"} />
       <Kpi label="First-ball side-out" value={fmtPct(M.firstBallSO)} delta={dv(M.firstBallSO, B?.firstBallSO, fmtPct, true)} sub="kill on the first attack after receive" />
       <Kpi label="Point-scoring" value={fmtPct(M.pointScoring)} delta={dv(M.pointScoring, B?.pointScoring, fmtPct, true)} sub={A.psc.n ? `${A.psc.w} of ${A.psc.n} on our serve` : "from tracked matches"} />
       <Kpi label="Pass average" value={fmtAvg(M.passAvg)} delta={dv(M.passAvg, B?.passAvg, (v) => fmtAvg(v), true)} sub={`${fmtPct(M.perfectPass)} perfect · ${T.P0} aced`} />
-      <Kpi label="Serving" value={fmtPct(M.serveIn)} delta={dv(M.serveIn, B?.serveIn, fmtPct, true)} sub={`in · ${T.SA} aces · ${serveErrors(T)} errors · eff ${fmtHit(M.serveEff)}`} />
+      <Kpi label="Serving" value={fmtPct(M.serveIn)} delta={dv(M.serveIn, B?.serveIn, fmtPct, true)} sub={`in · ${plural(T.SA, "ace")} · ${plural(serveErrors(T), "error")} · eff ${fmtHit(M.serveEff)}`} />
       <Kpi label="In-system %" value={fmtPct(M.inSystemPct)} delta={dv(M.inSystemPct, B?.inSystemPct, fmtPct, true)} sub="attacks off a 2 or 3 pass" />
-      <Kpi label="Dig success" value={fmtPct(M.digSuccess)} delta={dv(M.digSuccess, B?.digSuccess, fmtPct, true)} sub={`${T.D} digs · ${T.DE} dig errors`} />
+      <Kpi label="Dig success" value={fmtPct(M.digSuccess)} delta={dv(M.digSuccess, B?.digSuccess, fmtPct, true)} sub={`${plural(T.D, "dig")} · ${plural(T.DE, "dig error")}`} />
       <Kpi label="Free points" value={rallies ? <><span style={{ color: "var(--us)" }}>{M.freePoints.theirs}</span>–<span style={{ color: "var(--them)" }}>{M.freePoints.ours}</span></> : "—"} sub={rallies ? "their errors vs ours" : "from tracked matches"} />
       {M.perSet && <Kpi label="Per set" value={fmtNum(M.perSet.K)} delta={dv(M.perSet.K, B?.perSet?.K, (v) => fmtNum(v), true)} sub={`kills · ${fmtNum(M.perSet.SA)} aces · ${fmtNum(M.perSet.BLK)} blocks · ${fmtNum(M.perSet.D)} digs`} />}
     </div>

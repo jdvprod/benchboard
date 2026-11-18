@@ -7,7 +7,7 @@ import "./recruit.css";
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
-import { cloudAvailable, consumeAuthRedirect, rpc, TOO_MANY, tooMany } from "../cloud/client";
+import { cloudAvailable, consumeAuthRedirect, currentUser, rpc, TOO_MANY, tooMany } from "../cloud/client";
 import { ClipPlayer } from "../ui/ClipPlayer";
 import { Clip, videoKind } from "../film/clips";
 import { fmtAvg, fmtHit, fmtNum, fmtPct } from "../sports/volleyball/metrics";
@@ -16,11 +16,13 @@ import { College } from "./College";
 import { COLLEGE_SEARCH } from "./flags";
 import { EmailsPage, GuidePage, StudioPage } from "./Guide";
 import { SiteSwitch } from "../ui/SiteSwitch";
+import { SiteGate } from "../cloud/SiteGate";
 
 const parse = () => location.hash.replace(/^#\/?/, "").split("/").filter(Boolean);
 function useRoute() { const [r, setR] = useState(parse()); useEffect(() => { const f = () => { setR(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []); return r; }
 const day = (d: string | number) => { const x = typeof d === "number" ? new Date(d) : new Date(d + "T12:00:00"); return isNaN(+x) ? String(d) : x.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }); };
 const safeUrl = (u?: string) => { const v = (u || "").trim(); if (!v) return ""; try { const x = new URL(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : "https://" + v); return x.protocol === "https:" || x.protocol === "http:" ? x.href : ""; } catch { return ""; } };
+const plural = (n: number, one: string, many = one + "s") => `${n} ${n === 1 ? one : many}`;
 const mail = (e?: string) => (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()) ? "mailto:" + e.trim() : "");
 
 function Shell({ children, crumb }: { children: any; crumb?: string }) {
@@ -55,8 +57,8 @@ function Profile({ code }: { code: string }) {
   const fullVideo: Clip[] = video && (vk === "youtube" || vk === "vimeo") ? [{ id: "full", matchId: "", url: video, start: 0, end: 36000, label: "Highlight video", t: "VID", date: "", opp: "" }] : [];
   // only what the staff recorded: a team that doesn't track digs shouldn't make a player look like she has none
   const tiles: [string, string, string, number][] = [
-    ["Kills / set", fmtNum(s.kps, 2), `${s.K} kills`, s.K + s.TA], ["Hitting %", s.TA ? fmtHit(s.hitting) : "—", `${s.TA} swings, ${s.AE} errors`, s.TA], ["Aces / set", fmtNum(s.acesPs, 2), `${s.SA} aces`, s.SA + s.SE], ["Serve in", fmtPct(s.serveIn), `${s.SE} serve errors`, s.serveIn != null ? 1 : 0],
-    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${s.R} passes`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${s.D} digs`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists${s.BT ? `, ${s.BT} touches` : ""}`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
+    ["Kills / set", fmtNum(s.kps, 2), `${plural(s.K, "kill")}`, s.K + s.TA], ["Hitting %", s.TA ? fmtHit(s.hitting) : "—", `${plural(s.TA, "swing")}, ${plural(s.AE, "error")}`, s.TA], ["Aces / set", fmtNum(s.acesPs, 2), `${plural(s.SA, "ace")}`, s.SA + s.SE], ["Serve in", fmtPct(s.serveIn), `${s.SE} serve errors`, s.serveIn != null ? 1 : 0],
+    ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${plural(s.R, "pass", "passes")}`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${plural(s.D, "dig")}`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists${s.BT ? `, ${s.BT} touches` : ""}`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
   ];
   const shown = tiles.filter((x) => x[3] > 0);
   const measure: [string, string | undefined][] = [["Height", p.height], ["Standing reach", pr.reach], ["Approach jump", pr.approach], ["Block jump", pr.block], ["Dominant hand", pr.hand], ["GPA", pr.gpa], ["Club", pr.club]];
@@ -153,7 +155,7 @@ function Landing() {
       <a href="#/emails"><b>Emails to coaches</b><span>First emails, tournament schedules, follow-ups and thank-yous, written from your details.</span></a>
       <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
     </div>
-    <p className="rc-note">Free with a Floorcall account. Your film never leaves your device.</p>
+    <p className="rc-note">Part of your Floorcall account. Your film never leaves your device.</p>
   </section>
   {COLLEGE_SEARCH && <p className="rc-note rg-college">College coach? <a href="#/college">Search players whose families chose to be found</a>, and write to their coaches.</p>}</Shell>;
 }
@@ -163,10 +165,13 @@ function RecruitApp() {
   if (r[0] === "p" && r[1]) return <Profile key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "b" && r[1]) return <Board key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "college" && COLLEGE_SEARCH) return <College Shell={Shell} />;
-  if (r[0] === "guide") return <GuidePage Shell={Shell} />;
-  if (r[0] === "emails") return <EmailsPage Shell={Shell} />;
-  if (r[0] === "studio") return <StudioPage Shell={Shell} />;
-  return <Landing />;
+  // a player's profile and a team's board stay open: the family shares them with college coaches
+  const gated = (el: any) => (!cloudAvailable() || currentUser() ? el : <Shell><SiteGate name="Floorcall Recruit" kind="athlete" what="Recruiting for volleyball players: a profile with stats your coach recorded live, a step-by-step recruiting guide, emails to college coaches, and highlight reels."
+    points={["A recruiting profile your coach shares with one link", "Emails to college coaches, written from your stats", "Reel Studio: cut your own highlight video", "College coaches open your profile link without an account"]}>{null}</SiteGate></Shell>);
+  if (r[0] === "guide") return gated(<GuidePage Shell={Shell} />);
+  if (r[0] === "emails") return gated(<EmailsPage Shell={Shell} />);
+  if (r[0] === "studio") return gated(<StudioPage Shell={Shell} />);
+  return gated(<Landing />);
 }
 watchErrors();
 // back from a "confirm your email" link: finish signing in, then the college coach page

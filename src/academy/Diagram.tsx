@@ -45,7 +45,7 @@ const SPECS: Record<string, Spec> = {
     us: [{ at: [8.2, 1.0], label: "OH", key: true }],
     run: [{ from: [4.6, -0.8], to: [8.0, 0.9], bend: 0.4 }],
     them: [{ at: [9.6, 1.1], label: "B" }, { at: [9.6, 2.0], label: "B" }],
-    ball: [{ from: [8.6, 0.6], to: [17.2, 0.6], label: "Line" }, { from: [8.6, 1.2], to: [16.6, 7.6], label: "Cross" }, { from: [8.6, 1.5], to: [11.2, 4.0], bend: -0.8, label: "Tip" }],
+    ball: [{ from: [8.6, 0.6], to: [17.2, 0.6], label: "Line" }, { from: [8.6, 1.2], to: [16.6, 7.6], label: "Cross" }, { from: [8.6, 1.6], to: [12.2, 5.2], bend: -1.0, label: "Tip" }],
     notes: [{ at: [4.4, -0.2], text: "Start outside", anchor: "end" }],
   },
   defense: {

@@ -10,6 +10,7 @@ import { watchErrors } from "../app/errors";
 import { BeachEvent, BeachMatch, BeachState, Code, Format, FORMATS, hitPct, Line, pack, pairLine, pointScore, replay, scoreLine, sideOut, Side, summary, unpack } from "../sports/beach/engine";
 import { SiteSwitch } from "../ui/SiteSwitch";
 import { GoLive, Watch } from "./Live";
+import { SiteGate } from "../cloud/SiteGate";
 
 const KEY = "fc-beach";
 const load = (): BeachMatch[] => { try { const v = JSON.parse(localStorage.getItem(KEY) || "[]"); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -31,8 +32,10 @@ function App() {
     <main className="bv-main">
       {route[0] === "live" ? <Watch code={route[1] || ""} render={(lm, fresh) => <Match m={lm} onChange={() => {}} readOnly live={fresh ? "on" : "stale"} />} />
         : route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)
-        : m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
-        : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}
+        : <SiteGate name="Floorcall Beach" kind="athlete" what="Score and stat beach doubles from your phone: side-outs, aces, kills and digs for both pairs, with a live link anyone can follow."
+            points={["One-tap scoring with switch-side and timeout reminders", "Stats for all four players, and a box score after", "A live link for family and fans, no account needed to watch"]}>
+          {m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
+          : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}</SiteGate>}
     </main>
     <footer className="bv-foot">Matches are saved on this device, and scoring works without a signal once the page has loaded. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
   </div>;

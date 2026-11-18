@@ -2,8 +2,8 @@
 body{padding-left:0;background:var(--surface)}
 .ac{min-height:100vh;display:flex;flex-direction:column}
 .ac-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 24px;background:var(--bar);color:var(--bar-ink);position:sticky;top:0;z-index:20}
-.ac-brand{display:flex;align-items:baseline;gap:8px;color:inherit;text-decoration:none;font-family:var(--display);font-size:20px}
-.ac-brand b{font-weight:700;letter-spacing:.02em}.ac-brand span{color:var(--us-bright);font-weight:600}
+.ac-brand{display:inline-flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:var(--display);font-size:18px;letter-spacing:.04em}
+.ac-brand b{font-weight:700;text-transform:uppercase}.ac-brand span{border:1.5px solid var(--us-bright);color:var(--us-bright);border-radius:4px;padding:0 7px;font-weight:600;font-size:13px;letter-spacing:.1em;text-transform:uppercase}
 .ac-role{display:inline-flex;background:var(--bar-2);border:1px solid var(--bar-line);border-radius:999px;padding:3px}
 .ac-role button{appearance:none;border:0;background:none;color:var(--bar-muted);font:600 14px var(--body);padding:6px 14px;border-radius:999px;cursor:pointer}
 .ac-role button[aria-pressed=true]{background:var(--bar-ink);color:#000}
@@ -143,3 +143,5 @@ body{padding-left:0;background:var(--surface)}
 .ac-for button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;font:600 13.5px var(--body);cursor:pointer}
 .ac-for button[aria-pressed=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .ac-forchip{margin-left:8px;font:600 11.5px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px;vertical-align:2px}
+/* court diagrams: bigger labels on a phone, where the picture shrinks to half size */
+@media (max-width:560px){.ad-blabel,.ad-note{font-size:22px}.ad-side{font-size:20px}.ad-zone{font-size:24px}.ad-us text,.ad-them text{font-size:17px}}

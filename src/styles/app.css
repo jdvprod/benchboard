@@ -1134,7 +1134,7 @@ textarea.grow{field-sizing:content;min-height:2.6em;max-height:50vh}
 .hm-chev{width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:640px){
   .hm{padding-top:14px}.hm-title h1{font-size:28px}.hm-record b{font-size:32px}
-  .hm-band{padding:14px 16px;gap:10px;flex-direction:column;align-items:stretch}.hm-band-tag{align-self:flex-start}.hm-band-go{text-align:center}.hm-band-main b{font-size:22px}.hm-band-acts{width:100%}.hm-band-acts .btn{flex:1}
+  .hm-band{padding:14px 16px;gap:10px;flex-direction:column;align-items:stretch}.hm-band-main{flex:none}.hm-band-tag{align-self:flex-start}.hm-band-go{text-align:center}.hm-band-main b{font-size:22px}.hm-band-acts{width:100%}.hm-band-acts .btn{flex:1}
   .hm-sec{padding:16px}.hm-sets{font-size:34px}.hm-opp{font-size:20px}
   .hm-line,.hm-kpis{grid-template-columns:1fr 1fr;row-gap:12px}.hm-line div:nth-child(3),.hm-kpis div:nth-child(3){border-left:0;padding-left:0}
   .hm-work li{grid-template-columns:1fr;gap:2px}
@@ -1177,3 +1177,5 @@ body.nav-mini .sm-btn span{display:none}
 .pw-plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;max-width:720px;margin-bottom:16px}
 .pw-plan{display:grid;gap:10px;padding:18px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .pw-price{font:700 32px var(--display)}.pw-price small{font:500 14px var(--body);color:var(--muted)}
+.tname .tn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:420px){.tname{letter-spacing:.03em;font-size:14px}}

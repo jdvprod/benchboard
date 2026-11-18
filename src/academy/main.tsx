@@ -10,6 +10,8 @@ import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { SiteSwitch } from "../ui/SiteSwitch";
 import { placeUrl } from "../cloud/links";
+import { cloudAvailable, userMeta } from "../cloud/client";
+import { SiteGate } from "../cloud/SiteGate";
 import { checks, Drill, Level, Skill, skill, SKILLS, Who } from "./content";
 import { Diagram } from "./Diagram";
 
@@ -31,8 +33,10 @@ export const drillLink = (d: Drill, s: Skill) => {
 function App() {
   const [route, setRoute] = useState(parse);
   const [done, setDone] = useState<string[]>(() => read("fc-academy-done", []));
-  const remembered = read<Who>("fc-academy-role", "player");
-  const who = roleOf(route[0]) || remembered;
+  // coaches see both versions; players, parents and fans see the player's version
+  const coach = !cloudAvailable() || userMeta().kind === "coach";
+  const remembered = read<Who>("fc-academy-role", coach ? "coach" : "player");
+  const who: Who = coach ? roleOf(route[0]) || remembered : "player";
   const id = roleOf(route[0]) ? route[1] : route[0];
   const sk = id ? skill(id) : undefined;
   useEffect(() => { const f = () => { setRoute(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
@@ -42,14 +46,16 @@ function App() {
   return <div className="ac">
     <header className="ac-top">
       <a className="ac-brand" href={"#/" + seg(who)}><b>Floorcall</b><span>Academy</span></a>
-      <div className="ac-role" role="group" aria-label="Show this for">
+      {coach && <div className="ac-role" role="group" aria-label="Show this for">
         <button aria-pressed={who === "player"} onClick={() => switchTo("player")}>For players</button>
         <button aria-pressed={who === "coach"} onClick={() => switchTo("coach")}>For coaches</button>
-      </div>
+      </div>}
       <SiteSwitch here="academy" />
     </header>
-    <main className="ac-main">{sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} />}</main>
-    <footer className="ac-foot">Floorcall Academy is free. Your checklist is saved on this device only. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <main className="ac-main"><SiteGate name="Floorcall Academy" kind="athlete" what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
+      points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
+      {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
+    <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
   </div>;
 }
 
@@ -57,7 +63,7 @@ function Missing({ who }: { who: Who }) {
   return <div className="ac-empty"><h1>That page isn't here</h1><p><a href={"#/" + seg(who)}>See every skill</a></p></div>;
 }
 
-function Home({ who, done }: { who: Who; done: string[] }) {
+function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }) {
   return <>
     <section className="ac-hero">
       <h1>{who === "player" ? "Get better at volleyball, one skill at a time." : "Teach every skill the same way, every season."}</h1>
@@ -75,7 +81,7 @@ function Home({ who, done }: { who: Who; done: string[] }) {
           : <small>{teamDrills} team drills · measured by {s.stat.name.split(" (")[0].toLowerCase()}</small>}</span>
         <svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
       </a></li>; })}</ol>
-    <p className="ac-other">{who === "player" ? <>Coaching a team? <a href="#/coaches">See the coach's version</a>, with team drills you can add to practice.</> : <>Send players the <a href="#/players">player's version</a>: the same skills, with drills they can do on their own and a checklist.</>}</p>
+    {coach && <p className="ac-other">{who === "player" ? <>Coaching a team? <a href="#/coaches">See the coach's version</a>, with team drills you can add to practice.</> : <>Send players the <a href="#/players">player's version</a>: the same skills, with drills they can do on their own and a checklist.</>}</p>}
   </>;
 }
 

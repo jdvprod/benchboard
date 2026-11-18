@@ -9,7 +9,7 @@ import { Match, Opponent, PlanItem, ScheduleItem } from "../../data/model";
 import { aggregate, Agg, Replay, resultOf } from "../../sports/volleyball/engine";
 import { teamBlocks, blocks, fmtAvg, fmtHit, fmtNum, fmtPct, fmtSigned, hitting, playerMetrics, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
 import { tendencies, ALL_ZONES } from "../../sports/volleyball/tendencies";
-import { Card, ConfirmButton, download, fmtDate, Seg } from "../../ui/kit";
+import { Card, ConfirmButton, download, fmtDate, plural, Seg } from "../../ui/kit";
 import { CourtSvg } from "../../ui/court";
 import { Diverge } from "../../ui/charts";
 import { AiCard } from "../../ui/ai";
@@ -223,7 +223,7 @@ function suggestions(h: H2H): string[] {
   const { A, season } = h, out: string[] = [];
   if (!h.games.length) return ["Serve tough to their weakest passer early; find out who it is in the first rotation.", "Track their jersey numbers on kills so next time you know who to stop."];
   const top = Object.entries(A.opp).sort((a, b) => b[1].K - a[1].K)[0];
-  if (top && top[1].K >= 3) { const z = Object.entries(top[1].z).filter((x) => x[0] !== "out").sort((a, b) => b[1] - a[1])[0]; out.push(`Stop #${top[0]}: ${top[1].K} kills against us${z ? `, mostly to zone ${z[0]}` : ""}. Put your best blocker on that hitter and a defender in that zone.`); }
+  if (top && top[1].K >= 3) { const z = Object.entries(top[1].z).filter((x) => x[0] !== "out").sort((a, b) => b[1] - a[1])[0]; out.push(`Stop #${top[0]}: ${plural(top[1].K, "kill")} against us${z ? `, mostly to zone ${z[0]}` : ""}. Put your best blocker on that hitter and a defender in that zone.`); }
   const ta = tendencies(A.locs, "theirAttack").recs[0]; if (ta && !/Only|No locations/.test(ta)) out.push(ta);
   let worst = 0, wv = 0; for (let r = 1; r <= 6; r++) { const x = A.rot[r]; if (x.w - x.l < wv) { wv = x.w - x.l; worst = r; } }
   if (worst) out.push(`Rotation ${worst} is ${fmtSigned(wv)} against them. Have a sub or a serve-receive adjustment ready.`);

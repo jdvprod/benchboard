@@ -116,6 +116,16 @@ const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip
 /* ---------- scenarios ---------- */
 /** Built-but-held features (src/app/flags.ts): their tests run only when they're on. */
 const FEES_ON = /FEES = true/.test(fs.readFileSync(path.join(__dirname, "..", "src/app/flags.ts"), "utf8"));
+/** Academy, Beach and Recruit ask for an account first: create one in the site's sign-up box. */
+async function siteSignUp(p, email, kind = "athlete", name = "Test Person") {
+  const box = p.locator(".sg .ma");
+  ok(`${email}: the site asks for an account before showing anything`, (await box.count()) === 1);
+  await box.getByLabel("Your name").fill(name); await box.locator("select").selectOption(kind);
+  await box.getByLabel("Email", { exact: true }).fill(email); await box.getByLabel("Password", { exact: true }).fill("secret-pass-1");
+  await box.locator(".ma-check input").first().check(); await box.getByRole("button", { name: "Create free account" }).last().click();
+  await p.waitForTimeout(1500);
+}
+
 /** The head coach (A) approves the coach (B) who joined with a coach code; B's next sync brings the team down. */
 async function approveCoach(A, B) {
   await go(A, "team"); await A.waitForTimeout(600);
@@ -1105,6 +1115,7 @@ const scenarios = {
   async athletes(browser) {
     const p = await newPage(browser);
     await p.goto(U + "recruit/"); await p.waitForTimeout(500);
+    await siteSignUp(p, "athlete@e2e.test", "athlete", "Maya Chen");
     ok("recruit landing points athletes to the guide, emails and Reel Studio", (await p.locator(".rg-tiles a").count()) === 3 && !(await p.getByText("College coach?").count()));
     await p.goto(U + "recruit/#/college"); await p.waitForTimeout(300);
     ok("college coach search is paused (no page)", !(await p.locator(".rc-auth").count()) && (await p.locator(".rg-tiles").count()) === 1);
@@ -1331,6 +1342,7 @@ const scenarios = {
   async beach(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "beach/"); await p.waitForTimeout(500);
+    await siteSignUp(p, "beach-player@e2e.test", "athlete", "Ava Beach");
     ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 5);
     await p.getByLabel("Your player 1").fill("Ava"); await p.getByLabel("Your player 2").fill("Maya");
     await p.getByLabel("Opponent 1").fill("Kim"); await p.getByLabel("Opponent 2").fill("Lee");
@@ -1379,9 +1391,8 @@ const scenarios = {
     await p.goto(U + "beach/#/"); await p.waitForTimeout(300);
     await p.getByLabel("Your player 1").fill("Zoe"); await p.getByLabel("Your player 2").fill("Bea"); await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
     await p.getByRole("button", { name: "Go live" }).click(); await p.waitForTimeout(200);
-    ok("going live asks for a free account", (await p.locator(".bv-live .ma").count()) === 1);
-    await p.getByLabel("Your name").fill("Coach Kai"); await p.getByLabel("Email", { exact: true }).fill("kai-beach@e2e.test"); await p.getByLabel("Password", { exact: true }).fill("beach-pass");
-    await p.locator(".ma-check input").first().check(); await p.locator(".ma").getByRole("button", { name: "Create free account" }).last().click(); await p.waitForTimeout(1500);
+    await p.waitForTimeout(1200);
+    ok("signed in already, going live needs no second sign-up", (await p.locator(".bv-live .ma").count()) === 0);
     const liveLink = await p.locator(".bv-link a").getAttribute("href").catch(() => null);
     ok("signed in, the match gets a live link", /beach\/#\/live\/[A-Z0-9]{5,8}$/.test(liveLink || ""), String(liveLink));
     { const ax = await a11y(p); ok("live sharing controls all have names", !ax.length, ax.join(" | ")); }
@@ -1489,7 +1500,7 @@ const scenarios = {
       ok(`${file}: loads and fits a phone`, (await overflow(p)) <= 0 && (!h1 || (await p.locator("h1").innerText()) === h1) && !/%[A-Z_]+%/.test(await p.content()), file);
     }
     await p.goto(U + "pricing.html");
-    ok("pricing shows the trial, Team and Club", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Free trial,Team,Club" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
+    ok("pricing shows the trial, Team and Club", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Free trial,Team,Player,Club" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
     await p.locator(".faq summary", { hasText: "When does the trial end?" }).click();
     ok("pricing questions open", (await p.locator(".faq details[open]").count()) === 1);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "site-pricing-phone.png"), fullPage: true });
@@ -1515,6 +1526,7 @@ const scenarios = {
   async academy(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "academy/"); await p.waitForTimeout(500);
+    await siteSignUp(p, "academy-coach@e2e.test", "coach", "Coach Kim");
     ok("academy opens on the five skills, for players first", (await p.locator(".ac-skills li").count()) === 5 && (await p.getByRole("button", { name: "For players" }).getAttribute("aria-pressed")) === "true" && (await p.locator(".site-switch a").count()) === 5);
     ok("academy fits a phone", (await overflow(p)) <= 0);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "ac-home.png"), fullPage: true });
@@ -1977,6 +1989,89 @@ const scenarios = {
     if (FEES_ON) await go(V, "team"); if (FEES_ON) ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid"));
     for (const [n, pg] of [["head coach", A], ["assistant", B], ["parent", P], ["viewer", V]]) ok(`cloud: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, B, P, V]) await pg.context().close();
+  },
+  /** New-user walkthroughs as a coach, a player and a parent, on a phone (SHOTS=dir node e2e/run.cjs _walk). Not in the regular run. */
+  async _walk(browser) {
+    const OUT = process.env.SHOTS || "/tmp/walk"; fs.mkdirSync(OUT, { recursive: true });
+    const found = [];
+    let n = 0;
+    const look = async (p, who, label) => {
+      await p.waitForTimeout(450);
+      const ov = await overflow(p), ax = await a11y(p).catch(() => []);
+      const text = await p.locator("body").innerText().catch(() => "");
+      const bad = (text.match(/undefined|NaN|\[object|Infinity|null\b/g) || []).filter((x) => x !== "null" || /\bnull\b/.test(text));
+      if (ov > 0) found.push(`${who} · ${label}: page scrolls sideways by ${ov}px`);
+      if (ax.length) found.push(`${who} · ${label}: unlabeled controls: ${ax.slice(0, 4).join(", ")}`);
+      if (bad.length) found.push(`${who} · ${label}: shows "${[...new Set(bad)].join(", ")}"`);
+      if (p.errors.length) { found.push(`${who} · ${label}: page errors: ${p.errors.slice(0, 2).join(" | ")}`); p.errors.length = 0; }
+      await p.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${who}-${label}.png`), fullPage: true });
+    };
+    const signUpApp = async (p, email, name) => {
+      await go(p, "account/signup"); { const ca = p.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+      await p.getByLabel("Email").fill(email); await p.locator("#auth-pw").fill("secret-pass-1"); await p.locator("#auth-name").fill(name); await p.locator(".auth-agree input").first().check();
+      await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(800);
+    };
+    // ---------- 1. a new head coach ----------
+    const C = await newPage(browser, { phone: true });
+    await C.goto(U + "about.html"); await look(C, "coach", "product-page");
+    await C.goto(U + "pricing.html"); await look(C, "coach", "pricing");
+    await signUpApp(C, "walk-coach@e2e.test", "Jordan Rivera"); await look(C, "coach", "after-signup");
+    await C.getByLabel("Team name").fill("Valley Prep Varsity"); await C.getByRole("button", { name: "Create team" }).click(); await C.waitForTimeout(900); await look(C, "coach", "new-team");
+    await C.getByRole("button", { name: "Paste list" }).click(); await C.locator("textarea").first().fill(["1 Ava Ramirez S", "4 Jordan Lee OH", "7 Maya Chen OH", "9 Riley Brooks MB", "12 Zoe Grant OPP", "14 Kenzie Park MB", "3 Lily Torres L"].join("\n")); await C.getByRole("button", { name: "Add players", exact: true }).click(); await C.waitForTimeout(400);
+    { const perm = C.getByRole("button", { name: "I have permission" }); if (await perm.count()) await perm.click(); }
+    await look(C, "coach", "team-roster");
+    await go(C, "home"); await look(C, "coach", "home");
+    await go(C, "lineup"); await look(C, "coach", "lineup");
+    await go(C, "track"); await look(C, "coach", "track-start");
+    { const opp = C.getByPlaceholder("e.g. Buchanan"); if (await opp.count()) { await opp.fill("Central"); await C.getByRole("button", { name: /Start · we serve first/ }).click(); await C.waitForTimeout(400); } }
+    await look(C, "coach", "track-match");
+    for (const [pl, act] of [["Maya", /^Kill$/], ["Zoe", /^Ace$/], ["Jordan", /^Error$/], ["Lily", /^Dig$/]]) { const b = C.locator(".pl", { hasText: pl }).first(); if (await b.count()) { await b.click(); const sheet = C.locator(".actsheet button", { hasText: act }); const a = (await sheet.count()) ? sheet.first() : C.locator(".pad .act", { hasText: act }).first(); if (await a.count()) await a.click({ timeout: 3000 }).catch(() => found.push("coach · track: couldn't tap " + act)); await skipIfAsked(C); await C.waitForTimeout(150); } }
+    await look(C, "coach", "track-after-plays");
+    await go(C, "stats"); await look(C, "coach", "stats");
+    await go(C, "matchup"); await look(C, "coach", "matchup");
+    await go(C, "practice"); await look(C, "coach", "practice");
+    await go(C, "court"); await look(C, "coach", "court");
+    await go(C, "film"); await look(C, "coach", "film");
+    await go(C, "live"); await look(C, "coach", "live-control");
+    await go(C, "team"); await look(C, "coach", "team-full");
+    await go(C, "settings"); await look(C, "coach", "settings");
+    await C.goto(U + "academy/"); await look(C, "coach", "academy");
+    await C.goto(U + "academy/#/coaches/passing"); await look(C, "coach", "academy-skill");
+    await C.goto(U + "beach/"); await look(C, "coach", "beach");
+    await C.goto(U + "recruit/"); await look(C, "coach", "recruit");
+    await C.goto(U + "live/"); await look(C, "coach", "live-site");
+    // invite codes for the player and the parent
+    await go(C, "team"); { const sy = C.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.click(); await C.waitForTimeout(1200); } }
+    await look(C, "coach", "team-synced");
+    let vcode = "";
+    { const iv = C.getByRole("button", { name: "Invite view-only" }); if (await iv.count()) { await iv.click(); await C.waitForTimeout(400); vcode = (await C.locator(".hint b").first().innerText().catch(() => "")).trim(); } }
+    if (!vcode) found.push("coach · team: couldn't make a view-only code for players");
+    // ---------- 2. a new player ----------
+    const P = await newPage(browser, { phone: true });
+    await P.goto(U + "recruit/"); await look(P, "player", "recruit-gate");
+    await siteSignUp(P, "walk-player@e2e.test", "athlete", "Maya Chen"); await look(P, "player", "recruit-in");
+    await P.goto(U + "recruit/#/guide"); await look(P, "player", "recruit-guide");
+    await P.goto(U + "academy/"); await look(P, "player", "academy");
+    await P.goto(U + "academy/#/coaches/hitting"); await look(P, "player", "academy-coach-link");
+    await P.goto(U + "beach/"); await look(P, "player", "beach");
+    if (vcode) { await go(P, "join/" + vcode); await look(P, "player", "join-code"); const j = P.getByRole("button", { name: "Join team" }); if (await j.count()) { await j.click(); await P.waitForTimeout(1500); } }
+    await go(P, "home"); await look(P, "player", "app-home");
+    await go(P, "stats"); await look(P, "player", "app-stats");
+    await go(P, "team"); await look(P, "player", "app-team");
+    await go(P, "settings"); await look(P, "player", "app-settings");
+    await go(P, "track"); await look(P, "player", "app-track-blocked");
+    await P.goto(U + "live/"); await look(P, "player", "live");
+    // ---------- 3. a new parent ----------
+    const F = await newPage(browser, { phone: true });
+    await F.goto(U + "live/"); await look(F, "parent", "live-first");
+    await F.goto(U + "academy/"); await look(F, "parent", "academy-gate");
+    await siteSignUp(F, "walk-parent@e2e.test", "parent", "Dana Chen"); await look(F, "parent", "academy-in");
+    if (vcode) { await go(F, "join/" + vcode); const j = F.getByRole("button", { name: "Join team" }); if (await j.count()) { await j.click(); await F.waitForTimeout(1500); } }
+    await go(F, "home"); await look(F, "parent", "app-home");
+    await go(F, "team"); await look(F, "parent", "app-team");
+    await F.goto(U + "beach/"); await look(F, "parent", "beach");
+    console.log("\n  FOUND:\n" + (found.length ? found.map((x) => "   - " + x).join("\n") : "   nothing automatic"));
+    for (const pg of [C, P, F]) await pg.context().close();
   },
   /** A walk through everything with screenshots (node e2e/run.cjs _explore). Not part of the regular run. */
   async _explore(browser) {

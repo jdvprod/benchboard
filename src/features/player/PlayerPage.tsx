@@ -99,10 +99,10 @@ export function PlayerPage({ id }: { id: string }) {
       <div className="kpis">
         {has("TA") && <Kpi label="Hitting" value={fmtHit(hitting(s))} delta={l3 && l3.TA >= 5 ? fd(hitting(l3), hitting(s), (v) => fmtHit(v)) : null} sub={`${s.K} K · ${s.AE} E · ${s.TA} TA · ${fmtNum(pm.kps, 2)} K/set`} />}
         {has("R") && <Kpi label="Passing" value={fmtAvg(passAvg(s))} delta={l3 && l3.R >= 5 ? fd(passAvg(l3), passAvg(s), (v) => fmtAvg(v)) : null} sub={`${s.R} rec · ${fmtPct(pm.perfectPass)} perfect · ${s.P0} aced`} />}
-        {serveAttempts(s) > 0 && <Kpi label="Serving" value={fmtPct(pm.serveIn)} delta={lm && l3 && serveAttempts(l3) >= 5 ? fd(lm.serveIn, pm.serveIn, (v) => fmtPct(v)) : null} sub={`${s.SA} aces · ${serveErrors(s)} err · eff ${fmtHit(pm.serveEff)}`} />}
-        {has("D") && <Kpi label="Digs" value={s.D} delta={lm ? fd(lm.dps, pm.dps, (v) => fmtNum(v, 2) + "/set") : null} sub={`${fmtNum(pm.dps, 2)} per set · ${s.DE} errors`} />}
+        {serveAttempts(s) > 0 && <Kpi label="Serving" value={fmtPct(pm.serveIn)} delta={lm && l3 && serveAttempts(l3) >= 5 ? fd(lm.serveIn, pm.serveIn, (v) => fmtPct(v)) : null} sub={`${plural(s.SA, "ace")} · ${serveErrors(s)} err · eff ${fmtHit(pm.serveEff)}`} />}
+        {has("D") && <Kpi label="Digs" value={s.D} delta={lm ? fd(lm.dps, pm.dps, (v) => fmtNum(v, 2) + "/set") : null} sub={`${fmtNum(pm.dps, 2)} per set · ${plural(s.DE, "error")}`} />}
         {(s.BS + s.BA + (s.BT || 0)) > 0 && <Kpi label="Blocks" value={fmtNum(blocks(s))} sub={`${s.BS} solo · ${s.BA} assist${s.BT ? ` · ${s.BT} touch${s.BT === 1 ? "" : "es"}` : ""} · ${fmtNum(pm.bps, 2)}/set`} />}
-        {has("AST") && <Kpi label="Assists" value={s.AST} sub={`${fmtNum(pm.aps, 2)} per set · ${s.BHE} errors`} />}
+        {has("AST") && <Kpi label="Assists" value={s.AST} sub={`${fmtNum(pm.aps, 2)} per set · ${plural(s.BHE, "error")}`} />}
         <Kpi label="Net points" value={fmtSigned(pm.netPoints)} delta={lm ? fd(lm.netPerSet, pm.netPerSet, (v) => fmtNum(v, 2) + "/set") : null} sub={`${fmtNum(pm.netPerSet, 2)} per set`} />
       </div>
       <div className="grid2" style={{ alignItems: "start" }}>
@@ -150,7 +150,7 @@ function shareReport(id: string, rows: Row[], A: Agg) {
   const p = player(id)!, t = team()!, s = A.ps[id], pm = playerMetrics(A, id);
   const esc = (x: any) => String(x ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
   const kpi = (l: string, v: string, sub: string) => `<div class="k"><div class="l">${esc(l)}</div><div class="v">${esc(v)}</div><div class="s">${esc(sub)}</div></div>`;
-  const ks = s ? [kpi("Hitting", fmtHit(hitting(s)), `${s.K} kills · ${s.TA} attempts`), kpi("Kills / set", fmtNum(pm.kps, 2), `${pm.sets} sets`), kpi("Passing", fmtAvg(passAvg(s)), `${s.R} receptions`), kpi("Serve in", fmtPct(pm.serveIn), `${s.SA} aces`), kpi("Digs", String(s.D), `${fmtNum(pm.dps, 2)} per set`), kpi("Blocks", fmtNum(blocks(s)), `${s.BS} solo`), kpi("Assists", String(s.AST), `${fmtNum(pm.aps, 2)} per set`)].join("") : "<p>No stats yet.</p>";
+  const ks = s ? [kpi("Hitting", fmtHit(hitting(s)), `${plural(s.K, "kill")} · ${plural(s.TA, "attempt")}`), kpi("Kills / set", fmtNum(pm.kps, 2), `${pm.sets} sets`), kpi("Passing", fmtAvg(passAvg(s)), `${s.R} receptions`), kpi("Serve in", fmtPct(pm.serveIn), `${plural(s.SA, "ace")}`), kpi("Digs", String(s.D), `${fmtNum(pm.dps, 2)} per set`), kpi("Blocks", fmtNum(blocks(s)), `${s.BS} solo`), kpi("Assists", String(s.AST), `${fmtNum(pm.aps, 2)} per set`)].join("") : "<p>No stats yet.</p>";
   const goals = p.goals.map((g) => { const G = GOALS[g.metric], v = pm[G.key] as number | null; return `<li>${esc(G.label)}: ${esc(G.fmt(v))} of ${esc(G.fmt(g.target))} goal${v != null && v >= g.target ? " ✓" : ""}</li>`; }).join("");
   const log = rows.slice().reverse().map((r) => { const x = r.s; return `<tr><td>${esc(r.m.date)}</td><td>${esc(r.m.opp)}</td><td>${x ? x.K : 0}</td><td>${x ? fmtHit(hitting(x)) : "—"}</td><td>${x ? x.SA : 0}</td><td>${x ? fmtAvg(passAvg(x)) : "—"}</td><td>${x ? x.D : 0}</td><td>${x ? fmtNum(blocks(x)) : 0}</td><td>${x ? x.AST : 0}</td></tr>`; }).join("");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(p.first + " " + p.last)} · ${esc(t.name)}</title>

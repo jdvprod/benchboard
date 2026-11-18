@@ -5,8 +5,7 @@ import { all, currentMatch, ensureOpponent, matchesOf, newMatch, oppKey, opponen
 import { Icon } from "../../ui/icons";
 import { feePlayers, summary as feeSummary } from "../club/fees";
 import { FEES } from "../../app/flags";
-import { cloudAvailable, currentUser } from "../../cloud/client";
-import { isLinked } from "../../cloud/sync";
+import { currentUser } from "../../cloud/client";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/metrics";
 import { Card, copyText, fmtDate, plural } from "../../ui/kit";
@@ -64,7 +63,7 @@ export function Home() {
     </header>
     {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
     <UpNext next={next} vs={vsNext.length ? `${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season` : "First meeting this season"} onStart={startNext} />
-    <Setup />
+    {!isViewer(t.id) && <Setup />}
     <div className="hm-week-narrow"><Week /></div>
     <div className="hm-grid">
       <div className="hm-main">
@@ -116,14 +115,16 @@ export function Home() {
 
 /** The black band at the top: the match in progress, or the next one. */
 function UpNext({ next, vs, onStart }: { next?: { date: string; opp: string; time?: string; site?: string; event?: string; id: string }; vs: string; onStart: () => void }) {
-  const m = currentMatch(), today = todayISO();
+  const m = currentMatch(), today = todayISO(), viewer = isViewer(team()!.id);
+  if (m && viewer && m.kind !== "match") return null;
   if (m) { const R = replayOf(m), cur = R?.sets[R.sets.length - 1];
-    return <button className="hm-band live home-live" onClick={() => go(m.kind === "match" ? "track" : "practice")}>
+    return <button className="hm-band live home-live" onClick={() => { if (viewer) { setUi({ statsScope: "m:" + m.id }); go("stats"); } else go(m.kind === "match" ? "track" : "practice"); }}>
       <span className="hm-band-tag"><i className="home-live-dot" aria-hidden="true" />{m.kind === "match" ? "Live" : "Practice"}</span>
       <span className="hm-band-main"><b>{m.kind === "match" ? `Match in progress vs ${m.opp}` : `Practice in progress: ${m.opp}`}</b>
         {R && cur ? <small className="num">Set {R.sets.length} · {cur.us}–{cur.them} · sets {R.wonUs}–{R.wonThem}</small> : null}</span>
-      <span className="hm-band-go">Resume</span>
+      <span className="hm-band-go">{viewer ? "Follow it" : "Resume"}</span>
     </button>; }
+  if (!next && viewer) return null;
   if (!next) return <div className="hm-band quiet"><span className="hm-band-main"><b>No matches scheduled</b><small>Add your schedule to get a scouting page before every game.</small></span><div className="hm-band-acts"><button className="btn sm" onClick={() => go("matchup")}>Add your schedule</button><button className="btn sm primary" onClick={() => go("track")}>Start a match</button></div></div>;
   const days = Math.round((new Date(next.date + "T12:00:00").getTime() - new Date(today + "T12:00:00").getTime()) / 864e5);
   return <section className="hm-band" aria-label="Next match">
@@ -131,7 +132,7 @@ function UpNext({ next, vs, onStart }: { next?: { date: string; opp: string; tim
     <span className="hm-band-main"><b>{next.site === "away" ? "at " : "vs "}{next.opp}</b>
       <small>{[fmtDate(next.date), next.time ? fmtTime(next.time) : "", next.event, vs].filter(Boolean).join(" · ")}</small>
       <NextMatchStatus s={next as any} /></span>
-    <div className="hm-band-acts"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{days === 0 ? <button className="btn sm primary" onClick={onStart}>Start now</button> : <button className="btn sm primary" onClick={() => go("track")}>Start a match</button>}</div>
+    {!viewer && <div className="hm-band-acts"><button className="btn sm" onClick={() => go("matchup", ensureOpponent(next.opp).id)}>See the matchup</button>{days === 0 ? <button className="btn sm primary" onClick={onStart}>Start now</button> : <button className="btn sm primary" onClick={() => go("track")}>Start a match</button>}</div>}
   </section>;
 }
 
@@ -151,7 +152,7 @@ function Week() {
       <span className={"hm-day" + (r.date === today ? " today" : "")}><small>{dow(r.date)}</small><b className="num">{+r.date.slice(8)}</b></span>
       <span className="hm-ev"><b>{r.title}</b><small>{r.sub}</small></span>
       <span className={"hm-kind " + r.kind}>{r.kind === "match" ? "Match" : r.kind === "practice" ? "Practice" : "Tournament"}</span>
-    </button></li>)}</ul> : <p className="muted small">Nothing in the next seven days. Add matches in Matchup or plan a practice.</p>}
+    </button></li>)}</ul> : <p className="muted small">{isViewer(t.id) ? "Nothing on the schedule this week." : "Nothing in the next seven days. Add matches in Matchup or plan a practice."}</p>}
   </section>;
 }
 
@@ -193,13 +194,13 @@ function TeamGoals({ M }: { M: ReturnType<typeof teamMetrics> }) {
   const [edit, setEdit] = useState(false);
   const active = TARGETS.filter(([k]) => tg[k] != null);
   const list = active.length ? active : TARGETS.slice(0, 4);
-  return <section className="hm-sec" aria-labelledby="hm-goals"><div className="hm-sec-hd"><h2 id="hm-goals">Team goals</h2><button className="btn sm ghost" onClick={() => setEdit(!edit)}>{edit ? "Done" : active.length ? "Edit" : "Set goals"}</button></div>
+  return <section className="hm-sec" aria-labelledby="hm-goals"><div className="hm-sec-hd"><h2 id="hm-goals">Team goals</h2>{!isViewer(team()!.id) && <button className="btn sm ghost" onClick={() => setEdit(!edit)}>{edit ? "Done" : active.length ? "Edit" : "Set goals"}</button>}</div>
     {edit ? <div className="pf-grid">{TARGETS.map(([k, label, def, f]) => <label key={k} className="field"><span className="label">{label}</span>
       <input inputMode="decimal" defaultValue={tg[k] != null ? (k === "hitting" ? String(tg[k]).replace(/^0/, "") : k === "passAvg" ? String(tg[k]) : Math.round(tg[k]! * 100) + "%") : ""} placeholder={"e.g. " + f(def)}
         onBlur={(e) => { const raw = e.target.value.trim(); const n = { ...tg }; if (!raw) delete n[k]; else { let v = parseFloat(raw.replace("%", "")); if (k !== "hitting" && k !== "passAvg" && v > 1) v /= 100; if (isFinite(v)) n[k] = v; } setTeamPatch({ targets: n }); }} /></label>)}</div>
       : <div className="goals-grid">{list.map(([k, label, def, f]) => { const target = tg[k] ?? def, v = (M as any)[k] as number | null, hit = v != null && v >= target, prog = v == null ? 0 : Math.max(0, Math.min(1, target > 0 ? v / target : 0));
         return <div key={k} className="goal"><div className="row between"><span><b>{label}</b> <span className="small muted">goal {f(target)}</span></span><span className={hit ? "hi" : ""}>{f(v)}{hit ? " ✓" : ""}</span></div><div className="meter"><i style={{ width: prog * 100 + "%" }} /></div></div>; })}
-        {!active.length && <p className="small muted">Suggested goals. Tap Set goals to make them yours.</p>}</div>}
+        {!active.length && !isViewer(team()!.id) && <p className="small muted">Suggested goals. Tap Set goals to make them yours.</p>}</div>}
   </section>;
 }
 
@@ -220,7 +221,7 @@ function Setup() {
     ["Set your starting lineup", "So the app tracks rotations and who's serving", !!t.defLineup, () => go("lineup")],
     ["Add your schedule", "Get a scouting page before every game", !!(t.schedule?.length || t.tournaments?.length), () => go("matchup")],
     ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
-    ["Invite your assistant", "Sign in, then share an invite code from the Team tab", cloudAvailable() && !!currentUser() && isLinked(t.id), () => go(currentUser() ? "team" : "account")],
+    ["Invite your staff and players", "Share an invite code from the Team tab", !!t.invited, () => go(currentUser() ? "team" : "account")],
   ];
   const done = steps.filter((x) => x[2]).length;
   if (done === steps.length) return null;

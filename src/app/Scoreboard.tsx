@@ -18,9 +18,9 @@ export function Scoreboard() {
   return (
     <header className="board">
       <div className="score">
-        <div className="side us"><div className="tname">{names.us}{c.serve === "us" && <Ball />}</div><button className="pts" onClick={fix} aria-label={`${names.us} ${c.us}. Tap to fix the score`}>{c.us}</button></div>
+        <div className="side us"><div className="tname" title={names.us}><span className="tn">{names.us}</span>{c.serve === "us" && <Ball />}</div><button className="pts" onClick={fix} aria-label={`${names.us} ${c.us}. Tap to fix the score`}>{c.us}</button></div>
         <div className="mid"><div className="setno">{unit} {c.n}</div><div className="setswon"><span className="u">{R.wonUs}</span>–<span className="t">{R.wonThem}</span></div><div className="label">{m.kind === "match" ? "sets" : m.kind === "scrimmage" ? "scrimmage" : "practice"}</div></div>
-        <div className="side them"><div className="tname">{c.serve === "them" && <Ball />}{names.them}</div><button className="pts" onClick={fix} aria-label={`${names.them} ${c.them}. Tap to fix the score`}>{c.them}</button></div>
+        <div className="side them"><div className="tname">{c.serve === "them" && <Ball />}<span className="tn">{names.them}</span></div><button className="pts" onClick={fix} aria-label={`${names.them} ${c.them}. Tap to fix the score`}>{c.them}</button></div>
       </div>
       <div className="strip">
         {!m.scrim && <span className="chip"><span className="k">Rotation</span>{c.rot}</span>}

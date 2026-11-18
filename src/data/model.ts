@@ -68,6 +68,8 @@ export interface Team {
   subPlan?: { id: string; rot: number; out: string; in: string }[];
   /** Getting-started checklist dismissed. */
   setupDone?: boolean;
+  /** An invite code has been made for this team (Home's "Get set up" list). */
+  invited?: boolean;
   /** Player fees ledger (src/features/club/fees.ts). Coaches only; never published. */
   fees?: import("../features/club/fees").Fees | null;
   /** Season targets the team is chasing, shown on Home. */

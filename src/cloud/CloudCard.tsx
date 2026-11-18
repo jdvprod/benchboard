@@ -18,7 +18,8 @@ export function CloudCard() {
   const [busy, setBusy] = useState(false), [err, setErr] = useState(""), [invite, setInvite] = useState<{ code: string; role: string } | null>(null);
   const [joinCode, setJoinCode] = useState(""), [mem, setMem] = useState<Member[] | null>(null);
   const [coach, setCoach] = useCoachStatus();
-  useEffect(() => { setMem(null); setInvite(null); if (user && linked) members(t.id).then(setMem).catch(() => setMem(null)); }, [t.id, user?.id, linked]);
+  // players and families don't see who else is on the team
+  useEffect(() => { setMem(null); setInvite(null); if (user && linked && roleOn(t.id) !== "viewer") members(t.id).then(setMem).catch(() => setMem(null)); }, [t.id, user?.id, linked]);
   const act = async (f: () => Promise<void>) => { setBusy(true); setErr(""); try { await f(); } catch (e) { setErr(errText(e)); } setBusy(false); };
 
   if (!cloudAvailable()) return <Card title="Cloud sync">
@@ -33,7 +34,7 @@ export function CloudCard() {
     </div>
   </Card>;
 
-  const isOwnerOrCoach = mem?.find((m) => m.user_id === user.id)?.role !== "viewer";
+  const myRole = roleOn(t.id) || mem?.find((m) => m.user_id === user.id)?.role, isOwnerOrCoach = myRole !== "viewer" && myRole !== "pending";
   const link = invite ? location.origin + location.pathname + "#/join/" + invite.code : "";
   return <Card title="Cloud sync" actions={<span className="small muted">{user.email} · <button className="btn sm ghost" onClick={() => { signOut(); toast("Signed out"); }}>Sign out</button></span>}>
     <div className="stack">
@@ -46,8 +47,8 @@ export function CloudCard() {
         </> : <>
           <p className="small"><span className="tag good" style={{ marginLeft: 0 }}>Synced</span> {status.state === "syncing" ? "Syncing…" : status.state === "error" ? <span style={{ color: "var(--bad)" }}>{status.error}</span> : status.last ? `Up to date · ${new Date(status.last).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Waiting to sync"}{pendingCount() ? ` · ${pendingCount()} changes waiting` : ""}</p>
           <div className="row"><button className="btn sm" disabled={status.state === "syncing"} onClick={() => syncNow()}>Sync now</button></div>
-          {roleOn(t.id) === "viewer" && <p className="hint">You have view-only access to this team: you see everything the coaches record, and changes made on this device stay here.</p>}
-          <div className="label">Coaches and viewers</div>
+          {roleOn(t.id) === "viewer" && <p className="hint">You follow {t.name} as a player or family member: you see results, stats and announcements as the coaches record them.</p>}
+          {roleOn(t.id) !== "viewer" && <div className="label">Coaches and viewers</div>}
           {mem && roleOn(t.id) === "owner" && mem.some((m) => m.status === "pending") && <div className="hint mem-wait">
             <b>{mem.filter((m) => m.status === "pending").length === 1 ? "A coach is" : "Coaches are"} waiting to join</b>
             <span className="small muted">They used your coach code. Approve only people you know coach with you: coaches see scouting, notes and every player's stats.</span>
@@ -56,7 +57,7 @@ export function CloudCard() {
               <button className="btn sm ghost" disabled={busy} onClick={() => act(async () => { await decideMember(t.id, m.user_id, false); setMem(await members(t.id)); })}>Turn down</button></li>)}</ul>
           </div>}
           {mem ? <ul className="log">{mem.filter((m) => m.status !== "pending").map((m) => <li key={m.user_id} style={{ gridTemplateColumns: "1fr auto auto" }}><span>{m.email || "Coach"}{m.user_id === user.id ? " (you)" : ""}</span><span className="tag" style={{ marginLeft: 0 }}>{m.role === "viewer" ? "view-only" : m.role}</span>
-            {m.user_id !== user.id && m.role !== "owner" ? <ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => act(async () => { await removeMember(t.id, m.user_id); setMem(await members(t.id)); })}>✕</ConfirmButton> : <span />}</li>)}</ul> : <p className="small muted">Loading…</p>}
+            {m.user_id !== user.id && m.role !== "owner" ? <ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => act(async () => { await removeMember(t.id, m.user_id); setMem(await members(t.id)); })}>✕</ConfirmButton> : <span />}</li>)}</ul> : roleOn(t.id) === "viewer" ? null : <p className="small muted">Loading…</p>}
           {isOwnerOrCoach && <div className="row">
             <button className="btn sm" disabled={busy} onClick={() => act(async () => setInvite({ code: await createInvite(t.id, "coach"), role: "coach" }))}>Invite a coach</button>
             <button className="btn sm" disabled={busy} onClick={() => act(async () => setInvite({ code: await createInvite(t.id, "viewer"), role: "viewer" }))}>Invite view-only</button>
@@ -97,10 +98,11 @@ export function JoinPage({ code }: { code: string }) {
   const [state, setState] = useState<"idle" | "busy" | "done">("idle"), [err, setErr] = useState("");
   const join = async () => { setState("busy"); setErr(""); try { const id = await joinWithCode(code); setState("done"); toast(joinedMsg(id)); go(get("teams", id) ? "team" : "home"); } catch (e) { setErr(errText(e)); setState("idle"); } };
   return <div className="page" style={{ maxWidth: 620 }}>
-    <Card title={`Join a team · ${code}`}>
+    <Card title="Join a team">
       {!cloudAvailable() ? <p>Cloud sync isn't set up in this version of the app.</p>
         : !user ? <div className="stack"><p className="small">Sign in or create an account first. Then you'll join the team.</p><div className="row"><button className="btn primary" onClick={() => { try { sessionStorage.setItem("bs-join", code); } catch { /* ignore */ } go("account"); }}>Sign in</button></div></div>
-          : <div className="stack"><p className="small">Signed in as {user.email}.</p><div className="row"><button className="btn primary" disabled={state === "busy"} onClick={join}>{state === "busy" ? "Joining…" : "Join team"}</button></div></div>}
+          : <div className="stack"><p>You've been invited to a team on Floorcall with the code <b className="num" style={{ letterSpacing: ".08em" }}>{code}</b>.</p>
+            <p className="small muted">Players and families see the team's results, stats and announcements. Coaches who join are approved by the head coach first. You're signed in as {user.email}.</p><div className="row"><button className="btn primary" disabled={state === "busy"} onClick={join}>{state === "busy" ? "Joining…" : "Join team"}</button></div></div>}
       {err && <p className="hint warn" style={{ marginTop: 8 }}>{err}</p>}
     </Card>
   </div>;
