@@ -47,6 +47,8 @@ export interface Team {
   level: string;           // e.g. "Varsity", "JV", "16U Club"
   /** Girls', boys' or coed team: groups teams in the switcher and picks drills meant for them. */
   gender?: Gender;
+  /** Set by the billing function once a team pays (see BILLING in src/app/flags.ts). */
+  plan?: "team" | "club"; paidUntil?: string;
   color: string;           // primary team color (hex)
   createdAt: number;
   activeSeasonId: string | null;

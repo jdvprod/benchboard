@@ -1,5 +1,6 @@
 /** Team announcements: a coach writes a message; everyone following the team on Floorcall Live gets a notification
  * and reads it there. One way on purpose: no replies and no direct messages with players. */
+import { isViewer } from "../../app/viewAs";
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
@@ -12,7 +13,7 @@ export const when = (iso: string) => { const d = new Date(iso), days = Math.floo
   return days < 1 ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : days < 7 ? d.toLocaleDateString([], { weekday: "short" }) + " " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : d.toLocaleDateString([], { month: "short", day: "numeric" }); };
 
 export function Announcements() {
-  const t = team()!, role = roleOn(t.id), can = role === "owner" || role === "coach";
+  const t = team()!, role = roleOn(t.id), can = !isViewer(t.id) && (role === "owner" || role === "coach");
   const [posts, setPosts] = useState<Post[] | null>(null), [text, setText] = useState(""), [pin, setPin] = useState(false), [busy, setBusy] = useState(false), [err, setErr] = useState("");
   const ready = cloudAvailable() && !!currentUser() && isLinked(t.id) && !t.sample;
   const load = () => rpc("posts_for_team", { t: t.id }).then((d) => setPosts(d || [])).catch((e) => setErr(e?.message || "Couldn't load announcements."));

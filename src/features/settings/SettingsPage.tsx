@@ -1,4 +1,6 @@
 import { TRACK_MODES } from "../../sports/volleyball/actions";
+import { isViewer } from "../../app/viewAs";
+import { setUi } from "../../app/ui";
 import { placeUrl } from "../../cloud/links";
 import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
@@ -25,7 +27,7 @@ export function SettingsPage() {
       <SetRow title="Text and button size" sub="Large is easier to hit on a tablet courtside."><Seg value={p.size} onChange={(v) => setPrefs({ size: v })} options={[["normal", "Normal"], ["large", "Large"]]} label="Size" /></SetRow>
       <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>
     </Card>
-    <Card title={`Tracking · ${t.name}`}>
+    {!isViewer(t.id) && <Card title={`Tracking · ${t.name}`}>
       <SetRow title="What to track" sub="Full stats has every button. Basic stats is the box score: kills, attempts, errors, aces, serve errors, assists, blocks and digs. Points only just keeps score, rally by rally. You can also switch on the Track screen."><Seg value={s.trackMode || "full"} onChange={(v) => setSettings({ trackMode: v })} options={TRACK_MODES.map(([k, l]) => [k, l] as [typeof k, string])} label="What to track" /></SetRow>
       <div className="setgroup">
         <div className="setgroup-hd"><b>Ask where the ball landed</b><span>After the play, tap the court. Feeds the tendency court and the Live court. Choose for each kind of play.</span></div>
@@ -41,8 +43,11 @@ export function SettingsPage() {
       <SetRow title="Type-in stat codes" sub="A box on the Track screen for typing stats on a keyboard: 7k is #7 kill, 12ace is #12 ace, 4p3 is a 3 pass, ok11 is their #11 kill. Laptops and tablets only. Saved on this device."><Switch checked={!!p.quick} onChange={(v) => setPrefs({ quick: v })} label="Type-in stat codes" /></SetRow>
       <SetRow title="Focus mode button" sub="A Focus button on the Track screen that hides the side panels and makes the buttons bigger, for an assistant tracking on a phone. Saved on this device."><Switch checked={!!p.labsFocus} onChange={(v) => setPrefs({ labsFocus: v, focus: v ? p.focus : false })} label="Focus mode button" /></SetRow>
       <SetRow title="Zone numbers on drawing boards"><Switch checked={!s.hideZones} onChange={(v) => setSettings({ hideZones: !v })} label="Show zone numbers" /></SetRow>
-    </Card>
+    </Card>}
     <InstallCard />
+    {t && !isViewer(t.id) && <Card title="Players' view">
+      <SetRow title="See what players see" sub="Players and families who join with a view-only code get Home, Stats and the Team tab: results, the roster, everyone's stats and your announcements. They never see tracking, scouting, practice plans, drills or the court."><button className="btn sm" onClick={() => { setUi({ previewPlayer: true }); go("home"); }}>Preview</button></SetRow>
+    </Card>}
     <CloudSettings />
     {admin && <section className="set-admin" aria-label="Admin">
       <div className="set-admin-hd"><b>Admin</b><span>Only Floorcall admins see this part.</span></div>

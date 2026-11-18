@@ -1481,6 +1481,37 @@ const scenarios = {
     ok("no errors verifying a coach", !A.errors.length && !D.errors.length, [...A.errors, ...D.errors].slice(0, 3).join("; "));
     for (const pg of [A, D]) await pg.context().close();
   },
+  async site(browser) {
+    // getfloorcall.com: product, pricing and about pages share one nav and fit a phone
+    const p = await newPage(browser, { phone: true });
+    for (const [file, h1] of [["about.html", null], ["pricing.html", "One price per team."], ["about-us.html", "Built from the bench."]]) {
+      await p.goto(U + file); await p.waitForTimeout(300);
+      ok(`${file}: loads and fits a phone`, (await overflow(p)) <= 0 && (!h1 || (await p.locator("h1").innerText()) === h1) && !/%[A-Z_]+%/.test(await p.content()), file);
+    }
+    await p.goto(U + "pricing.html");
+    ok("pricing shows the trial, Team and Club", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Free trial,Team,Club" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
+    await p.locator(".faq summary", { hasText: "When does the trial end?" }).click();
+    ok("pricing questions open", (await p.locator(".faq details[open]").count()) === 1);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "site-pricing-phone.png"), fullPage: true });
+    await p.context().close();
+    // a coach previews what players see; the folded sidebar's sites menu shows names
+    const A = await newPage(browser, { cloud: false, size: { width: 1280, height: 860 } });
+    await go(A, "sample"); await A.waitForTimeout(800);
+    await A.locator(".sm-btn").click(); await A.waitForTimeout(100);
+    ok("the folded sidebar's sites menu shows each site's name", await A.locator(".sm-menu a", { hasText: "Floorcall Live" }).isVisible() && (await A.locator(".sm-menu a", { hasText: "getfloorcall.com" }).count()) === 0);
+    await A.keyboard.press("Escape");
+    ok("there's no What's New card on Home", (await A.getByText("What's new").count()) === 0);
+    await go(A, "settings"); await A.getByRole("button", { name: "Preview", exact: true }).click(); await A.waitForTimeout(400);
+    ok("the players' view hides every coaching tool", (await A.locator(".preview-bar").count()) === 1 && (await A.locator(".nav a.tab[href='#/track'], .nav a.tab[href='#/practice'], .nav a.tab[href='#/matchup'], .nav a.tab[href='#/film']").count()) === 0 && (await A.locator(".nav a.tab[href='#/stats']").count()) === 1);
+    await go(A, "team"); await A.waitForTimeout(300);
+    ok("players see the roster and results, nothing to edit", (await A.locator(".card", { hasText: "Roster" }).count()) === 1 && (await A.getByRole("button", { name: "Add player" }).count()) === 0 && (await A.locator("input").count()) === 0);
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "players-view.png"), fullPage: true });
+    await go(A, "practice"); ok("a coaching page opens Home in the players' view", (await A.locator(".hm-head").count()) === 1);
+    await A.getByRole("button", { name: "Exit preview" }).click(); await A.waitForTimeout(300);
+    ok("exiting brings the coaching tools back", (await A.locator(".preview-bar").count()) === 0 && (await A.locator(".nav a.tab[href='#/track']").count()) === 1);
+    ok("no errors on the site pages or in the players' view", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
+    await A.context().close();
+  },
   async academy(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "academy/"); await p.waitForTimeout(500);
@@ -1569,11 +1600,7 @@ const scenarios = {
     const A = await newPage(browser, { cloud: false });
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "home"); await A.waitForTimeout(300);
-    ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
-    await A.locator(".news-card").getByRole("button", { name: "Open Settings" }).click(); await A.waitForTimeout(400);
-    ok("and its links go straight there", (await A.locator("h1", { hasText: "Settings" }).count()) === 1);
-    await go(A, "home"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
-    ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
+    ok("Home has no What's New card", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
     await A.getByLabel("Players trying out, one per line").fill("12 Maya Chen OH 10th\n13 Ava Ramirez S Jr\nLily Torres L\n15 Zoe Grant MB"); await A.getByRole("button", { name: "Add", exact: true }).click(); await A.waitForTimeout(200);
     ok("tryout players are added from a pasted list, numbered when they have no bib", (await A.locator("table tbody tr").count()) === 4 && (await A.getByLabel("Bib for Lily Torres").inputValue()) === "14");

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from "react";
-import { all, currentMatch, setPrefs, state, team, useVersion } from "../data/store";
-import { useRoute } from "./router";
+import { all, currentMatch, matchesOf, setPrefs, state, team, useVersion } from "../data/store";
+import { go, useRoute } from "./router";
 import { siteUrl } from "../cloud/links";
 import { applyTheme } from "./theme";
 import { Scoreboard } from "./Scoreboard";
@@ -15,7 +15,10 @@ import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { TermsGate } from "../cloud/AuthPage";
 import { JoinPage } from "../cloud/CloudCard";
-import { roleOn } from "../cloud/sync";
+import { COACH_ONLY, isViewer } from "./viewAs";
+import { setUi, ui } from "./ui";
+import { access, BILLING } from "./flags";
+import { Paywall } from "./Paywall";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
 import { needsTermsAgreement, currentUser } from "../cloud/client";
 
@@ -41,8 +44,6 @@ const Wait = () => <div className="page"><p className="empty" style={{ padding: 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
 const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
 
-/** Pages for coaches only. */
-const COACH_ONLY = ["track", "lineup", "formations", "matchup", "tournament", "practice", "court", "film", "live", "labs", "tryouts", "club"];
 
 export function App() {
   useVersion();
@@ -83,7 +84,7 @@ export function App() {
   }
 
   // View-only members (players and families) get the team's stats, never the coaching tools
-  const viewer = !!t && roleOn(t.id) === "viewer";
+  const viewer = !!t && isViewer(t.id);
   const page = viewer && COACH_ONLY.includes(route.page) ? "home" : route.page;
   const showBoard = !!currentMatch() && ["track", "practice", "lineup", "formations", "stats", "court", "matchup"].includes(page) && !(page === "practice" && currentMatch()?.kind === "match");
   const teams = all("teams").sort((a, b) => a.createdAt - b.createdAt);
@@ -126,7 +127,8 @@ export function App() {
       <div className="mobilebar"><b>Floorcall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
       {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Floorcall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
-      <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{body}</Suspense></ErrorBoundary>
+      {ui.previewPlayer && <div className="preview-bar" role="status"><span><b>Players' view.</b> This is what your players and families see when they join {t?.name || "the team"} with a view-only code.</span><button className="btn sm" onClick={() => { setUi({ previewPlayer: false }); go("settings"); }}>Exit preview</button></div>}
+      <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{BILLING && t && !viewer && !["settings", "team", "home", "stats", "player", "admin"].includes(page) && !access(t, matchesOf().filter((m) => m.status === "done" && m.kind === "match").length).ok ? <Paywall /> : body}</Suspense></ErrorBoundary>
     </div>
     <Toast />
   </>;

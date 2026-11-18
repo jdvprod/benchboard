@@ -1,4 +1,5 @@
 /** Home: the dashboard the app opens to. What's live, next and last; every section with what's waiting in it; the season so far. */
+import { COACH_ONLY, isViewer } from "../../app/viewAs";
 import { lazy, Suspense, useState } from "react";
 import { all, currentMatch, ensureOpponent, matchesOf, newMatch, oppKey, opponentsOf, plansOf, playerName, replayOf, setTeamPatch, team, teamPlayers, todayISO, toast } from "../../data/store";
 import { Icon } from "../../ui/icons";
@@ -22,7 +23,6 @@ import { recapText } from "../stats/recap";
 /** The recap video maker loads when a coach opens it. */
 const RecapVideo = lazy(() => import("../stats/RecapDialog").then((m) => ({ default: m.RecapVideo })));
 import { NextMatchStatus } from "../matchup/Availability";
-import { WhatsNew } from "../../app/whatsNew";
 import { liveUrlFor } from "../../cloud/CloudCard";
 
 const fmtTime = (hhmm: string) => { const [h, m] = hhmm.split(":").map(Number); return `${((h + 11) % 12) + 1}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -65,7 +65,6 @@ export function Home() {
     {todaysTournament() && <Suspense fallback={null}><TournamentToday /></Suspense>}
     <UpNext next={next} vs={vsNext.length ? `${vsNext.filter((g) => g.R.wonUs > g.R.wonThem && g.R.matchOver).length}–${vsNext.filter((g) => g.R.wonThem > g.R.wonUs && g.R.matchOver).length} against them this season` : "First meeting this season"} onStart={startNext} />
     <Setup />
-    {!t.sample && <WhatsNew />}
     <div className="hm-week-narrow"><Week /></div>
     <div className="hm-grid">
       <div className="hm-main">
@@ -142,7 +141,7 @@ function Week() {
   type Row = { date: string; time?: string; title: string; sub: string; go: () => void; kind: "match" | "practice" | "tournament" };
   const rows: Row[] = [
     ...(t.schedule || []).filter((x) => x.date >= today && x.date <= end).map((x): Row => ({ date: x.date, time: x.time, title: (x.site === "away" ? "at " : "vs ") + x.opp, sub: [x.time ? fmtTime(x.time) : "", x.event].filter(Boolean).join(" · ") || "Match", go: () => go("matchup", ensureOpponent(x.opp).id), kind: "match" })),
-    ...plansOf().filter((p) => p.status === "planned" && p.date >= today && p.date <= end).map((p): Row => ({ date: p.date, time: p.start, title: p.title || "Practice", sub: [p.start ? fmtTime(p.start) : "", plural(p.blocks.length, "block")].filter(Boolean).join(" · "), go: () => go("practice"), kind: "practice" })),
+    ...plansOf().filter((p) => !isViewer(t.id) && p.status === "planned" && p.date >= today && p.date <= end).map((p): Row => ({ date: p.date, time: p.start, title: p.title || "Practice", sub: [p.start ? fmtTime(p.start) : "", plural(p.blocks.length, "block")].filter(Boolean).join(" · "), go: () => go("practice"), kind: "practice" })),
     ...(t.tournaments || []).filter((x) => x.start <= end && (x.end || x.start) >= today).map((x): Row => ({ date: x.start < today ? today : x.start, title: x.name, sub: "Tournament", go: () => go("tournament", x.id), kind: "tournament" })),
   ].sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
   const dow = (d: string) => new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short" });
@@ -158,7 +157,7 @@ function Week() {
 
 /** Every section of the app, each with what's waiting in it. */
 function Sections({ next, games, M }: { next?: { date: string; opp: string; time?: string }; games: number; M: ReturnType<typeof teamMetrics> }) {
-  const t = team()!, today = todayISO();
+  const t = team()!, today = todayISO(), viewer = isViewer(t.id);
   const day = (d: string) => (d === today ? "today" : new Date(d + "T12:00:00").toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }));
   const plan = plansOf().filter((p) => p.status === "planned" && p.date >= today).sort((a, b) => a.date.localeCompare(b.date))[0];
   const players = teamPlayers().filter((p) => p.active).length;
@@ -181,7 +180,7 @@ function Sections({ next, games, M }: { next?: { date: string; opp: string; time
   ];
   return <nav className="hm-sec hm-goto" aria-label="Go to">
     <div className="hm-sec-hd"><h2>Go to</h2></div>
-    <ul>{rows.map(([page, title, sub]) => <li key={page}><a href={"#/" + page}><i aria-hidden="true"><Icon name={page} /></i><b>{title}</b><small>{sub}</small><svg className="hm-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></a></li>)}</ul>
+    <ul>{rows.filter(([pg]) => !viewer || !COACH_ONLY.includes(pg)).map(([page, title, sub]) => <li key={page}><a href={"#/" + page}><i aria-hidden="true"><Icon name={page} /></i><b>{title}</b><small>{sub}</small><svg className="hm-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></a></li>)}</ul>
   </nav>;
 }
 

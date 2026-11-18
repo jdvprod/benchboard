@@ -1,4 +1,4 @@
-/** The other Floorcall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach, Academy, the product page). */
+/** The other Floorcall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach and Academy). */
 import { useEffect, useRef, useState } from "react";
 import { placeUrl, PLACES } from "../cloud/links";
 
@@ -25,12 +25,10 @@ export function SitesMenu({ mini }: { mini?: boolean }) {
       <span>Floorcall sites</span>
     </button>
     {open && <div className="tm-menu sm-menu" role="menu" aria-label="Floorcall sites">
-      {PLACES.filter(([p]) => p !== "app").map(([p, name, what]) => <a key={p} role="menuitem" className="tm-item sm-item" href={placeUrl(p)} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
+      {PLACES.filter(([p]) => p !== "app" && p !== "home").map(([p, name, what]) => <a key={p} role="menuitem" className="tm-item sm-item" href={placeUrl(p)} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
         <span className="tm-name"><b>Floorcall {name}</b><small>{what}</small></span>
         <svg className="sm-out" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 5.5 10.5M11 9.5V13H3V5h3.5" /></svg>
       </a>)}
-      <div className="tm-sep" role="separator" />
-      <a role="menuitem" className="tm-item sm-item plain" href={placeUrl("home")} target="_blank" rel="noopener" onClick={() => setOpen(false)}><span className="tm-name"><b>getfloorcall.com</b><small>What Floorcall does, and pricing</small></span></a>
     </div>}
   </div>;
 }

@@ -68,7 +68,8 @@ const site = String(process.env.SITE_URL || pkgSite.url || "").replace(/\/*$/, "
 // With a real domain, each site gets its own address: app., live., recruit. (see worker/index.js)
 const fill = (t) => t.replaceAll("%VERSION%", version).replaceAll("%SITE%", site).replaceAll("%APP%", sites ? sites.app : "./").replaceAll("%LIVE%", sites ? sites.live : site + "live/").replaceAll("%RECRUIT%", sites ? sites.recruit : site + "recruit/").replaceAll("%BEACH%", sites ? sites.beach : site + "beach/").replaceAll("%ACADEMY%", sites ? sites.academy : site + "academy/");
 writeFileSync(path.join(dist, "index.html"), fill(readFileSync(path.join(root, "index.html"), "utf8")));
-for (const f of ["about.html", "live/index.html", "recruit/index.html", "beach/index.html", "academy/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
+for (const f of ["about.html", "pricing.html", "about-us.html", "site.js", "live/index.html", "recruit/index.html", "beach/index.html", "academy/index.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, fill(readFileSync(f, "utf8")));
+for (const f of ["pricing.html", "about-us.html"].map((x) => path.join(dist, x))) if (existsSync(f)) writeFileSync(f, readFileSync(f, "utf8").replaceAll("%LEGAL_EMAIL%", String(JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).contact || legal.email || "")));
 if (!legal.email) console.warn("\n⚠  package.json legal.email is empty: the Privacy Policy and Terms have no contact address. Add it before launch.\n");
 const sw = readFileSync(path.join(root, "public/sw.js"), "utf8").replace("%VERSION%", version + "-" + Date.now().toString(36));
 writeFileSync(path.join(dist, "sw.js"), sw);

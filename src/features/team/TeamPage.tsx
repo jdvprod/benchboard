@@ -18,16 +18,18 @@ import { exportAll, importBackup } from "../../data/backup";
 import { TEAM_COLORS } from "../../app/theme";
 import { NewTeamForm } from "./Welcome";
 import { go } from "../../app/router";
-import { setUi } from "../../app/ui";
+import { setUi, ui } from "../../app/ui";
 import { AiCard } from "../../ui/ai";
 import { scoutPrompt } from "../../ai/prompts";
 import { CloudCard } from "../../cloud/CloudCard";
 import { Announcements } from "./Announcements";
 import { isLinked } from "../../cloud/sync";
+import { isViewer } from "../../app/viewAs";
 import { FeesCard } from "../club/FeesCard";
 
 export function TeamPage({ sub }: { sub?: string }) {
   if (sub === "new") return <div className="page"><Card title="Add a team"><NewTeamForm /></Card></div>;
+  if (isViewer(team()!.id)) return <ViewerTeam />;
   return <div className="page">
     <div className="pagehead"><h1>{team()!.name}</h1></div>
     <div className="stack">
@@ -102,6 +104,30 @@ function Roster() {
       </tr>)}</tbody></table></div>}
     {ps.some((p) => !p.active) && <button className="btn sm ghost" style={{ marginTop: 8 }} onClick={() => setShowInactive(!showInactive)}>{showInactive ? "Hide removed players" : "Show removed players"}</button>}
   </Card>;
+}
+
+/** The Team tab for players and families: the roster, results and announcements, nothing to change. */
+function ViewerTeam() {
+  const t = team()!, ps = teamPlayers().filter((p) => p.active).sort((a, b) => (+a.num || 0) - (+b.num || 0));
+  const ms = matchesOf().filter((m) => m.kind === "match").sort((a, b) => b.date.localeCompare(a.date));
+  return <div className="page">
+    <div className="pagehead"><h1>{t.name}</h1>{t.level && <span className="muted">{t.level}</span>}</div>
+    <div className="grid2" style={{ alignItems: "start" }}>
+      <Card title={`Roster · ${ps.length} players`}>
+        <div className="tablewrap"><table><thead><tr><th className="l">#</th><th className="l">Player</th><th className="l">Pos</th><th className="l">Grad</th></tr></thead>
+          <tbody>{ps.map((p) => <tr key={p.id}><td className="l num">{p.num}</td><td className="l"><button className="linkbtn" onClick={() => go("player", p.id)}>{p.first} {p.last}</button></td><td className="l">{p.pos || ""}</td><td className="l">{p.grad || ""}</td></tr>)}</tbody></table></div>
+      </Card>
+      <div className="stack">
+        <Card title="Results">
+          {!ms.length ? <p className="empty">No matches yet.</p> : <ul className="log">{ms.map((m) => { const R = replayOf(m), played = R && R.sets.some((s) => s.us + s.them);
+            return <li key={m.id} style={{ gridTemplateColumns: "1fr auto" }}><span><b>vs {m.opp}</b><br /><span className="small muted">{fmtDate(m.date)}{played ? " · " + R!.sets.filter((s) => s.us + s.them).map((s) => s.us + "-" + s.them).join(", ") : ""}</span></span>
+              <span className="row" style={{ flexWrap: "nowrap" }}>{played && <b className="num">{R!.wonUs}–{R!.wonThem}</b>}<button className="btn sm" onClick={() => { setUi({ statsScope: "m:" + m.id }); go("stats"); }}>Stats</button></span></li>; })}</ul>}
+        </Card>
+        <Announcements />
+        {!ui.previewPlayer && <CloudCard />}
+      </div>
+    </div>
+  </div>;
 }
 
 function History() {
