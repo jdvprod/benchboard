@@ -5,6 +5,8 @@ import { setUi } from "./ui";
 
 const NEWS: { id: string; title: string; body: string; page?: string; cta?: string }[] = [
   // { id: "fees", ... } returns with the fees feature (src/app/flags.ts)
+  { id: "scoutfilm", title: "Scout opponents from film", body: "Watch one of their games and tap a number, then kill, ace, error, block or dig. Their dangerous players show up on the Matchup page, with a clip of every play.", page: "film", cta: "Open Film Room" },
+  { id: "trackmodes", title: "Basic stats and points only", body: "Track just the box score, or only who won each point. Pick under Tracking on the Track screen, or set the default in Settings.", page: "settings", cta: "Open Settings" },
   { id: "filmreview", title: "Film breakdown", body: "Film Room now reviews each match: where points went, the stuck rotation, their best hitter, what to keep doing. Ask it “why did we lose set 2?” and it shows you the plays. Each fix sends the right drill to your next practice.", page: "film", cta: "Open Film Room" },
   { id: "filmsearch", title: "Search all your film", body: "Ask across the whole season: “Maya's kills vs Buchanan”, “aces in the last 3 matches”. Best rallies ranks every rally by the crowd's reaction, no stats needed, and Best of the season pulls the top ones from every match.", page: "film", cta: "Search your film" },
   { id: "tryouts", title: "Tryouts", body: "Rate players skill by skill with your staff on their phones, rank them, and turn offers into a roster.", page: "tryouts", cta: "Open tryouts" },

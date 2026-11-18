@@ -1,4 +1,5 @@
 import { recordOf } from "../../sports/volleyball/engine";
+import { Gender, GENDERS } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { FEES } from "../../app/flags";
@@ -12,7 +13,7 @@ import { currentUser } from "../../cloud/client";
 import { todayISO, all, deleteMatch, deleteTeam, get, matchesOf, patch, player, remove, replayOf, save, seasonsOf, setTeamPatch, team, teamPlayers, toast, uid, opponentsOf, defaultSeasonName, oppKey, setOpponentLogo } from "../../data/store";
 import { Player } from "../../data/model";
 import { POSITIONS } from "../../sports/volleyball/actions";
-import { Card, ConfirmButton, download, fmtDate, plural } from "../../ui/kit";
+import { Card, ConfirmButton, download, fmtDate, plural, Seg } from "../../ui/kit";
 import { exportAll, importBackup } from "../../data/backup";
 import { TEAM_COLORS } from "../../app/theme";
 import { NewTeamForm } from "./Welcome";
@@ -48,6 +49,7 @@ function TeamInfo() {
         <label className="field"><span className="label">Team name</span><input defaultValue={t.name} onBlur={(e) => e.target.value.trim() && setTeamPatch({ name: e.target.value.trim() })} /></label>
         <label className="field"><span className="label">Level</span><input defaultValue={t.level} onBlur={(e) => setTeamPatch({ level: e.target.value.trim() })} /></label>
       </div>
+      <div><div className="label">Girls or boys</div><Seg value={(t.gender || "") as Gender} onChange={(v) => setTeamPatch({ gender: v as Gender })} options={GENDERS} label="Girls or boys" /></div>
       <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, play-by-play, your team page and share graphics.</p>
         <LogoPicker kind="team" id={t.id} name={t.name} value={t.logo} onPick={teamLogoPick} /></div>
       <div><div className="label">Season</div>

@@ -1,4 +1,5 @@
 /** Lineup builder: six starters, libero, all six rotations, rotation results, AI suggestion. */
+import { LineupTabs } from "./LineupTabs";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { useState } from "react";
 import { activePlayers, appendEvents, currentMatch, matchesOf, patch, player, playerName, replayOf, setTeamPatch, team, toast, todayISO, uid } from "../../data/store";
@@ -86,6 +87,7 @@ export function LineupPage() {
 
   return <div className="page">
     <NextMatchOuts inLineup={[...lu, lib || "", lib2 || ""].filter(Boolean)} />
+    <div className="lu-tabs"><LineupTabs here="lineup" /></div>
     <div className="pagehead"><h1>Lineup & rotations</h1>
       <div className="row">
         <button className="btn primary" disabled={!valid} onClick={saveDefault}>Save as starting lineup</button>

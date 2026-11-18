@@ -2,6 +2,8 @@
 import type { MatchEvent } from "../sports/volleyball/engine";
 
 export interface TeamSettings {
+  /** What the Track screen asks for: every stat (default), the basic box score, or only who won each point. */
+  trackMode?: "full" | "basic" | "points";
   subLimit: number;        // subs allowed per set (0 = no limit)
   bestOf: number;          // default match format (2 = two sets, pool play)
   scoring?: string;        // default scoring: "25", "25c27", "21", "21c23"
@@ -43,6 +45,8 @@ export interface Team {
   id: string;
   name: string;
   level: string;           // e.g. "Varsity", "JV", "16U Club"
+  /** Girls', boys' or coed team: groups teams in the switcher and picks drills meant for them. */
+  gender?: Gender;
   color: string;           // primary team color (hex)
   createdAt: number;
   activeSeasonId: string | null;
@@ -155,12 +159,18 @@ export interface EventLog { id: string; matchId: string; device: string; events:
 
 export interface PlanItem { id: string; text: string; done?: boolean }
 export type OppRoster = Record<string, { name?: string; pos?: string }>;
-export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster }
+/** One of the opponent's games, statted from video with a few buttons (their players, by jersey number). */
+export interface ScoutEv { id: string; vt: number; n: string; t: "K" | "AE" | "SA" | "SE" | "B" | "D" | "E" }
+export interface OppFilm { id: string; date: string; vs: string; video: string; evs: ScoutEv[]; at: number }
+export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster; films?: OppFilm[] }
 export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** volunteer jobs families can sign up for on Floorcall Live */ jobs?: Job[] }
 export interface Job { id: string; name: string; need: number }
 
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;
-export interface Drill { id: string; teamId: string; name: string; category: string; minutes: number; description: string; focus: string[] }
+export type Gender = "girls" | "boys" | "coed";
+export const GENDERS: [Gender, string][] = [["girls", "Girls"], ["boys", "Boys"], ["coed", "Coed"]];
+/** A drill meant for girls' or boys' teams only (no value: for everyone). */
+export interface Drill { id: string; teamId: string; name: string; category: string; minutes: number; description: string; focus: string[]; for?: "girls" | "boys" }
 export interface PlanBlock { id: string; title: string; category: string; minutes: number; notes: string; drillId: string | null; done?: boolean }
 export interface PracticePlan {
   id: string; teamId: string; seasonId: string | null;
@@ -175,7 +185,7 @@ export interface PracticePlan {
 export interface Board { id: string; teamId: string; name: "hit" | "serve" | "def"; strokes: Stroke[] }
 export interface Stroke { tool: "pen" | "arrow" | "dot" | "hl"; color: string; pts: [number, number][] }
 
-export interface Prefs { theme: "system" | "light" | "dark"; size: "normal" | "large"; teamId: string | null; focus?: boolean; quick?: boolean; labsFocus?: boolean; offline?: boolean;
+export interface Prefs { theme: "light" | "dark"; size: "normal" | "large"; teamId: string | null; focus?: boolean; quick?: boolean; labsFocus?: boolean; offline?: boolean;
   /** This device's job when several coaches track one match: everything, only the score, or chosen stats that don't change the score. */
   job?: "all" | "score" | "stats"; jobGroups?: string[];
   /** The sidebar folded to icons (wide screens). */

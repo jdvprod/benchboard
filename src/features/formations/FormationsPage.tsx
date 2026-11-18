@@ -1,4 +1,5 @@
 /** Formations: drag players into serve-receive, serving and base-defense spots for each rotation, with an overlap check. */
+import { LineupTabs } from "../lineup/LineupTabs";
 import { KeyboardEvent, PointerEvent as RPointerEvent, useRef, useState } from "react";
 import { player, playerName, setTeamPatch, team, toast, uid } from "../../data/store";
 import { rotateLineup } from "../../sports/volleyball/engine";
@@ -34,6 +35,7 @@ export function FormationsPage() {
   const tokens = tokensFor(rot);
 
   if (!t.defLineup || t.defLineup.lu.length !== 6) return <div className="page">
+    <div className="lu-tabs"><LineupTabs here="formations" /></div>
     <div className="pagehead"><h1>Formations</h1></div>
     <Card><p>Set your starting six on the Lineup tab first. Formations follow that lineup through all six rotations.</p><button className="btn primary" style={{ marginTop: 10 }} onClick={() => go("lineup")}>Go to Lineup</button></Card>
   </div>;
@@ -61,7 +63,8 @@ export function FormationsPage() {
   const presets = t.formationPresets || [];
 
   return <div className="page">
-    <div className="pagehead"><div className="row"><button className="btn sm" onClick={() => go("labs")}>← Labs</button><h1>Formations</h1></div>
+    <div className="lu-tabs"><LineupTabs here="formations" /></div>
+    <div className="pagehead"><h1>Formations</h1>
       <Seg value={phase} onChange={setPhase} options={PHASES} label="Phase" />
     </div>
     <div className="grid2" style={{ alignItems: "start" }}>

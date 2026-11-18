@@ -116,6 +116,14 @@ const skipIfAsked = async (p) => { const s = p.getByRole("button", { name: "Skip
 /* ---------- scenarios ---------- */
 /** Built-but-held features (src/app/flags.ts): their tests run only when they're on. */
 const FEES_ON = /FEES = true/.test(fs.readFileSync(path.join(__dirname, "..", "src/app/flags.ts"), "utf8"));
+/** The head coach (A) approves the coach (B) who joined with a coach code; B's next sync brings the team down. */
+async function approveCoach(A, B) {
+  await go(A, "team"); await A.waitForTimeout(600);
+  await A.locator(".mem-wait").getByRole("button", { name: "Approve" }).first().click(); await A.waitForTimeout(500);
+  await B.reload(); await B.waitForTimeout(2000);
+  await go(A, "track"); await A.waitForTimeout(200);
+}
+
 const scenarios = {
   async home(browser) {
     const p = await newPage(browser, { cloud: false, phone: true });
@@ -157,7 +165,9 @@ const scenarios = {
     for (const opts of [{}, { phone: true }, { phone: true, dark: true }, { tablet: true }]) {
       const tag = opts.phone ? (opts.dark ? "phone dark" : "phone") : opts.tablet ? "tablet" : "desktop", p = await newPage(browser, opts);
       await go(p, "sample"); await p.waitForTimeout(900);
-      ok(`${tag}: sample team loads on Track`, (await p.locator(".board").count()) > 0);
+      ok(`${tag}: sample team opens on Home`, (await p.locator(".hm-head").count()) > 0);
+      if (opts.dark) { await go(p, "settings"); await p.getByRole("group", { name: "Theme" }).getByRole("button", { name: "Dark" }).click(); await p.waitForTimeout(150); }
+      await go(p, "track"); ok(`${tag}: sample team loads on Track`, (await p.locator(".board").count()) > 0);
       for (const r of ["track", "lineup", "matchup", "practice", "stats", "court", "team", "film", "tryouts", "settings", "labs", "live", "account"]) {
         await go(p, r);
         ok(`${tag}: ${r} renders`, (await p.locator(".page, .content, .auth, main").count()) > 0);
@@ -414,7 +424,7 @@ const scenarios = {
 
   async practice(browser) {
     const p = await newPage(browser);
-    await go(p, "sample"); await p.waitForTimeout(800);
+    await go(p, "sample"); await p.waitForTimeout(800); await go(p, "track"); await p.waitForTimeout(300);
     await p.locator("button.ctrl", { hasText: "End match" }).click(); await p.locator("button.ctrl", { hasText: "Tap again" }).click(); await p.waitForTimeout(200);
     // scrimmage: a kill by the second team scores for them
     await go(p, "practice"); await p.getByRole("button", { name: "Scrimmage", exact: true }).click(); await p.getByRole("button", { name: "Start scrimmage" }).click(); await p.waitForTimeout(300);
@@ -446,12 +456,13 @@ const scenarios = {
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
     const code = (await A.locator(".hint b").first().innerText()).trim();
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Skew Prep"); await A.getByRole("button", { name: "Start · they serve first" }).click(); await A.waitForTimeout(200);
-    await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
+    await A.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true, skew: 90000 });
     await go(B, "join/" + code); await B.getByLabel("Email").fill("fast@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator("#auth-name").fill("Test Coach"); await B.locator(".auth-agree input").first().check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1500);
-    await go(B, "track"); await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
+    await approveCoach(A, B);
+    await go(B, "track"); await B.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
     await B.locator(".pl", { hasText: "Nia" }).first().click(); await B.locator(".actsheet button", { hasText: /^3$/ }).click(); await skipIfAsked(B); await B.waitForTimeout(2200);
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(900);
     await go(A, "track"); await A.getByRole("button", { name: "Our point", exact: true }).click(); await A.waitForTimeout(300);
@@ -720,8 +731,9 @@ const scenarios = {
     await P.getByRole("button", { name: "Change" }).click(); await P.getByRole("button", { name: "Turn off" }).click(); await P.waitForTimeout(800);
     M = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/pushes`)).json(); M.pushes = M.pushes.filter((x) => x.title.includes("Ping Club") && x.kind !== "post"); M.subs = M.subs.filter((x) => x.endpoint.includes("sub-1"));
     ok("turning off removes the subscription", M.subs.length === 0 && (await P.getByRole("button", { name: "Turn on notifications" }).count()) === 1);
-    // setup check: the notify function answers
-    await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1500);
+    // setup check (admins only): the notify function answers
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=notify%40e2e.test`, { headers: { apikey: "anon" } }); await A.reload(); await A.waitForTimeout(600);
+    await go(A, "settings"); await A.waitForTimeout(600); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1500);
     ok("setup check finds the notify function", (await A.locator(".check-list li.sc-ok", { hasText: "Family notifications" }).count()) === 1);
     ok("notify: no page errors", !A.errors.length && !P.errors.length, A.errors.concat(P.errors).slice(0, 3).join(" | "));
     await A.context().close(); await P.context().close();
@@ -1393,6 +1405,82 @@ const scenarios = {
     await p.context().setOffline(false);
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
   },
+  async modes(browser) {
+    const p = await newPage(browser, { cloud: false, size: { width: 1280, height: 860 } });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Mode High"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(500);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill(["4 Jordan Lee OH", "7 Maya Chen OH", "9 Riley Brooks MB", "11 Ava Ramirez S", "12 Zoe Grant OPP", "14 Kenzie Park OH"].join("\n")); await p.getByRole("button", { name: "Add players", exact: true }).click(); await p.waitForTimeout(300);
+    // the app opens on Home with the sidebar folded, in the light theme
+    await p.goto(U); await p.waitForTimeout(600);
+    ok("the app opens on Home, sidebar folded, light theme", (await p.locator(".hm-head, .home").count()) > 0 && await p.evaluate(() => document.body.classList.contains("nav-mini") && document.documentElement.getAttribute("data-theme") === "light"));
+    await go(p, "track"); await p.getByPlaceholder("e.g. Buchanan").fill("Modes Prep"); await p.getByRole("button", { name: "Start · we serve first" }).click(); await p.waitForTimeout(300);
+    ok("full stats has every button", (await p.locator(".pad .act", { hasText: "Tool" }).count()) === 1);
+    await p.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await p.getByRole("button", { name: /^Basic stats/ }).click(); await p.getByRole("button", { name: "Done", exact: true }).click(); await p.waitForTimeout(200);
+    const basic = await p.locator(".pad .label").allInnerTexts();
+    ok("basic stats keeps the box score only", (await p.locator(".pad .act", { hasText: "Tool" }).count()) === 0 && (await p.locator(".pad .act", { hasText: /^Kill$/ }).count()) === 1 && (await p.locator(".pad .act", { hasText: /^Dig$/ }).count()) === 1 && !basic.some((x) => /Transition|Misc|Serve receive/i.test(x)), basic.join(","));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "track-basic.png") });
+    await p.locator(".pl", { hasText: "Maya" }).first().click(); await p.locator(".pad .act", { hasText: /^Kill$/ }).click(); await skipIfAsked(p); await p.waitForTimeout(200);
+    ok("a basic kill scores", /MODE HIGH 1/.test(await score(p)), await score(p));
+    await p.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await p.getByRole("button", { name: /^Points only/ }).click(); await p.getByRole("button", { name: "Done", exact: true }).click(); await p.waitForTimeout(200);
+    ok("points only shows just who won the point", (await p.locator(".pad .act").count()) === 2 && (await p.getByRole("button", { name: "Our point", exact: true }).count()) === 1);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "track-points.png") });
+    await p.getByRole("button", { name: "Their point", exact: true }).click(); await p.waitForTimeout(150);
+    ok("points only keeps score", /MODE HIGH 1 .* 1/.test(await score(p)), await score(p));
+    await go(p, "settings"); ok("settings has the tracking choice and the old Labs switches", (await p.getByRole("group", { name: "What to track" }).count()) === 1 && (await p.getByLabel("Type-in stat codes").count()) === 1);
+    ok("Labs is gone from the sidebar; Formations sit under Lineup", (await p.locator(".nav a.tab[href='#/labs']").count()) === 0);
+    await go(p, "formations"); ok("formations has the lineup tabs", (await p.getByRole("group", { name: "Lineup section" }).count()) === 1);
+    // the sidebar's Floorcall sites menu
+    await go(p, "home"); await p.locator(".sm-btn").click(); ok("the sidebar lists the other Floorcall sites", (await p.locator(".sm-menu a", { hasText: "Floorcall Academy" }).count()) === 1);
+    await p.keyboard.press("Escape");
+    // scout an opponent from their film
+    await go(p, "film"); await p.waitForTimeout(300);
+    const sc = p.locator(".sf-start");
+    await sc.getByLabel("Video of their game").setInputFiles(path.join(__dirname, "fixtures", "game.webm"));
+    await sc.getByPlaceholder("e.g. Central").fill("Scout Prep"); await sc.getByRole("button", { name: "Start scouting" }).click(); await p.waitForTimeout(600);
+    ok("scouting opens their game", /#\/film\/scout(:|%3A)/.test(p.url()) && (await p.locator(".sf-video video").count()) === 1, p.url());
+    await p.getByLabel("Type their number").fill("12"); await p.locator(".sf-acts button", { hasText: "Kill" }).click();
+    await p.locator(".sf-chips button", { hasText: "12" }).click(); await p.locator(".sf-acts button", { hasText: "Kill" }).click();
+    await p.locator("body").click({ position: { x: 5, y: 5 } }); await p.keyboard.type("7"); await p.keyboard.press("a"); await p.waitForTimeout(200);
+    const rows = await p.locator(".sf-table tbody tr").allInnerTexts();
+    ok("their players add up, most dangerous first, typed numbers and keys work", rows.length === 2 && /^#12\s+2/.test(rows[0].trim()) && /#7/.test(rows[1]), rows.join(" | "));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "scout.png"), fullPage: true });
+    await p.getByRole("button", { name: "Open in Matchup" }).click(); await p.waitForTimeout(400);
+    ok("the Matchup page shows what their film says", (await p.locator(".card", { hasText: "From their film" }).count()) === 1);
+    ok("no errors in tracking modes or scouting", !p.errors.length, p.errors.slice(0, 3).join("; "));
+    await p.context().close();
+  },
+  async verify(browser) {
+    // a new head coach must be verified by a Floorcall admin before their team can sync
+    const A = await newPage(browser);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("unverified-head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Dana Park"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
+    await A.getByLabel("Team name").fill("Verify Prep"); await A.getByRole("button", { name: "Boys" }).click(); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
+    ok("a new team starts on the team page with the gender chosen", (await A.locator(".seg button[aria-pressed=true]", { hasText: "Boys" }).count()) === 1);
+    ok("an unverified coach is asked to verify before syncing", (await A.getByRole("heading", { name: "Verify your coach account" }).count()) === 1 && (await A.getByRole("button", { name: "Sync this team" }).count()) === 0);
+    await A.getByLabel("School or club").fill("Verify Prep Academy"); await A.getByRole("button", { name: "Ask to be verified" }).click(); await A.waitForTimeout(500);
+    ok("after asking, the coach sees it's being checked", (await A.getByRole("heading", { name: "Verifying your coach account" }).count()) === 1);
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "verify-pending.png"), fullPage: true });
+    // the Floorcall admin verifies them
+    const D = await newPage(browser);
+    await go(D, "track"); { const ca = D.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await D.getByLabel("Email").fill("boss@e2e.test"); await D.locator("#auth-pw").fill("secret123"); await D.locator("#auth-name").fill("Boss"); await D.locator(".auth-agree input").first().check(); await D.getByRole("button", { name: "Create account" }).click(); await D.waitForTimeout(500);
+    await D.getByLabel("Team name").fill("Boss Team"); await D.getByRole("button", { name: "Create team" }).click(); await D.waitForTimeout(600);
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=boss%40e2e.test`, { headers: { apikey: "anon" } });
+    await D.reload(); await go(D, "admin"); await D.waitForTimeout(900);
+    ok("the admin console lists coaches waiting to be verified", (await D.locator("td", { hasText: "Verify Prep Academy" }).count()) === 1);
+    if (process.env.SHOTS) await D.screenshot({ path: path.join(process.env.SHOTS, "admin-verify.png"), fullPage: true });
+    await D.getByRole("button", { name: "Verify", exact: true }).click(); await D.waitForTimeout(400);
+    await A.reload(); await go(A, "team"); await A.waitForTimeout(800);
+    ok("once verified, the coach can sync the team", (await A.getByRole("button", { name: "Sync this team" }).count()) === 1);
+    await A.getByRole("button", { name: "Sync this team" }).click(); await A.waitForTimeout(1200);
+    ok("and it syncs", (await A.getByText("Synced").count()) > 0);
+    // settings: no setup or background sections for coaches; admins see them
+    await go(A, "settings"); await A.waitForTimeout(500);
+    ok("coaches' settings leave out setup and background tools", (await A.getByRole("heading", { name: "Setup check" }).count()) === 0 && (await A.getByRole("heading", { name: "AI features" }).count()) === 0 && (await A.getByRole("button", { name: "Light" }).count()) === 1 && (await A.getByRole("button", { name: "System" }).count()) === 0);
+    await go(D, "settings"); await D.waitForTimeout(800);
+    ok("admins see the setup check and admin tools in settings", (await D.getByRole("heading", { name: "Setup check" }).count()) === 1 && (await D.getByRole("button", { name: "Open admin" }).count()) === 1);
+    ok("no errors verifying a coach", !A.errors.length && !D.errors.length, [...A.errors, ...D.errors].slice(0, 3).join("; "));
+    for (const pg of [A, D]) await pg.context().close();
+  },
   async academy(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "academy/"); await p.waitForTimeout(500);
@@ -1443,6 +1531,8 @@ const scenarios = {
     await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
     await go(A, "team/new"); await A.getByLabel("Team name").fill("Clovis 15 Blue"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "matchup"); await A.getByRole("button", { name: "Paste a whole schedule" }).click(); await A.locator("textarea").first().fill("12/5 vs Fresno 11:00 AM\n12/5 vs Clovis West 3:00 PM"); await A.getByRole("button", { name: /^Add 2 to schedule/ }).click(); await A.waitForTimeout(200);
+    ok("the sidebar starts folded", await A.evaluate(() => document.body.classList.contains("nav-mini")));
+    await A.getByRole("button", { name: "Expand the sidebar" }).click(); await A.waitForTimeout(250);
     { const btn = A.locator(".tm-btn:visible"), before = await btn.innerText();
       await btn.click(); await A.waitForTimeout(150);
       ok("with two teams the team menu lists both and offers the club view", (await A.locator(".tm-menu [role=menuitemradio]").count()) === 2 && (await A.getByRole("menuitem", { name: "All teams overview" }).count()) === 1 && (await A.getByRole("menuitem", { name: "Add a team" }).count()) === 1);
@@ -1452,8 +1542,8 @@ const scenarios = {
       ok("picking a team switches to it", /Clovis 16 Black/.test(await btn.innerText()) && !/Clovis 16 Black/.test(before));
       await btn.click(); await A.locator(".tm-menu [role=menuitemradio]", { hasText: "Clovis 15 Blue" }).click(); await A.waitForTimeout(250);
       await A.getByRole("button", { name: "Collapse the sidebar" }).click(); await A.waitForTimeout(250);
-      ok("the sidebar folds to icons, and remembers", await A.evaluate(() => document.body.classList.contains("nav-mini")) && (await A.locator(".nav .tab span").first().isVisible()) === false);
-      await A.reload(); await A.waitForTimeout(400); ok("…after a reload too", await A.evaluate(() => document.body.classList.contains("nav-mini")));
+      ok("the sidebar folds to icons", await A.evaluate(() => document.body.classList.contains("nav-mini")) && (await A.locator(".nav .tab span").first().isVisible()) === false);
+      await A.reload(); await A.waitForTimeout(400); ok("…and opens folded next time", await A.evaluate(() => document.body.classList.contains("nav-mini")));
       await A.getByRole("button", { name: "Expand the sidebar" }).click(); await A.waitForTimeout(250); }
     await go(A, "club"); await A.waitForTimeout(500);
     ok("club shows every team", (await A.locator(".club-card").count()) === 2 && /2 teams/.test(await A.locator(".pagehead").innerText()));
@@ -1480,8 +1570,8 @@ const scenarios = {
     await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Clovis 16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
     await go(A, "home"); await A.waitForTimeout(300);
     ok("Home shows what's new in Floorcall", (await A.locator(".news-card li").count()) === 4);
-    await A.locator(".news-card").getByRole("button", { name: "Open the playbook" }).click(); await A.locator(".pb").waitFor({ timeout: 5000 }).catch(() => {});
-    ok("and its links go straight there", (await A.locator(".pb").count()) === 1);
+    await A.locator(".news-card").getByRole("button", { name: "Open Settings" }).click(); await A.waitForTimeout(400);
+    ok("and its links go straight there", (await A.locator("h1", { hasText: "Settings" }).count()) === 1);
     await go(A, "home"); await A.locator(".news-card").getByRole("button", { name: "Got it" }).click(); await A.reload(); await A.waitForTimeout(500);
     ok("dismissed, it stays gone", (await A.locator(".news-card").count()) === 0);
     await go(A, "tryouts"); await A.getByLabel("Name").fill("16U tryouts"); await A.getByRole("button", { name: "Start" }).click(); await A.waitForTimeout(300);
@@ -1518,7 +1608,7 @@ const scenarios = {
     if (process.env.QASHOT8) await A.screenshot({ path: process.env.QASHOT8.replace(".png", "-rank.png"), fullPage: true });
     await A.setViewportSize({ width: 1360, height: 900 });
     await A.getByLabel("New team name").fill("Clovis 16 Blue"); await A.getByRole("button", { name: "Create team with 2 players" }).click(); await A.waitForTimeout(500);
-    { const roster = (await A.locator(".page").innerText()) + " " + (await A.locator(".page input").evaluateAll((l) => l.map((x) => x.value).join(" "))); ok("offers become a new team's roster", /Clovis 16 Blue/.test(await A.locator(".tm-btn:visible").innerText()) && /Zoe/.test(roster) && /Ava/.test(roster) && !/Maya/.test(roster), roster.slice(0, 300)); }
+    { const roster = (await A.locator(".page").innerText()) + " " + (await A.locator(".page input").evaluateAll((l) => l.map((x) => x.value).join(" "))); ok("offers become a new team's roster", /Clovis 16 Blue/.test(await A.locator(".tm-btn:visible").getAttribute("aria-label")) && /Zoe/.test(roster) && /Ava/.test(roster) && !/Maya/.test(roster), roster.slice(0, 300)); }
     await A.reload(); await A.waitForTimeout(800); await go(A, "tryouts"); await A.waitForTimeout(300);
     ok("tryouts are kept on the device", /16U tryouts[\s\S]*4 players · 2 evaluators/.test(await A.locator(".ty-list").innerText()));
     ok("no errors on tryouts", A.errors.length === 0, A.errors.join("; "));
@@ -1744,13 +1834,15 @@ const scenarios = {
     await A.getByRole("button", { name: "Invite a coach" }).click(); await A.waitForTimeout(300);
     const code = (await A.locator(".hint b").first().innerText()).trim(); ok("invite code made", /^[A-Z0-9]{6}$/.test(code), code);
     await go(A, "track"); await A.getByPlaceholder("e.g. Buchanan").fill("Buchanan"); await A.getByRole("button", { name: "Start · they serve first" }).click(); await A.waitForTimeout(200);
-    await A.locator("button.ctrl", { hasText: "My job" }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
+    await A.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await A.getByRole("button", { name: /^Score only/ }).click(); await A.getByRole("button", { name: "Done", exact: true }).click();
     await A.waitForTimeout(2200);
     const B = await newPage(browser, { phone: true });
     await go(B, "join/" + code); await B.getByLabel("Email").fill("assistant@e2e.test"); await B.locator("#auth-pw").fill("secret123"); await B.locator("#auth-name").fill("Test Coach"); await B.locator(".auth-agree input").first().check(); await B.getByRole("button", { name: "Create account" }).click(); await B.waitForTimeout(500);
     await B.getByRole("button", { name: "Join team" }).click(); await B.waitForTimeout(1200);
+    ok("a coach code waits for the head coach's approval", (await B.locator("body").innerText()).includes("Waiting for approval"));
+    await approveCoach(A, B);
     await go(B, "track"); ok("assistant sees the live match", /CLOUD CLUB 0/.test(await score(B)));
-    await B.locator("button.ctrl", { hasText: "My job" }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
+    await B.locator("button.ctrl", { hasText: /^Tracking/ }).click(); await B.getByRole("button", { name: /^Stats only/ }).click(); await B.getByRole("button", { name: "Done", exact: true }).click();
     await B.locator(".pl", { hasText: "Nia" }).first().click(); await B.locator(".actsheet button", { hasText: /^3$/ }).click(); await skipIfAsked(B);
     ok("stats-only pass doesn't score", /CLOUD CLUB 0 .* 0 /.test(await score(B)), await score(B));
     await A.getByRole("button", { name: "Our point", exact: true }).click(); await A.waitForTimeout(2200);
@@ -1832,7 +1924,8 @@ const scenarios = {
     ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
     { const lasts = fs.readFileSync(path.join(__dirname, "roster.csv"), "utf8").split("\n").slice(1).map((l) => l.split(",")[2]).filter(Boolean);
       ok("AI requests carry first names only, never last names", sent.length > 0 && sent.join("").includes("Nia") && !lasts.some((n) => sent.join("").includes(n)), lasts.filter((n) => sent.join("").includes(n)).join(", ")); }
-    await go(A, "settings"); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=head%40e2e.test`, { headers: { apikey: "anon" } }); await A.reload(); await A.waitForTimeout(800);
+    await go(A, "settings"); await A.waitForTimeout(600); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
     ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact", "Sign-up emails"].includes(x)) && notOk.includes("Sign-up emails"), notOk.join(", "));
     // player fees sync to the team's coaches, and only to them
@@ -1851,13 +1944,10 @@ const scenarios = {
     await go(V, "join/" + vcode); await V.getByLabel("Email").fill("parent@e2e.test"); await V.locator("#auth-pw").fill("secret123"); await V.locator("#auth-name").fill("Test Coach"); await V.locator(".auth-agree input").first().check(); await V.getByRole("button", { name: "Create account" }).click(); await V.waitForTimeout(500);
     await V.getByRole("button", { name: "Join team" }).click(); await V.waitForTimeout(1500);
     await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
-    await go(V, "track"); ok("viewer sees the view-only note", (await V.locator(".banner", { hasText: "View-only." }).count()) === 1);
-    if (FEES_ON) await go(V, "team"); if (FEES_ON) ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid")); await go(V, "track");
-    await V.locator(".pl", { hasText: "Maya" }).first().click(); await V.locator(".actsheet button", { hasText: /^Kill$/ }).click(); await skipIfAsked(V); await V.waitForTimeout(2500);
-    await go(V, "team"); await V.getByRole("button", { name: "Sync now" }).click(); await V.waitForTimeout(800);
-    ok("viewer's sync says it's view-only instead of failing forever", (await V.getByText("view-only access").count()) > 0);
-    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800); await go(A, "track");
-    ok("viewer's entry never reaches the team", /CLOUD CLUB 3 /.test(await score(A)), await score(A));
+    await go(V, "track"); await V.waitForTimeout(300);
+    ok("players and families get stats, not the coaching tools", (await V.locator(".hm-head, .home").count()) > 0 && (await V.locator(".nav a.tab[href='#/track'], .nav a.tab[href='#/matchup'], .nav a.tab[href='#/practice']").count()) === 0);
+    await go(V, "matchup"); await V.waitForTimeout(300); ok("a view-only member who opens a coaching page lands on Home", (await V.locator("h1", { hasText: "Matchups" }).count()) === 0);
+    if (FEES_ON) await go(V, "team"); if (FEES_ON) ok("fees: a view-only member never sees them", (await V.getByRole("heading", { name: "Player fees" }).count()) === 0 && !(await V.evaluate(() => JSON.stringify(localStorage) + document.body.innerText)).includes("Maya paid"));
     for (const [n, pg] of [["head coach", A], ["assistant", B], ["parent", P], ["viewer", V]]) ok(`cloud: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, B, P, V]) await pg.context().close();
   },

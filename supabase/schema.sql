@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 29 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 30 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1078,6 +1078,119 @@ create policy "fees: coaches" on public.team_fees for all to authenticated using
 grant select, insert, update, delete on public.team_fees to authenticated;
 -- fees never belong in the shared team record
 update public.records set data = data - 'fees' where store = 'teams' and data ? 'fees';
+
+-- ---------- verified coaches and team approval (version 30) ----------
+-- Who may do what:
+--   Floorcall admins (the admins table) verify team admins: the coaches who may put a team in the cloud.
+--   A team's owner (its team admin) approves every coach who joins with a coach code; until then they see nothing.
+--   View-only members (players and families) see stats, never the coaches' scouting, drills, practice plans or boards.
+alter table public.members add column if not exists status text not null default 'active';
+do $do$ begin
+  if not exists (select 1 from pg_constraint where conname = 'members_status_check') then
+    alter table public.members add constraint members_status_check check (status in ('active', 'pending'));
+  end if;
+end $do$;
+
+create table if not exists public.coach_verify (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  email text not null default '', name text not null default '', org text not null default '', title text, phone text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),
+  requested_at timestamptz not null default now(), decided_at timestamptz
+);
+alter table public.coach_verify enable row level security;
+drop policy if exists "coach verify own row" on public.coach_verify;
+create policy "coach verify own row" on public.coach_verify for select using (user_id = auth.uid());
+-- coaches who already own a team keep working
+insert into public.coach_verify (user_id, email, title, status, decided_at)
+  select distinct on (m.user_id) m.user_id, coalesce(m.email, ''), 'Team owner', 'approved', now() from public.members m where m.role = 'owner'
+  on conflict (user_id) do nothing;
+
+create or replace function public.coach_ok() returns boolean
+language sql stable security definer set search_path = public as $$
+  select is_admin() or exists (select 1 from coach_verify where user_id = auth.uid() and status = 'approved')
+$$;
+create or replace function public.is_member(t text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from members where team_id = t and user_id = auth.uid() and status = 'active');
+$$;
+create or replace function public.can_edit(t text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from members where team_id = t and user_id = auth.uid() and status = 'active' and role in ('owner', 'coach'));
+$$;
+
+drop policy if exists "teams create" on public.teams_cloud;
+create policy "teams create" on public.teams_cloud for insert with check (owner = auth.uid() and public.coach_ok());
+drop policy if exists "members read" on public.members;
+create policy "members read" on public.members for select using (is_member(team_id) or user_id = auth.uid());
+drop policy if exists "records read" on public.records;
+create policy "records read" on public.records for select using (
+  is_member(team_id) and (can_edit(team_id) or store not in ('opponents', 'drills', 'plans', 'boards')));
+
+-- A coach code puts the coach on the team as pending until the team's owner approves them. View-only codes work at once.
+create or replace function public.join_team(invite text) returns text
+language plpgsql security definer set search_path = public as $$
+declare t text; r text;
+begin
+  if auth.uid() is null then raise exception 'Sign in first'; end if;
+  perform code_gate();
+  select team_id, role into t, r from invites where code = upper(trim(invite));
+  if t is null then perform code_miss(invite); return null; end if;  -- the app says the code doesn't match
+  insert into members (team_id, user_id, role, email, status)
+  values (t, auth.uid(), r, (select email from auth.users where id = auth.uid()), case when r = 'viewer' then 'active' else 'pending' end)
+  on conflict (team_id, user_id) do nothing;
+  return t;
+end $$;
+grant execute on function public.join_team(text) to authenticated;
+
+-- The team's owner approves or turns down a coach waiting to join.
+create or replace function public.team_decide_member(t text, uid uuid, approve boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from members where team_id = t and user_id = auth.uid() and role = 'owner' and status = 'active') then
+    raise exception 'Only the team''s owner can approve coaches'; end if;
+  if approve then update members set status = 'active' where team_id = t and user_id = uid and status = 'pending';
+  else delete from members where team_id = t and user_id = uid and status = 'pending'; end if;
+end $$;
+grant execute on function public.team_decide_member(text, uuid, boolean) to authenticated;
+
+-- A coach asks to be verified as a team admin.
+create or replace function public.coach_request(name text, org text, title text default null, phone text default null) returns text
+language plpgsql security definer set search_path = public, auth as $$
+declare em text;
+begin
+  select email into em from auth.users where id = auth.uid();
+  if em is null then raise exception 'Sign in first.'; end if;
+  if length(trim(coalesce(name, ''))) < 2 or length(trim(coalesce(org, ''))) < 2 then raise exception 'Add your name and your school or club.'; end if;
+  insert into coach_verify (user_id, email, name, org, title, phone) values (auth.uid(), em, left(trim(name), 80), left(trim(org), 120), left(trim(coalesce(title, '')), 80), left(trim(coalesce(phone, '')), 30))
+    on conflict (user_id) do update set name = excluded.name, org = excluded.org, title = excluded.title, phone = excluded.phone, requested_at = now(),
+      status = case when coach_verify.status = 'denied' then 'pending' else coach_verify.status end
+    where coach_verify.status <> 'approved';
+  return (select status from coach_verify where user_id = auth.uid());
+end $$;
+grant execute on function public.coach_request(text, text, text, text) to authenticated;
+
+create or replace function public.coach_status() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when is_admin() then '{"status":"approved","admin":true}'::jsonb else
+    coalesce((select jsonb_build_object('status', status, 'name', name, 'org', org) from coach_verify where user_id = auth.uid()), '{"status":"none"}'::jsonb) end
+$$;
+grant execute on function public.coach_status() to authenticated;
+
+create or replace function public.admin_coach_requests() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('user_id', user_id, 'email', email, 'name', name, 'org', org, 'title', title, 'phone', phone, 'status', status, 'at', requested_at)
+    order by (status = 'pending') desc, requested_at desc) from coach_verify), '[]'::jsonb);
+end $$;
+grant execute on function public.admin_coach_requests() to authenticated;
+create or replace function public.admin_decide_coach(uid uuid, approve boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  update coach_verify set status = case when approve then 'approved' else 'denied' end, decided_at = now() where user_id = uid;
+end $$;
+grant execute on function public.admin_decide_coach(uuid, boolean) to authenticated;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.

@@ -2,10 +2,11 @@
 import { useWakeLock } from "../../ui/wakeLock";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { roleOn } from "../../cloud/sync";
-import { setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers, appendEvents, deleteEvent, eventsOf, isMine, patch, patchEvent, player, playerName, replayOf, save, team, toast, undoLast } from "../../data/store";
+import { createInvite, isLinked, roleOn } from "../../cloud/sync";
+import { findDoubles } from "../../sports/volleyball/duplicates";
+import { setSettings, setTeamPatch, setPrefs, state, stampLog, logsOf, DEVICE, activePlayers, appendEvents, deleteEvent, eventsOf, isMine, patch, patchEvent, player, playerName, replayOf, save, team, toast, undoLast } from "../../data/store";
 import { asksLoc, Match } from "../../data/model";
-import { ACTIONS, ActionCode, GROUPS, LOCATION_HALF, OPP_NUMBER } from "../../sports/volleyball/actions";
+import { ACTIONS, ActionCode, BASIC_GROUPS, GROUPS, LOCATION_HALF, OPP_NUMBER, TRACK_MODES } from "../../sports/volleyball/actions";
 import { aggregate, LogEntry, Replay, serverOf, SetState, zoneOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveAttempts, serveErrors, serves, blocks } from "../../sports/volleyball/metrics";
 import { flags } from "../../sports/volleyball/flags";
@@ -13,7 +14,7 @@ import { setUi, ui } from "../../app/ui";
 import { sideNames } from "../../app/Scoreboard";
 import { CourtSvg } from "../../ui/court";
 import { Ball } from "../../ui/icons";
-import { Card, ConfirmButton } from "../../ui/kit";
+import { Card, ConfirmButton, copyText } from "../../ui/kit";
 import { useDragDrop } from "../../ui/drag";
 import { AiCard } from "../../ui/ai";
 import { timeoutPrompt } from "../../ai/prompts";
@@ -28,11 +29,15 @@ import { KEYMAP, useStatKeys } from "./keys";
 export const jobOf = (m: Match): "all" | "score" | "stats" => (m.kind === "match" && !m.scrim ? state.prefs.job || "all" : "all");
 const SCORE_GROUPS: [string, ActionCode[]][] = [["Score", ["UP", "TP"]], ["How they scored or erred", ["OK", "OA", "OE"]]];
 const STAT_GROUP_NAMES = GROUPS.map((g) => g[0]).filter((g) => g !== "Opponent");
+export const trackMode = (m: Match) => (m.scrim ? "full" : team()?.settings.trackMode || "full");
+const POINT_GROUPS: [string, ActionCode[]][] = [["Who won the point", ["UP", "TP"]]];
 const jobGroups = (m: Match): [string, ActionCode[]][] => {
-  const j = jobOf(m);
+  const j = jobOf(m), mode = trackMode(m);
+  if (mode === "points") return POINT_GROUPS;
   if (j === "score") return SCORE_GROUPS;
-  if (j === "stats") { const pick = state.prefs.jobGroups?.length ? state.prefs.jobGroups : STAT_GROUP_NAMES; return GROUPS.filter((g) => pick.includes(g[0])); }
-  return GROUPS;
+  const all = mode === "basic" ? BASIC_GROUPS : GROUPS;
+  if (j === "stats") { const pick = state.prefs.jobGroups?.length ? state.prefs.jobGroups : STAT_GROUP_NAMES; return all.filter((g) => pick.includes(g[0])); }
+  return all;
 };
 
 const TAGS = ["Great play", "Review this", "Serve receive", "Rotation breakdown", "Defense", "Coachable moment"];
@@ -134,6 +139,7 @@ export function Tracker({ m }: { m: Match }) {
         {!focus && <div className="stack">
           {scr ? <ScrimSummary m={m} c={c} /> : <SetSummary c={c} setA={setA} />}
           {!scr && <FlagsCard R={R} m={m} />}
+          <DoublesCard m={m} R={R} />
           <RecentCard m={m} R={R} />
         </div>}
       </div>
@@ -189,7 +195,7 @@ function ControlBar({ m, c, names }: { m: Match; c: SetState; names: { us: strin
       {c.lu && <button className="ctrl" onClick={() => panel("sub")}>Sub<small>{c.subs}{lim ? " of " + lim : ""} used</small></button>}
       <button className="ctrl" onClick={() => panel("lineup")}>{c.lu ? "Fix positions" : "Set lineup"}<small>{c.lu ? "who's where now" : "rotation tracking"}</small></button>
       <button className="ctrl" onClick={() => panel("plan")}>Game plan<small>keys & threats</small></button>
-      <button className={"ctrl" + (jobOf(m) !== "all" ? " on" : "")} onClick={() => panel("job")}>My job<small>{({ all: "everything", score: "score only", stats: "stats only" } as const)[jobOf(m)]}</small></button>
+      <button className={"ctrl" + (jobOf(m) !== "all" || trackMode(m) !== "full" ? " on" : "")} onClick={() => panel("job")}>Tracking<small>{trackMode(m) === "points" ? "points only" : (trackMode(m) === "basic" ? "basic · " : "") + ({ all: "everything", score: "score only", stats: "stats only" } as const)[jobOf(m)]}</small></button>
       <button className="ctrl" onClick={() => panel("tag")}>Film tag<small>bookmark</small></button>
       <button className="ctrl" onClick={undo}>Undo<small>your last entry</small></button>
       <FocusToggle />
@@ -442,7 +448,7 @@ function Hint({ c, m }: { c: SetState; m: Match }) {
   if (ui.sel) return <p className="hint">Recording for <b>{playerName(ui.sel, "full")}</b>{m.scrim ? ` (${m.scrim.b.ids.includes(ui.sel) ? m.scrim.b.name : m.scrim.a.name})` : ""}. Tap again to deselect.</p>;
   if (m.scrim) return <p className="hint">Tap a player from either team, then what they did. Points go to the right team automatically.</p>;
   if (srv) return <p className="hint">Tap a player, then what they did. Serve buttons go to <b>{playerName(srv)}</b>{srv === c.lib ? " (libero)" : ""}, who's serving. <span className="kbd-tip muted">Laptop? Press <kbd>?</kbd> for keyboard entry.</span></p>;
-  return <p className="hint">Tap a player, then what they did. Misc, Transition and Opponent work without a player. <span className="kbd-tip muted">Laptop? Press <kbd>?</kbd> for keyboard entry.</span></p>;
+  return <p className="hint">{trackMode(m) === "points" ? "Tap who won each point. " : trackMode(m) === "basic" ? "Tap a player, then what they did. Opponent works without a player. " : "Tap a player, then what they did. Misc, Transition and Opponent work without a player. "}<span className="kbd-tip muted">Laptop? Press <kbd>?</kbd> for keyboard entry.</span></p>;
 }
 
 /* ---------- pad ---------- */
@@ -571,10 +577,11 @@ function ActionSheet({ m, c, record }: { m: Match; c: SetState; record: (k: Acti
   const pos = (p.pos || "").toUpperCase();
   // Put the most likely actions first for the player's position.
   const first = pos.startsWith("S") && pos !== "SUB" ? "Set" : /^L|DS/.test(pos) ? "Pass" : null;
-  const job = jobOf(m); if (job === "score") return null;
+  const job = jobOf(m), mode = trackMode(m); if (job === "score" || mode === "points") return null;
   const PAD_NAME: Record<string, string> = { Attack: "Hitting", Pass: "Serve receive", Serve: "Serve", Defense: "Defense", Set: "Setting", Block: "Block", Errors: "Misc" };
   const allowed = new Set(jobGroups(m).map((g) => g[0]));
-  const mine = SHEET_GROUPS.filter((g) => job !== "stats" || allowed.has(PAD_NAME[g[0]]));
+  const mine = (mode === "basic" ? BASIC_GROUPS.filter((g) => g[0] !== "Opponent").map(([g, ks]) => [Object.keys(PAD_NAME).find((k) => PAD_NAME[k] === g) || g, ks] as [string, ActionCode[]]) : SHEET_GROUPS)
+    .filter((g) => job !== "stats" || allowed.has(PAD_NAME[g[0]]));
   if (!mine.length) return null;
   const groups = first && mine.some((g) => g[0] === first) ? [mine.find((g) => g[0] === first)!, ...mine.filter((g) => g[0] !== first)] : mine;
   const tap = (k: ActionCode) => { if (record(k) !== false) setUi({ sel: null }); };
@@ -606,18 +613,48 @@ function JobPanel({ m }: { m: Match }) {
   const job = state.prefs.job || "all", picked = state.prefs.jobGroups?.length ? state.prefs.jobGroups : STAT_GROUP_NAMES;
   const set = (p: Parameters<typeof setPrefs>[0]) => { setPrefs(p); stampLog(m.id); };
   const toggle = (g: string) => { const next = picked.includes(g) ? picked.filter((x) => x !== g) : picked.concat(g); set({ jobGroups: next.length ? next : [g] }); };
+  const t = team()!, mode = t.settings.trackMode || "full";
   return <div className="editor">
-    <b>My job on this device</b>
+    <b>What to track</b>
+    <div className="pick">{TRACK_MODES.map(([k, l, d]) => <button key={k} aria-pressed={mode === k} onClick={() => { setSettings({ trackMode: k }); stampLog(m.id); }}>{l}<small style={{ display: "block", fontWeight: 400 }}>{d}</small></button>)}</div>
+    <span className="small muted">For {t.name}, on every device. Change the default in Settings.</span>
+    <b style={{ marginTop: 8 }}>My job on this device</b>
     <span className="small muted">When several coaches track the same match, split the work. Only one device should keep score.</span>
     <div className="pick">
       {([["all", "Everything", "stats and score"], ["score", "Score only", "who won each rally"], ["stats", "Stats only", "never changes the score"]] as const).map(([k, l, d]) =>
         <button key={k} aria-pressed={job === k} onClick={() => set({ job: k })}>{l}<small style={{ display: "block", fontWeight: 400 }}>{d}</small></button>)}
     </div>
     <Crew m={m} />
+    <StatPartner />
     {job === "stats" && <><span className="label">What I'm tracking</span>
       <div className="pick">{STAT_GROUP_NAMES.map((g) => <button key={g} aria-pressed={picked.includes(g)} onClick={() => toggle(g)}>{g}</button>)}</div>
       <span className="small muted">Example: the head coach keeps score and hitting; an assistant tracks serve receive, serving and digs.</span></>}
     <div className="row"><button className="btn sm" onClick={() => setUi({ panel: null })}>Done</button></div>
+  </div>;
+}
+
+/* ---------- the same play entered on two devices ---------- */
+function DoublesCard({ m, R }: { m: Match; R: Replay }) {
+  const ds = findDoubles(R.log); if (!ds.length) return null;
+  const by = (id: string) => logsOf(m.id).find((l) => l.events.some((e) => e.id === id))?.by?.split("@")[0] || (isMine(id) ? "you" : "another coach");
+  return <Card title={`Entered twice? (${ds.length})`} className="doubles">
+    <p className="small muted">Two devices recorded the same play in the same rally. Remove the extra so it counts once.</p>
+    <ul className="log">{ds.slice(0, 6).map((d) => <li key={d.extra.id} style={{ gridTemplateColumns: "1fr auto" }}>
+      <span className="small"><b>{describe(d.extra as any)}</b> · set {d.extra.set}, {d.keep.us}–{d.keep.them}<br /><span className="muted">by {by(d.keep.id)} and {by(d.extra.id)}{d.sure ? "" : " (could be two plays)"}</span></span>
+      <button className="btn sm" onClick={() => { deleteEvent(m.id, d.extra.id); toast("Removed the extra " + describe(d.extra as any).toLowerCase()); }}>Count once</button></li>)}</ul>
+    {ds.length > 1 && <button className="btn sm ghost" onClick={() => { for (const d of ds.filter((x) => x.sure)) deleteEvent(m.id, d.extra.id); toast("Removed the sure doubles"); }}>Fix all sure ones</button>}
+  </Card>;
+}
+
+/** Bring in another coach to stat this match: a coach code for the team (the owner approves them first). */
+function StatPartner() {
+  const t = team()!, role = roleOn(t.id), [code, setCode] = useState(""), [busy, setBusy] = useState(false);
+  if (!isLinked(t.id) || (role !== "owner" && role !== "coach")) return <span className="small muted">To stat together on two devices, sync the team (Team tab) and invite the other coach.</span>;
+  const link = location.origin + location.pathname + "#/join/" + code;
+  return <div className="small">
+    {!code ? <button className="btn sm" disabled={busy} onClick={async () => { setBusy(true); try { setCode(await createInvite(t.id, "coach")); } catch { toast("Couldn't make a code. Check the connection."); } setBusy(false); }}>Add a stat partner</button>
+      : <><span>Have them open <b>{link.replace(/^https?:\/\//, "")}</b> or enter code <b style={{ letterSpacing: ".1em" }}>{code}</b> on their Team tab. {role === "owner" ? "Approve them on your Team tab, then each of you picks what you're tracking here." : "The head coach approves them on the Team tab."}</span>
+        <button className="btn sm ghost" onClick={() => copyText(link).then((ok) => toast(ok ? "Link copied" : link))}>Copy link</button></>}
   </div>;
 }
 
@@ -640,8 +677,10 @@ function CrewWarning({ m }: { m: Match }) {
   if (!crew.length) return null;
   const scorers = crew.filter((x) => x.job !== "stats");
   const clash = me !== "stats" && scorers.length > 0;
+  const mine = me === "all" ? STAT_GROUP_NAMES : me === "stats" ? (state.prefs.jobGroups?.length ? state.prefs.jobGroups : STAT_GROUP_NAMES) : [];
+  const shared = [...new Set(crew.flatMap((x) => (x.job === "all" ? STAT_GROUP_NAMES : x.job === "stats" ? (x.groups.length ? x.groups : STAT_GROUP_NAMES) : []).filter((g) => mine.includes(g))))];
   return <div className={"banner " + (clash ? "warn" : "")}><p>{clash
     ? <><b>Two devices are keeping score.</b> {scorers.map((x) => x.by).join(", ")} is also on {JOB_LABEL[scorers[0].job]}. Points will count twice; one of you should switch to stats only.</>
-    : <>Tracking with {crew.map((x) => `${x.by} (${JOB_LABEL[x.job]})`).join(", ")}.</>}</p>
-    <button className="btn sm" onClick={() => setUi({ panel: "job" })}>My job</button></div>;
+    : <>Tracking with {crew.map((x) => `${x.by} (${JOB_LABEL[x.job]})`).join(", ")}.{shared.length ? <> You're both on <b>{shared.join(", ").toLowerCase()}</b>: split them under Tracking so plays aren't entered twice.</> : null}</>}</p>
+    <button className="btn sm" onClick={() => setUi({ panel: "job" })}>Tracking</button></div>;
 }

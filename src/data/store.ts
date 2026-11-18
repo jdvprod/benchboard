@@ -43,8 +43,9 @@ export const isMine = (id: string) => id.startsWith(DEVICE + "-");
 
 /* ---------- prefs (per device) ---------- */
 function loadPrefs(): Prefs {
-  try { return Object.assign({ theme: "system", size: "normal", teamId: null }, JSON.parse(localStorage.getItem("bs-prefs") || "{}")); }
-  catch { return { theme: "system", size: "normal", teamId: null }; }
+  // Light or dark only (light to start). The sidebar starts folded each time the app opens.
+  try { const p = Object.assign({ theme: "light", size: "normal", teamId: null }, JSON.parse(localStorage.getItem("bs-prefs") || "{}")); if (p.theme !== "dark") p.theme = "light"; p.navMini = true; return p; }
+  catch { return { theme: "light", size: "normal", teamId: null, navMini: true }; }
 }
 export function setPrefs(p: Partial<Prefs>) {
   state.prefs = { ...state.prefs, ...p };
@@ -185,8 +186,8 @@ export function undoLast(matchId: string): MatchEvent | null {
 }
 
 /* ---------- teams ---------- */
-export function createTeam(p: { name: string; level?: string; color?: string; sample?: boolean }): Team {
-  const t: Team = { id: uid("t"), name: p.name, level: p.level || "", color: p.color || "#2A78AE", createdAt: Date.now(), activeSeasonId: null, currentMatchId: null, settings: { ...DEFAULT_SETTINGS }, defLineup: null, sample: p.sample };
+export function createTeam(p: { name: string; level?: string; color?: string; sample?: boolean; gender?: Team["gender"] }): Team {
+  const t: Team = { id: uid("t"), name: p.name, level: p.level || "", ...(p.gender ? { gender: p.gender } : {}), color: p.color || "#2A78AE", createdAt: Date.now(), activeSeasonId: null, currentMatchId: null, settings: { ...DEFAULT_SETTINGS }, defLineup: null, sample: p.sample };
   const s: Season = { id: uid("s"), teamId: t.id, name: defaultSeasonName(), createdAt: Date.now() };
   t.activeSeasonId = s.id;
   save("seasons", s, true); save("teams", t, true);

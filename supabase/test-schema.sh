@@ -60,13 +60,17 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "29" "schema version is reported"
+check "select schema_version();" "30" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
 q -c "insert into auth.users values ('$A', 'a@example.com'), ('$B', 'b@example.com');"
 as() { q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$1', false); $2" 2>&1 | tail -1; }
 expect() { [ "$1" = "$2" ] && echo "ok   $3" || { echo "FAIL $3 (got: $1)"; exit 1; }; }
+expect "$(as $A "insert into teams_cloud (id, name) values ('t0', 'Too soon');" | grep -c 'row-level security')" "1" "a coach who isn't verified can't put a team in the cloud"
+expect "$(as $A "select coach_request('Ann Lee', 'Clovis North', 'Head coach');")" "pending" "a coach asks to be verified"
+q -c "update coach_verify set status = 'approved' where user_id = '$A';"
+expect "$(as $A "select coach_status()->>'status';")" "approved" "and is verified by a Floorcall admin"
 as $A "insert into teams_cloud (id, name) values ('t2', 'Mine');" >/dev/null
 expect "$(as $A "select role from members where team_id = 't2';")" "owner" "creating a team makes you its owner"
 as $A "insert into records (store, id, team_id, data, u) values ('players', 'p9', 't2', '{\"first\":\"Ann\"}', 5);" >/dev/null
@@ -77,6 +81,18 @@ expect "$(as $B "select join_team('view01');")" "t2" "an invite code joins the t
 expect "$(as $B "select count(*) from records where team_id = 't2';")" "1" "members can read"
 as $B "update records set data = '{}' where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "view-only members can't change data"
+as $A "insert into records (store, id, team_id, data, u) values ('opponents', 'o1', 't2', '{\"name\":\"Them\",\"scout\":\"private\"}', 5), ('drills', 'd1', 't2', '{}', 5), ('matches', 'm9', 't2', '{}', 5);" >/dev/null
+expect "$(as $B "select string_agg(store, ',' order by store) from records where team_id = 't2';")" "matches,players" "view-only members (players, families) never see scouting or drills"
+expect "$(as $A "select count(*) from records where team_id = 't2';")" "4" "the team's coaches see everything"
+C=12121212-1212-1212-1212-121212121212; q -c "insert into auth.users values ('$C', 'c@example.com');"
+as $A "insert into invites (code, team_id, role) values ('COACH1', 't2', 'coach');" >/dev/null
+expect "$(as $C "select join_team('coach1');")" "t2" "a coach code joins the team"
+expect "$(as $C "select count(*) from records where team_id = 't2';")" "0" "but a new coach sees nothing until the owner approves"
+expect "$(as $C "select status from members where team_id = 't2' and user_id = '$C';")" "pending" "and can see they're waiting"
+expect "$(q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$C', false); select team_decide_member('t2', '$C', true);" 2>&1 | grep -c 'Only the team')" "1" "a coach can't approve themselves"
+as $A "select team_decide_member('t2', '$C', true);" >/dev/null
+expect "$(as $C "select count(*) from records where team_id = 't2';")" "4" "once approved they see the team"
+expect "$(q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$B', false); select team_decide_member('t2', '$C', false);" 2>&1 | grep -c 'Only the team')" "1" "view-only members can't approve or remove coaches"
 as $A "update records set data = '{\"first\":\"Old\"}', u = 3 where id = 'p9';" >/dev/null
 expect "$(as $A "select data->>'first' from records where id = 'p9';")" "Ann" "an older edit never overwrites a newer one"
 # player fees: the owner and coaches only; view-only members never see them, and they never ride along in the team record

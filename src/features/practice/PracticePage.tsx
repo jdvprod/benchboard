@@ -29,7 +29,7 @@ export function importDrill(code: string, teamId: string): Drill | null {
     const have = drillsOf().find((d) => d.name.toLowerCase() === name.toLowerCase());
     if (have) return have;
     const d: Drill = { id: uid("d"), teamId, name, category: (DRILL_CATEGORIES as readonly string[]).includes(x.c) ? x.c : "Game play",
-      minutes: Math.max(1, Math.min(60, Math.round(+x.m || 10))), description: String(x.d || "").slice(0, 2000), focus: [] };
+      minutes: Math.max(1, Math.min(60, Math.round(+x.m || 10))), description: String(x.d || "").slice(0, 2000), focus: [], ...(x.f === "girls" || x.f === "boys" ? { for: x.f } : {}) };
     save("drills", d); return d;
   } catch { return null; }
 }
@@ -199,15 +199,20 @@ function ScrimSetup() {
 }
 
 /* ---------- drill library ---------- */
+/** Drills for this team: everyone's, plus the ones meant for its girls' or boys' program. */
+export const drillFits = (d: Drill, g?: string) => !d.for || !g || g === "coed" || d.for === g;
 function DrillLibrary() {
-  const drills = drillsOf();
+  const t = team()!, [every, setEvery] = useState(false);
+  const mine = drillsOf(), hidden = mine.filter((d) => !drillFits(d, t.gender)).length;
+  const drills = every ? mine : mine.filter((d) => drillFits(d, t.gender));
   const [edit, setEdit] = useState<Drill | null>(null);
   const blank = (): Drill => ({ id: uid("dr"), teamId: team()!.id, name: "", category: "Game play", minutes: 10, description: "", focus: [] });
   return <div className="grid2" style={{ alignItems: "start" }}>
     <Card title={`Drills (${drills.length})`} actions={<button className="btn sm primary" onClick={() => setEdit(blank())}>New drill</button>}>
+      {hidden > 0 && <p className="small muted" style={{ marginBottom: 8 }}>{every ? "Showing every drill." : `${hidden} ${hidden === 1 ? "drill is" : "drills are"} for ${t.gender === "girls" ? "boys'" : "girls'"} teams.`} <button className="linkbtn" onClick={() => setEvery(!every)}>{every ? `Only ${t.gender}'s drills` : "Show them"}</button></p>}
       {DRILL_CATEGORIES.map((c) => { const ds = drills.filter((d) => d.category === c); return ds.length ? <div key={c} style={{ marginBottom: 10 }}>
         <div className="label" style={{ color: catColor(c) }}>{c}</div>
-        <ul className="log">{ds.map((d) => <li key={d.id} className="click" style={{ gridTemplateColumns: "1fr auto", cursor: "pointer" }} onClick={() => setEdit(d)}><span><b>{d.name}</b><br /><span className="small muted">{d.description}</span></span><span className="small muted">{d.minutes} min</span></li>)}</ul>
+        <ul className="log">{ds.map((d) => <li key={d.id} className="click" style={{ gridTemplateColumns: "1fr auto", cursor: "pointer" }} onClick={() => setEdit(d)}><span><b>{d.name}</b>{d.for && <span className="tagchip">{d.for === "girls" ? "Girls" : "Boys"}</span>}<br /><span className="small muted">{d.description}</span></span><span className="small muted">{d.minutes} min</span></li>)}</ul>
       </div> : null; })}
     </Card>
     {edit && <Card title={drills.some((d) => d.id === edit.id) ? "Edit drill" : "New drill"}>
@@ -217,6 +222,7 @@ function DrillLibrary() {
           <label className="field"><span className="label">Category</span><select value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value })}>{DRILL_CATEGORIES.map((c) => <option key={c}>{c}</option>)}</select></label>
           <label className="field"><span className="label">Minutes</span><input type="number" min={1} value={edit.minutes} onChange={(e) => setEdit({ ...edit, minutes: Math.max(1, +e.target.value || 1) })} /></label>
         </div>
+        <label className="field"><span className="label">Meant for</span><select value={edit.for || ""} onChange={(e) => { const v = e.target.value as Drill["for"] | ""; const { for: _f, ...rest } = edit; setEdit(v ? { ...rest, for: v } : rest); }}><option value="">Girls' and boys' teams</option><option value="girls">Girls' teams</option><option value="boys">Boys' teams</option></select></label>
         <label className="field"><span className="label">How to run it</span><textarea rows={3} value={edit.description} onChange={(e) => setEdit({ ...edit, description: e.target.value })} /></label>
         <div className="row"><button className="btn primary" disabled={!edit.name.trim()} onClick={() => { save("drills", { ...edit, name: edit.name.trim() }); setEdit(null); toast("Drill saved"); }}>Save</button>
           <button className="btn" onClick={() => setEdit(null)}>Cancel</button>

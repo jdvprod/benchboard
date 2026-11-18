@@ -75,6 +75,17 @@ export const GROUPS: [string, ActionCode[]][] = [
   ["Opponent", ["OE", "OK", "OA", "TP"]],
 ];
 
+/** The basic box score: kills, attempts and errors, aces and serve errors, assists, blocks, digs, and how they scored. */
+export const BASIC_GROUPS: [string, ActionCode[]][] = [
+  ["Hitting", ["K", "TA", "AE"]],
+  ["Serve", ["SA", "SE"]],
+  ["Setting", ["AST"]],
+  ["Block", ["BS", "BA"]],
+  ["Defense", ["D"]],
+  ["Opponent", ["OE", "OK", "OA", "TP"]],
+];
+export const TRACK_MODES = [["full", "Full stats", "every button"], ["basic", "Basic stats", "kills, aces, errors, blocks, digs"], ["points", "Points only", "who won each point"]] as const;
+
 /** Which half of the court to show when asking where the ball landed. "them" = their side. */
 export const LOCATION_HALF: Partial<Record<ActionCode, Side>> = {
   K: "them", KT: "them", TA: "them", SA: "them", SI: "them", OK: "us", OA: "us", P3: "us", P2: "us", P1: "us", P0: "us", D: "us",

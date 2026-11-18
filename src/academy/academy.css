@@ -139,3 +139,7 @@ body{padding-left:0;background:var(--surface)}
   .ac-drill-meta .ac-lvl{display:none}
 }
 @media (prefers-reduced-motion:reduce){.ac-sk-text b{transition:none}}
+.ac-for{display:inline-flex;gap:4px;margin-bottom:12px}
+.ac-for button{border:1px solid var(--line);background:var(--surface);color:var(--muted);border-radius:999px;padding:5px 12px;font:600 13.5px var(--body);cursor:pointer}
+.ac-for button[aria-pressed=true]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ac-forchip{margin-left:8px;font:600 11.5px var(--body);color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px;vertical-align:2px}

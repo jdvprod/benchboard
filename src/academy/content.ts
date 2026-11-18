@@ -11,6 +11,8 @@ export interface Drill {
   how: string[];
   /** what to focus on (players) or to coach (coaches) */
   points: string[];
+  /** only for girls' or boys' programs (no value: everyone) */
+  for?: "girls" | "boys";
 }
 export interface Skill {
   id: string; name: string; short: string; tagline: string;

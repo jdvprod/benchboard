@@ -17,10 +17,25 @@ const ago = (iso?: string | null) => { if (!iso) return "never"; const m = Math.
 let adminCache: Promise<boolean> | null = null;
 export const amAdmin = () => (adminCache ||= rpc("is_admin", {}).then((x) => x === true).catch(() => false));
 
+type CoachReq = { user_id: string; email: string; name: string; org: string; title: string | null; phone: string | null; status: "pending" | "approved" | "denied"; at: string };
+/** Team admins: coaches who asked to put teams in the cloud. Check the school's or club's staff page before approving. */
+function CoachRequests({ list, onDecide }: { list: CoachReq[]; onDecide: (c: CoachReq, approve: boolean) => void }) {
+  const [all, setAll] = useState(false);
+  const waiting = list.filter((c) => c.status === "pending"), shown = all ? list : waiting;
+  return <Card title={`Coach verification${waiting.length ? ` (${waiting.length} waiting)` : ""}`} actions={<button className="btn sm ghost" onClick={() => setAll(!all)}>{all ? "Only waiting" : `Show all ${list.length}`}</button>}>
+    <p className="small muted" style={{ marginBottom: 8 }}>Head coaches and club directors who want to sync a team. Check the school's or club's staff page (or call the number) before approving. Assistants are approved by their own head coach, not here.</p>
+    {!shown.length ? <p className="empty">{all ? "No requests yet." : "Nobody is waiting."}</p> : <div className="tbl"><table><thead><tr><th className="l">Coach</th><th className="l">School or club</th><th className="l">Contact</th><th>Status</th><th></th></tr></thead>
+      <tbody>{shown.map((c) => <tr key={c.user_id}><td className="l">{c.name || "(no name)"}{c.title ? <div className="small muted">{c.title}</div> : null}</td><td className="l">{c.org || "–"}</td><td className="l small">{c.email}{c.phone ? <div className="muted">{c.phone}</div> : null}</td>
+        <td>{c.status === "pending" ? <b>Waiting · {ago(c.at)}</b> : c.status === "approved" ? "Verified" : "Turned down"}</td>
+        <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{c.status !== "approved" && <button className="btn sm primary" onClick={() => onDecide(c, true)}>Verify</button>}
+          {c.status !== "denied" && <button className="btn sm ghost" onClick={() => onDecide(c, false)}>{c.status === "approved" ? "Remove" : "Turn down"}</button>}</div></td></tr>)}</tbody></table></div>}
+  </Card>;
+}
+
 export function AdminPage() {
-  const [acc, setAcc] = useState<{ byKind: Record<string, number>; emailOk: number } | null>(null), [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]);
+  const [acc, setAcc] = useState<{ byKind: Record<string, number>; emailOk: number } | null>(null), [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]), [coaches, setCoaches] = useState<CoachReq[] | null>(null);
   const load = async () => {
-    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
+    try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setCoaches(await rpc("admin_coach_requests", {}).catch(() => null)); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
     catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Floorcall admin." : e?.message || "Couldn't load the admin console."); }
   };
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
@@ -50,6 +65,7 @@ export function AdminPage() {
         <tbody>{o.teamsList.map((t) => <tr key={t.id}><td className="l">{t.name || "(no name)"}</td><td>{t.members}</td><td>{t.matches}</td><td>{ago(t.last)}</td></tr>)}</tbody></table></div></Card>
       <Card title="New accounts"><ul className="log">{o.recentUsers.map((u) => <li key={u.email + u.at} style={{ gridTemplateColumns: "1fr auto" }}><span>{u.email}</span><span className="small muted">{ago(u.at)}</span></li>)}</ul></Card>
     </div>
+    {coaches && <CoachRequests list={coaches} onDecide={async (c, approve) => { await rpc("admin_decide_coach", { uid: c.user_id, approve }); setCoaches((x) => x && x.map((y) => (y.user_id === c.user_id ? { ...y, status: approve ? "approved" : "denied" } : y))); toast(approve ? `${c.name || c.email} can sync teams now` : "Turned down"); }} />}
     {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Floorcall Recruit. Check the school's staff directory first.</span>}>
       {!staff.length ? <p className="empty">No requests yet.</p> : <div className="tbl"><table><thead><tr><th className="l">Name</th><th className="l">School</th><th className="l">Email</th><th>Status</th><th></th></tr></thead>
         <tbody>{staff.map((s) => <tr key={s.user_id}><td className="l">{s.name}{s.title ? <div className="small muted">{s.title}</div> : null}</td><td className="l">{s.school}</td><td className="l small">{s.email}</td><td>{s.status === "pending" ? <b>Waiting</b> : s.status === "approved" ? "Approved" : "Turned down"}</td>

@@ -9,6 +9,14 @@ export function TeamMark({ t, size = 28 }: { t: Team; size?: number }) {
   return <span className="tm-mark" style={{ width: size, height: size, background: t.color || "#2A78AE", fontSize: size * 0.4 }} aria-hidden="true">{initials(t.name)}</span>;
 }
 
+/** Girls' and boys' teams in their own groups when a coach has both; otherwise one list. */
+export function groupTeams(teams: Team[]): [string, Team[]][] {
+  const g = teams.filter((x) => x.gender === "girls"), b = teams.filter((x) => x.gender === "boys");
+  if (!g.length || !b.length) return [["Your teams", teams]];
+  const rest = teams.filter((x) => x.gender !== "girls" && x.gender !== "boys");
+  return ([["Girls' teams", g], ["Boys' teams", b], ["Other teams", rest]] as [string, Team[]][]).filter((x) => x[1].length);
+}
+
 export function TeamMenu({ compact }: { compact?: boolean }) {
   const t = team()!, [open, setOpen] = useState(false), root = useRef<HTMLDivElement>(null), btn = useRef<HTMLButtonElement>(null);
   const teams = all("teams").sort((a, b) => a.createdAt - b.createdAt), real = teams.filter((x) => !x.sample);
@@ -39,11 +47,12 @@ export function TeamMenu({ compact }: { compact?: boolean }) {
       <svg className="tm-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6 8 2.5 11.5 6M4.5 10 8 13.5 11.5 10" /></svg>
     </button>
     {open && <div className="tm-menu" role="menu" aria-label="Teams">
-      <div className="tm-head">Your teams</div>
-      {teams.map((x) => <button key={x.id} role="menuitemradio" aria-checked={x.id === t.id} className="tm-item" onClick={() => pick(() => setPrefs({ teamId: x.id }))}>
+      {groupTeams(teams).map(([head, list]) => <div key={head} role="none">
+      <div className="tm-head">{head}</div>
+      {list.map((x) => <button key={x.id} role="menuitemradio" aria-checked={x.id === t.id} className="tm-item" onClick={() => pick(() => setPrefs({ teamId: x.id }))}>
         <TeamMark t={x} size={24} /><span className="tm-name"><b>{x.name}</b><small>{x.sample ? "Sample team" : x.level || "Team"}</small></span>
         {x.id === t.id && <svg className="tm-check" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5 6.5 12 13 4.5" /></svg>}
-      </button>)}
+      </button>)}</div>)}
       <div className="tm-sep" role="separator" />
       {real.length > 1 && <button role="menuitem" className="tm-item plain" onClick={() => pick(() => { location.hash = "#/club"; })}><span className="tm-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg></span>All teams overview</button>}
       <button role="menuitem" className="tm-item plain" onClick={() => pick(() => { location.hash = "#/team/new"; })}><span className="tm-ico" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" /></svg></span>Add a team</button>

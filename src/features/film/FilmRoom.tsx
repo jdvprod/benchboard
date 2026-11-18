@@ -24,11 +24,13 @@ import { itemFrom } from "../../film/session";
 import { describe, label, resolve } from "./words";
 import { SeasonBest, SeasonFind } from "./SeasonFind";
 import { Breakdown } from "./Breakdown";
+import { ScoutStart, ScoutWork } from "./ScoutFilm";
 
 const srcOf = (m: Match) => (!m.video ? null : m.video.startsWith(LOCAL) ? localVideo(m.id) : videoKind(m.video) === "file" ? m.video : null);
 
 export function FilmRoom({ id }: { id?: string }) {
   useVersion();
+  if (id?.startsWith("scout:")) { const [, o, f] = id.split(":"); return <ScoutWork key={id} oppId={o} filmId={f} />; }
   const m = id ? matchesOf().find((x) => x.id === id) : undefined;
   if (id && m) return <FilmWork key={m.id} m={m} />;
   return <FilmHome />;
@@ -78,6 +80,7 @@ function FilmHome() {
         <Card title="Your film">{withFilm.length ? <ul className="fr-list">{withFilm.map((x) => { const R = replayOf(x); return <li key={x.id}><button onClick={() => go("film", x.id)}>
           <b>vs {x.opp}</b><span className="small muted">{fmtDate(x.date)} · {x.film ? "Statted from film" : "Tracked live"}{R && R.wonUs + R.wonThem ? ` · ${R.wonUs}–${R.wonThem}` : ""}{x.rallies?.length ? ` · ${x.rallies.length} rallies` : ""}</span></button></li>; })}</ul>
           : <p className="empty">Games you stat from film, and matches with a video, show up here.</p>}</Card>
+        <ScoutStart />
         {tracked.length > 0 && <Card title="Add film to a match you tracked live">
           <p className="small muted" style={{ marginBottom: 8 }}>Line the video up with your live stats and every play becomes a clip.</p>
           <ul className="fr-list">{tracked.map((x) => <li key={x.id}><button onClick={() => go("film", x.id)}><b>vs {x.opp}</b><span className="small muted">{fmtDate(x.date)}</span></button></li>)}</ul>

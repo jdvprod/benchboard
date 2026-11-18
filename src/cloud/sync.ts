@@ -29,6 +29,9 @@ const setStatus = (p: Partial<typeof status>) => { Object.assign(status, p); emi
 export const isLinked = (teamId: string | null | undefined) => !!teamId && S.teams.includes(teamId);
 export const pendingCount = () => Object.keys(S.dirty).length;
 /** Your role on a synced team ("owner", "coach" or "viewer"), once known. */
+/** Teams this account asked to join with a coach code, still waiting for the owner. */
+export const pendingTeams = () => Object.entries(S.roles || {}).filter(([t, r]) => r === "pending" && S.teams.includes(t)).map(([t]) => t);
+export const joinedMsg = (teamId: string) => (get("teams", teamId) ? "Joined the team" : "Asked to join. The head coach approves you on their Team tab, then the team appears here.");
 export const roleOn = (teamId: string | null | undefined) => (teamId && S.roles?.[teamId]) || null;
 
 /** Which team a record belongs to. */
@@ -86,9 +89,13 @@ async function checkClock() {
 async function loadRoles() {
   const me = currentUser(); if (!me) return;
   if (S.rolesFor !== me.id) { S.roles = {}; S.rolesFor = me.id; }
-  const missing = S.teams.filter((t) => !S.roles?.[t]); if (!missing.length) return;
-  const rows: any[] = await rest(`members?select=team_id,role&user_id=eq.${me.id}`);
-  S.roles = { ...(S.roles || {}) }; for (const r of rows) S.roles[r.team_id] = r.role; persist();
+  const missing = S.teams.filter((t) => !S.roles?.[t] || S.roles[t] === "pending"); if (!missing.length) return;
+  // a coach who joined with a coach code is "pending" until the team's owner approves them (database version 30)
+  const rows: any[] = await rest(`members?select=team_id,role,status&user_id=eq.${me.id}`).catch(() => rest(`members?select=team_id,role&user_id=eq.${me.id}`));
+  const was = S.roles || {};
+  S.roles = { ...was }; for (const r of rows) S.roles[r.team_id] = r.status === "pending" ? "pending" : r.role;
+  persist();
+  if (missing.some((t) => was[t] === "pending" && S.roles?.[t] !== "pending")) { for (const t of missing) S.since[t] = "1970-01-01T00:00:00Z"; persist(); emit(); }
 }
 
 export function applyRemote(r: { store: StoreName; id: string; data: any; u: number; deleted: boolean }) {
@@ -166,6 +173,7 @@ export async function joinWithCode(code: string): Promise<string> {
   S.since[teamId] = "1970-01-01T00:00:00Z"; persist();
   await syncNow();
   if (get("teams", teamId)) { state.prefs.teamId = teamId; try { localStorage.setItem("bs-prefs", JSON.stringify(state.prefs)); } catch { /* ignore */ } }
+  else { S.roles = { ...(S.roles || {}), [teamId]: "pending" }; persist(); } // a coach code: the owner approves them first
   emit();
   return teamId;
 }
@@ -199,8 +207,25 @@ export async function createInvite(teamId: string, role: "coach" | "viewer" = "c
   await rest("invites", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, role }) });
   return c;
 }
-export async function members(teamId: string): Promise<{ user_id: string; role: string; email: string | null }[]> {
-  return rest(`members?select=user_id,role,email&team_id=eq.${encodeURIComponent(teamId)}&order=joined_at.asc`);
+export type Member = { user_id: string; role: string; email: string | null; status?: "active" | "pending" };
+export async function members(teamId: string): Promise<Member[]> {
+  const q = (cols: string) => rest(`members?select=${cols}&team_id=eq.${encodeURIComponent(teamId)}&order=joined_at.asc`);
+  return q("user_id,role,email,status").catch(() => q("user_id,role,email"));
+}
+/** The team's owner lets a coach who joined with a coach code in, or turns them away. */
+export async function decideMember(teamId: string, userId: string, approve: boolean) {
+  await rpc("team_decide_member", { t: teamId, uid: userId, approve });
+}
+
+/* ---------- verified coaches (database version 30) ---------- */
+export type CoachStatus = { status: "none" | "pending" | "approved" | "denied"; admin?: boolean; name?: string; org?: string };
+/** Whether this account may put teams in the cloud. Before version 30 there's no check, so everyone may. */
+export async function coachStatus(): Promise<CoachStatus> {
+  try { return (await rpc("coach_status", {})) || { status: "none" }; }
+  catch (e) { if (e instanceof CloudError && (e.status === 404 || /coach_status/.test(e.message))) return { status: "approved" }; throw e; }
+}
+export async function coachRequest(p: { name: string; org: string; title: string; phone: string }): Promise<CoachStatus["status"]> {
+  return rpc("coach_request", { name: p.name, org: p.org, title: p.title || null, phone: p.phone || null });
 }
 export async function removeMember(teamId: string, userId: string) {
   await rest(`members?team_id=eq.${encodeURIComponent(teamId)}&user_id=eq.${userId}`, { method: "DELETE" });

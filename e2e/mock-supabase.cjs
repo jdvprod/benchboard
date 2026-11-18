@@ -19,8 +19,12 @@ const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify functio
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
 const uid = () => "u" + Math.random().toString(36).slice(2, 10);
-const isMember = (t, u) => members.some((m) => m.team_id === t && m.user_id === u);
-const canEdit = (t, u) => members.some((m) => m.team_id === t && m.user_id === u && m.role !== "viewer");
+const isMember = (t, u) => members.some((m) => m.team_id === t && m.user_id === u && m.status !== "pending");
+const canEdit = (t, u) => members.some((m) => m.team_id === t && m.user_id === u && m.role !== "viewer" && m.status !== "pending");
+// verified coaches (version 30): accounts whose email has "unverified" in it start unverified; everyone else is verified
+const coachVerify = new Map();
+const coachOk = (u) => admins.has(u) || (coachVerify.get(u)?.status || (/unverified/.test(users.get(u)?.email || "") ? "none" : "approved")) === "approved";
+const COACH_STORES = ["opponents", "drills", "plans", "boards"];
 function session(u) { const at = "at_" + uid(), rt = "rt_" + uid(); tokens.set(at, u.id); tokens.set(rt, u.id); return { access_token: at, refresh_token: rt, expires_in: 3600, user: { id: u.id, email: u.email, user_metadata: u.meta || {} } }; }
 function send(res, code, body) { res.writeHead(code, { "content-type": "application/json", "access-control-allow-origin": "*", "access-control-allow-headers": "*", "access-control-allow-methods": "*" }); res.end(body === undefined ? "" : JSON.stringify(body)); }
 function q(url) { const out = {}; for (const [k, v] of url.searchParams) out[k] = v; return out; }
@@ -53,7 +57,10 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/rpc/beach_view") { const s = beach.get(String(b.c).toUpperCase()); return send(res, 200, s ? { data: s.data, updated: s.updated } : null); }
     if (p === "/rest/v1/rpc/beach_publish") { if (!me) return send(res, 401, { message: "Sign in to share a match live" }); if (b.c) { const s = beach.get(String(b.c).toUpperCase()); if (!s || s.owner !== me) return send(res, 400, { message: "That link isn't yours to update" }); s.data = b.d; s.updated = now(); return send(res, 200, String(b.c).toUpperCase()); } const k = uid().replace(/[^a-z0-9]/gi, "").slice(0, 7).toUpperCase(); beach.set(k, { owner: me, data: b.d, updated: now() }); return send(res, 200, k); }
     if (p === "/rest/v1/rpc/beach_unshare") { const s = beach.get(String(b.c).toUpperCase()); if (s && s.owner === me) beach.delete(String(b.c).toUpperCase()); return send(res, 200, null); }
-    if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!isMember(inv.team_id, me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now() }); return send(res, 200, inv.team_id); }
+    if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!members.some((m) => m.team_id === inv.team_id && m.user_id === me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now(), status: inv.role === "viewer" ? "active" : "pending" }); return send(res, 200, inv.team_id); }
+    if (p === "/rest/v1/rpc/team_decide_member") { if (!members.some((m) => m.team_id === b.t && m.user_id === me && m.role === "owner")) return send(res, 400, { message: "Only the team's owner can approve coaches" }); const i = members.findIndex((m) => m.team_id === b.t && m.user_id === b.uid && m.status === "pending"); if (i >= 0) { if (b.approve) members[i].status = "active"; else members.splice(i, 1); } return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
+    if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     const pubEvents = (ev) => (ev || []).filter((e) => e.t !== "TAG");
     const pubUrl = (u) => (typeof u === "string" && /^https?:\/\//.test(u) ? u : null);
     const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1), photo: d.hidePublic ? null : pubUrl(d.photo) });
@@ -73,7 +80,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 29);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 30);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
@@ -149,6 +156,8 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/rpc/is_admin") return send(res, 200, admins.has(me));
     if (p.startsWith("/rest/v1/rpc/admin_") && !admins.has(me)) return send(res, 400, { message: "Admins only" });
     if (p === "/rest/v1/rpc/admin_college_staff") return send(res, 200, [...staff.values()]);
+    if (p === "/rest/v1/rpc/admin_coach_requests") return send(res, 200, [...coachVerify.values()]);
+    if (p === "/rest/v1/rpc/admin_decide_coach") { const c = coachVerify.get(b.uid); if (c) c.status = b.approve ? "approved" : "denied"; return send(res, 200, null); }
     if (p === "/rest/v1/rpc/admin_decide_college") { const s = staff.get(b.uid); if (s) s.status = b.approve ? "approved" : "denied"; return send(res, 200, null); }
     if (p === "/rest/v1/rpc/admin_overview") {
       const R = [...records.values()].filter((r) => !r.deleted), ms = R.filter((r) => r.store === "matches" && r.data.kind === "match");
@@ -166,7 +175,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     }
     if (p.startsWith("/storage/v1/object/") && req.method === "POST") { const path = p.slice("/storage/v1/object/".length), team = path.split("/")[1]; if (!canEdit(team, me)) return send(res, 403, { message: "new row violates row-level security policy" }); files.set(path, { type: req.headers["content-type"], data: raw }); return send(res, 200, { Key: path }); }
     const P = q(url);
-    if (p === "/rest/v1/teams_cloud" && req.method === "POST") { if (teams.has(b.id)) return send(res, 409, { message: "duplicate key" }); teams.set(b.id, { ...b, owner: me }); members.push({ team_id: b.id, user_id: me, role: "owner", email: users.get(me).email, joined_at: now() }); return send(res, 201); }
+    if (p === "/rest/v1/teams_cloud" && req.method === "POST") { if (!coachOk(me)) return send(res, 403, { message: "new row violates row-level security policy for table \"teams_cloud\"" }); if (teams.has(b.id)) return send(res, 409, { message: "duplicate key" }); teams.set(b.id, { ...b, owner: me }); members.push({ team_id: b.id, user_id: me, role: "owner", email: users.get(me).email, joined_at: now() }); return send(res, 201); }
     // player fees: the owner and coaches only (as row-level security does)
     if (p === "/rest/v1/team_fees" && req.method === "POST") { for (const r of b) { if (!canEdit(r.team_id, me)) return send(res, 403, { message: "new row violates row-level security policy" }); fees.set(r.team_id, { team_id: r.team_id, data: r.data, u: r.u }); } return send(res, 201, null); }
     if (p === "/rest/v1/team_fees" && req.method === "GET") { const t = val(P.team_id); return send(res, 200, canEdit(t, me) && fees.has(t) ? [fees.get(t)] : []); }
@@ -176,7 +185,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     }
     if (p === "/rest/v1/records" && req.method === "GET") {
       const t = val(P.team_id), since = val(P.updated_at), inclusive = P.updated_at.startsWith("gte."); if (!isMember(t, me)) return send(res, 200, []);
-      const rows = [...records.values()].filter((r) => r.team_id === t && (inclusive ? r.updated_at >= since : r.updated_at > since)).sort((a, b) => (a.updated_at < b.updated_at ? -1 : 1)).slice(0, +P.limit || 500);
+      const rows = [...records.values()].filter((r) => r.team_id === t && (canEdit(t, me) || !COACH_STORES.includes(r.store)) && (inclusive ? r.updated_at >= since : r.updated_at > since)).sort((a, b) => (a.updated_at < b.updated_at ? -1 : 1)).slice(0, +P.limit || 500);
       return send(res, 200, rows);
     }
     if (p === "/rest/v1/invites" && req.method === "POST") { if (!canEdit(b.team_id, me)) return send(res, 403, { message: "rls" }); invites.set(b.code, b); return send(res, 201); }

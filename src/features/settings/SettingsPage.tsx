@@ -1,3 +1,4 @@
+import { TRACK_MODES } from "../../sports/volleyball/actions";
 import { placeUrl } from "../../cloud/links";
 import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
@@ -15,28 +16,17 @@ import { LOC_KINDS, locChoice } from "../../data/model";
 
 export function SettingsPage() {
   const t = team()!, s = t.settings, p = state.prefs;
-  const [key, setK] = useState(getKey()), [show, setShow] = useState(false), [testing, setTesting] = useState(false), [msg, setMsg] = useState("");
-  const test = async () => {
-    setKey(key.trim()); setTesting(true); setMsg("");
-    try { await ask("Reply with the single word: ready", { tier: "quick", maxTokens: 10 }); setMsg("Connected. AI features are on."); }
-    catch (e) { setMsg(e instanceof AiError ? e.message : "Couldn't connect."); }
-    setTesting(false);
-  };
+  const admin = useAdmin();
   const counts = { teams: all("teams").length, players: all("players").length, matches: all("matches").length, events: all("logs").reduce((n, l) => n + l.events.length, 0) };
   return <div className="page" style={{ maxWidth: 820 }}>
     <div className="pagehead"><h1>Settings</h1></div>
-    <Card title="Floorcall sites">
-      <div className="sites-grid">
-        <a href={placeUrl("live")} target="_blank" rel="noopener"><b>Floorcall Live</b><span>What families and fans see: scores, box scores, notifications, team film.</span></a>
-        <a href={placeUrl("recruit")} target="_blank" rel="noopener"><b>Floorcall Recruit</b><span>Recruiting profiles, the athlete guide, emails to coaches and Reel Studio.</span></a>
-      </div>
-    </Card>
     <Card title="Look">
-      <SetRow title="Theme" sub="System follows your device's light or dark mode."><Seg value={p.theme} onChange={(v) => setPrefs({ theme: v })} options={[["system", "System"], ["light", "Light"], ["dark", "Dark"]]} label="Theme" /></SetRow>
+      <SetRow title="Theme"><Seg value={p.theme} onChange={(v) => setPrefs({ theme: v })} options={[["light", "Light"], ["dark", "Dark"]]} label="Theme" /></SetRow>
       <SetRow title="Text and button size" sub="Large is easier to hit on a tablet courtside."><Seg value={p.size} onChange={(v) => setPrefs({ size: v })} options={[["normal", "Normal"], ["large", "Large"]]} label="Size" /></SetRow>
       <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>
     </Card>
     <Card title={`Tracking · ${t.name}`}>
+      <SetRow title="What to track" sub="Full stats has every button. Basic stats is the box score: kills, attempts, errors, aces, serve errors, assists, blocks and digs. Points only just keeps score, rally by rally. You can also switch on the Track screen."><Seg value={s.trackMode || "full"} onChange={(v) => setSettings({ trackMode: v })} options={TRACK_MODES.map(([k, l]) => [k, l] as [typeof k, string])} label="What to track" /></SetRow>
       <div className="setgroup">
         <div className="setgroup-hd"><b>Ask where the ball landed</b><span>After the play, tap the court. Feeds the tendency court and the Live court. Choose for each kind of play.</span></div>
         {LOC_KINDS.map((k) => <SetRow key={k.kind} title={k.title} sub={k.sub}>
@@ -48,29 +38,18 @@ export function SettingsPage() {
       <SetRow title="Ask for their jersey number" sub="After their kills, aces and errors, so you can scout their players."><Switch checked={s.askOpp} onChange={(v) => setSettings({ askOpp: v })} label="Ask for their number" /></SetRow>
       <SetRow title="Subs allowed per set" sub="0 means no limit. High school is usually 15, club 12 or 15."><input className="input" style={{ width: 80 }} type="number" min={0} max={30} value={s.subLimit} onChange={(e) => setSettings({ subLimit: Math.max(0, +e.target.value || 0) })} aria-label="Subs per set" /></SetRow>
       <SetRow title="Default match format"><div className="row"><Seg value={s.bestOf} onChange={(v) => setSettings({ bestOf: v })} options={FORMATS} label="Format" /><select className="input" style={{ width: "auto" }} value={s.scoring || "25"} onChange={(e) => setSettings({ scoring: e.target.value })} aria-label="Scoring">{SCORING.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div></SetRow>
+      <SetRow title="Type-in stat codes" sub="A box on the Track screen for typing stats on a keyboard: 7k is #7 kill, 12ace is #12 ace, 4p3 is a 3 pass, ok11 is their #11 kill. Laptops and tablets only. Saved on this device."><Switch checked={!!p.quick} onChange={(v) => setPrefs({ quick: v })} label="Type-in stat codes" /></SetRow>
+      <SetRow title="Focus mode button" sub="A Focus button on the Track screen that hides the side panels and makes the buttons bigger, for an assistant tracking on a phone. Saved on this device."><Switch checked={!!p.labsFocus} onChange={(v) => setPrefs({ labsFocus: v, focus: v ? p.focus : false })} label="Focus mode button" /></SetRow>
       <SetRow title="Zone numbers on drawing boards"><Switch checked={!s.hideZones} onChange={(v) => setSettings({ hideZones: !v })} label="Show zone numbers" /></SetRow>
     </Card>
-    <Card title="Labs">
-      <SetRow title="Try new features" sub="Formations, type-in stat codes and focus mode. Turn on only what you want."><button className="btn sm" onClick={() => go("labs")}>Open Labs</button></SetRow>
-    </Card>
     <InstallCard />
-    <Card title="AI features">
-      <div className="stack">
-        <p className="small muted">Timeout talking points, match reports, scouting, lineup suggestions, practice plans and player report cards use Claude. Signed-in coaches can use them with no setup. To use your own Anthropic account instead (no daily limit), paste an API key from console.anthropic.com; it stays on this device only.</p>
-        <div className="row">
-          <input className="input grow" type={show ? "text" : "password"} value={key} onChange={(e) => setK(e.target.value)} placeholder="sk-ant-…" autoComplete="off" aria-label="API key" style={{ minWidth: 200 }} />
-          <button className="btn sm" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"}</button>
-        </div>
-        <div className="row">
-          <button className="btn primary" disabled={!key.trim() || testing} onClick={test}>{testing ? "Testing…" : "Save and test"}</button>
-          {getKey() && <button className="btn" onClick={() => { setKey(""); setK(""); setMsg("Key removed."); }}>Remove key</button>}
-        </div>
-        {msg && <p className="hint">{msg}</p>}
-      </div>
-    </Card>
     <CloudSettings />
-    <AdminLink />
-    <SetupCheck />
+    {admin && <section className="set-admin" aria-label="Admin">
+      <div className="set-admin-hd"><b>Admin</b><span>Only Floorcall admins see this part.</span></div>
+      <AdminLink />
+      <SetupCheck />
+      <AiKey />
+    </section>}
     <Card title="Your data">
       <p className="small">Saved on this device: {counts.teams} {counts.teams === 1 ? "team" : "teams"}, {counts.players} {counts.players === 1 ? "player" : "players"}, {counts.matches} {counts.matches === 1 ? "match or practice" : "matches and practices"}, {counts.events.toLocaleString()} recorded plays.</p>
       <p className="small muted" style={{ marginTop: 6 }}>{state.persistent ? "Your browser has agreed to keep this data." : "Your browser may clear this data if space runs low."} Save a backup from Team → Backup to move data to another device or keep a copy.</p>
@@ -113,15 +92,43 @@ function InstallCard() {
   </Card>;
 }
 
-/** Shown only to Floorcall admins. */
-function AdminLink() {
+/** True for Floorcall admins (the admins table in Supabase). Coaches, players and families never see the setup and background settings. */
+export function useAdmin() {
   const [ok, setOk] = useState(false);
   useEffect(() => { if (currentUser()) import("../admin/AdminPage").then((m) => m.amAdmin()).then(setOk); }, []);
-  return ok ? <Card title="Admin"><div className="row between"><span className="small">Sign-ups, active teams, live matches, and review of uploaded photos and logos.</span><button className="btn sm primary" onClick={() => go("admin")}>Open admin</button></div></Card> : null;
+  return ok;
+}
+function AdminLink() {
+  return <Card title="Admin console"><div className="row between"><span className="small">Sign-ups, active teams, live matches, coach verification, and review of uploaded photos and logos.</span><button className="btn sm primary" onClick={() => go("admin")}>Open admin</button></div></Card>;
+}
+
+/** An admin's own Anthropic key, for testing AI features without the daily limit. Stays on this device. */
+function AiKey() {
+  const [key, setK] = useState(getKey()), [show, setShow] = useState(false), [testing, setTesting] = useState(false), [msg, setMsg] = useState("");
+  const test = async () => {
+    setKey(key.trim()); setTesting(true); setMsg("");
+    try { await ask("Reply with the single word: ready", { tier: "quick", maxTokens: 10 }); setMsg("Connected. AI features are on."); }
+    catch (e) { setMsg(e instanceof AiError ? e.message : "Couldn't connect."); }
+    setTesting(false);
+  };
+  return <Card title="AI features">
+        <div className="stack">
+          <p className="small muted">Timeout talking points, match reports, scouting, lineup suggestions, practice plans and player report cards use Claude. Signed-in coaches can use them with no setup. To use your own Anthropic account instead (no daily limit), paste an API key from console.anthropic.com; it stays on this device only.</p>
+          <div className="row">
+            <input className="input grow" type={show ? "text" : "password"} value={key} onChange={(e) => setK(e.target.value)} placeholder="sk-ant-…" autoComplete="off" aria-label="API key" style={{ minWidth: 200 }} />
+            <button className="btn sm" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"}</button>
+          </div>
+          <div className="row">
+            <button className="btn primary" disabled={!key.trim() || testing} onClick={test}>{testing ? "Testing…" : "Save and test"}</button>
+            {getKey() && <button className="btn" onClick={() => { setKey(""); setK(""); setMsg("Key removed."); }}>Remove key</button>}
+          </div>
+          {msg && <p className="hint">{msg}</p>}
+        </div>
+      </Card>;
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 29;
+const SCHEMA_VERSION = 30;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);

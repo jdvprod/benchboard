@@ -14,6 +14,7 @@ export const TEAM_COLORS: [string, string][] = [
 ];
 
 export function applyTheme(color: string, theme: "system" | "light" | "dark", size: "normal" | "large", hostTheme: string | null) {
+  // the coaching app passes light or dark; the public sites pass "system" and follow the device
   const r = document.documentElement;
   if (theme === "system") { if (hostTheme) r.setAttribute("data-theme", hostTheme); else r.removeAttribute("data-theme"); }
   else r.setAttribute("data-theme", theme);

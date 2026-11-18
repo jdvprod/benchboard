@@ -2,19 +2,20 @@ import { lazy, Suspense, useEffect } from "react";
 import { all, currentMatch, setPrefs, state, team, useVersion } from "../data/store";
 import { useRoute } from "./router";
 import { siteUrl } from "../cloud/links";
-import { SiteSwitch } from "../ui/SiteSwitch";
 import { applyTheme } from "./theme";
 import { Scoreboard } from "./Scoreboard";
 import { Icon } from "../ui/icons";
 import { Toast } from "../ui/kit";
 import { TrackPage } from "../features/track/TrackPage";
 import { Home } from "../features/home/Home";
+import { SitesMenu } from "./SitesMenu";
 import { TeamMenu } from "./TeamMenu";
 import { Welcome } from "../features/team/Welcome";
 import { createSampleTeam } from "../data/seed";
 import { ErrorBoundary } from "./ErrorBoundary";
 import { TermsGate } from "../cloud/AuthPage";
 import { JoinPage } from "../cloud/CloudCard";
+import { roleOn } from "../cloud/sync";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
 import { needsTermsAgreement, currentUser } from "../cloud/client";
 
@@ -22,7 +23,6 @@ import { needsTermsAgreement, currentUser } from "../cloud/client";
 const LineupPage = lazy(() => import("../features/lineup/LineupPage").then((m) => ({ default: m.LineupPage })));
 const FormationsPage = lazy(() => import("../features/formations/FormationsPage").then((m) => ({ default: m.FormationsPage })));
 const FilmRoom = lazy(() => import("../features/film/FilmRoom").then((m) => ({ default: m.FilmRoom })));
-const LabsPage = lazy(() => import("../features/labs/LabsPage").then((m) => ({ default: m.LabsPage })));
 const TournamentPage = lazy(() => import("../features/tournament/TournamentPage").then((m) => ({ default: m.TournamentPage })));
 const MatchupPage = lazy(() => import("../features/matchup/MatchupPage").then((m) => ({ default: m.MatchupPage })));
 const PracticePage = lazy(() => import("../features/practice/PracticePage").then((m) => ({ default: m.PracticePage })));
@@ -39,7 +39,10 @@ const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ d
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
-const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"], ["labs", "Labs", "wide-only"]];
+const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
+
+/** Pages for coaches only. */
+const COACH_ONLY = ["track", "lineup", "formations", "matchup", "tournament", "practice", "court", "film", "live", "labs", "tryouts", "club"];
 
 export function App() {
   useVersion();
@@ -59,7 +62,7 @@ export function App() {
       const existing = all("teams").find((x) => x.sample);
       if (existing) setPrefs({ teamId: existing.id }); else createSampleTeam();
       if (!user) skipAccounts();
-      location.replace("#/track");
+      location.replace("#/home");
     }, 0);
     return <div className="content"><p className="empty" style={{ padding: 24 }}>Loading the sample season…</p></div>;
   }
@@ -68,7 +71,7 @@ export function App() {
     return <><div className="content solo"><Suspense fallback={<Wait />}>{route.page === "tryout-join" ? <JoinTryout code={route.id || ""} /> : <TryoutsPage id={route.id} />}</Suspense></div><Toast /></>;
   if (!user && (route.page === "account" || (route.page === "join" && route.id && wantsAuthGate()))) {
     if (route.page === "join" && route.id) try { sessionStorage.setItem("bs-join", route.id); } catch { /* ignore */ }
-    return <><AuthPage key={route.id || "a"} initial={route.id === "signup" || route.page === "join" ? "signup" : "signin"} onSkip={() => { skipAccounts(); location.hash = "#/track"; }} /><Toast /></>;
+    return <><AuthPage key={route.id || "a"} initial={route.id === "signup" || route.page === "join" ? "signup" : "signin"} onSkip={() => { skipAccounts(); location.hash = "#/home"; }} /><Toast /></>;
   }
   if (route.page === "account" && route.id === "new-password") return <><AuthPage initial="newpw" /><Toast /></>;
   if (user && needsTermsAgreement()) return <><TermsGate /><Toast /></>;
@@ -79,7 +82,9 @@ export function App() {
     return <>{wantsAuthGate() ? <AuthPage onSkip={skipAccounts} /> : <Welcome />}<Toast /></>;
   }
 
-  const page = route.page;
+  // View-only members (players and families) get the team's stats, never the coaching tools
+  const viewer = !!t && roleOn(t.id) === "viewer";
+  const page = viewer && COACH_ONLY.includes(route.page) ? "home" : route.page;
   const showBoard = !!currentMatch() && ["track", "practice", "lineup", "formations", "stats", "court", "matchup"].includes(page) && !(page === "practice" && currentMatch()?.kind === "match");
   const teams = all("teams").sort((a, b) => a.createdAt - b.createdAt);
   let body;
@@ -89,7 +94,7 @@ export function App() {
     case "tryout-join": body = <JoinTryout code={route.id || ""} />; break;
     case "lineup": body = <LineupPage />; break;
     case "formations": body = <FormationsPage />; break;
-    case "labs": body = <LabsPage />; break;
+    case "labs": body = <SettingsPage />; break; // Labs moved: formations are under Lineup, the rest is in Settings
     case "film": body = <FilmRoom id={route.id} />; break;
     case "matchup": body = <MatchupPage id={route.id} />; break;
     case "tournament": body = <TournamentPage id={route.id} />; break;
@@ -105,14 +110,14 @@ export function App() {
     case "live": body = <LivePage />; break;
     case "track": body = <TrackPage />; break;
     // opening the app mid-match (no page in the link) goes straight back to the match
-    default: body = !location.hash.replace(/^#\/?/, "") && currentMatch()?.kind === "match" ? <TrackPage /> : <div className="page"><Home /></div>;
+    default: body = <div className="page"><Home /></div>;
   }
   return <>
     <nav className="nav" aria-label="Sections">
       <div className="brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
       <div className="teamswitch"><TeamMenu compact={!!state.prefs.navMini} /></div>
-      {NAV.map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} title={state.prefs.navMini ? l : undefined} aria-current={page === k || (k === "stats" && page === "player") || (k === "labs" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
-      <SiteSwitch here="app" />
+      {NAV.filter(([k]) => !viewer || !COACH_ONLY.includes(k)).map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} title={state.prefs.navMini ? l : undefined} aria-current={page === k || (k === "stats" && page === "player") || (k === "lineup" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
+      <SitesMenu mini={!!state.prefs.navMini} />
       <AccountChip />
       <a className="tab wide-only" href="#/settings" aria-current={page === "settings" ? "page" : undefined} title={state.prefs.navMini ? "Settings" : undefined}><Icon name="settings" /><span>Settings</span></a>
       <button className="tab wide-only nav-fold" onClick={() => { document.body.classList.add("nav-anim"); setTimeout(() => document.body.classList.remove("nav-anim"), 300); setPrefs({ navMini: !state.prefs.navMini }); }} aria-label={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"} title={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />{state.prefs.navMini ? <path d="m13 10 2 2-2 2" /> : <path d="m16 10-2 2 2 2" />}</svg><span>Collapse</span></button>
