@@ -1319,7 +1319,7 @@ const scenarios = {
   async beach(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "beach/"); await p.waitForTimeout(500);
-    ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 4);
+    ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 5);
     await p.getByLabel("Your player 1").fill("Ava"); await p.getByLabel("Your player 2").fill("Maya");
     await p.getByLabel("Opponent 1").fill("Kim"); await p.getByLabel("Opponent 2").fill("Lee");
     await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
@@ -1392,6 +1392,47 @@ const scenarios = {
     ok("and scores a match offline", (await p.locator(".bv-pts").allInnerTexts()).join("-") === "1-0");
     await p.context().setOffline(false);
     ok("no errors on the beach site", p.errors.length === 0, p.errors.join("; "));
+  },
+  async academy(browser) {
+    const p = await newPage(browser, { phone: true });
+    await p.goto(U + "academy/"); await p.waitForTimeout(500);
+    ok("academy opens on the five skills, for players first", (await p.locator(".ac-skills li").count()) === 5 && (await p.getByRole("button", { name: "For players" }).getAttribute("aria-pressed")) === "true" && (await p.locator(".site-switch a").count()) === 5);
+    ok("academy fits a phone", (await overflow(p)) <= 0);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "ac-home.png"), fullPage: true });
+    await p.getByRole("link", { name: /^Serving/ }).click(); await p.waitForTimeout(300);
+    ok("a skill opens at a link a team can share", p.url().endsWith("#/players/serving") && (await p.locator(".ac-band h1").innerText()) === "Serving" && (await p.locator(".ad svg").count()) === 1);
+    ok("the player's version has steps and a checklist, not team concepts", (await p.locator("#ac-steps li").count()) > 2 && (await p.locator("#ac-check input[type=checkbox]").count()) > 5 && (await p.locator("#ac-concepts").count()) === 0);
+    ok("a skill page fits a phone", (await overflow(p)) <= 0);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "ac-player.png"), fullPage: true });
+    await p.locator("#ac-check input[type=checkbox]").first().check(); await p.locator("#ac-check input[type=checkbox]").nth(1).check();
+    await p.reload(); await p.waitForTimeout(400);
+    ok("checked-off skills stay checked after a reload", (await p.locator("#ac-check input:checked").count()) === 2);
+    await p.getByRole("link", { name: "All skills" }).click(); await p.waitForTimeout(200);
+    ok("progress shows on the skill list", (await p.locator(".ac-skills li").first().innerText()).includes("2 of "));
+    await p.getByRole("button", { name: "For coaches" }).click(); await p.waitForTimeout(200);
+    await p.getByRole("link", { name: /^Defense/ }).click(); await p.waitForTimeout(300);
+    ok("the coach's version has what to watch, team concepts and progression", p.url().endsWith("#/coaches/defense") && (await p.locator("#ac-watch li").count()) > 2 && (await p.locator("#ac-concepts .ac-concept").count()) > 0 && (await p.locator("#ac-levels").count()) === 1 && (await p.locator("#ac-check").count()) === 0);
+    await p.locator(".ac-drill-hd").first().click(); await p.waitForTimeout(150);
+    const add = await p.locator(".ac-add").first().getAttribute("href"), drillName = await p.locator(".ac-drill-name b").first().innerText();
+    ok("a coach drill links into the practice planner", /#\/practice\/drill:[\w-]+$/.test(add || ""), String(add));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "ac-coach.png"), fullPage: true });
+    await p.reload(); await p.waitForTimeout(300);
+    ok("the coach/player choice is remembered", (await p.getByRole("button", { name: "For coaches" }).getAttribute("aria-pressed")) === "true");
+    await p.goto(U + "academy/#/players/nope"); await p.waitForTimeout(200);
+    ok("an unknown skill shows a way back", (await p.getByRole("link", { name: "See every skill" }).count()) === 1);
+    // the drill lands in the coach's library
+    const A = await newPage(browser, { cloud: false });
+    await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("Academy Test"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(400);
+    const hash = add.slice(add.indexOf("#"));
+    await A.goto(U + hash); await A.waitForTimeout(500);
+    const libText = await A.locator(".page").innerText();
+    ok("opening the link adds the drill to the drill library", A.url().endsWith("#/practice") && (await A.locator(".toast").innerText()).includes("Added") && libText.includes(drillName));
+    await A.goto(U + hash.replace("#/practice", "#/home")); await A.goto(U + hash); await A.waitForTimeout(700);
+    ok("opening it again doesn't add it twice", (await A.locator(".toast").innerText()).includes("already"));
+    if (process.env.SHOTS) { const d = await newPage(browser, { size: { width: 1280, height: 900 } }); await d.goto(U + "academy/#/coaches"); await d.waitForTimeout(400); await d.screenshot({ path: path.join(process.env.SHOTS, "ac-home-desk.png"), fullPage: true });
+      await d.goto(U + "academy/#/players/hitting"); await d.waitForTimeout(400); await d.screenshot({ path: path.join(process.env.SHOTS, "ac-skill-desk.png"), fullPage: true }); await d.context().close(); }
+    ok("no errors on the academy site", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
+    await p.context().close(); await A.context().close();
   },
   async club(browser) {
     const A = await newPage(browser, { cloud: false });

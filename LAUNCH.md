@@ -38,7 +38,7 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
-3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all six: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`, `beach.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live and Floorcall Recruit.
+3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all seven: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`, `beach.getfloorcall.com`, `academy.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live, Recruit, Beach and Academy.
 4. Releases: `git push origin main:live` (the app, Floorcall Live and Floorcall Recruit all go out together).
 
 Worked when: getfloorcall.com shows the product page, app.getfloorcall.com opens the app, live.getfloorcall.com shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
@@ -85,6 +85,12 @@ Workers → floorcall → Settings → Domains & Routes → Add → Custom domai
 Do this before sharing the link: `getfloorcall.com/beach/` redirects to the beach address, so it does not work until the domain is added.
 
 Beach matches are saved on the device. A scorer with a free account can tap Go live to share a match by link; anyone with the link follows the score with no account (needs database version 21). The site keeps working with no signal after its first load, and a finished match can be sent as a share link.
+
+## Academy site
+
+Floorcall Academy (hitting, setting, serving, serve receive, defense; a version for players and one for coaches) is built with everything else and lives at `academy.getfloorcall.com`. One step in Cloudflare:
+Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `academy.getfloorcall.com`.
+It needs no database and no account. Players' checklists stay on their device. A coach's "Add to my practice" opens the coaching app and puts the drill in that team's drill library. The words and drills are in `src/academy/content.ts`.
 
 ## App stores
 

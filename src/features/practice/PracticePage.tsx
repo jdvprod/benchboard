@@ -20,9 +20,29 @@ const CAT_COLOR: Record<string, string> = {
 };
 const catColor = (c: string) => CAT_COLOR[c] || "#A4AAB2";
 
-export function PracticePage() {
+/** A drill sent from Floorcall Academy (#/practice/drill:<base64url JSON {n,c,m,d}>), added to this team's drill library. */
+export function importDrill(code: string, teamId: string): Drill | null {
+  try {
+    const b = code.replace(/-/g, "+").replace(/_/g, "/"), bin = atob(b + "=".repeat((4 - (b.length % 4)) % 4));
+    const x = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, (ch) => ch.charCodeAt(0))));
+    const name = String(x.n || "").trim().slice(0, 80); if (!name) return null;
+    const have = drillsOf().find((d) => d.name.toLowerCase() === name.toLowerCase());
+    if (have) return have;
+    const d: Drill = { id: uid("d"), teamId, name, category: (DRILL_CATEGORIES as readonly string[]).includes(x.c) ? x.c : "Game play",
+      minutes: Math.max(1, Math.min(60, Math.round(+x.m || 10))), description: String(x.d || "").slice(0, 2000), focus: [] };
+    save("drills", d); return d;
+  } catch { return null; }
+}
+
+export function PracticePage({ id }: { id?: string } = {}) {
   const m = currentMatch();
-  const [tab, setTab] = useState<"plan" | "scrim" | "history" | "drills">("plan");
+  const [tab, setTab] = useState<"plan" | "scrim" | "history" | "drills">(id?.startsWith("drill:") ? "drills" : "plan");
+  useEffect(() => {
+    if (!id?.startsWith("drill:")) return;
+    const t = team(), before = drillsOf().length, d = t && importDrill(id.slice(6), t.id);
+    toast(!t ? "Make a team first, then add the drill again" : !d ? "That drill link didn't work" : drillsOf().length > before ? `Added “${d.name}” to your drill library` : `“${d.name}” is already in your drill library`);
+    history.replaceState(null, "", "#/practice");
+  }, [id]);
   if (m && m.kind !== "match") return <div className="page">
     <div className="row between"><h1>{m.opp}</h1>
       <ConfirmButton className="btn" confirmText="Tap again to end practice" onConfirm={() => { patch("matches", m.id, { status: "done" }); setTeamPatch({ currentMatchId: null }); toast("Practice saved"); }}>End practice</ConfirmButton></div>

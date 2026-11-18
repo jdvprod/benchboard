@@ -95,7 +95,7 @@ export function App() {
     case "tournament": body = <TournamentPage id={route.id} />; break;
     case "join": body = <JoinPage code={route.id || ""} />; break;
     case "account": body = <AccountPage />; break;
-    case "practice": body = <PracticePage />; break;
+    case "practice": body = <PracticePage id={route.id} />; break;
     case "stats": body = <StatsPage />; break;
     case "court": body = <CourtPage />; break;
     case "team": body = <TeamPage sub={route.id} />; break;
