@@ -31,3 +31,11 @@ save(render(MAIN, {"figure": "#111111", "swoosh": "blue", "fc": "#6A707A"}, None
 for skill, logo in {"serving": "08-spiker-girl-pink-on-dark", "passing": "16-passer-grey-on-dark", "setting": "13-setter-girl-grey-on-dark",
                     "hitting": "04-spiker-pink-on-dark", "defense": "12-passer-girl-grey-on-dark"}.items():
     save(render(logo, {"figure": "white", "swoosh": "columbia", "fc": "none"}, "black", 360, "mark", 0.06), f"brand/skill-{skill}.png")
+
+# link previews (og.png): the mark in place of the old bar-chart icon, beside FLOORCALL
+from PIL import Image, ImageDraw
+mark = render(MAIN, {"figure": "white"}, None, 64, "figure", 0.02)
+for og in ["og.png", "live/og.png", "recruit/og.png"]:
+    p = os.path.join(PUB, og); im = Image.open(p).convert("RGBA")
+    ImageDraw.Draw(im).rectangle((78, 78, 136, 136), fill=(0, 0, 0, 255))
+    im.alpha_composite(mark, (76, 74)); im.convert("RGB").save(p, optimize=True); print("updated", og)

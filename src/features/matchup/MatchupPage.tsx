@@ -1,4 +1,5 @@
 /** Matchups: the schedule, and everything you know about the next opponent from every time you've played them. */
+import { madeWith } from "../../lib/brandMark";
 import { ScoutSummary } from "../film/ScoutFilm";
 import { TheirRotations } from "../stats/StatsPage";
 import { icsToLines, parseSchedule } from "./parseSchedule";
@@ -277,7 +278,7 @@ h1{margin:0;font-size:26px}h2{font-size:12px;letter-spacing:.06em;color:var(--mu
 <div class="cols"><div><h2>Their attack</h2><ul>${recs("theirAttack")}</ul></div><div><h2>Their serve</h2><ul>${recs("theirServe")}</ul></div></div>
 ${o.notes ? `<h2>Notes</h2><p>${esc(o.notes)}</p>` : ""}
 <h2>Past results</h2><table><tbody>${games.map(({ m, R }) => `<tr><td>${esc(m.date)}</td><td>${R.wonUs}–${R.wonThem}</td><td>${R.sets.map((s) => s.us + "-" + s.them).join(", ")}</td></tr>`).join("")}</tbody></table>
-<p style="color:var(--mut);margin-top:18px;font-size:12px">Made with Floorcall</p></main></body></html>`;
+<p style="color:var(--mut);margin-top:18px;font-size:12px">${madeWith()}</p></main></body></html>`;
 }
 
 /* ---------- in-match panel on the Track screen ---------- */

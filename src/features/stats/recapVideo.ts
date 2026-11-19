@@ -8,7 +8,7 @@ import { clipsFrom, filmTiming, highlightPick, LOCAL, playName, videoKind } from
 import { localVideo } from "../../film/localVideos";
 import { aggregate, Replay, Stat } from "../../sports/volleyball/engine";
 import { teamBlocks, blocks, teamMetrics } from "../../sports/volleyball/metrics";
-import { canvasImage, drawLogo } from "../../lib/image";
+import { canvasImage, drawLogo, floorcallMark, markBeside } from "../../lib/image";
 import { reelMime } from "../../film/reel";
 
 export const RW = 1080, RH = 1920;
@@ -21,7 +21,7 @@ export interface RecapData {
   nums: { v: string; label: string }[];
   /** Plays cut from the match film (kills, aces, blocks), when the film is a file the browser can read. */
   plays: RecapPlay[];
-  logoUs: HTMLImageElement | null; logoThem: HTMLImageElement | null;
+  logoUs: HTMLImageElement | null; logoThem: HTMLImageElement | null; mark?: HTMLImageElement | null;
   disp: string;
 }
 export interface RecapPlay { src: string; start: number; end: number; label: string; who: string; sub: string }
@@ -70,12 +70,12 @@ export async function recapData(m: Match, R: Replay, withPlays = true): Promise<
   try { await (document as any).fonts?.ready; } catch { /* fine */ }
   const leaders = leadersOf(A), nums = numbersOf(A);
   const dt = new Date(m.date + "T12:00:00");
-  const [logoUs, logoThem] = await Promise.all([canvasImage(t.logo), canvasImage(m.oppLogo)]);
+  const [logoUs, logoThem, mark] = await Promise.all([canvasImage(t.logo), canvasImage(m.oppLogo), floorcallMark()]);
   return {
     us: t.name, them: m.opp || "Opponent", wonUs: R.wonUs, wonThem: R.wonThem, final: R.matchOver || m.status === "done",
     date: isNaN(+dt) ? m.date : dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }), event: m.event || "",
     sets: R.sets.filter((s) => s.us + s.them > 0).map((s) => ({ n: s.n, us: s.us, them: s.them, won: s.us > s.them })),
-    leaders, nums, plays: withPlays ? recapPlays(m, R) : [], logoUs, logoThem, disp: dispFont(),
+    leaders, nums, plays: withPlays ? recapPlays(m, R) : [], logoUs, logoThem, mark, disp: dispFont(),
   };
 }
 
@@ -88,7 +88,7 @@ export async function seasonRecapData(items: { m: Match; R: Replay }[], seasonNa
     us: t.name, them: "", wonUs: W, wonThem: L, final: true, date: seasonName || "Season", event: "",
     sets: done.slice(0, 6).map((x, i) => ({ n: i + 1, us: x.R.wonUs, them: x.R.wonThem, won: x.R.wonUs > x.R.wonThem, label: (x.m.site === "away" ? "at " : "vs ") + (x.m.opp || "Opponent") })),
     season: { name: seasonName || "Season", matches: done.length },
-    leaders: leadersOf(A, Math.max(3, Math.round(done.length * 1.5))), nums: numbersOf(A), plays: [], logoUs: await canvasImage(t.logo), logoThem: null, disp: dispFont(),
+    leaders: leadersOf(A, Math.max(3, Math.round(done.length * 1.5))), nums: numbersOf(A), plays: [], logoUs: await canvasImage(t.logo), logoThem: null, mark: await floorcallMark(), disp: dispFont(),
   };
 }
 
@@ -118,6 +118,7 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
   const sw = (W - 120 - (segs.length - 1) * 10) / segs.length;
   segs.forEach((len, i) => { const x = 60 + i * (sw + 10); g.fillStyle = "rgba(255,255,255,.22)"; g.fillRect(x, 70, sw, 6); g.fillStyle = "#fff"; g.fillRect(x, 70, sw * clamp((t - acc) / len), 6); acc += len; });
   text("FLOORCALL", W - 60, 130, 26, GREY, { align: "right", spacing: 7 });
+  g.save(); g.font = `700 26px ${d.disp}`; markBeside(g, d.mark || null, "FLOORCALL", W - 60, 130, 26, "right", 7); g.restore();
   text(d.date.toUpperCase(), 60, 130, 26, GREY, { spacing: 3 });
 
   let at = 0;
@@ -218,7 +219,7 @@ export function drawRecap(g: CanvasRenderingContext2D, d: RecapData, t: number, 
     text(d.us.toUpperCase(), W / 2, 920, fit(d.us.toUpperCase(), W - 160, 120), "#fff", { align: "center" });
     const line = d.season ? `${d.wonUs}–${d.wonThem} · ${d.season.name}` : `${d.wonUs}–${d.wonThem} vs ${d.them}`;
     text(line, W / 2, 1010, fit(line, W - 200, 60, BODY), GREY, { align: "center", font: BODY, weight: 600 });
-    g.fillStyle = BLUE; g.fillRect(W / 2 - 60, 1090, 120, 6);
+    if (d.mark) g.drawImage(d.mark, W / 2 - 60, 1040, 120, 120); else { g.fillStyle = BLUE; g.fillRect(W / 2 - 60, 1090, 120, 6); }
     text("STATS BY FLOORCALL", W / 2, 1200, 40, BLUE, { align: "center", spacing: 8 });
     text("getfloorcall.com", W / 2, 1260, 36, GREY, { align: "center", font: BODY, weight: 600 });
   });

@@ -4,7 +4,7 @@ import { download } from "../../ui/kit";
 import { Match } from "../../data/model";
 import { aggregate, Replay, Stat } from "../../sports/volleyball/engine";
 import { blocks } from "../../sports/volleyball/metrics";
-import { canvasImage, drawLogo } from "../../lib/image";
+import { canvasImage, drawLogo, floorcallMark, markBeside } from "../../lib/image";
 
 export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
   const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -54,6 +54,7 @@ export async function finalGraphic(m: Match, R: Replay): Promise<Blob | null> {
     text(l.label, W - 80, y, 24, GREY, { align: "right", spacing: 3 });
   });
   text("FLOORCALL", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
+  markBeside(g, await floorcallMark(), "FLOORCALL", W - 80, H - 50, 22, "right", 6);
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

@@ -18,3 +18,4 @@ table{border-collapse:collapse;width:100%;font-size:15.5px;margin:10px 0}th,td{b
 footer{border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}footer .in{max-width:860px;margin:0 auto;padding:22px 20px;display:flex;gap:16px;flex-wrap:wrap}
 :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 @media print{header,footer{display:none}body{background:#fff;color:#000}a{color:#000}}
+.lg-brand{display:inline-flex;align-items:center;gap:8px}.lg-brand img{width:28px;height:28px;display:block}

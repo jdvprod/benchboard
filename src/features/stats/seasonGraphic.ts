@@ -5,7 +5,7 @@ import { Match } from "../../data/model";
 import { aggregate, Replay, Stat } from "../../sports/volleyball/engine";
 import { blocks } from "../../sports/volleyball/metrics";
 import { seasonSummary } from "../../sports/volleyball/seasonSummary";
-import { canvasImage, drawLogo } from "../../lib/image";
+import { canvasImage, drawLogo, floorcallMark, markBeside } from "../../lib/image";
 
 export async function seasonGraphic(items: { m: Match; R: Replay }[], seasonName: string): Promise<Blob | null> {
   const W = 1080, H = 1350, cv = document.createElement("canvas"); cv.width = W; cv.height = H;
@@ -37,6 +37,7 @@ export async function seasonGraphic(items: { m: Match; R: Replay }[], seasonName
     text(nmP, 80, y, z, "#fff", { font: body }); text(String(l.v), W - 250, y, 54, "#fff", { align: "right" }); text(l.label, W - 80, y, 24, GREY, { align: "right", spacing: 3 }); });
   if (S.biggestWin) { const y = 715 + L.length * 100 + 60; text("BIGGEST WIN", 80, y, 24, GREY, { spacing: 4 }); text(`vs ${S.biggestWin.opp}  ·  ${S.biggestWin.sets}`, 80, y + 50, fit(`vs ${S.biggestWin.opp}  ·  ${S.biggestWin.sets}`, W - 160, 38), "#fff"); }
   text("FLOORCALL", W - 80, H - 50, 22, GREY, { align: "right", spacing: 6 });
+  markBeside(g, await floorcallMark(), "FLOORCALL", W - 80, H - 50, 22, "right", 6);
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

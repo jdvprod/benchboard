@@ -1303,9 +1303,14 @@ const scenarios = {
     await A.reload(); await A.waitForTimeout(1200);
     await go(A, "team"); { const sy = A.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.first().click(); await A.waitForTimeout(2500); } }
     { const ok2 = A.getByRole("button", { name: "I have permission" }); if (await ok2.count()) { await ok2.click(); await A.waitForTimeout(500); } }
+    { const ex = A.getByRole("button", { name: "Expand the sidebar" }); if (await ex.count()) { await ex.click(); await A.waitForTimeout(400); } }
     await go(A, "track"); await shot(A, "app-track");
     await go(A, "stats"); await A.waitForTimeout(800); await shot(A, "app-stats");
     await go(A, "matchup"); await A.waitForTimeout(800); await shot(A, "app-matchup");
+    await go(A, "court"); await A.waitForTimeout(800); { const pb = A.getByRole("button", { name: "Playbook", exact: true }); if (await pb.count()) { await pb.click(); await A.waitForTimeout(500); }
+      const pl = A.getByRole("button", { name: "Perimeter vs outside", exact: true }); if (await pl.count()) { await pl.first().click(); await A.waitForTimeout(800); }
+      const cn = A.getByRole("button", { name: "Corner", exact: true }); if (await cn.count()) { await cn.click(); await A.waitForTimeout(1500); } }
+    await shot(A, "app-playbook");
     await go(A, "lineup"); await A.waitForTimeout(800); await shot(A, "app-lineup");
     // the phone: tracking courtside
     const M = await newPage(browser, { phone: true, scale: 3 });
@@ -1336,7 +1341,8 @@ const scenarios = {
     const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href").catch(() => null);
     console.log("    profile: " + rec);
     if (rec) { await P.goto(rec); await P.waitForTimeout(2000); await shot(P, "recruit-profile"); }
-    await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(1200); await shot(P, "recruit-guide");
+    await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(800); if (await P.locator(".sg .ma").count()) { await siteSignUp(P, "maya.family@westbrook.test", "parent", "Dana Chen"); await P.goto(U + "recruit/#/guide"); await P.waitForTimeout(1200); }
+    await P.evaluate(() => scrollTo(0, 0)); await P.waitForTimeout(300); await shot(P, "recruit-guide");
     await A.context().close(); await M.context().close(); await P.context().close();
   },
   async beach(browser) {

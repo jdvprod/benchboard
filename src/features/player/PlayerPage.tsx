@@ -1,4 +1,5 @@
 /** Player portal: season numbers, trends, match log, goals, AI report card and a shareable report. */
+import { madeWith } from "../../lib/brandMark";
 import { useEffect, useState } from "react";
 import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
 import { Goal, GoalMetric, Match, Player, RecruitProfile } from "../../data/model";
@@ -163,7 +164,7 @@ table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{padding:6px;tex
 <body><main><div class="hero"><div class="n">${esc(p.num)}</div><div><h1>${esc(p.first + " " + p.last)}</h1><div class="sub">${esc([p.pos, p.height, p.grad ? "Class of " + p.grad : ""].filter(Boolean).join(" · "))}</div><div class="sub">${esc(t.name)}${t.level ? " · " + esc(t.level) : ""}</div></div></div>
 <div class="ks">${ks}</div>${goals ? `<section><h3 style="margin:0 0 6px">Goals</h3><ul>${goals}</ul></section>` : ""}
 <section><h3 style="margin:0 0 6px">Match by match</h3><table><thead><tr><th>Date</th><th>Opponent</th><th>K</th><th>Hit %</th><th>Ace</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th></tr></thead><tbody>${log}</tbody></table></section>
-<footer>Made with Floorcall · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
+<footer>${madeWith()} · ${new Date().toLocaleDateString()}</footer></main></body></html>`;
   download(`${p.first} ${p.last} - ${t.name}.html`, html, "text/html");
   toast("Report saved. Text or email the file to share it.");
 }
@@ -279,7 +280,7 @@ ${p.height || pr.reach || pr.approach || pr.block || pr.hand || pr.gpa ? `<h2>Me
 ${best.length ? `<h2>Best matches</h2><table><thead><tr><th>Date</th><th>Opponent</th><th>Kills</th><th>Digs</th><th>Assists</th><th>Aces</th></tr></thead><tbody>${best.map(({ r }) => `<tr><td>${esc(r.m.date)}</td><td>${esc(r.m.opp)}</td><td>${r.s?.K ?? 0}</td><td>${r.s?.D ?? 0}</td><td>${r.s?.AST ?? 0}</td><td>${r.s?.SA ?? 0}</td></tr>`).join("")}</tbody></table>` : ""}
 ${safeUrl(pr.video) ? `<h2>Highlights</h2><p><a href="${esc(safeUrl(pr.video))}">${esc(pr.video)}</a></p>` : ""}
 ${pr.email || pr.phone || pr.coachContact ? `<h2>Contact</h2><div class="g">${item("Player email", pr.email)}${item("Player phone", pr.phone)}${item("Coach", pr.coachContact)}</div>` : ""}
-<footer>Stats recorded with Floorcall · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
+<footer>${madeWith("Stats recorded with Floorcall")} · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
 }
 
 /** Where this player's attacks land, plus hitting and passing by rotation. */

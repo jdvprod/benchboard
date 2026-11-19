@@ -4,7 +4,7 @@ import { download } from "../../ui/kit";
 import { Match, Player } from "../../data/model";
 import { Replay, Stat } from "../../sports/volleyball/engine";
 import { blocks, fmtAvg, fmtHit, hitting, passAvg } from "../../sports/volleyball/metrics";
-import { canvasImage, drawCover, drawLogo } from "../../lib/image";
+import { canvasImage, drawCover, drawLogo, floorcallMark, markBeside } from "../../lib/image";
 
 export interface Tile { label: string; value: string }
 /** The numbers worth posting, best first: up to six that this player actually has. */
@@ -56,6 +56,7 @@ export async function playerGraphic(p: Player, s: Stat, head: string, sub: strin
   if (logo) drawLogo(g, logo, 80, H - 104, 64);
   text(t.name.toUpperCase(), logo ? 164 : 80, H - 56, 26, "#fff", { spacing: 3 });
   text("FLOORCALL", W - 80, H - 56, 22, GREY, { align: "right", spacing: 6 });
+  markBeside(g, await floorcallMark(), "FLOORCALL", W - 80, H - 56, 22, "right", 6);
   return new Promise((res) => cv.toBlob((b) => res(b), "image/png"));
 }
 

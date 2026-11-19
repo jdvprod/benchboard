@@ -98,3 +98,16 @@ export async function isLogoPicture(url: string): Promise<boolean | null> {
     return looksLikeLogo(g.getImageData(0, 0, 64, 64).data);
   } catch { return null; } // the site didn't allow reading its pixels
 }
+
+/** The Floorcall mark (the spiker), for the signature on share graphics, recap videos and reels. Served from the
+ * main address on every site (the worker falls back to shared files), so one absolute path works everywhere. */
+let markP: Promise<HTMLImageElement | null> | null = null;
+export const floorcallMark = () => (markP ||= canvasImage("/brand/mark-white.png"));
+/** Call right after drawing a "FLOORCALL" label (g.font is still the label's): puts the mark just before it. */
+export function markBeside(g: CanvasRenderingContext2D, mark: HTMLImageElement | null, label: string, x: number, y: number, size: number, align: "right" | "center" | "left", spacing = 0) {
+  if (!mark) return;
+  try { (g as any).letterSpacing = "0px"; } catch { /* older browsers */ }
+  const w = g.measureText(label).width + spacing * label.length, s = Math.round(size * 1.5);
+  const left = align === "right" ? x - w : align === "center" ? x - w / 2 : x;
+  g.drawImage(mark, left - s - size * 0.45, y - s * 0.82, s, s);
+}

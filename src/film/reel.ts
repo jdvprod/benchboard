@@ -3,6 +3,7 @@
  *   and a player bug → outro card (season numbers, "verified by the coaching staff", the profile link).
  * Frames are drawn on a canvas from the match video and recorded with MediaRecorder; sound comes from the video through
  * Web Audio (recorded, not played out loud). Works with video files on this device or links that allow it (same site or CORS). */
+import { floorcallMark, markBeside } from "../lib/image";
 import type { Clip } from "./clips";
 
 export interface ReelPlayer { first: string; last: string; num: string; pos: string; grad: number | null; height: string; photo?: string | null }
@@ -24,7 +25,7 @@ export async function renderReel(clips: Clip[], resolve: (c: Clip) => string | n
   const g = cv.getContext("2d")!; g.imageSmoothingQuality = "high";
   try { await (document as any).fonts?.ready; } catch { /* fine */ }
   const disp = getComputedStyle(document.documentElement).getPropertyValue("--display").trim() || "system-ui", body = "'Source Sans 3', system-ui, sans-serif";
-  const [photo, logo] = await Promise.all([loadImg(info.player.photo), loadImg(info.team.logo)]);
+  const [photo, logo, mark] = await Promise.all([loadImg(info.player.photo), loadImg(info.team.logo), floorcallMark()]);
   const name = `${info.player.first} ${info.player.last}`.trim().toUpperCase() || "#" + info.player.num;
   const meta = [info.player.grad ? "Class of " + info.player.grad : "", info.player.pos, info.player.height].filter(Boolean).join("  ·  ");
   const text = (s: string, x: number, y: number, size: number, color: string, f: { font?: string; weight?: number; align?: CanvasTextAlign; spacing?: number; alpha?: number } = {}) => {
@@ -63,6 +64,7 @@ export async function renderReel(clips: Clip[], resolve: (c: Clip) => string | n
     if (info.verified !== false) text("✓ Stats recorded live by " + info.team.name + "'s coaching staff", W / 2, 480, 26, BLUE, { align: "center", font: body, weight: 700, alpha: ease((t - 0.8) / 0.6) });
     if (info.link) text(info.link, W / 2, 540, fit(info.link, W - 200, 26, 600), "#C7CCD3", { align: "center", font: body, weight: 600, alpha: ease((t - 1) / 0.6) });
     text("FLOORCALL", W / 2, H - 50, 20, "#8A9099", { align: "center", spacing: 8 });
+    markBeside(g, mark, "FLOORCALL", W / 2, H - 50, 20, "center", 8);
   };
   // ---- a play: the video, a player bug top-left, the lower third sliding in
   const lowerThird = (c: Clip, t: number) => {
