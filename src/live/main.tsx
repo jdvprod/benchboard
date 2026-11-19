@@ -30,7 +30,7 @@ function useTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { con
 
 function Shell({ team, children, home }: { team?: string; children: any; home?: string }) {
   return <div className="lv">
-    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Floorcall Live home"><i aria-hidden="true" /><b>Floorcall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /></header>
+    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Floorcall Live home"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /></header>
     <main className="lv-main">{children}</main>
     <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Floorcall")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a>
       <div className="lv-lang" role="group" aria-label="Language / Idioma">{([["en", "English"], ["es", "Español"]] as [Lang, string][]).map(([k, l]) => <button key={k} aria-pressed={getLang() === k} onClick={() => { setLang(k); location.reload(); }}>{l}</button>)}</div></footer>

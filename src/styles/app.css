@@ -1179,3 +1179,7 @@ body.nav-mini .sm-btn span{display:none}
 .pw-price{font:700 32px var(--display)}.pw-price small{font:500 14px var(--body);color:var(--muted)}
 .tname .tn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:420px){.tname{letter-spacing:.03em;font-size:14px}}
+/* the Floorcall mark beside the name */
+.brandmark{width:32px;height:32px;object-fit:contain;flex:none;display:block}
+.mobilebar .brandmark{width:24px;height:24px}
+.lv-brand .brandmark,.rc-brand .brandmark,.bv-brand .brandmark,.ac-brand .brandmark{width:26px;height:26px}

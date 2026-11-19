@@ -22,4 +22,11 @@ images are made from them, so keep these and change copies.
 | 15-setter-grey-on-dark | Setter, grey |
 | 16-passer-grey-on-dark | Passer, grey |
 
-Main logo: not chosen yet.
+Main logo: **01** (the spiker with the FLOORCALL name). 04 is the same spiker with its parts in separate colours, so
+the tool can recolour it; it's used for the app icons and the mark beside "Floorcall" in every top bar.
+
+Floorcall Academy skill marks: serving 08 (girl spiker), passing 16 (passer), setting 13 (girl setter), hitting 04
+(spiker), defense 12 (girl passer, low).
+
+To recolour or resize any logo: `python3 brand/tools/logo.py --help`. To rebuild every logo file the sites use:
+`python3 brand/tools/site_assets.py`.

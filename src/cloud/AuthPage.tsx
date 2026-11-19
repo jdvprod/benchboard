@@ -7,7 +7,6 @@ import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmatio
 import { isLinked, linkTeam, pendingCount, restoreTeams, status, syncNow } from "./sync";
 import { go } from "../app/router";
 import { Card } from "../ui/kit";
-import { Icon } from "../ui/icons";
 
 /* Sample numbers for the stat sheet on the sign-in panel. */
 const SHEET: [string, string, number, number, number, string, string][] = [
@@ -34,7 +33,7 @@ function StatSheet() {
 export function AuthShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return <div className="auth">
     <aside className="auth-board">
-      <div className="auth-brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
+      <div className="auth-brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>Floorcall</b></div>
       <div className="auth-hero">
         <h2 className="auth-head">Live stats and advanced metrics for volleyball coaches.</h2>
         <StatSheet />

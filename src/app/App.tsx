@@ -115,7 +115,7 @@ export function App() {
   }
   return <>
     <nav className="nav" aria-label="Sections">
-      <div className="brand"><i><Icon name="brand" /></i><b>Floorcall</b></div>
+      <div className="brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>Floorcall</b></div>
       <div className="teamswitch"><TeamMenu compact={!!state.prefs.navMini} /></div>
       {NAV.filter(([k]) => !viewer || !COACH_ONLY.includes(k)).map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} title={state.prefs.navMini ? l : undefined} aria-current={page === k || (k === "stats" && page === "player") || (k === "lineup" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <SitesMenu mini={!!state.prefs.navMini} />
@@ -124,7 +124,7 @@ export function App() {
       <button className="tab wide-only nav-fold" onClick={() => { document.body.classList.add("nav-anim"); setTimeout(() => document.body.classList.remove("nav-anim"), 300); setPrefs({ navMini: !state.prefs.navMini }); }} aria-label={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"} title={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />{state.prefs.navMini ? <path d="m13 10 2 2-2 2" /> : <path d="m16 10-2 2 2 2" />}</svg><span>Collapse</span></button>
     </nav>
     <div className="content">
-      <div className="mobilebar"><b>Floorcall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
+      <div className="mobilebar"><img className="brandmark" src="brand/mark-white.png" alt="" width="24" height="24" /><b>Floorcall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
       {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Floorcall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
       {ui.previewPlayer && <div className="preview-bar" role="status"><span><b>Players' view.</b> This is what your players and families see when they join {t?.name || "the team"} with a view-only code.</span><button className="btn sm" onClick={() => { setUi({ previewPlayer: false }); go("settings"); }}>Exit preview</button></div>}

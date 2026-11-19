@@ -5,10 +5,11 @@ import type { ReactNode } from "react";
 import { AccountKind, cloudAvailable, currentUser } from "./client";
 import { MiniAuth } from "./MiniAuth";
 
-export function SiteGate({ name, what, kind, children, points }: { name: string; what: string; kind: AccountKind; points: string[]; children: ReactNode }) {
+export function SiteGate({ name, what, kind, children, points, art }: { name: string; what: string; kind: AccountKind; points: string[]; children: ReactNode; art?: ReactNode }) {
   if (!cloudAvailable() || currentUser()) return <>{children}</>;
   return <div className="sg">
     <div className="sg-text">
+      {art}
       <h1>{name}</h1>
       <p className="sg-what">{what}</p>
       <ul>{points.map((p) => <li key={p}>{p}</li>)}</ul>

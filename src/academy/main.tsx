@@ -45,14 +45,14 @@ function App() {
   const switchTo = (w: Who) => { location.hash = "#/" + seg(w) + (sk ? "/" + sk.id : ""); };
   return <div className="ac">
     <header className="ac-top">
-      <a className="ac-brand" href={"#/" + seg(who)}><b>Floorcall</b><span>Academy</span></a>
+      <a className="ac-brand" href={"#/" + seg(who)}><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Academy</span></a>
       {coach && <div className="ac-role" role="group" aria-label="Show this for">
         <button aria-pressed={who === "player"} onClick={() => switchTo("player")}>For players</button>
         <button aria-pressed={who === "coach"} onClick={() => switchTo("coach")}>For coaches</button>
       </div>}
       <SiteSwitch here="academy" />
     </header>
-    <main className="ac-main"><SiteGate name="Floorcall Academy" kind="athlete" what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
+    <main className="ac-main"><SiteGate name="Floorcall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
       {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
     <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
@@ -74,7 +74,7 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
     <ol className="ac-skills">{SKILLS.map((s) => {
       const all = checks(s), n = all.filter((k) => done.includes(k)).length, teamDrills = s.drills.filter((d) => d.who === "coach").length, own = s.drills.filter((d) => d.who === "player").length;
       return <li key={s.id}><a href={"#/" + seg(who) + "/" + s.id}>
-        <span className="ac-thumb"><Diagram id={s.id} small /></span>
+        <span className="ac-thumb"><img src={`../brand/skill-${s.id}.png`} alt="" width="180" height="180" loading="lazy" /></span>
         <span className="ac-sk-text"><b>{s.name}</b><span>{s.tagline}</span></span>
         <span className="ac-sk-meta">{who === "player"
           ? <><span className="ac-meter" aria-hidden="true"><i style={{ width: Math.round((n / all.length) * 100) + "%" }} /></span><small>{n ? `${n} of ${all.length} checked off` : `${own} drills on your own`}</small></>
@@ -98,7 +98,7 @@ function SkillPage({ s, who, done, toggle }: { s: Skill; who: Who; done: string[
     <header className="ac-band">
       <div className="ac-band-text">
         <a className="ac-back" href={"#/" + seg(who)}>All skills</a>
-        <h1>{s.name}</h1>
+        <h1><img className="ac-emblem" src={`../brand/skill-${s.id}.png`} alt="" width="72" height="72" />{s.name}</h1>
         <p className="ac-tag">{s.tagline}</p>
         <p className="ac-intro">{s.intro}</p>
         <p className="ac-stat"><b>Measured by</b> {s.stat.name}. <span>{s.stat.good}.</span></p>

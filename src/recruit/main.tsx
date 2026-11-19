@@ -27,7 +27,7 @@ const mail = (e?: string) => (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()) ?
 
 function Shell({ children, crumb }: { children: any; crumb?: string }) {
   return <div className="rc">
-    <header className="rc-top"><a className="rc-brand" href="#/"><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
+    <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
     <main className="rc-main">{children}</main>
     <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with Floorcall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
   </div>;

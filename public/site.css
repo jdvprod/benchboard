@@ -147,3 +147,5 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}footer a{color:var(--grey)}
 .family span{display:block;margin-top:6px;color:var(--grey);font-size:16px}
 @media (max-width:1000px){.family{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:760px){.family{grid-template-columns:1fr 1fr}}
 @media (max-width:560px){.family{grid-template-columns:1fr}}
+.brand .mark{width:32px;height:32px;object-fit:contain;flex:none}
+.pagetop .logo{display:block;width:min(260px,60vw);height:auto;margin:0 auto 20px}
