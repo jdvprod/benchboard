@@ -1,7 +1,8 @@
 /** Film Room: stat a whole game from its video, find every rally from the referee's whistle, and pull any set of clips
  * by asking in plain words ("all solo blocks", "kills to area 1", "Maya's digs in set 2").
  * Every play statted here carries its exact video time, so every stat is a clip. */
-import { AI_FEATURES } from "../../app/flags";
+import { Beta, BetaNote } from "../../ui/Beta";
+import { aiOn } from "../../ai/on";
 import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { eventsOf, hooks, matchesOf, newMatch, opponentsOf, patch, player, playerName, replayOf, team, teamPlayers, toast, todayISO, useVersion } from "../../data/store";
 import { Match } from "../../data/model";
@@ -54,8 +55,9 @@ function FilmHome() {
   };
   return <div className="page film-home">
     <header className="fr-hero">
-      <h1>Film Room</h1>
+      <h1>Film Room <Beta /></h1>
       <p>Stat a whole game from its video. FloorCall finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
+      <BetaNote>Finding rallies by sound is still learning: a loud gym or a far-away camera can make it miss a rally or cut one short. Your stats are always what you tapped; check the rally cuts before you share a reel.</BetaNote>
     </header>
     <SeasonFind />
     <SeasonBest />
@@ -236,6 +238,7 @@ function FilmWork({ m }: { m: Match }) {
           <div className="fr-tools">
             {scan ? <div className="fr-scan"><div className="fr-bar"><i style={{ width: Math.round(scan.f * 100) + "%" }} /></div><span className="small">{scan.text}</span><button className="btn sm" onClick={() => stopScan.current?.()}>Stop</button></div>
               : <button className="btn sm" onClick={findRallies}>{rallies.length ? `Find rallies again (${rallies.length} found)` : "Find rallies from the whistle"}</button>}
+            {!scan && rallies.length > 0 && <span className="small muted">Found by sound (beta): check the cuts.</span>}
             {statting && <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={stopEach} onChange={(e) => setStopEach(e.target.checked)} disabled={!rallies.length} /> Pause after each rally</label>}
             <label className="row small" style={{ gap: 6 }}><input type="checkbox" checked={skip} onChange={(e) => setSkip(e.target.checked)} disabled={!rallies.length} /> Skip dead time</label>
             {!m.film && firstSet && <button className="btn sm" onClick={lineUp} title="Pause the video at the first serve of set 1, then tap">First serve is now</button>}
@@ -296,7 +299,7 @@ function FindClips({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T: Retur
     setText(s); setPlay(false); setMiss("");
     const p = parseQuery(s, roster);
     if (!p.empty) { setQ({ q: p.q, chips: p.chips }); return; }
-    if (!AI_FEATURES.clipSearch || !aiAvailable()) { setQ(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an area, a set or a rotation."); return; }
+    if (!aiOn("clipSearch") || !aiAvailable()) { setQ(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an area, a set or a rotation."); return; }
     setBusy(true);
     try { const x = await askJson<any>(aiQueryPrompt(s, roster), { tier: "quick" }); const cq = cleanAiQuery(x, roster); setQ({ q: cq, chips: describe(cq, roster), by: "ai" }); }
     catch { setMiss("Couldn't work that out. Try naming a play, a player, an area or a set."); setQ(null); }

@@ -1,0 +1,3 @@
+.beta-chip{display:inline-block;vertical-align:middle;font:700 11px/1 var(--body,system-ui);letter-spacing:.02em;padding:3px 7px;border-radius:999px;border:1.5px solid currentColor;color:var(--us,#2B79B0);margin-left:6px;position:relative;top:-2px}
+.beta-note{display:flex;gap:8px;align-items:baseline;margin:0;font-size:13px;line-height:1.45;color:var(--muted,#5B616B)}
+.beta-note .beta-chip{margin-left:0;top:0;flex:none}

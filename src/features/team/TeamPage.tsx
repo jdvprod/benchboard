@@ -1,8 +1,9 @@
 import { recordOf } from "../../sports/volleyball/engine";
+import { aiOn } from "../../ai/on";
 import { Gender, genderQuestion, gendersFor, isAdultLevel } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
-import { FEES, ROSTER_INCLUDED, rosterOver, AI_FEATURES } from "../../app/flags";
+import { FEES, ROSTER_INCLUDED, rosterOver } from "../../app/flags";
 import { contactUrl } from "../../cloud/links";
 import { LogoPicker, PhotoPicker, teamLogoPick } from "../../ui/Pictures";
 import type { Replay } from "../../sports/volleyball/engine";
@@ -179,7 +180,7 @@ function Opponents() {
         </>}
       </div>
     </Card>
-    {AI_FEATURES.scouting && o && <AiCard key={o.id} title={`Scouting report: ${o.name}`} desc="Built from every match you've recorded against them plus your notes. Saved for next time." button="Write scouting report" prompt={() => scoutPrompt(o.name)} saved={o.scout} savedAt={o.scoutAt} onSave={(text) => patch("opponents", o.id, { scout: text, scoutAt: Date.now() })} filename={o.name + " scouting report"} />}
+    {aiOn("scouting") && o && <AiCard key={o.id} title={`Scouting report: ${o.name}`} desc="Built from every match you've recorded against them plus your notes. Saved for next time." button="Write scouting report" prompt={() => scoutPrompt(o.name)} saved={o.scout} savedAt={o.scoutAt} onSave={(text) => patch("opponents", o.id, { scout: text, scoutAt: Date.now() })} filename={o.name + " scouting report"} />}
   </div>;
 }
 

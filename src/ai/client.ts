@@ -4,13 +4,14 @@
  * from the browser.
  */
 import { cloudAvailable, CloudError, currentUser, fn } from "../cloud/client";
+import { AI_MODE } from "../app/flags";
 const KEY = "bs-ai-key";
 const MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5", complex: "claude-opus-5-5" } as const;
 export type Tier = keyof typeof MODELS;
 
 export function getKey(): string { try { return localStorage.getItem(KEY) || ""; } catch { return ""; } }
 export function setKey(k: string) { try { if (k) localStorage.setItem(KEY, k); else localStorage.removeItem(KEY); } catch { /* ignore */ } }
-export const aiAvailable = () => !!getKey() || (cloudAvailable() && !!currentUser());
+export const aiAvailable = () => AI_MODE !== "off" && (!!getKey() || (AI_MODE === "included" && cloudAvailable() && !!currentUser()));
 
 export class AiError extends Error { constructor(public code: string, message: string) { super(message); } }
 export const AI_ERRORS: Record<string, string> = {
@@ -25,9 +26,10 @@ export const AI_ERRORS: Record<string, string> = {
 };
 
 export async function ask(prompt: string, opts: { tier?: Tier; signal?: AbortSignal; maxTokens?: number } = {}): Promise<{ text: string; truncated: boolean }> {
+  if (AI_MODE === "off") throw new AiError("server_off", "AI features are off.");
   const key = getKey();
   if (!key) {
-    if (!(cloudAvailable() && currentUser())) throw new AiError("no_key", AI_ERRORS.no_key);
+    if (AI_MODE !== "included" || !(cloudAvailable() && currentUser())) throw new AiError("no_key", AI_MODE === "included" ? AI_ERRORS.no_key : "Add your own Anthropic API key in Settings → AI features to use this.");
     let b: any;
     try { b = await fn("ai", { model: MODELS[opts.tier || "default"], max_tokens: opts.maxTokens || 1800, prompt }, opts.signal); }
     catch (e: any) {

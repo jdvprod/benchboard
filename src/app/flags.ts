@@ -39,6 +39,11 @@ export function accessWith(t: { createdAt: number; plan?: Plan; paidUntil?: stri
   return { ok: false, why: "trial over" };
 }
 
+/** Who pays for AI. "included": signed-in coaches use FloorCall's key (your Anthropic credits, AI_DAILY_LIMIT per coach
+ * per day), and a coach can add their own key in Settings instead. "own-key": only coaches who add their own Anthropic
+ * key in Settings get AI, on their own bill; FloorCall's key is never used. "off": no AI anywhere. */
+export const AI_MODE: "included" | "own-key" | "off" = "included";
+
 /** Which AI features are offered. Each one spends AI credits (the `ai` Supabase function, AI_DAILY_LIMIT calls per
  * coach per day). The open-ended "ask" chats are off: the stats and film already show the answers, and coaches decide.
  * Finding clips and stats by typing ("kills by #7 in set 2") never needs AI; clipSearch is only the fallback for a

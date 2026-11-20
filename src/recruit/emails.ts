@@ -22,10 +22,9 @@ const cap = (s: string) => s.trim().replace(/\s+/g, " ");
 const full = (a: Athlete) => cap(`${a.first} ${a.last}`);
 const greet = (t: Target) => `Dear ${t.coach?.trim() ? "Coach " + cap(t.coach).replace(/^coach\s+/i, "") : "Coach"},`;
 const tag = (a: Athlete) => [a.grad && `Class of ${a.grad}`, a.pos, a.height].filter(Boolean).join(" · ");
-const measures = (a: Athlete) => [a.approach && `${a.approach} approach`, a.block && `${a.block} block`, a.reach && `${a.reach} standing reach`, a.wingspan && `${a.wingspan} wingspan`,
-  a.approachVert && `${a.approachVert} approach vertical`, a.vert && `${a.vert} standing vertical`, a.broad && `${a.broad} broad jump`].filter(Boolean).join(", ");
-const strength = (a: Athlete) => [a.shuttle && `${a.shuttle} 5-10-5`, a.sprint && `${a.sprint} 10-yard sprint`, a.bench && `${a.bench} bench`, a.squat && `${a.squat} squat`,
-  a.deadlift && `${a.deadlift} deadlift`, a.clean && `${a.clean} power clean`, a.pullups && `${a.pullups} pull-ups`].filter(Boolean).join(", ");
+/** What college staff look for in an email: the touches and reach. Wingspan, verticals, lifts and sprint times stay on
+ * the profile, where a coach who wants them can look; in an email they're filler. */
+const measures = (a: Athlete) => [a.approach && `${a.approach} approach touch`, a.block && `${a.block} block touch`, a.reach && `${a.reach} standing reach`].filter(Boolean).join(", ");
 
 function signature(a: Athlete): string {
   return [full(a), tag(a), [a.club && `${a.club}${a.clubNum ? " #" + a.clubNum : ""}`, a.school].filter(Boolean).join(" · "), a.gpa && `GPA ${a.gpa}`,
@@ -37,14 +36,15 @@ const lines = (s: string) => s.split(/\n|;/).map((x) => x.trim()).filter(Boolean
 export function writeEmail(kind: EmailKind, a: Athlete, t: Target = {}): { subject: string; body: string } {
   const who = `${full(a) || "[Your name]"}${a.grad ? ` (${a.grad}` : ""}${a.pos ? (a.grad ? ", " : " (") + a.pos : ""}${a.grad || a.pos ? ")" : ""}`;
   const school = t.school?.trim() || "[school]";
-  const m = measures(a), st = strength(a), stat = a.stats?.trim();
-  const facts = [stat && `This season: ${stat}.`, m && `Measurables: ${m}.`, st && `Speed and strength${a.tested?.trim() ? ` (tested ${a.tested.trim()})` : ""}: ${st}.`, a.gpa && `I carry a ${a.gpa} GPA${a.major ? " and want to study " + a.major : ""}.`].filter(Boolean).join(" ");
+  const m = measures(a), stat = a.stats?.trim();
+  const facts = [stat && `This season: ${stat}.`, m && `Measurables: ${m}.`, a.gpa && `I carry a ${a.gpa} GPA${a.major ? " and want to study " + a.major : ""}.`].filter(Boolean).join(" ");
   const links = [a.video && `Highlight video: ${a.video}`, a.profile && `Verified stats and game log: ${a.profile}`].filter(Boolean).join("\n");
   const ev = t.events ? lines(t.events) : [];
   let subject = "", body = "";
   switch (kind) {
     case "intro":
-      subject = `${who}${a.club ? " · " + a.club : ""} · interested in ${t.school?.trim() || "your program"}`;
+      // the format coaches sort their inbox by: name, class and position, height, club team and number
+      subject = [full(a) || "[Your name]", [a.grad, a.pos].filter(Boolean).join(" "), a.height, a.club && `${a.club}${a.clubNum ? " #" + a.clubNum : ""}`].filter(Boolean).join(" · ");
       body = [greet(t), "",
         `My name is ${full(a) || "[your name]"}, a ${[a.grad && a.grad + " graduate", a.height, a.pos].filter(Boolean).join(" ") || "[class, height, position]"}${a.club ? ` playing for ${a.club}` : ""}${a.school ? ` and ${a.school}` : ""}${a.city ? ` in ${a.city}` : ""}. I'm very interested in ${school}${t.why?.trim() ? ` because ${t.why.trim().replace(/\.$/, "")}` : " [one specific reason: the style of play, a major, something you saw]"}.`,
         "", facts, links && "", links,

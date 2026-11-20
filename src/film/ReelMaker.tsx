@@ -1,5 +1,6 @@
 /** Player page → Make highlight video: pick plays, choose how long each runs, and get a finished video
  * (title card, captioned plays, closing card with verified numbers) to send to college coaches or post. */
+import { Beta } from "../ui/Beta";
 import { useMemo, useRef, useState } from "react";
 import { eventsOf, matchesOf, player, replayOf, team, toast } from "../data/store";
 import { ACTIONS } from "../sports/volleyball/actions";
@@ -61,8 +62,8 @@ export function ReelMaker({ id, onClose, pool: given }: { id: string; onClose: (
   if (!canMakeReel()) return <div className="reel"><p className="small">This browser can't make videos. Use Chrome or Edge on a computer, or Safari 17 or later.</p><button className="btn sm" onClick={onClose}>Close</button></div>;
   if (!pool.length) return <div className="reel"><p className="small">{elsewhere ? `${p.first || "This player"}'s plays are on YouTube or Vimeo, which can't be cut here. On Stats → One match → Film, pick the match video file instead (it stays on this device), then come back.` : `Link a match video on Stats → One match → Film, and ${p.first || "this player"}'s plays become clips for a highlight video.`}</p><button className="btn sm" onClick={onClose}>Close</button></div>;
   return <div className="reel">
-    <div className="row between"><b>Highlight video</b><button className="btn sm ghost" onClick={() => { abort.current?.abort(); onClose(); }}>Close</button></div>
-    <p className="small muted" style={{ margin: 0 }}>A title card, each play with its caption, and a closing card with {p.first || "the player"}'s verified numbers. Best plays are picked; change them below.</p>
+    <div className="row between"><b>Highlight video <Beta /></b><button className="btn sm ghost" onClick={() => { abort.current?.abort(); onClose(); }}>Close</button></div>
+    <p className="small muted" style={{ margin: 0 }}>A title card, each play with its caption, and a closing card with {p.first || "the player"}'s verified numbers. Best plays are picked for you (beta: it's still learning which plays are best); change them below and watch it before you share.</p>
     <div className="row" style={{ gap: 10, flexWrap: "wrap" }}><span className="small">Each play</span><Seg value={len} onChange={setLen} label="Length of each play" options={[[5, "5 s"], [7, "7 s"], [10, "10 s"]]} />
       <span className="small muted">{chosen.length} plays · about {Math.round(reelLength(chosen))} seconds</span></div>
     <ol className="reel-list">{pool.map((c) => { const on = order.includes(c.id); return <li key={c.id} className={on ? "on" : ""}>

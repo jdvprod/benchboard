@@ -1,6 +1,6 @@
 /** Film Room → Breakdown: the film review a coach would build before practice, from the match's stats. Each finding
  * plays as clips; one tap turns the whole breakdown into a film session for the team, and the AI can write it up. */
-import { AI_FEATURES } from "../../app/flags";
+import { aiOn } from "../../ai/on";
 import { useState } from "react";
 import { drillsOf, patch, plansOf, player, save, team, toast, todayISO, uid } from "../../data/store";
 import { go } from "../../app/router";
@@ -64,7 +64,7 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
     toast(`Made “${s.title}” with ${plural(items.length, "clip")}`); onAdded(s.id);
   };
 
-  const ask = AI_FEATURES.askFilm ? <AskFilm m={m} R={R} T={T} onAdded={onAdded} /> : null;
+  const ask = aiOn("askFilm") ? <AskFilm m={m} R={R} T={T} onAdded={onAdded} /> : null;
   if (!fs.length) return <div className="stack">{R.log.some((l) => l.kind === "stat") && ask}<p className="empty">{R.log.some((l) => l.kind === "stat" && l.w)
     ? "Nothing stood out in this match yet: no run of errors, no rotation stuck, no hitter who hurt us. Find clips has every play."
     : "Stat this game (or line the video up with your live stats) and the breakdown writes itself: where points went, the rotation that got stuck, their best hitter and what to keep doing. “Best rallies” in Rallies works without any stats."}</p></div>;
@@ -75,7 +75,7 @@ export function Breakdown({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T
       <div className="row">
         <button className="btn primary" onClick={() => makeSession()} disabled={!m.video}>Make a film session from this</button>
         {fs.some((f) => drillCategory(f)) && <button className="btn" onClick={() => plan(fs)}>Plan practice from this</button>}
-        {AI_FEATURES.filmSummary && aiAvailable() && <button className="btn" onClick={write} disabled={busy}>{busy ? "Writing…" : review ? "Write it up again" : "Write it up with AI"}</button>}
+        {aiOn("filmSummary") && aiAvailable() && <button className="btn" onClick={write} disabled={busy}>{busy ? "Writing…" : review ? "Write it up again" : "Write it up with AI"}</button>}
       </div>
       {!m.video && <p className="small muted">Add the game's video to watch these as clips.</p>}
       {err && <p className="small bad">{err}</p>}

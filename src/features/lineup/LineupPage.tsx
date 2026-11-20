@@ -1,5 +1,5 @@
 /** Lineup builder: six starters, libero, all six rotations, rotation results, AI suggestion. */
-import { AI_FEATURES } from "../../app/flags";
+import { aiOn } from "../../ai/on";
 import { LineupTabs } from "./LineupTabs";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { useState } from "react";
@@ -127,7 +127,7 @@ export function LineupPage() {
         </div>
       </Card>
       <div className="stack">
-        {AI_FEATURES.lineup && <Card title="Best lineup from your stats" actions={<button className="btn sm primary" disabled={busy} onClick={suggest}>{busy ? "Thinking…" : adv ? "Ask again" : "Suggest a lineup"}</button>}>
+        {aiOn("lineup") && <Card title="Best lineup from your stats" actions={<button className="btn sm primary" disabled={busy} onClick={suggest}>{busy ? "Thinking…" : adv ? "Ask again" : "Suggest a lineup"}</button>}>
           {err && <p className="hint warn">{err}</p>}
           {adv ? <div className="stack">
             <p><b>{adv.summary}</b></p>

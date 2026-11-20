@@ -7,6 +7,7 @@ import { canMakeReel, reelLength, renderReel } from "../film/reel";
 import { bestOf, DECODE_LIMIT, loudMoments, Rally, ralliesFrom, scanFile, scanStream, withHype } from "../film/rallies";
 import { canStreamAudio } from "../film/mp4audio";
 import { PHYS_GROUPS, PHYSICAL } from "./physical";
+import { Beta, BetaNote } from "../ui/Beta";
 import { cloudAvailable, currentUser, updateMeta, userMeta } from "../cloud/client";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
@@ -232,7 +233,7 @@ function Studio({ Shell }: { Shell: any }) {
   const supported = canMakeReel();
 
   return <Shell crumb="Reel Studio"><GuideNav on="studio" />
-    <section className="rg-head"><h1>Reel Studio</h1><p>Drop in your clips or a whole game, mark your plays, and get a batch of finished highlight videos at once: a best-of plus one for each skill. Your film never leaves this device.</p></section>
+    <section className="rg-head"><h1>Reel Studio <Beta /></h1><p>Drop in your clips or a whole game, mark your plays, and get a batch of finished highlight videos at once: a best-of plus one for each skill. Your film never leaves this device.</p><BetaNote>Reel Studio is new and still learning. Watch every video before you send it to a coach.</BetaNote></section>
     {!supported && <p className="rg-gaps">This browser can't make videos. Use Chrome or Edge on a computer.</p>}
     <section className="rc-card"><h2>1. Your film</h2>
       <label className="rg-drop"><input type="file" accept="video/*" multiple onChange={(e) => { add(e.target.files); e.target.value = ""; }} aria-label="Add video files" />
@@ -253,7 +254,7 @@ function Studio({ Shell }: { Shell: any }) {
         </div>
       </div>
       {(() => { const g = sug[film.id]; return <div className="rg-sug">
-        {!g && <><button className="btn" onClick={() => findMoments(film)} disabled={!film.file}>Find big moments</button><span className="small muted">FloorCall listens to the game's whistles and crowd and lines up the biggest rallies for you to check. It can't tell which player made the play, so you choose which ones are yours.</span></>}
+        {!g && <><button className="btn" onClick={() => findMoments(film)} disabled={!film.file}>Find big moments</button><span className="small muted">Beta: FloorCall listens to the game's whistles and crowd and lines up the biggest rallies for you to check. It's still learning, so it can miss plays or pick a quiet one, and it can't tell which player made the play: you choose which ones are yours.</span></>}
         {g && !g.list && !g.none && <><div className="rg-meter" role="progressbar" aria-label="Finding big moments" aria-valuenow={Math.round(g.f * 100)}><i style={{ width: Math.round(g.f * 100) + "%" }} /></div><span className="small muted">{g.text}</span><button className="btn sm" onClick={() => scanStop.current?.abort()}>Stop</button></>}
         {g?.none && <p className="small muted">{g.text || "No clear rallies or loud moments in this film's sound. Mark your plays by hand."}</p>}
         {g?.list && g.list.length > 0 && <><h3>Big moments <small className="muted">watch each one and add the plays that are yours</small></h3>

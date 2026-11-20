@@ -3,6 +3,7 @@ import { ReactNode, useRef, useState } from "react";
 import { aiAvailable, AiError, AI_ERRORS, ask, Tier } from "../ai/client";
 import { copyText, download, RichText } from "./kit";
 import { toast } from "../data/store";
+import { AI_MODE } from "../app/flags";
 
 export function AiCard(props: {
   title: string; desc: string; button: string; prompt: () => string; tier?: Tier;
@@ -34,7 +35,7 @@ export function AiCard(props: {
           <button className="btn sm" onClick={() => copyText(shown).then((ok) => toast(ok ? "Copied" : "Couldn't copy here. Select the text instead."))}>Copy</button>
           <button className="btn sm" onClick={() => download((props.filename || props.title) + ".txt", shown, "text/plain")}>Download</button>
         </div></div>}
-      {!aiAvailable() && !shown && <p className="small muted" style={{ marginTop: 8 }}>Sign in on the Team tab to use AI features, or add your own Anthropic key in Settings.</p>}
+      {!aiAvailable() && !shown && <p className="small muted" style={{ marginTop: 8 }}>{AI_MODE === "included" ? "Sign in on the Team tab to use AI features, or add your own Anthropic key in Settings." : "Add your own Anthropic key in Settings → AI features to use this."}</p>}
     </section>
   );
 }

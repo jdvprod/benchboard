@@ -62,7 +62,7 @@ import { pickReel } from "../src/recruit/Guide";
 test("coach emails: personal, short, with links and no empty lines doubled", () => {
   const a = { first: "Maya", last: "Chen", grad: "2028", pos: "Outside hitter", height: "5'11\"", club: "Sierra 17 Elite", clubNum: "7", gpa: "3.8", video: "https://youtu.be/x", email: "maya@example.com" };
   const e = writeEmail("intro", a, { coach: "Coach Rivera", school: "Fresno State", why: "I love your fast offense." , events: "Vegas Classic · Apr 11–13\nNorCal Qualifier · Mar 2" });
-  assert.match(e.subject, /Maya Chen \(2028, Outside hitter\)/);
+  assert.match(e.subject, /^Maya Chen · 2028 Outside hitter · 5'11" · Sierra 17 Elite #7$/);
   assert.match(e.body, /^Dear Coach Rivera,/);
   assert.match(e.body, /because I love your fast offense\./);
   assert.match(e.body, /• Vegas Classic/);
@@ -249,6 +249,7 @@ test("recruit: optional physical numbers show only when filled, and go into the 
   assert.deepEqual(physOf(pr, "Strength").map((x) => x[0]), ["Bench press", "Back squat"]);
   assert.equal(physOf(pr, "Speed").length, 0, "blank stays out");
   const e = writeEmail("intro", { first: "Maya", last: "Chen", grad: "2028", pos: "OH", height: "6'0\"", wingspan: "6'2\"", squat: "205 lb", tested: "March 2026" } as any, {});
-  assert.match(e.body, /6'2" wingspan/); assert.match(e.body, /Speed and strength \(tested March 2026\): 205 lb squat\./);
+  assert.doesNotMatch(e.body, /wingspan|squat/, "the email keeps to what coaches look for; the rest stays on the profile");
+  assert.match(writeEmail("intro", { first: "Maya", last: "Chen", grad: "2028", pos: "OH", height: "6'0\"", approach: "9'10\"", club: "Club 17 Elite", clubNum: "7" }, {}).subject, /^Maya Chen · 2028 OH · 6'0" · Club 17 Elite #7$/);
   assert.doesNotMatch(writeEmail("intro", { first: "A", last: "B", grad: "", pos: "", height: "" }, {}).body, /Speed and strength/);
 });

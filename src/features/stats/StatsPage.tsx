@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { AI_FEATURES } from "../../app/flags";
+import { aiOn } from "../../ai/on";
 import { patch, player, playerName, replayOf, seasonsOf, team, teamPlayers, toast, todayISO } from "../../data/store";
 import { aggregate, Agg, recordOf, Stat } from "../../sports/volleyball/engine";
 import { AttackContext, CONTEXT_LABEL } from "../../sports/volleyball/actions";
@@ -80,7 +80,7 @@ export function StatsPage() {
       {vw === "overview" && S.event && <EventCard S={S} />}
       {vw === "overview" && <Overview S={S} A={A} />}
       {vw === "overview" && S.key === "season" && !S.event && ui.statsSeason !== "all" && <SeasonVsSeason seasonId={ui.statsSeason} />}
-      {AI_FEATURES.askStats && vw === "overview" && S.kind !== "practice" && <AskCard key={S.key} S={S} />}
+      {aiOn("askStats") && vw === "overview" && S.kind !== "practice" && <AskCard key={S.key} S={S} />}
       {vw === "players" && <Players A={A} />}
       {vw === "pick" && <CustomView S={S} A={A} />}
       {vw === "errors" && <ErrorsView S={S} A={A} />}
@@ -104,7 +104,7 @@ function Overview({ S, A }: { S: Scope; A: Agg }) {
   const fl = single && !single.setN ? flags(single.R, { us: t.name, them: single.m.opp, subLimit: t.settings.subLimit, playerIds: teamPlayers().map((p) => p.id), short: (id) => playerName(id) }) : [];
   const rallies = A.so.n + A.psc.n, importedOnly = S.items.some(({ m }) => m.imported);
   return <div className="stack">
-    {AI_FEATURES.reports && single && <AiCard key={single.m.id} title={single.m.kind === "match" ? "Match report" : "Practice report"} desc="What decided it, standouts, concerns and practice priorities, written from the stats. Saved with the match." button="Write the report" prompt={() => reportPrompt(single.m)} saved={single.m.report} savedAt={single.m.reportAt} onSave={(text) => patch("matches", single.m.id, { report: text, reportAt: Date.now() })} filename={`${t.name} vs ${single.m.opp} report`} />}
+    {aiOn("reports") && single && <AiCard key={single.m.id} title={single.m.kind === "match" ? "Match report" : "Practice report"} desc="What decided it, standouts, concerns and practice priorities, written from the stats. Saved with the match." button="Write the report" prompt={() => reportPrompt(single.m)} saved={single.m.report} savedAt={single.m.reportAt} onSave={(text) => patch("matches", single.m.id, { report: text, reportAt: Date.now() })} filename={`${t.name} vs ${single.m.opp} report`} />}
     {single && <Card title="Match notes"><textarea className="input" aria-label="Match notes" rows={2} key={"n" + single.m.id} defaultValue={single.m.notes} placeholder="What you saw: adjustments that worked, their tendencies, ref issues, things to review on film…" onBlur={(e) => patch("matches", single.m.id, { notes: e.target.value })} /></Card>}
     <div className="kpis">
       <Kpi label="Hitting %" value={fmtHit(M.hitting)} delta={dv(M.hitting, B?.hitting, fmtHit, true)} sub={`${plural(T.K, "kill")} · ${plural(T.AE, "error")} · ${T.TA} att`} />
@@ -119,7 +119,7 @@ function Overview({ S, A }: { S: Scope; A: Agg }) {
       {M.perSet && <Kpi label="Per set" value={fmtNum(M.perSet.K)} delta={dv(M.perSet.K, B?.perSet?.K, (v) => fmtNum(v), true)} sub={`kills · ${fmtNum(M.perSet.SA)} ${fmtNum(M.perSet.SA) === "1" ? "ace" : "aces"} · ${fmtNum(M.perSet.BLK)} ${fmtNum(M.perSet.BLK) === "1" ? "block" : "blocks"} · ${fmtNum(M.perSet.D)} ${fmtNum(M.perSet.D) === "1" ? "dig" : "digs"}`} />}
     </div>
     {B && <p className="keys" style={{ marginTop: -4 }}>▲ / ▼ compare this {single?.setN ? "set" : "match"} with your season average.</p>}
-    {AI_FEATURES.reports && !single && S.kind === "games" && S.items.length >= 2 && <AiCard key={"season" + ui.statsSeason} title="Season review" desc="Where the team stands, what's working, what's holding you back, and practice priorities, written from every match." button="Write season review" prompt={() => seasonPrompt(S.items, seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "this season")} filename={`${t.name} season review`} />}
+    {aiOn("reports") && !single && S.kind === "games" && S.items.length >= 2 && <AiCard key={"season" + ui.statsSeason} title="Season review" desc="Where the team stands, what's working, what's holding you back, and practice priorities, written from every match." button="Write season review" prompt={() => seasonPrompt(S.items, seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "this season")} filename={`${t.name} season review`} />}
     {!single && S.items.length >= 2 && <Trends S={S} />}
     {!single && S.items.length >= 1 && <div className="grid2" style={{ alignItems: "start" }}><Leaders A={A} /><div className="stack"><Awards S={S} /><Highs S={S} /></div></div>}
     <div className="grid2">
@@ -301,7 +301,7 @@ function ScrimStats({ S, A }: { S: Scope; A: Agg }) {
       <tbody>{ids.map((id) => { const s = A.ps[id]; return <tr key={id}><td className="l">{playerName(id)}</td><td>{s.K}</td><td>{s.AE}</td><td>{s.TA}</td><td>{fmtHit(hitting(s))}</td><td>{s.SA}</td><td>{serveErrors(s)}</td><td>{fmtAvg(passAvg(s))}</td><td>{s.D}</td><td>{blocks(s)}</td><td>{s.AST}</td><td>{fmtSigned(netPoints(s))}</td></tr>; })}</tbody>
     </table></div></Card>; };
   return <div className="stack">
-    {AI_FEATURES.reports && <AiCard key={m.id} title="Practice report" desc="Standouts, needs-work and drills for next practice, written from the scrimmage stats." button="Write the report" prompt={() => reportPrompt(m)} saved={m.report} savedAt={m.reportAt} onSave={(text) => patch("matches", m.id, { report: text, reportAt: Date.now() })} />}
+    {aiOn("reports") && <AiCard key={m.id} title="Practice report" desc="Standouts, needs-work and drills for next practice, written from the scrimmage stats." button="Write the report" prompt={() => reportPrompt(m)} saved={m.report} savedAt={m.reportAt} onSave={(text) => patch("matches", m.id, { report: text, reportAt: Date.now() })} />}
     <div className="grid2">
       <Card title="Head to head"><div className="tbl"><table><thead><tr><th className="l" /><th style={{ color: "var(--us)" }}>{Sc.a.name}</th><th style={{ color: "var(--them)" }}>{Sc.b.name}</th></tr></thead><tbody>{rows.map(([l, f]) => <tr key={l}><td className="l">{l}</td><td>{f("a")}</td><td>{f("b")}</td></tr>)}</tbody></table></div></Card>
       <Card title="Games"><div className="row">{S.sets.map((s) => <span key={s.n} className="tag" style={{ fontSize: 13 }}>Game {s.n} · {s.us}–{s.them}</span>)}</div></Card>

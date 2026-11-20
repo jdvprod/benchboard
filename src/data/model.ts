@@ -200,7 +200,9 @@ export interface Prefs { theme: "light" | "dark"; size: "normal" | "large"; team
   /** This device's job when several coaches track one match: everything, only the score, or chosen stats that don't change the score. */
   job?: "all" | "score" | "stats"; jobGroups?: string[];
   /** The sidebar folded to icons (wide screens). */
-  navMini?: boolean }
+  navMini?: boolean;
+  /** hide the AI buttons (reports, suggestions) on this device */
+  noAi?: boolean }
 
 export const STORES = ["teams", "seasons", "players", "matches", "logs", "opponents", "drills", "plans", "boards", "kv"] as const;
 export type StoreName = (typeof STORES)[number];

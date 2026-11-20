@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
+import { AI_MODE } from "../../app/flags";
 import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
 import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, signOut, forgetDevices } from "../../cloud/client";
@@ -53,8 +54,8 @@ export function SettingsPage() {
       <div className="set-admin-hd"><b>Admin</b><span>Only FloorCall admins see this part.</span></div>
       <AdminLink />
       <SetupCheck />
-      <AiKey />
     </section>}
+    {AI_MODE !== "off" && (admin || (t && !isViewer(t.id))) && <AiKey />}
     <Card title="Your data">
       <p className="small">Saved on this device: {counts.teams} {counts.teams === 1 ? "team" : "teams"}, {counts.players} {counts.players === 1 ? "player" : "players"}, {counts.matches} {counts.matches === 1 ? "match or practice" : "matches and practices"}, {counts.events.toLocaleString()} recorded plays.</p>
       <p className="small muted" style={{ marginTop: 6 }}>{state.persistent ? "Your browser has agreed to keep this data." : "Your browser may clear this data if space runs low."} Save a backup from Team → Backup to move data to another device or keep a copy.</p>
@@ -107,18 +108,23 @@ function AdminLink() {
   return <Card title="Admin console"><div className="row between"><span className="small">Sign-ups, active teams, live matches, coach verification, and review of uploaded photos and logos.</span><button className="btn sm primary" onClick={() => go("admin")}>Open admin</button></div></Card>;
 }
 
-/** An admin's own Anthropic key, for testing AI features without the daily limit. Stays on this device. */
+/** AI in this app: a switch to hide the AI buttons on this device, and a coach's own Anthropic key (calls then go on
+ * the coach's own bill, straight from this browser; the key stays on this device). */
 function AiKey() {
-  const [key, setK] = useState(getKey()), [show, setShow] = useState(false), [testing, setTesting] = useState(false), [msg, setMsg] = useState("");
+  const [key, setK] = useState(getKey()), [show, setShow] = useState(false), [testing, setTesting] = useState(false), [msg, setMsg] = useState(""), [, bump] = useState(0);
   const test = async () => {
     setKey(key.trim()); setTesting(true); setMsg("");
-    try { await ask("Reply with the single word: ready", { tier: "quick", maxTokens: 10 }); setMsg("Connected. AI features are on."); }
+    try { await ask("Reply with the single word: ready", { tier: "quick", maxTokens: 10 }); setMsg("Connected. AI features use your key now."); }
     catch (e) { setMsg(e instanceof AiError ? e.message : "Couldn't connect."); }
     setTesting(false);
   };
+  const off = !!state.prefs.noAi;
   return <Card title="AI features">
         <div className="stack">
-          <p className="small muted">Timeout talking points, match reports, scouting, lineup suggestions, practice plans and player report cards use Claude. Signed-in coaches can use them with no setup. To use your own Anthropic account instead (no daily limit), paste an API key from console.anthropic.com; it stays on this device only.</p>
+          <SetRow title="Show AI buttons" sub="Match and practice reports, scouting reports, timeout talking points, player report cards, the film summary, and lineup and practice suggestions. Your stats, charts and clip searches never need AI. Saved on this device.">
+            <Switch checked={!off} onChange={(v) => { setPrefs({ noAi: !v }); bump((x) => x + 1); }} label="Show AI buttons" /></SetRow>
+          {!off && <>
+          <p className="small muted">{AI_MODE === "included" ? "Signed-in coaches can use them with no setup, up to a daily limit. To use your own Anthropic account instead (no daily limit, billed to you), paste an API key from console.anthropic.com." : "To use them, paste your own API key from console.anthropic.com. Calls are billed to your Anthropic account."} The key stays on this device only.</p>
           <div className="row">
             <input className="input grow" type={show ? "text" : "password"} value={key} onChange={(e) => setK(e.target.value)} placeholder="sk-ant-…" autoComplete="off" aria-label="API key" style={{ minWidth: 200 }} />
             <button className="btn sm" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"}</button>
@@ -127,7 +133,7 @@ function AiKey() {
             <button className="btn primary" disabled={!key.trim() || testing} onClick={test}>{testing ? "Testing…" : "Save and test"}</button>
             {getKey() && <button className="btn" onClick={() => { setKey(""); setK(""); setMsg("Key removed."); }}>Remove key</button>}
           </div>
-          {msg && <p className="hint">{msg}</p>}
+          {msg && <p className="hint">{msg}</p>}</>}
         </div>
       </Card>;
 }
