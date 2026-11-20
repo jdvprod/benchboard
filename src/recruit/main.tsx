@@ -2,6 +2,8 @@
  *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
  *   #/guide  #/emails  #/studio  for athletes: recruiting guide, emails to coaches, Reel Studio
  *   #/  what this is, enter a code */
+import { contactUrl } from "../cloud/links";
+import { CodeBox } from "../cloud/CodeBox";
 import "../styles/app.css";
 import "./recruit.css";
 import { useEffect, useState } from "react";
@@ -29,7 +31,7 @@ function Shell({ children, crumb }: { children: any; crumb?: string }) {
   return <div className="rc">
     <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
     <main className="rc-main">{children}</main>
-    <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with Floorcall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with Floorcall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("recruit")}>Help</a></footer>
   </div>;
 }
 
@@ -156,6 +158,7 @@ function Landing() {
       <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
     </div>
     <p className="rc-note">Part of your Floorcall account. Your film never leaves your device.</p>
+    <CodeBox site="recruit" />
   </section>
   {COLLEGE_SEARCH && <p className="rc-note rg-college">College coach? <a href="#/college">Search players whose families chose to be found</a>, and write to their coaches.</p>}</Shell>;
 }

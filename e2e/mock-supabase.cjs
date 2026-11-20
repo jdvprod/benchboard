@@ -16,6 +16,7 @@ const rsvps = new Map(); // availability: "team|item|user" -> {team_id, item, us
 const posts = []; // team announcements {id, team_id, body, by, pinned, at, reads:Set}
 const films = new Map(), filmViews = new Map(); // film sessions by code; views by code:user
 const L = { athletes: new Map(), access: [], sessions: new Map(), roster: new Map(), requests: [] }; // Floorcall Lessons (version 31)
+const support = []; // version 32: contact form messages
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
@@ -60,6 +61,19 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/rpc/beach_unshare") { const s = beach.get(String(b.c).toUpperCase()); if (s && s.owner === me) beach.delete(String(b.c).toUpperCase()); return send(res, 200, null); }
     if (p === "/rest/v1/rpc/join_team") { if (!me) return send(res, 401, { message: "Sign in first" }); const inv = invites.get(String(b.invite).toUpperCase()); if (!inv) return send(res, 400, { message: "That code doesn't match a team" }); if (!members.some((m) => m.team_id === inv.team_id && m.user_id === me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now(), status: inv.role === "viewer" ? "active" : "pending" }); return send(res, 200, inv.team_id); }
     if (p === "/rest/v1/rpc/team_decide_member") { if (!members.some((m) => m.team_id === b.t && m.user_id === me && m.role === "owner")) return send(res, 400, { message: "Only the team's owner can approve coaches" }); const i = members.findIndex((m) => m.team_id === b.t && m.user_id === b.uid && m.status === "pending"); if (i >= 0) { if (b.approve) members[i].status = "active"; else members.splice(i, 1); } return send(res, 200, null); }
+    // version 32: contact form, one code box, coverage
+    if (p === "/rest/v1/rpc/support_send") { if (b.trap) return send(res, 200, null); const e = String(b.email || "").trim().toLowerCase(); if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)) return send(res, 400, { message: "Add an email address we can reply to." }); if (String(b.msg || "").trim().length < 5) return send(res, 400, { message: "Add a message." });
+      if (support.filter((m) => m.email === e && Date.now() - Date.parse(m.created_at) < 3600e3).length >= 5) return send(res, 400, { message: "Too many messages just now. Try again in an hour, or email support@getfloorcall.com." });
+      support.push({ id: uid(), created_at: now(), user_id: me || null, name: String(b.who || "").trim(), email: e, topic: ["question", "bug", "billing", "club", "privacy", "idea"].includes(b.topic) ? b.topic : "question", message: String(b.msg).trim(), site: b.site || null, status: "open" }); return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/admin_support") return admins.has(me) ? send(res, 200, [...support].reverse().sort((a, c) => (a.status === "open" ? 0 : 1) - (c.status === "open" ? 0 : 1))) : send(res, 400, { message: "Admins only" });
+    if (p === "/rest/v1/rpc/admin_support_done") { if (!admins.has(me)) return send(res, 400, { message: "Admins only" }); const m = support.find((x) => x.id === b.mid); if (m) m.status = b.done === false ? "open" : "done"; return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/redeem_code") { if (!me) return send(res, 401, { message: "Sign in first." }); const c = String(b.invite || "").trim().toUpperCase(); const inv = invites.get(c);
+      if (inv) { if (!members.some((m) => m.team_id === inv.team_id && m.user_id === me)) members.push({ team_id: inv.team_id, user_id: me, role: inv.role, email: users.get(me).email, joined_at: now(), status: inv.role === "viewer" ? "active" : "pending" }); return send(res, 200, { kind: "team", id: inv.team_id, name: teams.get(inv.team_id)?.name || "", role: inv.role }); }
+      const a = [...L.athletes.values()].find((y) => y.code === c); if (a) { if (!L.access.some((x) => x.athlete_id === a.id && x.user_id === me)) L.access.push({ athlete_id: a.id, user_id: me, role: (b.as_role || users.get(me)?.meta?.kind) === "parent" ? "parent" : "athlete", joined_at: now() }); return send(res, 200, { kind: "lessons", id: a.id, name: a.name }); }
+      return send(res, 400, { message: "That code doesn't match. Check it with your coach or trainer." }); }
+    if (p === "/rest/v1/rpc/my_coverage") { if (!me) return send(res, 200, { teams: [], lessons: [] });
+      return send(res, 200, { teams: members.filter((m) => m.user_id === me && (m.status || "active") === "active").map((m) => ({ id: m.team_id, name: teams.get(m.team_id)?.name || "", role: m.role })),
+        lessons: L.access.filter((x) => x.user_id === me).map((x) => { const a = L.athletes.get(x.athlete_id); return { athlete: a?.name, trainer: users.get(a?.trainer)?.meta?.name || "Your trainer" }; }) }); }
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     // Floorcall Lessons (version 31): mirrors the lesson_* functions in schema.sql
@@ -115,7 +129,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 31);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 32);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

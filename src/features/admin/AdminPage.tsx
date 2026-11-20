@@ -32,9 +32,27 @@ function CoachRequests({ list, onDecide }: { list: CoachReq[]; onDecide: (c: Coa
   </Card>;
 }
 
+type Msg = { id: string; created_at: string; name: string | null; email: string; topic: string; message: string; site: string | null; status: "open" | "done" };
+const TOPIC: Record<string, string> = { question: "Question", bug: "Problem", club: "Club or school", billing: "Billing", privacy: "Privacy", idea: "Idea" };
+/** Messages from the Contact page and each site's Help link. Reply by email, then mark them done. */
+function Messages({ list, onDone }: { list: Msg[]; onDone: (m: Msg, done: boolean) => void }) {
+  const [all, setAll] = useState(false);
+  const open = list.filter((m) => m.status === "open"), shown = all ? list : open;
+  return <Card title={`Messages${open.length ? ` (${open.length} open)` : ""}`} actions={<button className="btn sm ghost" onClick={() => setAll(!all)}>{all ? "Only open" : `Show all ${list.length}`}</button>}>
+    {!shown.length ? <p className="empty">{all ? "No messages yet." : "Nothing waiting for a reply."}</p> : <ul className="log admin-msgs">{shown.map((m) => <li key={m.id}>
+      <div className="admin-msg-hd"><b>{TOPIC[m.topic] || m.topic}</b><span className="small muted">{m.name ? m.name + " · " : ""}{m.email} · from {m.site || "the website"} · {ago(m.created_at)}</span></div>
+      <p className="admin-msg-body">{m.message}</p>
+      <div className="row"><a className="btn sm primary" href={`mailto:${m.email}?subject=${encodeURIComponent("Re: your Floorcall message")}&body=${encodeURIComponent("\n\n> " + m.message.split("\n").slice(0, 8).join("\n> "))}`}>Reply by email</a>
+        <button className="btn sm ghost" onClick={() => onDone(m, m.status === "open")}>{m.status === "open" ? "Mark done" : "Reopen"}</button></div>
+    </li>)}</ul>}
+  </Card>;
+}
+
 export function AdminPage() {
   const [acc, setAcc] = useState<{ byKind: Record<string, number>; emailOk: number } | null>(null), [o, setO] = useState<Overview | null>(null), [pics, setPics] = useState<Pic[] | null>(null), [err, setErr] = useState(""), [staff, setStaff] = useState<Staff[]>([]), [coaches, setCoaches] = useState<CoachReq[] | null>(null);
+  const [msgs, setMsgs] = useState<Msg[] | null>(null);
   const load = async () => {
+    rpc("admin_support", {}).then(setMsgs).catch(() => setMsgs(null));
     try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setCoaches(await rpc("admin_coach_requests", {}).catch(() => null)); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
     catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Floorcall admin." : e?.message || "Couldn't load the admin console."); }
   };
@@ -65,6 +83,7 @@ export function AdminPage() {
         <tbody>{o.teamsList.map((t) => <tr key={t.id}><td className="l">{t.name || "(no name)"}</td><td>{t.members}</td><td>{t.matches}</td><td>{ago(t.last)}</td></tr>)}</tbody></table></div></Card>
       <Card title="New accounts"><ul className="log">{o.recentUsers.map((u) => <li key={u.email + u.at} style={{ gridTemplateColumns: "1fr auto" }}><span>{u.email}</span><span className="small muted">{ago(u.at)}</span></li>)}</ul></Card>
     </div>
+    {msgs && <Messages list={msgs} onDone={async (m, done) => { try { await rpc("admin_support_done", { mid: m.id, done }); setMsgs((x) => x && x.map((y) => (y.id === m.id ? { ...y, status: done ? "done" : "open" } : y))); } catch (e: any) { toast(e?.message || "Couldn't save."); } }} />}
     {coaches && <CoachRequests list={coaches} onDecide={async (c, approve) => { await rpc("admin_decide_coach", { uid: c.user_id, approve }); setCoaches((x) => x && x.map((y) => (y.user_id === c.user_id ? { ...y, status: approve ? "approved" : "denied" } : y))); toast(approve ? `${c.name || c.email} can sync teams now` : "Turned down"); }} />}
     {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Floorcall Recruit. Check the school's staff directory first.</span>}>
       {!staff.length ? <p className="empty">No requests yet.</p> : <div className="tbl"><table><thead><tr><th className="l">Name</th><th className="l">School</th><th className="l">Email</th><th>Status</th><th></th></tr></thead>

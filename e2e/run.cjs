@@ -987,6 +987,53 @@ const scenarios = {
     ok("reel: no page errors", !p.errors.length, p.errors.slice(0, 3).join(" | "));
     await p.context().close();
   },
+  // A real-length game film (LONGFILM=/path/to/file.mp4, LONGTRUTH=whistle times as JSON [[serve, end], ...]).
+  // Not in the normal run: it takes minutes. Measures finding rallies, memory, seeking and statting late in the film.
+  async _longfilm(browser) {
+    const file = process.env.LONGFILM, truth = process.env.LONGTRUTH ? JSON.parse(require("fs").readFileSync(process.env.LONGTRUTH, "utf8")) : null;
+    if (!file) { ok("set LONGFILM to a video file", false); return; }
+    const p = await newPage(browser, { cloud: false, size: { width: 1440, height: 900 } });
+    await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Long Film"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
+    await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill(["1 Ava Ramirez S", "4 Jordan Lee OH", "7 Maya Chen OH", "8 Zoe Grant MB", "12 Sofia Nguyen OPP", "3 Lily Torres L"].join("\n")); await p.getByRole("button", { name: "Add players" }).click();
+    await go(p, "film");
+    let t0 = Date.now();
+    await p.getByLabel("Game video file").setInputFiles(file);
+    await p.getByPlaceholder("e.g. Buchanan").fill("Central"); await p.getByRole("button", { name: "Start · we serve first" }).click();
+    await p.locator(".fr-stage video").evaluate((v) => v.readyState >= 1 ? 0 : new Promise((r) => v.addEventListener("loadedmetadata", r, { once: true })));
+    const dur = await p.locator(".fr-stage video").evaluate((v) => v.duration);
+    console.log(`    opened ${(require("fs").statSync(file).size / 1048576).toFixed(0)} MB, ${(dur / 60).toFixed(1)} min, in ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+    ok("long film: opens", dur > 600, String(dur));
+    t0 = Date.now();
+    const heap = async () => p.evaluate(() => (performance).memory ? Math.round(performance.memory.usedJSHeapSize / 1048576) : -1);
+    await p.getByRole("button", { name: "Find rallies from the whistle" }).click();
+    let peak = 0; const tick = setInterval(async () => { try { peak = Math.max(peak, await heap()); } catch {} }, 1000);
+    await p.waitForFunction(() => /found\)/.test(document.querySelector(".fr-tools")?.textContent || "") || /couldn|didn't|failed/i.test(document.querySelector(".fr-tools")?.textContent || ""), null, { timeout: 1500e3, polling: 2000 }).catch(() => {});
+    clearInterval(tick);
+    const tools = await p.locator(".fr-tools").innerText(), found = +(tools.match(/\((\d+) found\)/) || [])[1] || 0;
+    console.log(`    found ${found} rallies in ${((Date.now() - t0) / 1000).toFixed(0)} s; JS heap peak ${peak} MB, now ${await heap()} MB`);
+    ok("long film: finds rallies", found > 0, tools.slice(0, 200));
+    if (truth) {
+      const r = await p.evaluate(async () => { const db = await new Promise((res) => { const q = indexedDB.open("bench-stats"); q.onsuccess = () => res(q.result); }); const tx = db.transaction("matches"); const all = await new Promise((res) => { const q = tx.objectStore("matches").getAll(); q.onsuccess = () => res(q.result); }); return (all.find((m) => m.rallies) || {}).rallies || []; });
+      const hit = truth.filter(([a, b]) => r.some((x) => Math.abs(x.start + 1 - a) < 1.2 && Math.abs(x.end - 2 - b) < 1.2)).length;
+      const extra = r.filter((x) => !truth.some(([a, b]) => Math.abs(x.start + 1 - a) < 1.2 && Math.abs(x.end - 2 - b) < 1.2)).length;
+      console.log(`    matched ${hit} of ${truth.length} real rallies; ${extra} found that weren't rallies`);
+      ok("long film: finds at least 95% of the rallies", hit / truth.length >= 0.95, `${hit}/${truth.length}`);
+      ok("long film: few false rallies", extra <= truth.length * 0.03, String(extra));
+    }
+    // stat a play near the end of the film: seeking far is quick and the play keeps its moment
+    await p.locator(".fr-top h1").click();
+    t0 = Date.now();
+    await p.locator(".fr-stage video").evaluate((v, x) => new Promise((r) => { v.pause(); v.addEventListener("seeked", r, { once: true }); v.currentTime = x; }), dur - 300);
+    console.log(`    seeked to ${((dur - 300) / 60).toFixed(0)} min in ${Date.now() - t0} ms`);
+    await p.keyboard.type("7"); await p.waitForTimeout(900); await p.keyboard.press("k"); await p.keyboard.press("Escape"); await p.waitForTimeout(1500);
+    const vts = await p.evaluate(async () => { const db = await new Promise((r) => { const q = indexedDB.open("bench-stats"); q.onsuccess = () => r(q.result); }); const tx = db.transaction("logs"); const all = await new Promise((r) => { const q = tx.objectStore("logs").getAll(); q.onsuccess = () => r(q.result); }); return all.flatMap((l) => (l.events || []).filter((e) => e.vt != null).map((e) => e.vt)); });
+    ok("long film: a play late in the film keeps its moment", vts.some((x) => Math.abs(x - (dur - 300)) < 2), vts.join(","));
+    await p.locator(".fr-stage video").evaluate((v) => { v.muted = true; return v.play(); }); await p.waitForTimeout(3000);
+    ok("long film: plays smoothly late in the film", await p.locator(".fr-stage video").evaluate((v) => !v.paused && v.currentTime > 0), "");
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "longfilm.png") });
+    ok("long film: no errors", !p.errors.length, p.errors.slice(0, 3).join("; "));
+    await p.context().close();
+  },
   async film(browser) {
     const p = await newPage(browser, { cloud: false });
     await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Clovis North"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(400);
@@ -1529,6 +1576,38 @@ const scenarios = {
     ok("no errors on the site pages or in the players' view", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
     await A.context().close();
   },
+  async contact(browser) {
+    // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
+    const p = await newPage(browser, { phone: true, cloud: true });
+    await p.goto(U + "contact.html?from=academy&topic=bug"); await p.waitForTimeout(500);
+    ok("contact page: the form, the email and answers", (await p.locator("#contact").count()) === 1 && (await p.locator('.ct-side a[href^="mailto:support@getfloorcall.com"]').count()) === 1 && (await p.locator(".faq details").count()) >= 6);
+    ok("contact page: a Help link picks the topic", (await p.locator("select[name=topic]").inputValue()) === "bug");
+    await p.getByRole("button", { name: "Send message" }).click(); await p.waitForTimeout(200);
+    ok("contact page: asks for a reply address first", (await p.locator(".ct-err").innerText()).includes("email address"));
+    await p.getByLabel("Your name").fill("Dana Coach"); await p.getByLabel("Email for our reply").fill("dana@e2e.test");
+    await p.getByLabel("Message").fill("The score froze in set 2 on my iPad."); await p.getByRole("button", { name: "Send message" }).click(); await p.waitForTimeout(700);
+    ok("contact page: sends", await p.locator(".ct-sent").isVisible() && (await p.locator(".ct-to").innerText()) === "dana@e2e.test");
+    ok("contact page fits a phone", (await overflow(p)) <= 0);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "contact.png"), fullPage: true });
+    // every site links to it
+    for (const [site, sel] of [["live/", ".lv-foot"], ["beach/", ".bv-foot"], ["academy/", ".ac-foot"], ["lessons/", ".ls-foot"], ["recruit/", ".rc-foot"], ["pricing.html", "footer"], ["about.html", "footer"]]) {
+      await p.goto(U + site); await p.waitForTimeout(300);
+      ok(`${site} links to Contact`, (await p.locator(`${sel} a[href*="contact.html"]`).count()) >= 1);
+    }
+    // the admin reads it, replies by email and marks it done
+    const A = await newPage(browser);
+    await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await A.getByLabel("Email").fill("inbox@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Inbox"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(800);
+    await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=inbox%40e2e.test`, { headers: { apikey: "anon" } });
+    await A.reload(); await go(A, "admin"); await A.waitForTimeout(900);
+    const box = A.locator(".admin-msgs li", { hasText: "The score froze" });
+    ok("the admin console shows the message, where it came from, and a reply link", (await box.count()) === 1 && (await box.innerText()).includes("from academy") && (await box.locator('a[href^="mailto:dana@e2e.test"]').count()) === 1);
+    await box.getByRole("button", { name: "Mark done" }).click(); await A.waitForTimeout(400);
+    ok("and marks it done", (await A.locator(".admin-msgs li").count()) === 0);
+    // Settings → Help opens the contact page with a problem report
+    ok("the app's Help links to Contact", (await (async () => { await go(A, "settings"); await A.waitForTimeout(300); return A.locator('a[href*="contact.html?from=app"]').count(); })()) >= 1);
+    for (const x of [p, A]) await x.context().close();
+  },
   async lessons(browser) {
     // a trainer: athletes, a past private lesson with reps, an open group session, a public clinic
     const T = await newPage(browser, { size: { width: 1280, height: 900 } });
@@ -1635,6 +1714,13 @@ const scenarios = {
     ok("an athlete without a code is asked for one", (await X.locator(".ls-join-first").count()) === 1 && !(await X.locator(".ls-page").innerText()).includes("Mia"));
     await X.getByLabel("Code from your trainer").fill("ZZZZZZ"); await X.getByRole("button", { name: "Join", exact: true }).click(); await X.waitForTimeout(500);
     ok("a wrong code says so", (await X.locator(".ls-err").innerText()).includes("doesn't match"));
+    // the one code box on the player sites takes a Lessons code (or a team code)
+    await X.goto(U + "academy/"); await X.waitForTimeout(600);
+    await X.getByRole("button", { name: "Have a code from your coach or trainer?" }).click();
+    await X.getByLabel("Code from your coach or trainer").fill("NOPE99"); await X.getByRole("button", { name: "Join", exact: true }).click(); await X.waitForTimeout(400);
+    ok("the code box says when a code is wrong", (await X.locator(".cb-err").innerText()).includes("doesn't match"));
+    await X.getByLabel("Code from your coach or trainer").fill(code); await X.getByRole("button", { name: "Join", exact: true }).click(); await X.waitForTimeout(600);
+    ok("the code box joins lessons and says what covers you", (await X.locator(".cb-done").innerText()).includes("Mia Torres") && (await X.locator(".cb-cov").innerText()).includes("lessons with Tess Trainer"));
     // an unverified coach can look but not add athletes
     const V = await newPage(browser);
     await V.goto(U + "lessons/"); await V.waitForTimeout(400); await siteSignUp(V, "unverified-trainer@e2e.test", "coach", "New Trainer"); await V.waitForTimeout(800);

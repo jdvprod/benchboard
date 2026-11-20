@@ -25,7 +25,7 @@ const ES: Record<string, string> = {
   "Team or game code": "Código del equipo o del partido", "Follow": "Seguir", "Finding…": "Buscando…", "Codes are 6 letters and numbers, like K7Q2XM.": "Los códigos tienen 6 letras y números, como K7Q2XM.",
   "No team or game uses that code. Check it with the coach.": "Ningún equipo o partido usa ese código. Confírmalo con el entrenador.", "Couldn't check the code. Check your connection.": "No se pudo revisar el código. Revisa tu conexión.",
   "This site isn't connected yet.": "Este sitio aún no está conectado.", "Back to {team}": "Volver a {team}", "Loading…": "Cargando…", "Loading the game…": "Cargando el partido…",
-  "Stats recorded by the team's coaches with Floorcall": "Estadísticas registradas por los entrenadores del equipo con Floorcall", "Privacy": "Privacidad", "Terms": "Términos",
+  "Stats recorded by the team's coaches with Floorcall": "Estadísticas registradas por los entrenadores del equipo con Floorcall", "Privacy": "Privacidad", "Terms": "Términos", "Help": "Ayuda",
   "Updated just now": "Actualizado hace un momento", "Updated {n}s ago": "Actualizado hace {n} s", "Reconnecting…": "Reconectando…", "Too many codes that didn't match. Wait a few minutes, then check the code with the coach.": "Demasiados códigos que no coinciden. Espera unos minutos y confirma el código con el entrenador.",
   "We couldn't find that team. Check the link or code with the coach.": "No encontramos ese equipo. Confirma el enlace o el código con el entrenador.",
   "This game link isn't active. Ask the coach for a new one.": "Este enlace ya no está activo. Pide uno nuevo al entrenador.", "Live links aren't set up for this site yet.": "Los enlaces en vivo aún no están listos en este sitio.",

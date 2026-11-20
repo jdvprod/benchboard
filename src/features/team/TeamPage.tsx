@@ -2,7 +2,8 @@ import { recordOf } from "../../sports/volleyball/engine";
 import { Gender, genderQuestion, gendersFor, isAdultLevel } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
-import { FEES } from "../../app/flags";
+import { FEES, ROSTER_INCLUDED, rosterOver } from "../../app/flags";
+import { contactUrl } from "../../cloud/links";
 import { LogoPicker, PhotoPicker, teamLogoPick } from "../../ui/Pictures";
 import type { Replay } from "../../sports/volleyball/engine";
 import { useState } from "react";
@@ -78,6 +79,7 @@ function Roster() {
   const upd = (id: string, k: keyof Player, v: any) => patch("players", id, { [k]: v } as any);
   const shown = ps.filter((p) => showInactive || p.active);
   return <Card title={`Roster · ${plural(ps.filter((p) => p.active).length, "player")}`} actions={<><label className="btn sm" style={{ cursor: "pointer" }}>Import CSV<input type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then((txt) => toast(importRosterCsv(txt))); e.target.value = ""; }} /></label><button className="btn sm" disabled={!ps.length} onClick={() => download(`${t.name} roster.csv`, rosterCsv(), "text/csv")}>Export CSV</button><button className="btn sm" onClick={() => setPaste(paste == null ? "" : null)}>Paste list</button><button className={"btn sm" + (ps.length ? " primary" : "")} onClick={add}>Add player</button></>}>
+    {rosterOver(ps.filter((p) => p.active).length) > 0 && <div className="banner warn" style={{ marginBottom: 12 }}><p>Your plan covers {ROSTER_INCLUDED} players on a roster, and this team has {ps.filter((p) => p.active).length}. Mark players who left as inactive, or <a href={contactUrl("app", "billing")} target="_blank" rel="noopener">ask us about a bigger roster</a>.</p></div>}
     {!t.sample && ps.length > 0 && !t.rosterConsent && <div className="banner accent" style={{ marginBottom: 12 }}>
       {isAdultLevel(t.level) ? <p><b>Permission to record players.</b> Before tracking, make sure your players have agreed to their stats being recorded and, if you share them, shown on your team page.</p>
         : <p><b>Permission to record players.</b> Before tracking, make sure your school or club allows it and families have agreed, especially for players under 18. Our <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">parent and guardian form</a> covers stats, team pages and recruiting profiles.</p>}

@@ -9,7 +9,8 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { watchErrors } from "../app/errors";
 import { SiteSwitch } from "../ui/SiteSwitch";
-import { placeUrl } from "../cloud/links";
+import { contactUrl, placeUrl } from "../cloud/links";
+import { CodeBox } from "../cloud/CodeBox";
 import { cloudAvailable, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
 import { checks, Drill, Level, Skill, skill, SKILLS, Who } from "./content";
@@ -55,7 +56,7 @@ function App() {
     <main className="ac-main"><SiteGate name="Floorcall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
       {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
-    <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("academy")}>Help</a></footer>
   </div>;
 }
 
@@ -70,6 +71,7 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
       <p>{who === "player"
         ? "What good looks like for each skill, the mistakes that cost points and how to fix them, drills you can do on your own, and a checklist to see how far you've come."
         : "The key points to teach, what to watch for, the mistakes and their fixes, team concepts, and drills you can drop straight into a practice plan in Floorcall."}</p>
+      {!coach && <CodeBox site="academy" />}
     </section>
     <ol className="ac-skills">{SKILLS.map((s) => {
       const all = checks(s), n = all.filter((k) => done.includes(k)).length, teamDrills = s.drills.filter((d) => d.who === "coach").length, own = s.drills.filter((d) => d.who === "player").length;

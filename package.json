@@ -43,5 +43,6 @@
   "store": {
     "androidPackage": "com.getfloorcall.app",
     "androidSha256": []
-  }
+  },
+  "contact": "support@getfloorcall.com"
 }

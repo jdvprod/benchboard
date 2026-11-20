@@ -3,6 +3,7 @@
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
  *   #/                  enter a code from the coach */
+import { contactUrl } from "../cloud/links";
 import "../styles/app.css";
 import "./live.css";
 import { lazy, Suspense, useEffect, useState } from "react";
@@ -32,7 +33,7 @@ function Shell({ team, children, home }: { team?: string; children: any; home?: 
   return <div className="lv">
     <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="Floorcall Live home"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /></header>
     <main className="lv-main">{children}</main>
-    <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Floorcall")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a>
+    <footer className="lv-foot">{tr("Stats recorded by the team's coaches with Floorcall")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a> · <a href={contactUrl("live")}>{tr("Help")}</a>
       <div className="lv-lang" role="group" aria-label="Language / Idioma">{([["en", "English"], ["es", "Español"]] as [Lang, string][]).map(([k, l]) => <button key={k} aria-pressed={getLang() === k} onClick={() => { setLang(k); location.reload(); }}>{l}</button>)}</div></footer>
   </div>;
 }

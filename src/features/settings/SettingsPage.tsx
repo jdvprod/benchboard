@@ -1,7 +1,7 @@
 import { TRACK_MODES } from "../../sports/volleyball/actions";
 import { isViewer } from "../../app/viewAs";
 import { setUi } from "../../app/ui";
-import { placeUrl } from "../../cloud/links";
+import { contactUrl, placeUrl } from "../../cloud/links";
 import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
@@ -133,7 +133,7 @@ function AiKey() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 31;
+const SCHEMA_VERSION = 32;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);
@@ -219,17 +219,14 @@ export function diagnostics(): string {
 }
 
 function HelpCard() {
-  const report = () => {
-    const body = "What happened (and what you tapped just before):\n\n\n---\n" + diagnostics();
-    if (LEGAL_EMAIL) location.href = `mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Floorcall problem")}&body=${encodeURIComponent(body)}`;
-    else copyText(diagnostics()).then((ok) => toast(ok ? "Problem details copied. Paste them into your message." : "Couldn't copy."));
-  };
+  const report = () => window.open(contactUrl("app", "bug", diagnostics()), "_blank", "noopener");
   return <Card title="Help and feedback">
     <div className="row">
       <a className="btn sm" href={placeUrl("home")} target="_blank" rel="noopener">Everything Floorcall does</a>
       <a className="btn sm" href={LEGAL.accessibility} target="_blank" rel="noopener">Accessibility</a>
-      <button className="btn sm" onClick={report}>{LEGAL_EMAIL ? "Report a problem" : "Copy problem details"}</button>
-      {LEGAL_EMAIL && <a className="btn sm" href={`mailto:${LEGAL_EMAIL}?subject=${encodeURIComponent("Floorcall idea")}`}>Suggest a feature</a>}
+      <a className="btn sm" href={contactUrl("app")} target="_blank" rel="noopener">Contact us</a>
+      <button className="btn sm" onClick={report}>Report a problem</button>
+      <a className="btn sm" href={contactUrl("app", "idea")} target="_blank" rel="noopener">Suggest a feature</a>
     </div>
     <p className="small muted" style={{ margin: "8px 0 0" }}>Problem reports include the app version, your browser and screen size, so we can reproduce it. No player names or stats.</p>
   </Card>;

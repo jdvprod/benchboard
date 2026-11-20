@@ -1,0 +1,14 @@
+/* "Got a code from your coach or trainer?" A quiet line, not a banner: most visits aren't about codes. */
+.cb{display:grid;gap:8px;font-size:14.5px;color:var(--muted);padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.cb-cov{margin:0;color:var(--ink)}.cb-cov span{color:var(--muted)}
+.cb-done{margin:0;color:var(--ink);font-weight:600}.cb-done a{color:var(--us)}
+.cb-open{justify-self:start;background:none;border:0;padding:0;color:var(--us);font:inherit;font-weight:600;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.cb-form{display:grid;gap:6px}
+.cb-label{font-weight:600;color:var(--ink)}
+.cb-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cb-row input{font:700 18px var(--display,inherit);letter-spacing:.14em;text-transform:uppercase;width:170px;max-width:100%;height:42px;border:1px solid var(--line);border-radius:8px;padding:0 12px;background:var(--surface);color:var(--ink)}
+.cb-go{height:42px;padding:0 18px;border-radius:8px;border:0;background:var(--us);color:var(--accent-ink,#000);font-weight:700;cursor:pointer}
+.cb-go:disabled{opacity:.55;cursor:default}
+.cb-x{height:42px;padding:0 10px;border:0;background:none;color:var(--muted);font:inherit;cursor:pointer}
+.cb-hint{margin:0;font-size:13.5px}
+.cb-err{margin:0;color:var(--bad)}

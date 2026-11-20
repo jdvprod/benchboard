@@ -2,6 +2,8 @@
  *   #/         your matches, start a new one
  *   #/m/ID     the match: scoreboard, sand court, one-tap stats, box score
  * Matches are kept on this device. */
+import { contactUrl } from "../cloud/links";
+import { CodeBox } from "../cloud/CodeBox";
 import "../styles/app.css";
 import "./beach.css";
 import { type FormEvent, useEffect, useState } from "react";
@@ -37,7 +39,7 @@ function App() {
           {m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
           : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}</SiteGate>}
     </main>
-    <footer className="bv-foot">Matches are saved on this device, and scoring works without a signal once the page has loaded. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <footer className="bv-foot">Matches are saved on this device, and scoring works without a signal once the page has loaded. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("beach")}>Help</a></footer>
   </div>;
 }
 
@@ -53,6 +55,7 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
     <section className="bv-hero">
       <h1>Beach volleyball, scored and statted in one tap.</h1>
       <p>Two players a side. Floorcall Beach keeps the score, tells you who serves next and when to switch sides, and builds a box score for each player as you go.</p>
+      <CodeBox site="beach" />
     </section>
     <form className="card bv-new" onSubmit={start}>
       <h2>Start a match</h2>

@@ -1183,3 +1183,6 @@ body.nav-mini .sm-btn span{display:none}
 .brandmark{width:32px;height:32px;object-fit:contain;flex:none;display:block}
 .mobilebar .brandmark{width:24px;height:24px}
 .lv-brand .brandmark,.rc-brand .brandmark,.bv-brand .brandmark,.ac-brand .brandmark{width:26px;height:26px}
+.admin-msgs li{display:grid;gap:6px;padding:12px 0}
+.admin-msg-hd{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.admin-msg-body{white-space:pre-wrap;margin:0;font-size:14.5px;max-height:220px;overflow:auto}

@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "31" "schema version is reported"
+check "select schema_version();" "32" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -300,10 +300,22 @@ asall $T "select lesson_request_decide('$RQ', true);" | grep ERROR || true
 expect "$(as $T "select cardinality(array(select jsonb_array_elements_text(lesson_trainer_data()->'sessions'->2->'athletes')));")" "1" "a taken sign-up is booked into the clinic"
 asall $T "select lesson_save_session('{\"id\":\"ls4\",\"starts\":\"2030-02-02T17:00:00Z\",\"kind\":\"clinic\",\"title\":\"Private clinic\",\"capacity\":10}');" | grep ERROR || true
 expect "$(as $T "select lesson_trainer_data()->'sessions'->3->>'code' is null;")" "t" "a private clinic has no public page"
+# ---------- version 32: contact form, redeem any code ----------
+q -c "set role anon; select support_send('Pat', 'pat@example.com', 'bug', 'The score froze in set 2', 'app');" >/dev/null
+expect "$(q -c "set role anon; select support_send('Pat', 'not-an-email', 'bug', 'hello there', 'app');" 2>&1 | grep -c 'email address')" "1" "the contact form needs a reply address"
+q -c "set role anon; select support_send('Bot', 'bot@example.com', 'bug', 'buy now', 'app', 'filled');" >/dev/null
+expect "$(q -c "select count(*) from support_messages;")" "1" "a filled-in trap field is dropped quietly"
+for i in 1 2 3 4; do q -c "set role anon; select support_send('Pat', 'pat@example.com', 'bug', 'again $i', 'app');" >/dev/null; done
+expect "$(q -c "set role anon; select support_send('Pat', 'pat@example.com', 'bug', 'sixth one', 'app');" 2>&1 | grep -c 'Too many')" "1" "one address can't flood the inbox"
+expect "$(q -c "set role anon; select count(*) from support_messages;" 2>&1 | grep -c 'permission denied')" "1" "nobody reads messages directly"
+expect "$(asall $B "select admin_support();" | grep -c 'Admins only')" "1" "only admins read messages"
+expect "$(asall $P "select redeem_code('$CODE')->>'kind';" | grep -c lessons)" "1" "a lessons code works in the one code box"
+expect "$(asall $P "select redeem_code('NOPE99');" | grep -c "doesn't match")" "1" "a wrong code says so"
+expect "$(asall $P "select jsonb_array_length(my_coverage()->'lessons');" | tail -1)" "1" "coverage lists the lessons someone joined"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"
-expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,lesson_public,lesson_signup,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,watch" "without an account only the public page functions run"
+expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,lesson_public,lesson_signup,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,support_send,watch" "without an account only the public page functions run"
 expect "$(q -c "select coalesce(string_agg(table_name || ':' || privilege_type, ','), '') from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public';")" "app_errors:INSERT" "without an account no table can be read or changed"
 expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_bump(uuid)', 'execute');")" "f" "the AI counter is server-only"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read team data directly"

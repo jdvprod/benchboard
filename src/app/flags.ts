@@ -18,6 +18,10 @@ export const PLANS: Record<Plan, { name: string; price: string; per: string }> =
   trainer: { name: "Trainer", price: "$9.99", per: "a month, or $89 a year: Floorcall Lessons, with the trainer's athletes and parents included (included with a Team or Club plan)" },
 };
 export const TRIAL_HOURS = 24, TRIAL_MAX_DAYS = 14;
+/** A Team or Club plan covers this many players on a roster (proposal; see the pricing doc). Past it, the coach asks
+ * us for a bigger roster. Only shown once BILLING is on. */
+export const ROSTER_INCLUDED = 20;
+export const rosterOver = (players: number) => (BILLING ? Math.max(0, players - ROSTER_INCLUDED) : 0);
 
 export type Access = { ok: true; why: "billing off" | "paid" | "trial"; endsAt?: number; note?: string } | { ok: false; why: "trial over" };
 /** The free trial covers a team's first match or its first 24 hours, whichever gives more:

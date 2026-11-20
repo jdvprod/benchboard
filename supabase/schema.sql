@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 31 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 32 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1410,6 +1410,83 @@ begin
   return aid;
 end $$;
 
+-- ---------- version 32: contact form, and one place to redeem any code from a coach or trainer ----------
+-- Messages from the Contact page (getfloorcall.com/contact.html) and the Help links in each site. Anyone can send
+-- one, signed in or not; only admins read them (Admin console → Messages).
+create table if not exists public.support_messages (
+  id uuid primary key default gen_random_uuid(), created_at timestamptz not null default now(),
+  user_id uuid references auth.users(id) on delete set null,
+  name text, email text not null, topic text not null default 'question', message text not null, site text,
+  status text not null default 'open' check (status in ('open', 'done'))
+);
+create index if not exists support_messages_open on public.support_messages (status, created_at desc);
+alter table public.support_messages enable row level security;
+revoke all on public.support_messages from anon, authenticated;
+
+create or replace function public.support_send(who text, email text, topic text, msg text, site text default null, trap text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare e text := lower(trim(coalesce(email, '')));
+begin
+  if coalesce(trap, '') <> '' then return; end if;  -- a field people never see; bots fill it in
+  if e !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'Add an email address we can reply to.'; end if;
+  if length(trim(coalesce(msg, ''))) < 5 then raise exception 'Add a message.'; end if;
+  if (select count(*) from support_messages where support_messages.email = e and created_at > now() - interval '1 hour') >= 5
+     or (select count(*) from support_messages where created_at > now() - interval '1 hour') >= 300 then
+    raise exception 'Too many messages just now. Try again in an hour, or email support@getfloorcall.com.'; end if;
+  insert into support_messages (user_id, name, email, topic, message, site)
+  values (auth.uid(), left(trim(who), 80), left(e, 160),
+    case when topic in ('question', 'bug', 'billing', 'club', 'privacy', 'idea') then topic else 'question' end,
+    left(trim(msg), 4000), left(site, 40));
+end $$;
+
+create or replace function public.admin_support() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  return coalesce((select jsonb_agg(to_jsonb(m) order by (m.status = 'open') desc, m.created_at desc) from (select * from support_messages order by created_at desc limit 300) m), '[]'::jsonb);
+end $$;
+create or replace function public.admin_support_done(mid uuid, done boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not is_admin() then raise exception 'Admins only'; end if;
+  update support_messages set status = case when done then 'done' else 'open' end where id = mid;
+end $$;
+
+-- A player or parent types whatever code their coach or trainer gave them: a team's code (joins the team, so the
+-- team's plan covers them) or a Floorcall Lessons code (joins that athlete's lessons). One box, either kind.
+create or replace function public.redeem_code(invite text, as_role text default null) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare c text := upper(trim(coalesce(invite, ''))); t text; r text; aid text; nm text;
+begin
+  if auth.uid() is null then raise exception 'Sign in first.'; end if;
+  perform code_gate();
+  select team_id, role into t, r from invites where code = c;
+  if t is not null then
+    insert into members (team_id, user_id, role, email, status)
+    values (t, auth.uid(), r, (select email from auth.users where id = auth.uid()), case when r = 'viewer' then 'active' else 'pending' end)
+    on conflict (team_id, user_id) do nothing;
+    return jsonb_build_object('kind', 'team', 'id', t, 'name', (select name from teams_cloud where id = t), 'role', r);
+  end if;
+  select id, name into aid, nm from lesson_athletes where code = c;
+  if aid is not null then
+    insert into lesson_access (athlete_id, user_id, role)
+    values (aid, auth.uid(), case when coalesce(as_role, (select raw_user_meta_data->>'kind' from auth.users where id = auth.uid())) = 'parent' then 'parent' else 'athlete' end)
+    on conflict (athlete_id, user_id) do nothing;
+    return jsonb_build_object('kind', 'lessons', 'id', aid, 'name', nm);
+  end if;
+  perform code_miss(invite);
+  raise exception 'That code doesn''t match. Check it with your coach or trainer.';
+end $$;
+
+-- What a signed-in person is part of through someone else: teams they've joined and trainers whose lessons they're in.
+-- Once billing is on, a team's plan (or a trainer's) covers its players and families; this is how a site knows.
+create or replace function public.my_coverage() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'teams', coalesce((select jsonb_agg(jsonb_build_object('id', m.team_id, 'name', tc.name, 'role', m.role) order by tc.name) from members m join teams_cloud tc on tc.id = m.team_id where m.user_id = auth.uid() and m.status = 'active'), '[]'::jsonb),
+    'lessons', coalesce((select jsonb_agg(jsonb_build_object('athlete', a.name, 'trainer', coalesce(u.raw_user_meta_data->>'name', 'Your trainer'))) from lesson_access x join lesson_athletes a on a.id = x.athlete_id join auth.users u on u.id = a.trainer where x.user_id = auth.uid()), '[]'::jsonb))
+$$;
+
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
 -- Row security already guards the tables; this takes the defaults away as well and gives back exactly what each role uses.
@@ -1417,7 +1494,7 @@ end $$;
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.watch(text), public.season_view(text), public.recruit_view(text), public.recruit_seen(text),
   public.recruit_board(text), public.beach_view(text), public.schema_version(), public.server_time(),
-  public.lesson_public(text), public.lesson_signup(text, text, text, text) to anon;
+  public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
 revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text) from authenticated;

@@ -17,7 +17,7 @@ import { watchErrors } from "../app/errors";
 import { SiteSwitch } from "../ui/SiteSwitch";
 import { QrButton } from "../ui/QrButton";
 import { copyText, download, plural } from "../ui/kit";
-import { placeUrl } from "../cloud/links";
+import { contactUrl, placeUrl } from "../cloud/links";
 import { cloudAvailable, CloudError, rpc, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
 import { CoachVerify, useCoachStatus } from "../cloud/CoachVerify";
@@ -75,7 +75,7 @@ function App() {
           points={["Trainers: schedule one-off or weekly sessions, open times athletes can book, and clinics with a sign-up page", "Count reps in a session: serves, passes, sets, swings and digs", "Athletes and parents join with a code from their trainer and see only their own lessons"]}>
         {athleteSide ? <AthleteSide route={route} coach={coach} /> : <Trainer route={route} />}
       </SiteGate></main>}
-    <footer className="ls-foot">Each athlete and parent sees only their own sessions, notes their trainer shares, and their own numbers. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a></footer>
+    <footer className="ls-foot">Each athlete and parent sees only their own sessions, notes their trainer shares, and their own numbers. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("lessons")}>Help</a></footer>
     <Toaster />
   </div>;
 }
