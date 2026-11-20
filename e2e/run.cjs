@@ -1940,6 +1940,7 @@ const scenarios = {
     // a stranger without a code sees nothing
     const X = await newPage(browser);
     await X.goto(U + "lessons/"); await X.waitForTimeout(400); await siteSignUp(X, "stranger@e2e.test", "athlete", "Sam Stranger"); await X.waitForTimeout(500);
+    ok("lessons: an athlete no trainer has added is told so first", (await X.getByRole("alertdialog").count()) === 1); await X.getByRole("alertdialog").getByRole("button", { name: "OK" }).click();
     ok("an athlete without a code is asked for one", (await X.locator(".ls-join-first").count()) === 1 && !(await X.locator(".ls-page").innerText()).includes("Mia"));
     await X.getByLabel("Code from your trainer").fill("ZZZZZZ"); await X.getByRole("button", { name: "Join", exact: true }).click(); await X.waitForTimeout(500);
     ok("a wrong code says so", (await X.locator(".ls-err").innerText()).includes("doesn't match"));
