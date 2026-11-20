@@ -1645,6 +1645,23 @@ const scenarios = {
     ok("no errors on the calendar", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
     for (const x of [p, ph]) await x.context().close();
   },
+  async wheel(browser) {
+    // Lineup → rotation wheel: who serves, front row, setter and libero in each rotation
+    const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);
+    await go(p, "lineup"); await p.waitForTimeout(500);
+    const w = p.locator(".rw");
+    ok("rotation wheel: on the lineup page with six players", (await w.count()) === 1 && (await w.locator(".rw-node").count()) === 6);
+    const s1 = await w.locator(".rw-info dl div", { hasText: "Serving" }).innerText();
+    await w.getByRole("button", { name: "2", exact: true }).click(); await p.waitForTimeout(600);
+    const s2 = await w.locator(".rw-info dl div", { hasText: "Serving" }).innerText();
+    ok("rotation wheel: the next rotation has the next server", (await w.locator("h3").innerText()) === "Rotation 2" && s1 !== s2, s1 + " / " + s2);
+    if (process.env.SHOTS) await w.screenshot({ path: path.join(process.env.SHOTS, "wheel.png") });
+    const ph = await newPage(browser, { phone: true }); await go(ph, "sample"); await ph.waitForTimeout(900); await go(ph, "lineup"); await ph.waitForTimeout(500);
+    ok("rotation wheel fits a phone", (await overflow(ph)) <= 0);
+    if (process.env.SHOTS) await ph.locator(".rw").screenshot({ path: path.join(process.env.SHOTS, "wheel-phone.png") });
+    ok("no errors on the wheel", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
+    for (const x of [p, ph]) await x.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });

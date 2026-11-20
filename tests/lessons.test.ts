@@ -70,3 +70,18 @@ test("film: plays by the other team, in our film", () => {
   assert.deepEqual(parseQuery("opponent errors").q.codes, ["OE"]);
   assert.deepEqual(parseQuery("our blocks").q.codes, ["BS", "BA", "BT", "BE"]);
 });
+
+import { flowOf, runsOf } from "../src/ui/Momentum";
+test("momentum: score flow and scoring runs", () => {
+  const r = (w: "us" | "them", to: "us" | "them" | null = null) => ({ w, server: w, rot: 1, rotB: 1, srvP: null, pass: null, firstAtk: null, onCourt: [], end: w === "us" ? "K" : "OK", p: null, to }) as any;
+  const f = flowOf([r("us"), r("us"), r("us"), r("them"), r("them", "us"), r("us"), r("us"), r("us"), r("us")]);
+  assert.deepEqual(f.map((p) => p.d), [0, 1, 2, 3, 2, 1, 2, 3, 4, 5]);
+  assert.equal(f[5].to, "us");
+  assert.deepEqual(runsOf(f).map((x) => [x.side, x.len]), [["us", 3], ["us", 4]]);
+});
+
+import { posOf, POS_ANGLE } from "../src/features/lineup/RotationWheel";
+test("rotation wheel: players move one spot clockwise each rotation", () => {
+  assert.equal(posOf(0, 1), 1); assert.equal(posOf(1, 2), 1); assert.equal(posOf(0, 2), 6); assert.equal(posOf(3, 2), 3);
+  for (let k = 0; k < 6; k++) for (let r = 1; r < 6; r++) assert.equal((POS_ANGLE[posOf(k, r + 1)] - POS_ANGLE[posOf(k, r)] + 360) % 360, 60);
+});

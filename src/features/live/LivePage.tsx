@@ -4,7 +4,7 @@ import { currentMatch, get, matchesOf, playerName, replayOf, team } from "../../
 import { aggregate, momentum, runOf, serverOf, Stat } from "../../sports/volleyball/engine";
 import { teamBlocks, blocks, fmtAvg, fmtHit, fmtPct, ratio, serveErrors, teamMetrics } from "../../sports/volleyball/metrics";
 import { Card, fmtDate } from "../../ui/kit";
-import { MomentumChart } from "../../ui/charts";
+import { Momentum } from "../../ui/Momentum";
 import { logText } from "../track/Tracker";
 import { sideNames } from "../../app/Scoreboard";
 import { liveUrlFor, ShareLive } from "../../cloud/CloudCard";
@@ -52,7 +52,7 @@ export function LivePage() {
     <GameScore R={R} us={names.us} them={names.them} live={m.status === "live"} unit={m.scrim ? "Game" : "Set"} server={c && c.serve === "us" && srv ? playerName(srv) : undefined} logos={{ us: t.logo, them: m.oppLogo }} />
     <div className="grid2" style={{ alignItems: "start" }}>
       <div className="stack">
-        {c && c.rallies.length > 1 && <Card title={`Momentum · set ${c.n}`}><MomentumChart diffs={momentum(c)} labels={[names.us + " ahead", names.them + " ahead"]} /></Card>}
+        {c && c.rallies.length > 1 && <Card title={`Momentum · set ${c.n}`}><Momentum rallies={c.rallies} us={names.us} them={names.them} live /></Card>}
         <Card title="Leaders"><div className="kpis" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(130px,1fr))" }}>
           {leader((s) => s.K, "Kills")}{leader((s) => s.SA, "Aces")}{leader((s) => s.D, "Digs")}{leader((s) => blocks(s), "Blocks")}{leader((s) => s.AST, "Assists")}
         </div></Card>

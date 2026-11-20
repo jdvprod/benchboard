@@ -13,6 +13,7 @@ import { lineupPrompt } from "../../ai/prompts";
 import { lineupCardsHtml } from "./lineupCards";
 import { download } from "../../ui/kit";
 import { NextMatchOuts } from "../matchup/Availability";
+import { RotationWheel } from "./RotationWheel";
 
 /** Court order for display: front row P4 P3 P2, back row P5 P6 P1. */
 const FRONT = [3, 2, 1], BACK = [4, 5, 0];
@@ -139,6 +140,7 @@ export function LineupPage() {
         <StartRotation rotStat={rotStat} lu={lu} valid={valid} onUse={(n) => { setLu(rotateLineup(lu, n - 1)); toast(`Rotated: what was rotation ${n} is now your starting rotation. Save it to keep it.`); }} />
       </div>
     </div>
+    {valid && <RotationWheel lu={lu} lib={lib} libSrv={libSrv} rotStat={rotStat} libIn={(r) => { const L = rotateLineup(lu, r - 1), i = liberoFor(L, lib, libSrv); return i == null ? null : L[i]; }} />}
     <SubPlan />
     <Card title="All six rotations" actions={<Seg value={statsFrom} onChange={setStatsFrom} options={[["season", "Season results"], ["lineup", `This lineup (${same.length} sets)`]]} />}>
       <div className="rots">{[1, 2, 3, 4, 5, 6].map((r) => {

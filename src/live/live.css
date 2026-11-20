@@ -362,3 +362,6 @@ p.lv-demo-link{margin:14px 0 6px;font-weight:600;font-size:14px}.lv-demo-link a{
 .lv-rsvp-for{display:flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--muted);margin:2px 0 6px}.lv-rsvp-for select{min-height:36px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);padding:0 8px;font-weight:600}
 .lv-prac{font-weight:600;color:var(--muted)}
 .lv-plan{grid-column:1/-1;font-size:14px}.lv-plan summary{cursor:pointer;font-weight:600;color:var(--us);min-height:32px;display:flex;align-items:center}.lv-plan ol{list-style:none;margin:4px 0 0;padding:0;display:grid;gap:4px}.lv-plan li{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px}
+.lv-setpick{display:inline-flex;gap:2px;border:1px solid var(--line);border-radius:999px;padding:2px}
+.lv-setpick button{border:0;background:none;min-width:30px;height:28px;border-radius:999px;font-weight:700;color:var(--muted);cursor:pointer;font-variant-numeric:tabular-nums}
+.lv-setpick button[aria-pressed=true]{background:var(--ink);color:var(--surface)}

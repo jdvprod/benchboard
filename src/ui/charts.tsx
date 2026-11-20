@@ -2,7 +2,7 @@
 import { useCallback, useRef, useState } from "react";
 
 /** Width of an element in CSS pixels, so charts draw at real size and text stays readable on phones. */
-function useWidth(fallback: number): [(el: Element | null) => void, number] {
+export function useWidth(fallback: number): [(el: Element | null) => void, number] {
   const [w, setW] = useState(fallback), ro = useRef<ResizeObserver | null>(null);
   const ref = useCallback((el: Element | null) => {
     ro.current?.disconnect(); if (!el || typeof ResizeObserver === "undefined") return;

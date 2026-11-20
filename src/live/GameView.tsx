@@ -3,7 +3,7 @@ import { Avatar, TeamLogo } from "../ui/Logo";
 import { useState } from "react";
 import { aggregate, LogEntry, momentum, serverOf, Stat } from "../sports/volleyball/engine";
 import { teamPointsWon, teamBlocks, blocks, fmtAvg, fmtHit, fmtPct, hitting, passAvg, ratio, serveErrors, serves, teamMetrics } from "../sports/volleyball/metrics";
-import { MomentumChart } from "../ui/charts";
+import { Momentum, FlowPoint } from "../ui/Momentum";
 import { GameScore } from "../ui/GameScore";
 import { fmtDay, Game, isLive, LPlayer, pname } from "./data";
 import { oppPlay, playName, tr } from "../lib/i18n";
@@ -67,7 +67,7 @@ function Gamecast({ g, team, P, follow, setFollow, players, logos, openPbp }: { 
     <div className="lv-cast-rest">
     <BoxScore g={g} team={team} P={P} follow={follow} logo={logos.us} />
     <TheirBox A={A} them={them} logo={logos.them} ro={m.oppRoster} />
-    {c && c.rallies.length > 1 && <section className="lv-card"><div className="lv-h"><h2>{tr("Momentum · set {n}", { n: c.n })}</h2></div><MomentumChart diffs={momentum(c)} height={120} labels={[tr("{team} ahead", { team }), tr("{team} ahead", { team: them })]} /></section>}
+    {R.sets.some((x) => x.rallies.length > 1) && <SetFlow sets={R.sets} cur={c?.n ?? null} live={isLive(g)} team={team} them={them} P={P} />}
     <section className="lv-card">
       <div className="lv-h"><h2>{tr("Follow a player")}</h2>
         <select className="input" value={follow} onChange={(e) => setFollow(e.target.value)} aria-label={tr("Follow a player")}><option value="">{tr("Choose…")}</option>{players.slice().sort((a, b) => (+a.num || 0) - (+b.num || 0)).map((p) => <option key={p.id} value={p.id}>{pname(p)}</option>)}</select></div>
@@ -192,5 +192,23 @@ function TeamStats({ g, team }: { g: Game; team: string }) {
           {ua != null && <i className="bar" aria-hidden="true"><i style={{ width: `${Math.round(ua * 100)}%` }} /></i>}</div>; })}
     </div>
     <p className="lv-note">{tr("Opponent numbers come from what {team}'s staff recorded; some only exist for {team}.", { team })}</p>
+  </section>;
+}
+
+/** The flow of each set: who led, by how much, the runs and the timeouts. Opens on the set being played. */
+function SetFlow({ sets, cur, live, team, them, P }: { sets: import("../sports/volleyball/engine").SetState[]; cur: number | null; live: boolean; team: string; them: string; P: Map<string, LPlayer> }) {
+  const played = sets.filter((x) => x.rallies.length > 0);
+  const [pick, setPick] = useState<number | null>(null);
+  const n = pick ?? cur ?? played[played.length - 1]?.n ?? 1, s = played.find((x) => x.n === n) || played[played.length - 1];
+  if (!s) return null;
+  const describe = (pt: FlowPoint) => {
+    const who = pt.p ? pname(P.get(pt.p), false) : "";
+    const what = pt.w === "them" ? oppPlay(pt.end, them) || playName(pt.end) : playName(pt.end);
+    return [who, what].filter(Boolean).join(" · ") || (pt.w === "us" ? team : them);
+  };
+  return <section className="lv-card">
+    <div className="lv-h"><h2>{tr("Momentum · set {n}", { n: s.n })}</h2>
+      {played.length > 1 && <div className="lv-setpick" role="group" aria-label={tr("Set")}>{played.map((x) => <button key={x.n} aria-pressed={x.n === s.n} onClick={() => setPick(x.n)}>{x.n}</button>)}</div>}</div>
+    <Momentum rallies={s.rallies} us={team} them={them} height={150} live={live && s.n === cur} describe={describe} />
   </section>;
 }
