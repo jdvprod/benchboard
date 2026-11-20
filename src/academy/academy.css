@@ -180,3 +180,17 @@ body{padding-left:0;background:var(--surface)}
 .ac-empty{color:var(--muted)}
 .ac-fromcoach{border-left:4px solid var(--us);padding-left:16px}
 @media (max-width:640px){.ac-libcard{width:calc(100% - 32px);padding:18px}.ac-lib{padding:24px 16px 48px}.ac-home-fc{padding:0 16px}.ac-filters{top:0;position:static}}
+/* Strength and jumping */
+.ac-strcard{background:var(--surface);color:var(--ink);border:1px solid var(--line)}
+.ac-strcard>span:first-child>span{color:var(--muted)!important}
+.ac-str-safe{border:1px solid var(--line);border-left:4px solid var(--us);border-radius:12px;padding:14px 18px;background:var(--surface)}
+.ac-str-safe h2{font:700 20px var(--display);margin:0 0 6px}.ac-str-safe ul{margin:0;padding-left:20px;display:grid;gap:4px;line-height:1.5}
+.ac-str-pr{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.ac-str-pr li{border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:4px;background:var(--surface)}
+.ac-str-pr b{font:700 17px var(--display)}.ac-str-pr span{color:var(--muted);line-height:1.45;font-size:15px}
+.ac-str-week{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:14px 18px;background:var(--surface)}
+.ac-str-week h3{margin:0 0 8px;font-size:17px}.ac-str-week ul{margin:0;padding-left:20px;display:grid;gap:6px;line-height:1.5}
+.ac-str-group{margin-top:18px}.ac-str-group h3{font:700 21px var(--display);margin:0}
+.ac-str-sub{color:var(--muted);margin:2px 0 8px}
+.ac-str-foot{color:var(--muted);font-size:14px}
+.ac-str .ac-filters{position:static}

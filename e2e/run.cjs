@@ -1857,6 +1857,29 @@ const scenarios = {
     ok("no errors in account settings", !A.errors.length && !C.errors.length, [...A.errors, ...C.errors].slice(0, 3).join("; "));
     for (const x of [A, C]) await x.context().close();
   },
+  async strength(browser) {
+    // Academy → Strength and jumping: safety first, sample weeks, and lifts, jumps and prevention routines by level
+    const p = await newPage(browser, { phone: true });
+    await p.goto(U + "academy/#/players"); await p.waitForTimeout(500);
+    if (await p.locator(".sg .ma").count()) await siteSignUp(p, "strength-kid@e2e.test", "athlete", "Sam Strong");
+    await p.locator(".ac-strcard").click(); await p.waitForTimeout(400);
+    ok("strength: Academy has a strength and jumping section", (await p.getByRole("heading", { name: "Strength and jumping", level: 1 }).count()) === 1);
+    ok("strength: it opens with how to train safely", /doctor/.test(await p.locator(".ac-str-safe").innerText()));
+    const n = await p.locator(".ac-str .ac-drill").count();
+    ok("strength: dozens of exercises", n >= 40, String(n));
+    await p.getByRole("group", { name: "What it's for" }).getByRole("button", { name: /Plyometrics/ }).click(); await p.waitForTimeout(200);
+    const names = await p.locator(".ac-str .ac-drill-name b").allInnerTexts();
+    ok("strength: filters to plyometrics", names.some((x) => /Box jump/.test(x)) && !names.some((x) => /Goblet squat/.test(x)), names.join(", "));
+    await p.getByRole("group", { name: "Level" }).getByRole("button", { name: "Advanced" }).click(); await p.waitForTimeout(200);
+    ok("strength: advanced jumps say to use a coach", /qualified coach|strength base/.test(await p.locator(".ac-str").innerText()));
+    await p.getByRole("group", { name: "Plan" }).getByRole("button", { name: "Off-season" }).click();
+    ok("strength: sample weeks by level", /Day 1/.test(await p.locator(".ac-str-week").innerText()));
+    ok("strength fits a phone", (await overflow(p)) <= 0);
+    { const ax = await a11y(p); ok("strength controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "strength.png"), fullPage: true });
+    ok("no errors on strength", !p.errors.length, p.errors.slice(0, 3).join("; "));
+    await p.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });
