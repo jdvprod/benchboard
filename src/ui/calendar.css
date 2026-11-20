@@ -80,3 +80,8 @@ button.cal-num.picked{box-shadow:0 0 0 2px var(--us)}
 .cal-pick .cal-sub{display:block;flex-basis:100%;padding-left:16px;color:var(--muted);font-size:13px}
 .cal-pick .cal-t{white-space:normal;font-weight:600}
 @media (max-width:700px){.cal-month button.cal-num{justify-self:center;text-align:center;min-width:26px}}
+/* narrow phones and wide fonts: the month name may need its own line */
+.cal-bar,.cal-nav{min-width:0;max-width:100%}
+.cal-nav{flex-wrap:wrap}
+.cal-title{min-width:0;white-space:normal}
+@media (max-width:420px){.cal-title{font-size:18px;margin:0 4px}.cal-today{padding:0 10px}.cal-arrow{width:34px;height:34px}}

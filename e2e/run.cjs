@@ -54,6 +54,8 @@ async function newPage(browser, { phone = false, tablet = false, dark = false, c
   if (cloud) await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch { /* sandboxed frame */ } }, `http://localhost:${MOCK_PORT}`);
   if (!strict) await ctx.addInitScript(() => { try { localStorage.setItem("bs-allow-offline", "1"); } catch { /* sandboxed frame */ } }); // tests may use the app without an account; real visitors can't
   if (skew) await ctx.addInitScript((ms) => { const real = Date.now; Date.now = () => real() + ms; }, skew);
+  // WIDE_FONTS=1: a wide fallback font, like CI machines without the web fonts, to catch layouts that only just fit
+  if (process.env.WIDE_FONTS) await ctx.addInitScript(() => addEventListener("DOMContentLoaded", () => { const st = document.createElement("style"); st.textContent = "*{font-family:Verdana,'DejaVu Sans',sans-serif!important}"; document.head.append(st); }));
   const page = await ctx.newPage(); page.errors = []; OPEN.add(page); page.on("close", () => OPEN.delete(page));
   page.on("pageerror", (e) => page.errors.push(e.message));
   page.on("console", (m) => { const t = m.text(); if (m.type() === "error" && (/Content Security Policy/.test(t) || !/Failed to load resource|ERR_|fonts\.g/.test(t))) page.errors.push(t); });
@@ -1811,7 +1813,7 @@ const scenarios = {
     await P.locator(".ls-open").first().getByRole("button", { name: "Book" }).click(); await P.waitForTimeout(700);
     ok("the parent's calendar shows the booked session and open times", (await P.locator(".cal-item, .cal-day:has(.cal-item)").count()) >= 1);
     ok("booking puts it in Coming up", (await P.locator(".ls-card").count()) === 1 && (await P.locator(".ls-open").count()) === 2);
-    ok("lessons fit a phone", (await overflow(P)) <= 0);
+    ok("lessons fit a phone", (await overflow(P)) <= 0, await P.evaluate(() => [...document.querySelectorAll("body *")].filter((e) => e.getBoundingClientRect().right > innerWidth && !e.closest(".site-switch")).slice(0, 3).map((e) => { const cs = getComputedStyle(e.closest(".site-switch") || e); return e.tagName + "." + e.className + " right=" + e.getBoundingClientRect().right + " vw=" + innerWidth + " sw=" + document.documentElement.scrollWidth + " ox=" + cs.overflowX + " w=" + cs.width; }).join(" | ")));
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "ls-parent.png"), fullPage: true });
     // anyone with the clinic link signs up, no account
     const S = await newPage(browser, { phone: true, cloud: true });
