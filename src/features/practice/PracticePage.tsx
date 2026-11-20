@@ -1,4 +1,5 @@
 /** Practice: plan builder with drill library, stat-based focus, scrimmages and drill tracking. */
+import { AI_FEATURES } from "../../app/flags";
 import { useWakeLock } from "../../ui/wakeLock";
 import { useEffect, useState } from "react";
 import { activePlayers, currentMatch, drillsOf, get, matchesOf, newMatch, patch, plansOf, remove, replayOf, save, setTeamPatch, team, toast, todayISO, uid } from "../../data/store";
@@ -109,7 +110,7 @@ function FocusCard({ onPlan }: { onPlan: (p: PracticePlan) => void }) {
     } catch (e) { setErr(e instanceof AiError ? e.message : AI_ERRORS.upstream); }
     setBusy(false);
   };
-  return <Card title="What to work on" actions={<div className="row"><button className="btn sm" disabled={!drills.length} onClick={quick}>Build plan</button><button className="btn sm" disabled={busy} onClick={ai}>{busy ? "Thinking…" : "AI plan"}</button></div>}>
+  return <Card title="What to work on" actions={<div className="row"><button className="btn sm" disabled={!drills.length} onClick={quick}>Build plan</button>{AI_FEATURES.practice && <button className="btn sm" disabled={busy} onClick={ai}>{busy ? "Thinking…" : "AI plan"}</button>}</div>}>
     {f.length ? <ul className="recs">{f.map((x, i) => <li key={i}><span><b>{x.cat}:</b> {x.text}</span></li>)}</ul> : <p className="small muted">{matchesOf().some((x) => x.kind === "match" && replayOf(x)?.log.some((l) => l.kind === "stat")) ? "Nothing in your recent matches stands out yet. A match's film Breakdown can send drills here too." : "Once you've tracked a match, this lists what your stats say to practice."}</p>}
     {err && <p className="hint warn">{err}</p>}
   </Card>;

@@ -1,4 +1,5 @@
 /** Player portal: season numbers, trends, match log, goals, AI report card and a shareable report. */
+import { AI_FEATURES } from "../../app/flags";
 import { madeWith } from "../../lib/brandMark";
 import { useEffect, useState } from "react";
 import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
@@ -145,7 +146,7 @@ export function PlayerPage({ id }: { id: string }) {
         <thead><tr><th className="l">Date</th><th className="l">Opponent</th><th>Sets</th><th>K</th><th>E</th><th>TA</th><th>Hit %</th><th>Ace</th><th>SE</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th><th>+/−</th></tr></thead>
         <tbody>{rows.slice().reverse().map((r) => { const x = r.s || ({} as Stat); return <tr key={r.m.id}><td className="l">{fmtDate(r.m.date)}</td><td className="l">{r.m.opp}</td><td>{r.pm.sets}</td><td>{x.K ?? 0}</td><td>{x.AE ?? 0}</td><td>{x.TA ?? 0}</td><td>{r.s ? fmtHit(hitting(x)) : "—"}</td><td>{x.SA ?? 0}</td><td>{r.s ? serveErrors(x) : 0}</td><td>{r.s ? fmtAvg(passAvg(x)) : "—"}</td><td>{x.D ?? 0}</td><td>{r.s ? fmtNum(blocks(x)) : 0}</td><td>{x.AST ?? 0}</td><td>{fmtSigned(r.pm.plusMinus)}</td></tr>; })}</tbody>
       </table></div></Card>
-      <AiCard key={id} title="Report card" desc="Strengths, growth areas and one measurable goal, written for the player from their numbers." button="Write report card" prompt={() => reportCardPrompt(id)} filename={`${p.first} ${p.last} report card`} />
+      {AI_FEATURES.reportCard && <AiCard key={id} title="Report card" desc="Strengths, growth areas and one measurable goal, written for the player from their numbers." button="Write report card" prompt={() => reportCardPrompt(id)} filename={`${p.first} ${p.last} report card`} />}
     </>}
     <FilmReview id={id} />
     {!isAdultLevel(t.level) && <Recruiting id={id} rows={rows} A={A} />}

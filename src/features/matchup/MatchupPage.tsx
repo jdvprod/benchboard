@@ -1,4 +1,5 @@
 /** Matchups: the schedule, and everything you know about the next opponent from every time you've played them. */
+import { AI_FEATURES } from "../../app/flags";
 import { madeWith } from "../../lib/brandMark";
 import { ScoutSummary } from "../film/ScoutFilm";
 import { TheirRotations } from "../stats/StatsPage";
@@ -147,7 +148,7 @@ function Matchup({ h, next }: { h: H2H; next?: ScheduleItem }) {
     <ScoutSummary o={o} />
     <Card title={`${o.name} roster`}><OppRosterEditor key={o.id} roster={o.roster || {}} onChange={(r) => setOppRoster(o.name, r)} team={o.name} /></Card>
     <Card title="Notes"><textarea className="input" aria-label="Scouting notes" rows={3} key={o.id} defaultValue={o.notes} placeholder="Best hitters, setter tendencies, serve targets, what worked last time…" onBlur={(e) => patch("opponents", o.id, { notes: e.target.value })} /></Card>
-    <AiCard key={"ai" + o.id} title={`Scouting report: ${o.name}`} desc="A pre-match report from every match you've recorded against them plus your notes. Saved for next time." button="Write scouting report" prompt={() => scoutPrompt(o.name)} saved={o.scout} savedAt={o.scoutAt} onSave={(text) => patch("opponents", o.id, { scout: text, scoutAt: Date.now() })} filename={o.name + " scouting report"} />
+    {AI_FEATURES.scouting && <AiCard key={"ai" + o.id} title={`Scouting report: ${o.name}`} desc="A pre-match report from every match you've recorded against them plus your notes. Saved for next time." button="Write scouting report" prompt={() => scoutPrompt(o.name)} saved={o.scout} savedAt={o.scoutAt} onSave={(text) => patch("opponents", o.id, { scout: text, scoutAt: Date.now() })} filename={o.name + " scouting report"} />}
   </>;
 }
 

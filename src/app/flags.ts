@@ -38,3 +38,20 @@ export function accessWith(t: { createdAt: number; plan?: Plan; paidUntil?: stri
   if (!finishedMatches && now < cap) return { ok: true, why: "trial", endsAt: cap, note: "until your first match is done" };
   return { ok: false, why: "trial over" };
 }
+
+/** Which AI features are offered. Each one spends AI credits (the `ai` Supabase function, AI_DAILY_LIMIT calls per
+ * coach per day). The open-ended "ask" chats are off: the stats and film already show the answers, and coaches decide.
+ * Finding clips and stats by typing ("kills by #7 in set 2") never needs AI; clipSearch is only the fallback for a
+ * search the built-in reader can't understand, and it's the cheapest call. */
+export const AI_FEATURES = {
+  askStats: false,      // Stats → "Ask your stats" chat
+  askFilm: false,       // Film Room → Breakdown → "Ask about this match"
+  clipSearch: true,     // Film Room / season clip search: AI only when the typed search isn't understood
+  reports: true,        // Stats → Match report, Practice report, Season review
+  scouting: true,       // Team → opponent and Matchup → Scouting report
+  timeout: true,        // Tracker → Timeout card (talking points)
+  reportCard: true,     // Player → Report card
+  filmSummary: true,    // Film Room → Breakdown summary
+  lineup: true,         // Lineup → Suggest a lineup
+  practice: true,       // Practice → Suggest a practice
+};

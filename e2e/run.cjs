@@ -1121,8 +1121,7 @@ const scenarios = {
     ok("film to practice: a finding brings its drill to the next practice", /Added Serve under pressure to a new practice for/.test(await p.locator(".fr-planned").innerText()), await p.locator(".fr-planned").innerText());
     await p.getByRole("button", { name: "Plan practice from this" }).click(); await p.waitForTimeout(200);
     ok("film to practice: it doesn't add the same drill twice", /already has those drills/.test(await p.locator(".fr-planned").innerText()), await p.locator(".fr-planned").innerText());
-    await p.getByLabel("Ask about this match").fill("Where did their points come from?"); await p.getByRole("button", { name: "Ask", exact: true }).click(); await p.waitForTimeout(800);
-    ok("ask the film: answers in words and pulls the plays it's talking about", /missed three serves/.test(await p.locator(".fr-answer").innerText()) && /points to 3 plays/.test(await p.locator(".fr-answer").innerText()) && (await p.locator(".fr-answer video").count()) >= 1, await p.locator(".fr-askfilm").innerText());
+    ok("ask the film is off (AI_FEATURES.askFilm): the breakdown has no chat box", (await p.getByLabel("Ask about this match").count()) === 0);
     await p.getByRole("button", { name: "Make a film session from this" }).click(); await p.waitForTimeout(300);
     ok("breakdown: one tap makes the film review session, notes and all", /film review/.test(await p.getByLabel("Session title").inputValue()) && (await p.locator(".fr-items > li").count()) === 3 && /toss drift/.test(await p.locator(".fr-items textarea").first().inputValue()) && /free points/.test(await p.getByLabel("Note to the team (optional)").inputValue()));
     await p.evaluate(() => localStorage.removeItem("bs-ai-key"));

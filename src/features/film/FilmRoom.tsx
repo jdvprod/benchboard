@@ -1,6 +1,7 @@
 /** Film Room: stat a whole game from its video, find every rally from the referee's whistle, and pull any set of clips
  * by asking in plain words ("all solo blocks", "kills to area 1", "Maya's digs in set 2").
  * Every play statted here carries its exact video time, so every stat is a clip. */
+import { AI_FEATURES } from "../../app/flags";
 import { MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import { eventsOf, hooks, matchesOf, newMatch, opponentsOf, patch, player, playerName, replayOf, team, teamPlayers, toast, todayISO, useVersion } from "../../data/store";
 import { Match } from "../../data/model";
@@ -295,7 +296,7 @@ function FindClips({ m, R, T, onSeek, onAdded }: { m: Match; R: Replay; T: Retur
     setText(s); setPlay(false); setMiss("");
     const p = parseQuery(s, roster);
     if (!p.empty) { setQ({ q: p.q, chips: p.chips }); return; }
-    if (!aiAvailable()) { setQ(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an area, a set or a rotation."); return; }
+    if (!AI_FEATURES.clipSearch || !aiAvailable()) { setQ(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an area, a set or a rotation."); return; }
     setBusy(true);
     try { const x = await askJson<any>(aiQueryPrompt(s, roster), { tier: "quick" }); const cq = cleanAiQuery(x, roster); setQ({ q: cq, chips: describe(cq, roster), by: "ai" }); }
     catch { setMiss("Couldn't work that out. Try naming a play, a player, an area or a set."); setQ(null); }

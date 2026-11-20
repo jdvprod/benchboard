@@ -1,4 +1,5 @@
 /** Live stat tracking for a match, drill session or scrimmage. */
+import { AI_FEATURES } from "../../app/flags";
 import { useWakeLock } from "../../ui/wakeLock";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
@@ -165,7 +166,7 @@ function Banners({ m, R }: { m: Match; R: Replay }) {
   };
   return <>
     {m.sample && <div className="banner"><p><b>Sample team.</b> Everything here is example data so you can explore. Create your own team from the Team tab.</p><button className="btn sm" onClick={() => go("team")}>Go to Team</button></div>}
-    {ui.panel === "timeout" && !m.scrim && <div ref={toRef}><AiCard title="Timeout card" desc="Three talking points from the live stats." button="Get talking points" tier="quick" prompt={() => timeoutPrompt(m)} /></div>}
+    {ui.panel === "timeout" && !m.scrim && <div ref={toRef}>{AI_FEATURES.timeout ? <AiCard title="Timeout card" desc="Three talking points from the live stats." button="Get talking points" tier="quick" prompt={() => timeoutPrompt(m)} /> : null}</div>}
     {R.matchOver ? <div className="banner accent" ref={endRef}><p><b>{m.scrim ? "Scrimmage" : "Match"} over.</b> {R.wonUs === R.wonThem ? `Split ${R.wonUs}–${R.wonThem}.` : `${R.wonUs > R.wonThem ? names.us : names.them} win ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.`}</p>
       <div className="row"><button className="btn" onClick={() => { setUi({ statsScope: "match" }); go("stats"); }}>See stats and report</button><button className="btn primary" onClick={() => { patch("matches", m.id, { status: "done" }); if (t.currentMatchId === m.id) save("teams", { ...t, currentMatchId: null }); go("home"); }}>Finish</button></div></div>
       : c.over && <div className="banner accent" ref={endRef}><p><b>{unit} {c.n} to {c.winner === "us" ? names.us : names.them}, {c.us}–{c.them}.</b> Who serves first in {unit.toLowerCase()} {c.n + 1}?{!m.scrim && (m.nextLu ? " Your queued lineup starts it." : c.startLu ? " The starting lineup carries over." : "")}</p>

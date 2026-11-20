@@ -1,4 +1,5 @@
 /** Lineup builder: six starters, libero, all six rotations, rotation results, AI suggestion. */
+import { AI_FEATURES } from "../../app/flags";
 import { LineupTabs } from "./LineupTabs";
 import { autoLineup } from "../../sports/volleyball/autoLineup";
 import { useState } from "react";
@@ -126,7 +127,7 @@ export function LineupPage() {
         </div>
       </Card>
       <div className="stack">
-        <Card title="Best lineup from your stats" actions={<button className="btn sm primary" disabled={busy} onClick={suggest}>{busy ? "Thinking…" : adv ? "Ask again" : "Suggest a lineup"}</button>}>
+        {AI_FEATURES.lineup && <Card title="Best lineup from your stats" actions={<button className="btn sm primary" disabled={busy} onClick={suggest}>{busy ? "Thinking…" : adv ? "Ask again" : "Suggest a lineup"}</button>}>
           {err && <p className="hint warn">{err}</p>}
           {adv ? <div className="stack">
             <p><b>{adv.summary}</b></p>
@@ -136,7 +137,7 @@ export function LineupPage() {
             {adv.serveReceive.length > 0 && <><div className="label">Serve receive</div><ul className="recs">{adv.serveReceive.map((r, i) => <li key={i}>{r}</li>)}</ul></>}
             <div className="row"><button className="btn sm" onClick={() => { setLu(adv.lineup.slice()); setLib(adv.libero); setLibSrv(null); toast("Loaded. Save it to keep it."); }}>Load into builder</button><span className="small muted">Suggested {new Date(adv.at).toLocaleDateString()}</span></div>
           </div> : <p className="small muted">Uses every player's hitting, passing, serving and your rotation results to suggest a starting six. You can load it, tweak it, and save.</p>}
-        </Card>
+        </Card>}
         <StartRotation rotStat={rotStat} lu={lu} valid={valid} onUse={(n) => { setLu(rotateLineup(lu, n - 1)); toast(`Rotated: what was rotation ${n} is now your starting rotation. Save it to keep it.`); }} />
       </div>
     </div>

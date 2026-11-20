@@ -1,5 +1,6 @@
 /** Film Room home → Search all your film: one question across every match ("Maya's kills vs Buchanan",
  * "aces in the last 3 matches"), with the clips back to back and a highlight video for one player. */
+import { AI_FEATURES } from "../../app/flags";
 import { useMemo, useState } from "react";
 import type { LogEntry } from "../../sports/volleyball/engine";
 import { eventsOf, matchesOf, opponentsOf, player, replayOf, teamPlayers, todayISO } from "../../data/store";
@@ -33,7 +34,7 @@ export function SeasonFind() {
     const p = parseQuery(rest, roster);
     if (!p.empty) { setHit({ q: p.q, scope, chips: [...p.chips, ...scope.chips], title }); return; }
     if (!rest && scope.chips.length) { setHit({ q: { codes: null, players: [], opp: [], zones: [], sets: [], rots: [], pointsOnly: true }, scope, chips: ["Every point", ...scope.chips], title }); return; }
-    if (!aiAvailable()) { setHit(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an opponent (“vs Buchanan”) or “last 3 matches”."); return; }
+    if (!AI_FEATURES.clipSearch || !aiAvailable()) { setHit(null); setMiss("Try naming a play (kills, aces, blocks, digs, passes, errors), a player, an opponent (“vs Buchanan”) or “last 3 matches”."); return; }
     setBusy(true);
     try { const x = await askJson<any>(aiQueryPrompt(rest, roster), { tier: "quick" }); const cq = cleanAiQuery(x, roster); setHit({ q: cq, scope, chips: [...describe(cq, roster), ...scope.chips], by: "ai", title }); }
     catch { setHit(null); setMiss("Couldn't work that out. Try naming a play, a player or an opponent."); }
