@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { all, setPrefs, team } from "../data/store";
 import type { Team } from "../data/model";
+import { isAdultLevel } from "../data/model";
 
 const initials = (name: string) => name.split(/\s+/).filter((w) => /[A-Za-z0-9]/.test(w)).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "T";
 export function TeamMark({ t, size = 28 }: { t: Team; size?: number }) {
@@ -14,7 +15,8 @@ export function groupTeams(teams: Team[]): [string, Team[]][] {
   const g = teams.filter((x) => x.gender === "girls"), b = teams.filter((x) => x.gender === "boys");
   if (!g.length || !b.length) return [["Your teams", teams]];
   const rest = teams.filter((x) => x.gender !== "girls" && x.gender !== "boys");
-  return ([["Girls' teams", g], ["Boys' teams", b], ["Other teams", rest]] as [string, Team[]][]).filter((x) => x[1].length);
+  const adult = [...g, ...b].every((x) => isAdultLevel(x.level));
+  return ([[adult ? "Women's teams" : "Girls' teams", g], [adult ? "Men's teams" : "Boys' teams", b], ["Other teams", rest]] as [string, Team[]][]).filter((x) => x[1].length);
 }
 
 export function TeamMenu({ compact }: { compact?: boolean }) {

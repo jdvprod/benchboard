@@ -41,3 +41,10 @@ test("lessons: calendar files and weekly repeats", () => {
   assert.equal(new Date(w[1]).getHours(), new Date(w[0]).getHours(), "same time of day across daylight saving");
   assert.match(message({ id: "x", starts: "2030-01-05T17:00:00Z", minutes: 60, kind: "private", focus: ["passing"] }, "Mia"), /^Hi Mia, here's your private lesson: .* \(60 min\)\.\nWe'll work on: passing\.$/);
 });
+
+import { gendersFor, isAdultLevel } from "../src/data/model";
+test("team levels: college, pro and adult teams are women's and men's", () => {
+  for (const l of ["College", "Professional", "Adult / rec", "NCAA D1", "Pro league"]) assert.ok(isAdultLevel(l), l);
+  for (const l of ["Varsity", "JV", "16U Club", "18U Open", "Middle school", ""]) assert.ok(!isAdultLevel(l), l);
+  assert.deepEqual(gendersFor("Professional").map((x) => x[1]), ["Women", "Men", "Coed"]);
+});

@@ -173,6 +173,10 @@ export interface Job { id: string; name: string; need: number }
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;
 export type Gender = "girls" | "boys" | "coed";
 export const GENDERS: [Gender, string][] = [["girls", "Girls"], ["boys", "Boys"], ["coed", "Coed"]];
+/** College, pro and adult teams are women's and men's teams, not girls' and boys'. */
+export const isAdultLevel = (level?: string) => /college|ncaa|naia|juco|univ|pro|adult|rec\b|open|semi|national|league|masters/i.test(level || "") && !/\b1[0-8]u\b/i.test(level || "");
+export const gendersFor = (level?: string): [Gender, string][] => (isAdultLevel(level) ? [["girls", "Women"], ["boys", "Men"], ["coed", "Coed"]] : GENDERS);
+export const genderQuestion = (level?: string) => (isAdultLevel(level) ? "Women or men" : "Girls or boys");
 /** A drill meant for girls' or boys' teams only (no value: for everyone). */
 export interface Drill { id: string; teamId: string; name: string; category: string; minutes: number; description: string; focus: string[]; for?: "girls" | "boys" }
 export interface PlanBlock { id: string; title: string; category: string; minutes: number; notes: string; drillId: string | null; done?: boolean }

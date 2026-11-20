@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Gender, GENDERS } from "../../data/model";
+import { Gender, genderQuestion, gendersFor } from "../../data/model";
 import { LEGAL } from "../../app/legal";
 import { createTeam, toast } from "../../data/store";
 import { addStarterDrills, createSampleTeam } from "../../data/seed";
@@ -9,14 +9,14 @@ import { AuthShell } from "../../cloud/AuthPage";
 import { cloudAvailable, currentUser } from "../../cloud/client";
 import { joinWithCode, joinedMsg, linkTeam, pendingTeams } from "../../cloud/sync";
 
-const LEVELS = ["Varsity", "JV", "Frosh/Soph", "Middle school", "14U Club", "15U Club", "16U Club", "17U Club", "18U Club", "College"];
+const LEVELS = ["Varsity", "JV", "Frosh/Soph", "Middle school", "14U Club", "15U Club", "16U Club", "17U Club", "18U Club", "College", "Professional", "Adult / rec"];
 
 export function NewTeamForm({ onDone }: { onDone?: () => void }) {
   const [name, setName] = useState(""), [level, setLevel] = useState("Varsity"), [gender, setGender] = useState<Gender>("girls");
   return <form className="auth-form" onSubmit={(e) => { e.preventDefault(); if (!name.trim()) return; const t = createTeam({ name: name.trim(), level, gender }); addStarterDrills(t.id); toast("Team created"); if (cloudAvailable() && currentUser()) linkTeam(t.id).catch(() => {}); onDone?.(); go("team"); }}>
     <div className="auth-field"><label htmlFor="nt-name">Team name</label><input id="nt-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Clovis North Broncos" autoFocus /></div>
     <div className="auth-field"><label htmlFor="nt-level">Level</label><input id="nt-level" list="levels" value={level} onChange={(e) => setLevel(e.target.value)} /><datalist id="levels">{LEVELS.map((l) => <option key={l} value={l} />)}</datalist></div>
-    <div className="auth-field"><label id="nt-g">Girls or boys</label><div className="seg nt-gender" role="group" aria-labelledby="nt-g">{GENDERS.map(([k, l]) => <button type="button" key={k} aria-pressed={gender === k} onClick={() => setGender(k)}>{l}</button>)}</div></div>
+    <div className="auth-field"><label id="nt-g">{genderQuestion(level)}</label><div className="seg nt-gender" role="group" aria-labelledby="nt-g">{gendersFor(level).map(([k, l]) => <button type="button" key={k} aria-pressed={gender === k} onClick={() => setGender(k)}>{l}</button>)}</div></div>
     <button className="auth-btn" type="submit" disabled={!name.trim()}>Create team</button>
   </form>;
 }

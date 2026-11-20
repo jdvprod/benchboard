@@ -2189,8 +2189,66 @@ const scenarios = {
     await go(F, "home"); await look(F, "parent", "app-home");
     await go(F, "team"); await look(F, "parent", "app-team");
     await F.goto(U + "beach/"); await look(F, "parent", "beach");
+    // ---------- 4. Floorcall Lessons: the coach trains privately, the parent and player join ----------
+    await C.goto(U + "lessons/"); await look(C, "coach", "lessons-empty");
+    { const add = C.getByRole("link", { name: "Add athletes" }); if (await add.count()) await add.click(); await C.waitForTimeout(300);
+      await C.getByLabel("Name", { exact: true }).fill("Maya Chen"); await C.getByRole("button", { name: "Add athlete" }).click(); await C.waitForTimeout(500); }
+    await look(C, "coach", "lessons-athletes");
+    let lcode = "";
+    { await C.locator(".ls-athletes a", { hasText: "Maya Chen" }).click(); await C.waitForTimeout(300); const mk = C.getByRole("button", { name: "Make an invite code" }); if (await mk.count()) { await mk.click(); await C.waitForTimeout(500); } lcode = (await C.locator(".ls-code-big").innerText().catch(() => "")).trim(); }
+    await look(C, "coach", "lessons-athlete");
+    if (!lcode) found.push("coach · lessons: no invite code for an athlete");
+    await C.goto(U + "lessons/#/new"); await C.waitForTimeout(300);
+    await C.getByRole("button", { name: "Passing" }).click(); await C.locator(".ls-pick-list label", { hasText: "Maya Chen" }).locator("input").check().catch(() => {});
+    await C.locator(".ls-switches label", { hasText: "Athletes can book" }).locator("input").check().catch(() => {}); await look(C, "coach", "lessons-new");
+    await C.getByRole("button", { name: "Schedule", exact: true }).click(); await C.waitForTimeout(600); await look(C, "coach", "lessons-session");
+    { const cr = C.getByRole("link", { name: "Count reps" }); if (await cr.count()) { await cr.click(); await C.waitForTimeout(300); await C.getByRole("button", { name: "Passing: 3", exact: true }).click(); await look(C, "coach", "lessons-count"); await C.getByRole("button", { name: "Done" }).click(); await C.waitForTimeout(600); } }
+    await C.goto(U + "lessons/"); await look(C, "coach", "lessons-schedule");
+    await P.goto(U + "lessons/"); await look(P, "player", "lessons-no-code");
+    if (lcode) { await P.getByLabel("Code from your trainer").fill(lcode); await P.getByRole("button", { name: "Join", exact: true }).click(); await P.waitForTimeout(800); await look(P, "player", "lessons-joined"); }
+    if (lcode) { await F.goto(U + "lessons/#/join/" + lcode); await F.waitForTimeout(500); await F.getByRole("button", { name: "Join", exact: true }).click(); await F.waitForTimeout(800); await look(F, "parent", "lessons-joined");
+      if (!(await F.locator(".ls-page").innerText()).includes("Maya's lessons")) found.push("parent · lessons: the joined view doesn't name the athlete"); }
+    // ---------- 5. a club director with four teams ----------
+    const D = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await signUpApp(D, "walk-director@e2e.test", "Pat Director"); await look(D, "director", "after-signup");
+    await D.getByLabel("Team name").fill("Valley Elite 16 Navy"); await D.getByLabel("Level").fill("16U Club"); await D.getByRole("button", { name: "Create team" }).click(); await D.waitForTimeout(800);
+    for (const [nm, lv] of [["Valley Elite 15 Navy", "15U Club"], ["Valley Elite 17 Navy", "17U Club"], ["Valley Elite 18 Navy", "18U Club"]]) {
+      await go(D, "team/new"); await D.waitForTimeout(300);
+      if (!(await D.locator("#nt-name").count())) { await go(D, "home"); await D.locator(".tm-btn, .team-menu button").first().click().catch(() => {}); await D.getByRole("menuitem", { name: /New team|Add a team/ }).click().catch(() => {}); await D.waitForTimeout(300); }
+      if (await D.locator("#nt-name").count()) { await D.locator("#nt-name").fill(nm); await D.locator("#nt-level").fill(lv); await D.getByRole("button", { name: "Create team" }).click(); await D.waitForTimeout(700); }
+      else { found.push("director: couldn't find how to add a second team"); break; }
+    }
+    await go(D, "club"); await look(D, "director", "club");
+    await go(D, "tryouts"); await look(D, "director", "tryouts");
+    await go(D, "home"); await look(D, "director", "home");
+    await D.goto(U + "pricing.html"); await look(D, "director", "pricing");
+    await D.goto(U + "lessons/"); await look(D, "director", "lessons");
+    // ---------- 6. a college coach ----------
+    const K = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await signUpApp(K, "coach.k@state.edu", "Kim Alvarez"); await K.getByLabel("Team name").fill("State University"); await K.getByLabel("Level").fill("College");
+    await look(K, "college", "new-team");
+    if ((await K.locator("#nt-g").innerText()) !== "Women or men") found.push("college: new team still asks girls or boys");
+    await K.getByRole("button", { name: "Create team" }).click(); await K.waitForTimeout(800);
+    await go(K, "team"); await look(K, "college", "team");
+    await go(K, "track"); { const opp = K.getByPlaceholder("e.g. Buchanan"); if (await opp.count()) { await opp.fill("Tech"); await K.getByRole("button", { name: /Start · we serve first/ }).click(); await K.waitForTimeout(400); } } await look(K, "college", "track");
+    await go(K, "matchup"); await look(K, "college", "scouting");
+    await go(K, "film"); await look(K, "college", "film");
+    await K.goto(U + "recruit/"); await look(K, "college", "recruit");
+    await K.goto(U + "lessons/"); await look(K, "college", "lessons");
+    // ---------- 7. a professional men's team coach ----------
+    const R = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await signUpApp(R, "walk-pro@e2e.test", "Luca Bianchi"); await R.getByLabel("Team name").fill("Bay Spikers"); await R.getByLabel("Level").fill("Professional");
+    { const men = R.getByRole("button", { name: "Men", exact: true }); if (await men.count()) await men.click(); else found.push("pro: no Men option"); }
+    await R.getByRole("button", { name: "Create team" }).click(); await R.waitForTimeout(800);
+    await go(R, "team"); await R.getByRole("button", { name: "Paste list" }).click(); await R.locator("textarea").first().fill(["2 Marco Rossi S", "5 Theo Laurent OH", "8 Ken Ito OPP", "11 Dante Silva MB", "13 Jonas Berg MB", "17 Ari Cohen OH", "1 Leo Park L"].join("\n")); await R.getByRole("button", { name: "Add players" }).click(); await R.waitForTimeout(400);
+    await look(R, "pro", "team");
+    if ((await R.getByRole("group", { name: "Women or men" }).count()) !== 1) found.push("pro: team settings still say girls or boys");
+    await go(R, "practice"); await look(R, "pro", "practice");
+    await go(R, "track"); { const opp = R.getByPlaceholder("e.g. Buchanan"); if (await opp.count()) { await opp.fill("Harbor City"); await R.getByRole("button", { name: /Start · we serve first/ }).click(); await R.waitForTimeout(400); } } await look(R, "pro", "track");
+    await go(R, "stats"); await look(R, "pro", "stats");
+    await R.goto(U + "academy/"); await look(R, "pro", "academy");
     console.log("\n  FOUND:\n" + (found.length ? found.map((x) => "   - " + x).join("\n") : "   nothing automatic"));
-    for (const pg of [C, P, F]) await pg.context().close();
+    for (const pg of [C, P, F, D, K, R]) await pg.context().close();
   },
   /** A walk through everything with screenshots (node e2e/run.cjs _explore). Not part of the regular run. */
   async _explore(browser) {

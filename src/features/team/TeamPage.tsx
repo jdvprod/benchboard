@@ -1,5 +1,5 @@
 import { recordOf } from "../../sports/volleyball/engine";
-import { Gender, GENDERS } from "../../data/model";
+import { Gender, genderQuestion, gendersFor } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { FEES } from "../../app/flags";
@@ -51,7 +51,7 @@ function TeamInfo() {
         <label className="field"><span className="label">Team name</span><input defaultValue={t.name} onBlur={(e) => e.target.value.trim() && setTeamPatch({ name: e.target.value.trim() })} /></label>
         <label className="field"><span className="label">Level</span><input defaultValue={t.level} onBlur={(e) => setTeamPatch({ level: e.target.value.trim() })} /></label>
       </div>
-      <div><div className="label">Girls or boys</div><Seg value={(t.gender || "") as Gender} onChange={(v) => setTeamPatch({ gender: v as Gender })} options={GENDERS} label="Girls or boys" /></div>
+      <div><div className="label">{genderQuestion(t.level)}</div><Seg value={(t.gender || "") as Gender} onChange={(v) => setTeamPatch({ gender: v as Gender })} options={gendersFor(t.level)} label={genderQuestion(t.level)} /></div>
       <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, play-by-play, your team page and share graphics.</p>
         <LogoPicker kind="team" id={t.id} name={t.name} value={t.logo} onPick={teamLogoPick} /></div>
       <div><div className="label">Season</div>
