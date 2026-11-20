@@ -1740,6 +1740,65 @@ const scenarios = {
     ok("no errors in the drill library", !C.errors.length && !P.errors.length, [...C.errors, ...P.errors].slice(0, 3).join("; "));
     for (const x of [C, P]) await x.context().close();
   },
+  async notes(browser) {
+    // Notes: a coach writes to the team, to a position group and to one player; players read only what's theirs
+    const C = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await go(C, "account/signup"); { const ca = C.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await C.getByLabel("Email").fill("note-coach@e2e.test"); await C.locator("#auth-pw").fill("secret-pass-1"); await C.locator("#auth-name").fill("Nora Coach"); await C.locator(".auth-agree input").first().check();
+    await C.getByRole("button", { name: "Create account" }).click(); await C.waitForTimeout(800);
+    await C.getByLabel("Team name").fill("Note Squad"); await C.getByRole("button", { name: "Create team" }).click(); await C.waitForTimeout(800);
+    await go(C, "team"); await C.getByRole("button", { name: "Paste list" }).click(); await C.locator("textarea").first().fill("7 Maya Chen OH\n9 Riley Park OH\n12 Sofia Nguyen MB\n3 Lily Torres L"); await C.getByRole("button", { name: "Add players" }).click(); await C.waitForTimeout(300);
+    { const sy = C.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.click(); await C.waitForTimeout(1500); } }
+    await C.getByRole("button", { name: "Invite view-only" }).click(); await C.waitForTimeout(400);
+    const vcode = (await C.locator(".hint b").first().innerText()).trim();
+    // two families join
+    const join = async (email, name) => { const x = await newPage(browser, { phone: true }); await x.goto(U + "academy/"); await x.waitForTimeout(500); await siteSignUp(x, email, "athlete", name);
+      await x.getByRole("button", { name: "Have a code from your coach or trainer?" }).click(); await x.getByLabel("Code from your coach or trainer").fill(vcode); await x.getByRole("button", { name: "Join", exact: true }).click(); await x.waitForTimeout(800); return x; };
+    const M = await join("maya-note@e2e.test", "Maya Chen"), S = await join("sofia-note@e2e.test", "Sofia Nguyen");
+    await go(C, "notes"); await C.waitForTimeout(800);
+    ok("notes: a Notes tab for coaches", (await C.getByRole("heading", { name: "Notes", level: 1 }).count()) === 1 && (await C.locator(".nt-compose").count()) === 1);
+    // who's who
+    await C.locator(".nt-who").getByRole("button", { name: /Link 2/ }).click();
+    await C.getByLabel("Player for maya-note@e2e.test").selectOption({ label: "#7 Maya Chen" }); await C.waitForTimeout(400);
+    await C.getByLabel("Player for sofia-note@e2e.test").selectOption({ label: "#12 Sofia Nguyen" }); await C.waitForTimeout(400);
+    ok("notes: the coach links each account to a player", /All 2 player and parent accounts are linked/.test(await C.locator(".nt-who").innerText()));
+    // 1. a practice note to the team
+    const comp = C.locator(".nt-compose");
+    await comp.getByRole("radio", { name: "Practice" }).click().catch(async () => comp.getByRole("button", { name: "Practice" }).click());
+    await comp.getByLabel(/^Label/).fill("Tuesday practice"); await comp.getByLabel(/^Title/).fill("Serve receive"); await comp.getByLabel("Note", { exact: true }).fill("Great energy. Passers: hips low, platform early.");
+    await comp.getByRole("button", { name: "Send to the team" }).click(); await C.waitForTimeout(600);
+    // 2. to the outsides (a position group)
+    await comp.getByRole("radio", { name: "Film" }).click().catch(async () => comp.getByRole("button", { name: "Film" }).click());
+    await comp.getByRole("radio", { name: "Players" }).click().catch(async () => comp.getByRole("button", { name: "Players" }).click());
+    await comp.getByRole("group", { name: "Position groups" }).getByRole("button", { name: /Outsides/ }).click();
+    ok("notes: a position group picks its players in one tap", (await comp.locator(".nt-players input:checked").count()) === 2);
+    await comp.getByLabel("Note", { exact: true }).fill("Scouting Central: their middle doesn't close the block. Swing the seam.");
+    await comp.getByRole("button", { name: "Send to Outsides" }).click(); await C.waitForTimeout(600);
+    // 3. to one player, from her page
+    await C.goto(U + "#/notes/" + encodeURIComponent(await C.evaluate(() => new Promise((r) => { const q = indexedDB.open("bench-stats"); q.onsuccess = () => { const tx = q.result.transaction("players"); const all = tx.objectStore("players").getAll(); all.onsuccess = () => r(all.result.find((p) => p.first === "Sofia").id); }; })))); await C.waitForTimeout(600);
+    ok("notes: opening notes for a player starts a note to her", (await C.locator(".nt-players input:checked").count()) === 1);
+    await C.locator(".nt-compose").getByLabel("Note", { exact: true }).fill("Close the block faster on the right side.");
+    await C.locator(".nt-compose").getByRole("button", { name: "Send to Sofia" }).click(); await C.waitForTimeout(600);
+    ok("notes: the coach sees all three, with who each went to", (await C.locator(".nt").count()) === 3 && /To Outsides/.test(await C.locator(".nt-list").innerText()) && /To the team/.test(await C.locator(".nt-list").innerText()));
+    { const ax = await a11y(C); ok("notes: controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await C.screenshot({ path: path.join(process.env.SHOTS, "notes-coach.png"), fullPage: true });
+    // the players
+    await M.goto(U + "#/notes"); await M.waitForTimeout(1500);
+    const mt = await M.locator(".nt-list").innerText().catch(() => "");
+    ok("notes: Maya (an outside) reads the team note and the outsides' note", /Serve receive/.test(mt) && /Swing the seam/.test(mt), mt.slice(0, 200));
+    ok("notes: but not a note for another player", !/Close the block/.test(mt));
+    ok("notes: no way to reply or write", (await M.locator(".nt-compose").count()) === 0 && (await M.locator("textarea").count()) === 0);
+    ok("notes: new notes are marked", (await M.locator(".nt.new").count()) === 2);
+    if (process.env.SHOTS) await M.screenshot({ path: path.join(process.env.SHOTS, "notes-player.png"), fullPage: true });
+    await S.goto(U + "#/notes"); await S.waitForTimeout(1500);
+    const st = await S.locator(".nt-list").innerText().catch(() => "");
+    ok("notes: Sofia reads her own note and the team note, not the outsides'", /Close the block/.test(st) && /Serve receive/.test(st) && !/seam/.test(st), st.slice(0, 200));
+    ok("notes: a phone shows it without sideways scrolling", (await overflow(S)) <= 0);
+    await C.reload(); await C.waitForTimeout(900);
+    ok("notes: the coach sees who has read the team note", /Read by 2/.test(await C.locator(".nt", { hasText: "Serve receive" }).innerText()));
+    ok("no errors in notes", !C.errors.length && !M.errors.length && !S.errors.length, [...C.errors, ...M.errors, ...S.errors].slice(0, 3).join("; "));
+    for (const x of [C, M, S]) await x.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });

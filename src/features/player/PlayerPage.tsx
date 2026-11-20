@@ -136,7 +136,7 @@ export function PlayerPage({ id }: { id: string }) {
         <p className="small muted">{src === "practice" ? plural(rows.length, "practice") : src === "all" ? plural(rows.length, "match or practice", "matches and practices") : plural(rows.length, "match", "matches")} · {plural(pm.sets, "set")} this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
       <div className="stack" style={{ alignItems: "flex-end" }}><Seg value={src} onChange={setSrc} options={[["games", "Matches"], ["practice", "Practice"], ["all", "All"]]} label="Which stats" />
         <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button>
-        <GraphicButton p={p} /><PhotoPicker p={p} />{!isViewer(t.id) && <LessonsButton p={p} club={t.name} />}</div>
+        <GraphicButton p={p} /><PhotoPicker p={p} />{!isViewer(t.id) && <LessonsButton p={p} club={t.name} />}{!isViewer(t.id) && <a className="btn sm" href={"#/notes/" + encodeURIComponent(p.id)}>Write a note</a>}</div>
     </div></section>
     {!s ? <Card><p className="empty">No stats yet this season.</p></Card> : <>
       <TrendTiles stats={keyStats(id, p.pos, rows, s, pm)} unit={src === "practice" ? "practice" : "match"} />

@@ -1,5 +1,6 @@
 // Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints FloorCall uses, mirroring schema.sql rules.
 const http = require("http");
+const notes = [], noteLinks = [];
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const fees = new Map(), teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
@@ -80,6 +81,26 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/rpc/team_pick_drill") { if (!onTeam(b.t, ["owner", "coach"])) return send(res, 400, { message: "Only the team's coaches pick drills." }); const i = drillPicks.findIndex((x) => x.team_id === b.t && x.drill_id === b.drill); if (i >= 0) drillPicks.splice(i, 1); if (b.pick) drillPicks.push({ team_id: b.t, drill_id: b.drill, note: b.note || null, at: now() }); return send(res, 200, null); }
     if (p === "/rest/v1/rpc/team_drill_list") return send(res, 200, onTeam(b.t) ? drillPicks.filter((x) => x.team_id === b.t).reverse().map((x) => ({ drill: x.drill_id, note: x.note, at: x.at })) : []);
     if (p === "/rest/v1/rpc/my_drill_picks") return send(res, 200, drillPicks.filter((x) => members.some((m) => m.team_id === x.team_id && m.user_id === me && (m.status || "active") === "active")).reverse().map((x) => ({ team: teams.get(x.team_id)?.name || "", drill: x.drill_id, note: x.note, at: x.at })));
+    // ---- notes from coaches (version 34) ----
+    if (p.startsWith("/rest/v1/rpc/team_note") || p === "/rest/v1/rpc/my_notes" || p === "/rest/v1/rpc/note_read" || p === "/rest/v1/rpc/team_link_member" || p === "/rest/v1/rpc/team_member_links") {
+      const staff = (t) => canEdit(t, me), linked = (t) => noteLinks.filter((x) => x.team_id === t && x.user_id === me).map((x) => x.player_id);
+      const visible = (n) => staff(n.team_id) || (isMember(n.team_id, me) && (n.audience === "team" || n.players.some((x) => linked(n.team_id).includes(x))));
+      const view = (n) => ({ id: n.id, kind: n.kind, about: n.about, match_id: n.match_id, title: n.title, body: n.body, audience: n.audience, players: staff(n.team_id) ? n.players : n.players.filter((x) => linked(n.team_id).includes(x)), group: n.group, by: n.by, at: n.at, edited: n.edited, read: n.reads.has(me), reads: staff(n.team_id) ? n.reads.size : null, team: teams.get(n.team_id)?.name, team_id: n.team_id });
+      if (p === "/rest/v1/rpc/team_note_save") {
+        if (!staff(b.t)) return send(res, 400, { message: "Only the team's coaches write notes." });
+        if (!String(b.bo || "").trim()) return send(res, 400, { message: "Write the note first." });
+        if (b.aud === "players" && !(b.ps || []).length) return send(res, 400, { message: "Pick at least one player." });
+        const u = [...users.values()].find((x) => x.id === me), fields = { kind: b.k || "general", about: (b.ab || "").trim() || null, match_id: b.mid || null, title: (b.ti || "").trim() || null, body: b.bo.trim(), audience: b.aud || "team", players: b.aud === "players" ? b.ps : [], group: b.aud === "players" ? b.grp || null : null };
+        if (b.nid) { const n = notes.find((x) => x.id === b.nid && x.team_id === b.t); if (!n) return send(res, 400, { message: "That note is gone." }); Object.assign(n, fields, { edited: now() }); n.reads = new Set(); return send(res, 200, n.id); }
+        const n = { id: "nt-" + Math.random().toString(36).slice(2, 10), team_id: b.t, by: u?.meta?.name || (u?.email || "Coach").split("@")[0], at: now(), edited: null, reads: new Set(), ...fields }; notes.push(n); return send(res, 200, n.id);
+      }
+      if (p === "/rest/v1/rpc/team_note_delete") { if (!staff(b.t)) return send(res, 400, { message: "Only the team's coaches delete notes." }); const i = notes.findIndex((x) => x.id === b.nid); if (i >= 0) notes.splice(i, 1); return send(res, 200, null); }
+      if (p === "/rest/v1/rpc/team_notes_list") return send(res, 200, notes.filter((n) => n.team_id === b.t && visible(n)).sort((x, y) => y.at.localeCompare(x.at)).map(view));
+      if (p === "/rest/v1/rpc/my_notes") return send(res, 200, notes.filter(visible).sort((x, y) => y.at.localeCompare(x.at)).map(view));
+      if (p === "/rest/v1/rpc/note_read") { const n = notes.find((x) => x.id === b.nid); if (n && visible(n)) n.reads.add(me); return send(res, 200, null); }
+      if (p === "/rest/v1/rpc/team_link_member") { if (!staff(b.t)) return send(res, 400, { message: "Only the team's coaches link players." }); for (let i = noteLinks.length - 1; i >= 0; i--) if (noteLinks[i].team_id === b.t && noteLinks[i].user_id === b.u) noteLinks.splice(i, 1); (b.ps || []).forEach((x) => noteLinks.push({ team_id: b.t, user_id: b.u, player_id: x })); return send(res, 200, null); }
+      if (p === "/rest/v1/rpc/team_member_links") { if (!staff(b.t)) return send(res, 200, []); return send(res, 200, members.filter((m) => m.team_id === b.t && m.role === "viewer" && m.status !== "pending").map((m) => ({ user_id: m.user_id, email: m.email, role: m.role, players: noteLinks.filter((x) => x.team_id === b.t && x.user_id === m.user_id).map((x) => x.player_id) }))); }
+    }
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     // FloorCall Lessons (version 31): mirrors the lesson_* functions in schema.sql
@@ -135,7 +156,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 33);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 34);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

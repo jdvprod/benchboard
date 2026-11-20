@@ -5,6 +5,7 @@ const P: Record<string, string> = {
   tryouts: '<rect x="5" y="3.5" width="14" height="17.5" rx="2"/><path d="M9 3.5V2.5h6v1M8.5 10l1.5 1.5 3-3M8.5 16h7"/>',
   track: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 12h18M12 4v16"/>',
   lineup: '<circle cx="7" cy="8" r="2"/><circle cx="17" cy="8" r="2"/><circle cx="12" cy="16" r="2"/><path d="M3 3h18v18H3z"/>',
+  notes: '<path d="M6 3.5h9l4 4V20.5H6z"/><path d="M15 3.5v4h4M9 11h7M9 14.5h7M9 18h4"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M8 3v4M16 3v4M3.5 10h17"/><path d="M7.5 13.5h2M11 13.5h2M14.5 13.5h2M7.5 17h2M11 17h2"/>',
   practice: '<rect x="4" y="4" width="16" height="17" rx="2"/><path d="M8 2.5v3M16 2.5v3M4 9h16M8 13h5M8 17h8"/>',
   formations: '<rect x="3" y="3" width="18" height="18" rx="1.5"/><path d="M3 9h18"/><circle cx="7.5" cy="13" r="1.6"/><circle cx="16.5" cy="13" r="1.6"/><circle cx="12" cy="17.5" r="1.6"/><path d="M9 13.5l2 3" stroke-dasharray="1.5 1.5"/>',

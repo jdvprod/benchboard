@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 33 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 34 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1532,6 +1532,127 @@ language sql stable security definer set search_path = public as $$
   select coalesce((select jsonb_agg(jsonb_build_object('team', tc.name, 'drill', p.drill_id, 'note', p.note, 'at', p.at) order by p.at desc)
     from team_drill_picks p join members m on m.team_id = p.team_id and m.user_id = auth.uid() and m.status = 'active' join teams_cloud tc on tc.id = p.team_id), '[]'::jsonb)
 $$;
+
+-- ---------- notes from coaches (version 34) ----------
+-- One way only: a team's coaches write notes (about a game, a practice, film or anything) to the whole team, to
+-- chosen players (a position group), or to one player. Players and parents read them; nobody replies here, and
+-- nothing goes between players. A note for a player reaches the accounts the coaches linked to that player (the
+-- player and her parents), so a coach decides who is who; viewers can't claim a player themselves.
+create table if not exists public.member_players (
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  player_id text not null,
+  primary key (team_id, user_id, player_id)
+);
+alter table public.member_players enable row level security;
+revoke all on public.member_players from anon, authenticated;
+create table if not exists public.team_notes (
+  id uuid primary key default gen_random_uuid(),
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  author uuid references auth.users(id) on delete set null, author_name text,
+  kind text not null default 'general' check (kind in ('game', 'practice', 'film', 'general')),
+  about text, match_id text, title text, body text not null,
+  audience text not null default 'team' check (audience in ('team', 'players')),
+  players text[] not null default '{}', group_name text,
+  created_at timestamptz not null default now(), edited_at timestamptz
+);
+create index if not exists team_notes_team on public.team_notes (team_id, created_at desc);
+alter table public.team_notes enable row level security;
+revoke all on public.team_notes from anon, authenticated;
+create table if not exists public.team_note_reads (
+  note_id uuid not null references public.team_notes(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  read_at timestamptz not null default now(), primary key (note_id, user_id)
+);
+alter table public.team_note_reads enable row level security;
+revoke all on public.team_note_reads from anon, authenticated;
+
+create or replace function public.team_staff(t text) returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (select 1 from members where team_id = t and user_id = auth.uid() and role in ('owner', 'coach') and status = 'active')
+$$;
+-- Can the signed-in account read this note? Staff read all of their team's; others read team-wide notes and notes
+-- for a player the coaches linked them to.
+create or replace function public.note_visible(n public.team_notes) returns boolean
+language sql stable security definer set search_path = public as $$
+  select public.team_staff(n.team_id) or (exists (select 1 from members where team_id = n.team_id and user_id = auth.uid() and status = 'active')
+    and (n.audience = 'team' or exists (select 1 from member_players mp where mp.team_id = n.team_id and mp.user_id = auth.uid() and mp.player_id = any (n.players))))
+$$;
+
+-- Coaches: who each player/parent account is (several players for a parent with two kids on the team).
+create or replace function public.team_link_member(t text, u uuid, ps text[]) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.team_staff(t) then raise exception 'Only the team''s coaches link players.'; end if;
+  if not exists (select 1 from members where team_id = t and user_id = u) then raise exception 'That account isn''t on this team.'; end if;
+  if coalesce(array_length(ps, 1), 0) > 6 then raise exception 'Link at most 6 players to one account.'; end if;
+  delete from member_players where team_id = t and user_id = u;
+  insert into member_players (team_id, user_id, player_id) select t, u, x from unnest(coalesce(ps, '{}')) x where length(x) between 1 and 80 on conflict do nothing;
+end $$;
+create or replace function public.team_member_links(t text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when not public.team_staff(t) then '[]'::jsonb else
+    coalesce((select jsonb_agg(jsonb_build_object('user_id', m.user_id, 'email', m.email, 'role', m.role,
+      'players', coalesce((select jsonb_agg(mp.player_id) from member_players mp where mp.team_id = t and mp.user_id = m.user_id), '[]'::jsonb)) order by m.email)
+      from members m where m.team_id = t and m.role = 'viewer' and m.status = 'active'), '[]'::jsonb) end
+$$;
+
+create or replace function public.team_note_save(t text, nid uuid, k text, ab text, mid text, ti text, bo text, aud text, ps text[], grp text default null) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare r uuid; nm text;
+begin
+  if not public.team_staff(t) then raise exception 'Only the team''s coaches write notes.'; end if;
+  if length(coalesce(trim(bo), '')) = 0 then raise exception 'Write the note first.'; end if;
+  if length(bo) > 4000 or length(coalesce(ti, '')) > 120 or length(coalesce(ab, '')) > 120 then raise exception 'That note is too long.'; end if;
+  if aud = 'players' and coalesce(array_length(ps, 1), 0) = 0 then raise exception 'Pick at least one player.'; end if;
+  if coalesce(array_length(ps, 1), 0) > 40 then raise exception 'Pick at most 40 players.'; end if;
+  if nid is null and (select count(*) from team_notes where team_id = t and created_at > now() - interval '1 day') >= 100 then raise exception 'That''s a lot of notes today. Try again tomorrow.'; end if;
+  select coalesce(nullif(trim(u.raw_user_meta_data->>'name'), ''), split_part(u.email, '@', 1)) into nm from auth.users u where u.id = auth.uid();
+  if nid is null then
+    insert into team_notes (team_id, author, author_name, kind, about, match_id, title, body, audience, players, group_name)
+    values (t, auth.uid(), nm, coalesce(k, 'general'), nullif(trim(ab), ''), nullif(mid, ''), nullif(trim(ti), ''), trim(bo), coalesce(aud, 'team'),
+      case when aud = 'players' then ps else '{}' end, case when aud = 'players' then nullif(trim(grp), '') end) returning id into r;
+  else
+    update team_notes set kind = coalesce(k, kind), about = nullif(trim(ab), ''), match_id = nullif(mid, ''), title = nullif(trim(ti), ''), body = trim(bo),
+      audience = coalesce(aud, audience), players = case when aud = 'players' then ps else '{}' end, group_name = case when aud = 'players' then nullif(trim(grp), '') end, edited_at = now()
+      where id = nid and team_id = t returning id into r;
+    if r is null then raise exception 'That note is gone.'; end if;
+    delete from team_note_reads where note_id = r; -- changed: show it as new again
+  end if;
+  return r;
+end $$;
+create or replace function public.team_note_delete(t text, nid uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.team_staff(t) then raise exception 'Only the team''s coaches delete notes.'; end if;
+  delete from team_notes where id = nid and team_id = t;
+end $$;
+-- A team's notes the signed-in account may read, newest first; staff also see how many have read each one.
+create or replace function public.team_notes_list(t text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_agg(jsonb_build_object('id', n.id, 'kind', n.kind, 'about', n.about, 'match_id', n.match_id, 'title', n.title, 'body', n.body,
+      'audience', n.audience, 'players', case when public.team_staff(t) then to_jsonb(n.players) else (select coalesce(jsonb_agg(x), '[]'::jsonb) from unnest(n.players) x
+        where exists (select 1 from member_players mp where mp.team_id = t and mp.user_id = auth.uid() and mp.player_id = x)) end,
+      'group', n.group_name, 'by', n.author_name, 'at', n.created_at, 'edited', n.edited_at,
+      'read', exists (select 1 from team_note_reads r where r.note_id = n.id and r.user_id = auth.uid()),
+      'reads', case when public.team_staff(t) then (select count(*) from team_note_reads r where r.note_id = n.id) end) order by n.created_at desc)
+    from team_notes n where n.team_id = t and public.note_visible(n)), '[]'::jsonb)
+$$;
+-- Every note for the signed-in player or parent, across their teams.
+create or replace function public.my_notes() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_agg(jsonb_build_object('id', n.id, 'team', tc.name, 'team_id', n.team_id, 'kind', n.kind, 'about', n.about, 'title', n.title, 'body', n.body,
+      'audience', n.audience, 'group', n.group_name, 'by', n.author_name, 'at', n.created_at,
+      'read', exists (select 1 from team_note_reads r where r.note_id = n.id and r.user_id = auth.uid())) order by n.created_at desc)
+    from team_notes n join members m on m.team_id = n.team_id and m.user_id = auth.uid() and m.status = 'active' join teams_cloud tc on tc.id = n.team_id
+    where public.note_visible(n) and n.created_at > now() - interval '400 days'), '[]'::jsonb)
+$$;
+create or replace function public.note_read(nid uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from team_notes n where n.id = nid and public.note_visible(n)) then return; end if;
+  insert into team_note_reads (note_id, user_id) values (nid, auth.uid()) on conflict do nothing;
+end $$;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.

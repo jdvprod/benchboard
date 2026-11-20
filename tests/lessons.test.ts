@@ -93,3 +93,12 @@ test("drill library: big, leveled, no duplicate ids, every drill complete", () =
   for (const a of AREAS) for (const l of ["Beginner", "Intermediate", "Advanced"]) assert.ok(a.drills.some((x) => x.level === l), a.id + " " + l);
   for (const x of LIBRARY) { assert.ok(x.how.length >= 2 && x.points.length >= 2 && x.minutes > 0 && x.needs, x.id); }
 });
+
+import { groupOf } from "../src/features/notes/NotesPage";
+test("notes: a picked set of players is named for its position group", () => {
+  const P = [{ id: "a", pos: "OH" }, { id: "b", pos: "OH" }, { id: "c", pos: "MB" }, { id: "d", pos: "L" }];
+  assert.equal(groupOf(P, ["a", "b"]), "Outsides");
+  assert.equal(groupOf(P, ["a", "b", "d"]), "Passers");
+  assert.equal(groupOf(P, ["c"]), null, "one player is just that player");
+  assert.equal(groupOf(P, ["a", "c"]), null);
+});

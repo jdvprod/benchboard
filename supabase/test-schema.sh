@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "33" "schema version is reported"
+check "select schema_version();" "34" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -323,6 +323,29 @@ asall $TM "select team_pick_drill('tb1', 'passing-1', true, 'Do 10 a day');" | g
 expect "$(asall $P "select team_pick_drill('tb1', 'serving-1', true);" | grep -c "Only the team")" "1" "players can't pick drills"
 expect "$(asall $P "select my_drill_picks()->0->>'drill';" | tail -1)" "passing-1" "a player sees the drills their coach picked"
 expect "$(asall $T "select jsonb_array_length(team_drill_list('tb1'));" | tail -1)" "0" "people off the team don't"
+# ---------- version 34: notes from coaches (one way) ----------
+q -c "insert into members (team_id, user_id, role, status) values ('tb1', '$T', 'viewer', 'active') on conflict do nothing;" >/dev/null
+N1=$(asall $TM "select team_note_save('tb1', null, 'practice', 'Tuesday practice', null, 'Serve receive', 'Great energy. Passers: hips low.', 'team', '{}');" | tail -1 | tr -d ' ')
+expect "$(asall $P "select my_notes()->0->>'title';" | tail -1)" "Serve receive" "a player reads her team's note"
+expect "$(asall $P "select team_note_save('tb1', null, 'general', null, null, null, 'hi', 'team', '{}');" | grep -c "Only the team")" "1" "players can't write notes"
+expect "$(asall $TM "select team_note_save('tb1', null, 'general', null, null, null, '   ', 'team', '{}');" | grep -c "Write the note")" "1" "an empty note is refused"
+asall $TM "select team_note_save('tb1', null, 'game', 'vs Central', 'm1', 'Hitters', 'Swing high line in rotation 3.', 'players', '{p7,p9}', 'Outsides');" | grep ERROR || true
+expect "$(asall $P "select count(*) from jsonb_array_elements(my_notes()) x where x->>'title' = 'Hitters';" | tail -1)" "0" "a note for chosen players isn't seen by an account the coach hasn't linked"
+expect "$(asall $P "select team_link_member('tb1', '$P', '{p7}');" | grep -c "Only the team")" "1" "players can't link themselves to a player"
+asall $TM "select team_link_member('tb1', '$P', '{p7}');" | grep ERROR || true
+expect "$(asall $P "select count(*) from jsonb_array_elements(my_notes()) x where x->>'title' = 'Hitters';" | tail -1)" "1" "once linked, the player (or parent) reads notes for her"
+expect "$(asall $P "select (select x->'players' from jsonb_array_elements(team_notes_list('tb1')) x where x->>'title' = 'Hitters')::text;" | tail -1)" '["p7"]' "she sees only her own name on a group note"
+expect "$(asall $T "select count(*) from jsonb_array_elements(my_notes()) x where x->>'title' = 'Hitters';" | tail -1)" "0" "another family on the team doesn't"
+expect "$(asall $T "select count(*) from jsonb_array_elements(my_notes()) x where x->>'title' = 'Serve receive';" | tail -1)" "1" "but does read team-wide notes"
+expect "$(asall $E "select jsonb_array_length(team_notes_list('tb1'));" | tail -1)" "0" "people off the team read nothing"
+asall $P "select note_read('$N1');" | grep ERROR || true
+expect "$(asall $TM "select (select x->>'reads' from jsonb_array_elements(team_notes_list('tb1')) x where x->>'id' = '$N1');" | tail -1)" "1" "coaches see how many have read a note"
+asall $TM "select team_note_save('tb1', '$N1', 'practice', 'Tuesday practice', null, 'Serve receive', 'Updated: hips low, eyes up.', 'team', '{}');" | grep ERROR || true
+expect "$(asall $P "select (select x->>'read' from jsonb_array_elements(my_notes()) x where x->>'id' = '$N1');" | tail -1)" "false" "an edited note shows as new again"
+expect "$(asall $P "select team_note_delete('tb1', '$N1');" | grep -c "Only the team")" "1" "players can't delete notes"
+asall $TM "select team_note_delete('tb1', '$N1');" | grep ERROR || true
+expect "$(asall $P "select count(*) from jsonb_array_elements(my_notes()) x where x->>'id' = '$N1';" | tail -1)" "0" "a deleted note is gone for everyone"
+expect "$(asall $TM "select jsonb_array_length(team_member_links('tb1'));" | tail -1)" "2" "coaches list the player and parent accounts to link"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

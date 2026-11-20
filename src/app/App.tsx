@@ -20,6 +20,7 @@ import { setUi, ui } from "./ui";
 import { access, BILLING } from "./flags";
 import { Paywall } from "./Paywall";
 import { AppAccess } from "../cloud/AccessNote";
+import { NotesPage } from "../features/notes/NotesPage";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
 import { needsTermsAgreement, currentUser } from "../cloud/client";
 
@@ -44,7 +45,7 @@ const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ d
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
-const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["calendar", "Calendar"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
+const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["calendar", "Calendar"], ["notes", "Notes"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
 
 
 export function App() {
@@ -94,6 +95,7 @@ export function App() {
   switch (page) {
     case "club": body = <ClubPage />; break;
     case "calendar": body = <CalendarPage />; break;
+    case "notes": body = <NotesPage to={route.id} />; break;
     case "tryouts": body = <TryoutsPage id={route.id} />; break;
     case "tryout-join": body = <JoinTryout code={route.id || ""} />; break;
     case "lineup": body = <LineupPage />; break;
