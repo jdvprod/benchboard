@@ -1,5 +1,5 @@
 import { recordOf } from "../../sports/volleyball/engine";
-import { Gender, genderQuestion, gendersFor } from "../../data/model";
+import { Gender, genderQuestion, gendersFor, isAdultLevel } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { FEES } from "../../app/flags";
@@ -79,7 +79,8 @@ function Roster() {
   const shown = ps.filter((p) => showInactive || p.active);
   return <Card title={`Roster · ${plural(ps.filter((p) => p.active).length, "player")}`} actions={<><label className="btn sm" style={{ cursor: "pointer" }}>Import CSV<input type="file" accept=".csv,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) f.text().then((txt) => toast(importRosterCsv(txt))); e.target.value = ""; }} /></label><button className="btn sm" disabled={!ps.length} onClick={() => download(`${t.name} roster.csv`, rosterCsv(), "text/csv")}>Export CSV</button><button className="btn sm" onClick={() => setPaste(paste == null ? "" : null)}>Paste list</button><button className={"btn sm" + (ps.length ? " primary" : "")} onClick={add}>Add player</button></>}>
     {!t.sample && ps.length > 0 && !t.rosterConsent && <div className="banner accent" style={{ marginBottom: 12 }}>
-      <p><b>Permission to record players.</b> Before tracking, make sure your school or club allows it and families have agreed, especially for players under 18. Our <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">parent and guardian form</a> covers stats, team pages and recruiting profiles.</p>
+      {isAdultLevel(t.level) ? <p><b>Permission to record players.</b> Before tracking, make sure your players have agreed to their stats being recorded and, if you share them, shown on your team page.</p>
+        : <p><b>Permission to record players.</b> Before tracking, make sure your school or club allows it and families have agreed, especially for players under 18. Our <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">parent and guardian form</a> covers stats, team pages and recruiting profiles.</p>}
       <button className="btn sm primary" onClick={() => { setTeamPatch({ rosterConsent: { at: Date.now(), by: currentUser()?.email || "this device", version: LEGAL_VERSION } }); toast("Thanks. You can find the parent form any time in Settings."); }}>I have permission</button>
     </div>}
     {paste != null && <div className="stack" style={{ marginBottom: 12 }}>

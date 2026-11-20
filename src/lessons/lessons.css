@@ -17,7 +17,7 @@ body{padding-left:0;background:var(--surface)}
 .ls-tabs small{font-size:12px;color:var(--muted);font-weight:500}
 .ls-badge{background:var(--us);color:var(--accent-ink)!important;border-radius:999px;padding:0 7px;font-weight:700!important;line-height:18px}
 
-.ls-page{max-width:1000px;margin:0 auto;padding:28px 24px 56px;display:grid;gap:22px;align-content:start}
+.ls-page{max-width:1000px;margin:0 auto;padding:28px 24px 56px;display:grid;grid-template-columns:minmax(0,1fr);gap:22px;align-content:start}
 .ls-head{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;justify-content:space-between}
 .ls-head h1{font:700 clamp(30px,4.4vw,42px)/1.04 var(--display)}
 .ls-head p{margin-top:4px}
@@ -65,7 +65,7 @@ body{padding-left:0;background:var(--surface)}
 .ls-kinds input{position:absolute;opacity:0;pointer-events:none}
 .ls-kinds label:has(input:focus-visible){outline:2px solid var(--us);outline-offset:2px}
 .ls-kinds b{font:700 18px var(--display)}.ls-kinds small{color:var(--muted);font-size:13px;line-height:1.3}
-.ls-when-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.ls-when-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}.ls-when-row input,.ls-when-row select{min-width:0;width:100%}
 .ls-chips{display:flex!important;flex-wrap:wrap;gap:8px}
 .ls-chips legend{width:100%;margin-bottom:8px}
 .ls-chips button{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:7px 14px;font-weight:600;min-height:38px}

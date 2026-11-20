@@ -1,6 +1,7 @@
 /** Account, team sync, invites and joining, shown on the Team tab. */
 import { siteUrl } from "./links";
 import { useEffect, useState } from "react";
+import { isAdultLevel } from "../data/model";
 import { get, seasonsOf, team, toast } from "../data/store";
 import { Card, ConfirmButton, copyText, download } from "../ui/kit";
 import { cloudAvailable, CloudError, currentUser, signOut } from "./client";
@@ -75,10 +76,12 @@ export function CloudCard() {
             {seasonUrl && <div className="row"><span className="small muted">Get families following:</span>
               <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; download(`${t.name} - follow us live.html`.replace(/[^\w\- .]+/g, ""), flyerHtml(t, seasonUrl, se), "text/html"); toast("Flyer saved. Open it to print for the gym or the team table."); }}>Printable flyer</button>
               <button className="btn sm" onClick={async () => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; const b = await flyerImage(t, seasonUrl, se); if (!b) return; const name = `${t.name} - follow us live.png`.replace(/[^\w\- .]+/g, ""), file = new File([b], name, { type: "image/png" }), nav: any = navigator; if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: name }); return; } catch { /* save instead */ } } download(name, b, "image/png"); toast("Flyer image saved. Post it in the team group chat."); }}>Flyer image</button></div>}
+            {!isAdultLevel(t.level) && <>
             <div className="label">Recruiting board on Floorcall Recruit</div>
             <p className="small muted" style={{ margin: 0 }}>One link for college coaches listing every player whose recruiting profile you've shared (only with the family's permission, from each player's page), with verified stats and highlight clips.</p>
             <div className="row"><button className="btn sm" disabled={busy} onClick={() => act(async () => { const r = await shareBoard(t.id); setBoardUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Recruiting board link copied." : "Recruiting board: " + r.url); })}>Share recruiting board</button>
               {boardUrl && <a className="small" href={boardUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boardUrl}</a>}</div>
+            </>}
           </>}
           <div className="row"><ConfirmButton className="btn sm ghost" confirmText="Stop syncing on this device?" onConfirm={() => { unlinkTeam(t.id); toast("Stopped syncing this team on this device"); }}>Stop syncing on this device</ConfirmButton></div>
         </>}

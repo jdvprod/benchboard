@@ -134,7 +134,7 @@ function Schedule({ book }: { book: Book }) {
     {!book.athletes.length && !up.length && <div className="ls-start">
       <h2>Start with your athletes</h2>
       <p>Add the athletes you train, then schedule a lesson. Each athlete gets a code so they (or a parent) can see their sessions and numbers. You can also post open times they book themselves, or a clinic with a public sign-up page.</p>
-      <div className="row"><a className="btn primary" href="#/athletes">Add athletes</a><a className="btn" href="#/new">Schedule a clinic</a></div>
+      <div className="row"><a className="btn primary" href="#/athletes">Add athletes</a><a className="btn" href="#/new/clinic">Schedule a clinic</a></div>
     </div>}
     {[...days].map(([d, list]) => <section key={d} className="ls-day"><h2>{d}</h2><ul className="ls-list">{list.map((x) => <SessionRow key={x.id} s={x} book={book} />)}</ul></section>)}
     {done.length > 0 && <section className="ls-day ls-past"><h2>Past sessions</h2><ul className="ls-list">{done.map((x) => <SessionRow key={x.id} s={x} book={book} showDate />)}</ul>
@@ -169,7 +169,7 @@ const localTime = (d: Date) => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
 function SessionForm({ book, act, s, pre }: { book: Book; act: Act; s?: Sess; pre?: string }) {
   const start = s ? new Date(s.starts) : (() => { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(17, 0, 0, 0); return d; })();
-  const [f, setF] = useState({ kind: (s?.kind || "private") as Kind, title: s?.title || "", date: localDate(start), time: localTime(start), minutes: String(s?.minutes || 60), place: s?.place || "",
+  const [f, setF] = useState({ kind: (s?.kind || (pre === "clinic" ? "clinic" : "private")) as Kind, title: s?.title || "", date: localDate(start), time: localTime(start), minutes: String(s?.minutes || 60), place: s?.place || "",
     capacity: s?.capacity ? String(s.capacity) : "", focus: s?.focus || [] as string[], athletes: s?.athletes || (pre && book.athletes.some((a) => a.id === pre) ? [pre] : []) as string[], open: s?.open || false, public: s?.public || false,
     price: s?.price || "", shared_note: s?.shared_note || "", notes: s?.notes || "", weeks: "1" });
   const [q, setQ] = useState(""), [busy, setBusy] = useState(false);

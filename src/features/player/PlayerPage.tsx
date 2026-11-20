@@ -2,7 +2,7 @@
 import { madeWith } from "../../lib/brandMark";
 import { useEffect, useState } from "react";
 import { matchesOf, patch, plansOf, player, replayOf, seasonsOf, teamPlayers, team, toast, uid } from "../../data/store";
-import { Goal, GoalMetric, Match, Player, RecruitProfile } from "../../data/model";
+import { Goal, GoalMetric, isAdultLevel, Match, Player, RecruitProfile } from "../../data/model";
 import { matchHead, playerTiles, sharePlayerGraphic } from "./playerGraphic";
 import { Avatar, PhotoPicker } from "../../ui/Pictures";
 import { aggregate, Agg, SetState, Stat } from "../../sports/volleyball/engine";
@@ -139,7 +139,7 @@ export function PlayerPage({ id }: { id: string }) {
       <AiCard key={id} title="Report card" desc="Strengths, growth areas and one measurable goal, written for the player from their numbers." button="Write report card" prompt={() => reportCardPrompt(id)} filename={`${p.first} ${p.last} report card`} />
     </>}
     <FilmReview id={id} />
-    <Recruiting id={id} rows={rows} A={A} />
+    {!isAdultLevel(t.level) && <Recruiting id={id} rows={rows} A={A} />}
     <Card title="Coach notes"><textarea className="input" aria-label="Coach notes" rows={3} value={p.notes} onChange={(e) => patch("players", id, { notes: e.target.value })} placeholder="Private notes: what they're working on, role, recruiting contacts (keep health details out)" /></Card>
     <PlayerData id={id} />
   </div>;
