@@ -85,3 +85,11 @@ test("rotation wheel: players move one spot clockwise each rotation", () => {
   assert.equal(posOf(0, 1), 1); assert.equal(posOf(1, 2), 1); assert.equal(posOf(0, 2), 6); assert.equal(posOf(3, 2), 3);
   for (let k = 0; k < 6; k++) for (let r = 1; r < 6; r++) assert.equal((POS_ANGLE[posOf(k, r + 1)] - POS_ANGLE[posOf(k, r)] + 360) % 360, 60);
 });
+
+import { LIBRARY, AREAS } from "../src/academy/content";
+test("drill library: big, leveled, no duplicate ids, every drill complete", () => {
+  assert.ok(LIBRARY.length >= 140, String(LIBRARY.length));
+  assert.equal(new Set(LIBRARY.map((x) => x.id)).size, LIBRARY.length);
+  for (const a of AREAS) for (const l of ["Beginner", "Intermediate", "Advanced"]) assert.ok(a.drills.some((x) => x.level === l), a.id + " " + l);
+  for (const x of LIBRARY) { assert.ok(x.how.length >= 2 && x.points.length >= 2 && x.minutes > 0 && x.needs, x.id); }
+});

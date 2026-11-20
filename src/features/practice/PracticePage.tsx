@@ -5,6 +5,7 @@ import { activePlayers, currentMatch, drillsOf, get, matchesOf, newMatch, patch,
 import { Drill, DRILL_CATEGORIES, PlanBlock, PracticePlan } from "../../data/model";
 import { aggregate } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, fmtSigned, inSystem, outOfSystem, teamMetrics, transition } from "../../sports/volleyball/metrics";
+import { placeUrl } from "../../cloud/links";
 import { Card, ConfirmButton, copyText, download, fmtDate, Seg } from "../../ui/kit";
 import { Tracker } from "../track/Tracker";
 import { balancedSplit, SplitEditor, SplitState } from "./SplitEditor";
@@ -209,6 +210,7 @@ function DrillLibrary() {
   const blank = (): Drill => ({ id: uid("dr"), teamId: team()!.id, name: "", category: "Game play", minutes: 10, description: "", focus: [] });
   return <div className="grid2" style={{ alignItems: "start" }}>
     <Card title={`Drills (${drills.length})`} actions={<button className="btn sm primary" onClick={() => setEdit(blank())}>New drill</button>}>
+      <p className="small" style={{ marginBottom: 10 }}><a href={placeUrl("academy", "coaches/drills")} target="_blank" rel="noopener"><b>Browse the FloorCall drill library</b></a>: about 150 drills for every skill, beginner to advanced. Add any of them here in one tap, or send them to your players.</p>
       {hidden > 0 && <p className="small muted" style={{ marginBottom: 8 }}>{every ? "Showing every drill." : `${hidden} ${hidden === 1 ? "drill is" : "drills are"} for ${t.gender === "girls" ? "boys'" : "girls'"} teams.`} <button className="linkbtn" onClick={() => setEvery(!every)}>{every ? `Only ${t.gender}'s drills` : "Show them"}</button></p>}
       {DRILL_CATEGORIES.map((c) => { const ds = drills.filter((d) => d.category === c); return ds.length ? <div key={c} style={{ marginBottom: 10 }}>
         <div className="label" style={{ color: catColor(c) }}>{c}</div>

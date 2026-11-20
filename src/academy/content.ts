@@ -283,3 +283,31 @@ export const SKILLS: Skill[] = [
 export const skill = (id: string) => SKILLS.find((s) => s.id === id);
 /** Every item a player can check off for a skill. */
 export const checks = (s: Skill) => (["Beginner", "Intermediate", "Advanced"] as Level[]).flatMap((l) => s.levels[l].map((t, i) => `${s.id}:${l}:${i}`));
+
+/* ---------- the full drill library ---------- */
+import { PASSING, SERVING, SETTING } from "./library-a";
+import { BLOCKING, DEFENSE, HITTING, TEAM } from "./library-b";
+import { MORE } from "./library-c";
+const EXTRA: Record<string, Drill[]> = { serving: [...SERVING, ...MORE.serving], passing: [...PASSING, ...MORE.passing], setting: [...SETTING, ...MORE.setting], hitting: [...HITTING, ...MORE.hitting], defense: [...DEFENSE, ...MORE.defense] };
+for (const s of SKILLS) for (const x of EXTRA[s.id] || []) if (!s.drills.some((y) => y.id === x.id)) s.drills.push(x);
+const LEVEL_ORDER: Record<Level, number> = { Beginner: 0, Intermediate: 1, Advanced: 2 };
+for (const s of SKILLS) s.drills.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
+
+/** Every area of the library: the five skills, plus blocking and team drills (which have no skill page of their own). */
+export interface Area { id: string; name: string; category: string; drills: Drill[]; skill?: Skill }
+export const AREAS: Area[] = [
+  ...SKILLS.map((s) => ({ id: s.id, name: s.name, category: s.category, drills: s.drills, skill: s })),
+  { id: "blocking", name: "Blocking", category: "Blocking", drills: [...BLOCKING, ...MORE.blocking].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
+  { id: "team", name: "Team and game play", category: "Game play", drills: [...TEAM, ...MORE.team].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
+];
+export type LibDrill = Drill & { area: string; areaName: string; category: string };
+export const LIBRARY: LibDrill[] = AREAS.flatMap((a) => a.drills.map((x) => ({ ...x, area: a.id, areaName: a.name, category: a.category })));
+export const LEVELS: Level[] = ["Beginner", "Intermediate", "Advanced"];
+
+/** Which drills someone sees. Today (billing off) everyone sees everything. Once billing is on: a player with their
+ * own Player plan, or a coach, sees every drill; a player covered only by a team sees the drills their coach picked
+ * (and the skill guides). Pure. */
+export function visibleDrills(all: LibDrill[], o: { billing: boolean; coach: boolean; ownPlan: boolean; picks: string[] }): LibDrill[] {
+  if (!o.billing || o.coach || o.ownPlan) return all;
+  return all.filter((x) => o.picks.includes(x.id));
+}

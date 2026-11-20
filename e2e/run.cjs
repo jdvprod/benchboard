@@ -1662,6 +1662,47 @@ const scenarios = {
     ok("no errors on the wheel", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
     for (const x of [p, ph]) await x.context().close();
   },
+  async drills(browser) {
+    // the drill library: levels and filters; a coach sends a drill to their players, who see it as "From your coach"
+    const C = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await go(C, "account/signup"); { const ca = C.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await C.getByLabel("Email").fill("drill-coach@e2e.test"); await C.locator("#auth-pw").fill("secret-pass-1"); await C.locator("#auth-name").fill("Drew Coach"); await C.locator(".auth-agree input").first().check();
+    await C.getByRole("button", { name: "Create account" }).click(); await C.waitForTimeout(800);
+    await C.getByLabel("Team name").fill("Drill Prep"); await C.getByRole("button", { name: "Create team" }).click(); await C.waitForTimeout(800);
+    await go(C, "team"); { const sy = C.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.click(); await C.waitForTimeout(1200); } }
+    await C.getByRole("button", { name: "Invite view-only" }).click(); await C.waitForTimeout(400);
+    const vcode = (await C.locator(".hint b").first().innerText()).trim();
+    ok("drills: the coach has a view-only code for players", /^[A-Z0-9]{4,}$/.test(vcode), vcode);
+    await C.goto(U + "academy/#/coaches/drills"); await C.waitForTimeout(800);
+    const total = +(await C.locator(".ac-count").innerText()).match(/\d+/)[0];
+    ok("drills: the library has well over a hundred drills", total >= 110, String(total));
+    ok("drills: every level is there", (await C.locator(".ac-lvlsec").count()) === 3);
+    await C.getByRole("group", { name: "Skill" }).getByRole("button", { name: "Blocking" }).click();
+    await C.getByRole("group", { name: "Level" }).getByRole("button", { name: "Beginner" }).click(); await C.waitForTimeout(200);
+    const names = await C.locator(".ac-drill-name b").allInnerTexts();
+    ok("drills: filters by skill and level", names.length >= 2 && names.includes("Block footwork") && !names.includes("Swing blocking"), names.join(", "));
+    await C.getByLabel("Search drills").fill("seam"); await C.getByRole("group", { name: "Skill" }).getByRole("button", { name: "All skills" }).click(); await C.getByRole("group", { name: "Level" }).getByRole("button", { name: "All levels" }).click(); await C.waitForTimeout(200);
+    ok("drills: search finds drills by what's in them", (await C.locator(".ac-drill").count()) >= 2);
+    await C.getByLabel("Search drills").fill("");
+    // send a drill to the players
+    await C.locator(".ac-drill", { hasText: "Platform and freeze" }).locator(".ac-drill-hd").click();
+    await C.getByRole("button", { name: "Send to your players" }).click(); await C.waitForTimeout(600);
+    ok("drills: the coach sends a drill to their players", (await C.locator(".ac-drill", { hasText: "Platform and freeze" }).locator(".ac-sentchip").count()) === 1);
+    if (process.env.SHOTS) await C.screenshot({ path: path.join(process.env.SHOTS, "library-coach.png"), fullPage: false });
+    // a player joins the team with the code in Academy, and sees it
+    const P = await newPage(browser, { phone: true });
+    await P.goto(U + "academy/"); await P.waitForTimeout(500); await siteSignUp(P, "drill-player@e2e.test", "athlete", "Pia Player");
+    await P.getByRole("button", { name: "Have a code from your coach or trainer?" }).click();
+    await P.getByLabel("Code from your coach or trainer").fill(vcode); await P.getByRole("button", { name: "Join", exact: true }).click(); await P.waitForTimeout(800);
+    ok("drills: a team code in Academy joins the team", (await P.locator(".cb-cov").innerText()).includes("Drill Prep"));
+    await P.reload(); await P.waitForTimeout(900);
+    ok("drills: the player sees what their coach sent on Academy's home page", (await P.locator(".ac-home-fc .ac-drill", { hasText: "Platform and freeze" }).count()) === 1);
+    await P.goto(U + "academy/#/players/drills"); await P.waitForTimeout(700);
+    ok("drills: and at the top of the library", (await P.locator(".ac-fromcoach .ac-drill", { hasText: "Platform and freeze" }).count()) === 1 && (await overflow(P)) <= 0);
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "library-player.png"), fullPage: true });
+    ok("no errors in the drill library", !C.errors.length && !P.errors.length, [...C.errors, ...P.errors].slice(0, 3).join("; "));
+    for (const x of [C, P]) await x.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });

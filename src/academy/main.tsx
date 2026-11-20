@@ -11,12 +11,12 @@ import { watchErrors } from "../app/errors";
 import { SiteSwitch } from "../ui/SiteSwitch";
 import { contactUrl, placeUrl } from "../cloud/links";
 import { CodeBox } from "../cloud/CodeBox";
-import { cloudAvailable, userMeta } from "../cloud/client";
+import { cloudAvailable, rpc, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
-import { checks, Drill, Level, Skill, skill, SKILLS, Who } from "./content";
+import { checks, Level, LIBRARY, LEVELS, Skill, skill, SKILLS, Who } from "./content";
+import { DrillRow, Library, usePicks } from "./Library";
 import { Diagram } from "./Diagram";
 
-const LEVELS: Level[] = ["Beginner", "Intermediate", "Advanced"];
 const read = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private window: kept for this visit */ } };
 const parse = () => location.hash.replace(/^#\/?/, "").split(/[/?]/).filter(Boolean);
@@ -24,12 +24,6 @@ const roleOf = (seg?: string): Who | null => (seg === "players" ? "player" : seg
 /** "I can dig a down ball" → "Can dig a down ball", for the coach's progression list. */
 const coachLine = (t: string) => { const x = t.replace(/^I can /, "can ").replace(/^I'm /, "is ").replace(/^I /, "").replace(/^My /, "their "); return x[0].toUpperCase() + x.slice(1); };
 const seg = (w: Who) => (w === "player" ? "players" : "coaches");
-/** A drill, packed into a link that adds it to the coach's drill library in the FloorCall app. */
-export const drillLink = (d: Drill, s: Skill) => {
-  const json = JSON.stringify({ n: d.name, c: s.category, m: d.minutes, d: [d.needs + ".", ...d.how, "Coaching points: " + d.points.join(" ")].join(" "), src: "academy", ...(d.for ? { f: d.for } : {}) });
-  const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-  return placeUrl("app", "practice/drill:" + b64);
-};
 
 function App() {
   const [route, setRoute] = useState(parse);
@@ -55,13 +49,23 @@ function App() {
     </header>
     <main className="ac-main"><SiteGate name="FloorCall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
-      {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
+      {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} coach={coach} /> : id === "drills" ? <Library who={who} coach={coach} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
     <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("academy")}>Help</a></footer>
   </div>;
 }
 
 function Missing({ who }: { who: Who }) {
   return <div className="ac-empty"><h1>That page isn't here</h1><p><a href={"#/" + seg(who)}>See every skill</a></p></div>;
+}
+
+/** Drills a player's coach sent them, on the Academy home page. */
+function FromCoach() {
+  const { picks } = usePicks(false);
+  const list = (picks || []).map((p) => ({ p, d: LIBRARY.find((x) => x.id === p.drill) })).filter((x) => x.d);
+  if (!list.length) return null;
+  return <section className="ac-sec ac-fromcoach ac-home-fc" aria-labelledby="ac-fc-h"><h2 id="ac-fc-h">From your coach</h2>
+    <ul className="ac-drills">{list.slice(0, 6).map(({ p, d }) => <DrillRow key={p.team + d!.id} d={d!} category={d!.category} who="player" />)}</ul>
+    {list.length > 6 && <p className="ac-more"><a href="#/players/drills">All {list.length} in the library</a></p>}</section>;
 }
 
 function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }) {
@@ -83,15 +87,22 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
           : <small>{teamDrills} team drills · measured by {s.stat.name.split(" (")[0].toLowerCase()}</small>}</span>
         <svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
       </a></li>; })}</ol>
+    <a className="ac-libcard" href={"#/" + seg(who) + "/drills"}>
+      <span><b>Drill library</b><span>{LIBRARY.length} drills for every skill, plus blocking and team drills, sorted by beginner, intermediate and advanced.{who === "coach" ? " Send any of them to your players." : ""}</span></span>
+      <span className="ac-libcount">{(["Beginner", "Intermediate", "Advanced"] as Level[]).map((l) => <span key={l}><b>{LIBRARY.filter((x) => x.level === l).length}</b> {l.toLowerCase()}</span>)}</span>
+    </a>
+    {who === "player" && <FromCoach />}
     {coach && <p className="ac-other">{who === "player" ? <>Coaching a team? <a href="#/coaches">See the coach's version</a>, with team drills you can add to practice.</> : <>Send players the <a href="#/players">player's version</a>: the same skills, with drills they can do on their own and a checklist.</>}</p>}
   </>;
 }
 
-function SkillPage({ s, who, done, toggle }: { s: Skill; who: Who; done: string[]; toggle: (k: string) => void }) {
+function SkillPage({ s, who, done, toggle, coach }: { s: Skill; who: Who; done: string[]; toggle: (k: string) => void; coach: boolean }) {
+  const [lvl, setLvl] = useState<Level | "">("");
+  const { teams, teamPicks, loadTeam } = usePicks(coach && who === "coach");
   const i = SKILLS.indexOf(s), prev = SKILLS[i - 1], next = SKILLS[i + 1];
   const [forWho, setFor] = useState<"" | "girls" | "boys">(() => read("fc-academy-for", ""));
   const tagged = SKILLS.some((x) => x.drills.some((d) => d.for));
-  const drills = s.drills.filter((d) => d.who === who && (!forWho || !d.for || d.for === forWho));
+  const drills = s.drills.filter((d) => d.who === who && (!forWho || !d.for || d.for === forWho) && (!lvl || d.level === lvl));
   const all = checks(s), n = all.filter((k) => done.includes(k)).length;
   const sections: [string, string][] = who === "player"
     ? [["cues", "Key points"], ["steps", "Step by step"], ["mistakes", "Mistakes and fixes"], ["drills", "Drills on your own"], ["check", "Check yourself"]]
@@ -123,7 +134,10 @@ function SkillPage({ s, who, done, toggle }: { s: Skill; who: Who; done: string[
         <section id="ac-drills" className="ac-sec"><h2>{who === "player" ? "Drills on your own" : "Drills for practice"}</h2>
           {tagged && <div className="ac-for" role="group" aria-label="Drills for">{([["", "All drills"], ["girls", "Girls"], ["boys", "Boys"]] as const).map(([k, l]) => <button key={k} aria-pressed={forWho === k} onClick={() => { setFor(k); write("fc-academy-for", k); }}>{l}</button>)}</div>}
           {who === "coach" && <p className="ac-note">"Add to my practice" opens FloorCall and puts the drill in your drill library, ready for any practice plan.</p>}
-          <ul className="ac-drills">{drills.map((d) => <DrillRow key={d.id} d={d} s={s} who={who} />)}</ul></section>
+          <div className="ac-seg ac-lvlpick" role="group" aria-label="Level"><button aria-pressed={!lvl} onClick={() => setLvl("")}>All levels</button>{LEVELS.map((l) => <button key={l} aria-pressed={lvl === l} onClick={() => setLvl(lvl === l ? "" : l)}>{l} <small>{s.drills.filter((d) => d.who === who && d.level === l).length}</small></button>)}</div>
+          <ul className="ac-drills">{drills.map((d) => <DrillRow key={d.id} d={{ ...d, area: s.id, areaName: "", category: s.category }} category={s.category} who={who}
+            send={coach && who === "coach" && teams.length ? { teams, picked: (t) => (teamPicks[t] || []).includes(d.id), toggle: async (t, on) => { await rpc("team_pick_drill", { t, drill: d.id, pick: on, note: null }); await loadTeam(t); } } : undefined} />)}</ul>
+          <p className="ac-more"><a href={"#/" + seg(who) + "/drills"}>All {LIBRARY.length} drills in the library</a></p></section>
         {who === "player" && <section id="ac-check" className="ac-sec"><h2>Check yourself</h2>
           <p className="ac-note">Check off what you can do. It's saved on this device. {n ? `${n} of ${all.length} so far.` : ""}</p>
           {LEVELS.map((l) => <fieldset key={l} className="ac-level"><legend>{l}</legend>
@@ -141,21 +155,6 @@ function SkillPage({ s, who, done, toggle }: { s: Skill; who: Who; done: string[
   </article>;
 }
 
-function DrillRow({ d, s, who }: { d: Drill; s: Skill; who: Who }) {
-  const [open, setOpen] = useState(false);
-  return <li className={"ac-drill" + (open ? " open" : "")}>
-    <button className="ac-drill-hd" aria-expanded={open} onClick={() => setOpen(!open)}>
-      <span className="ac-drill-name"><b>{d.name}{d.for && <span className="ac-forchip">{d.for === "girls" ? "Girls" : "Boys"}</span>}</b><small>{d.needs}</small></span>
-      <span className="ac-drill-meta"><span className={"ac-lvl " + d.level.toLowerCase()}>{d.level}</span><span className="num">{d.minutes} min</span></span>
-      <svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
-    </button>
-    {open && <div className="ac-drill-body">
-      <div><h3>How</h3><ol>{d.how.map((h) => <li key={h}>{h}</li>)}</ol></div>
-      <div><h3>{who === "player" ? "Focus on" : "Coach"}</h3><ul>{d.points.map((p) => <li key={p}>{p}</li>)}</ul></div>
-      {who === "coach" && <a className="btn primary sm ac-add" href={drillLink(d, s)} target="_blank" rel="noopener">Add to my practice</a>}
-    </div>}
-  </li>;
-}
 
 watchErrors();
 // works without a signal once visited (see public/academy/sw.js)
