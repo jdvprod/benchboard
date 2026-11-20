@@ -2394,8 +2394,9 @@ const scenarios = {
     await P.goto(rec); await P.reload(); await P.waitForTimeout(1000); ok("taken-down profile no longer opens", (await P.getByText("isn't shared right now").count()) === 1);
     // AI through the server function, and the setup check
     const sent = []; A.on("request", (r) => { if (r.url().includes("/functions/v1/ai")) sent.push(r.postData() || ""); });
-    await go(A, "stats"); await A.getByRole("button", { name: "Who should pass in rotation 2?" }).click(); await A.waitForTimeout(800);
-    ok("ask your stats answers", (await A.locator(".ask-turn").count()) === 1);
+    await go(A, "stats"); ok("the open-ended Ask your stats chat is off", (await A.getByLabel("Question about your stats").count()) === 0);
+    { const before = sent.length; await A.getByRole("button", { name: "Write the report" }).first().click(); await A.waitForTimeout(1200);
+      ok("a match report goes through the server AI function", sent.length > before, String(sent.length)); }
     { const lasts = fs.readFileSync(path.join(__dirname, "roster.csv"), "utf8").split("\n").slice(1).map((l) => l.split(",")[2]).filter(Boolean);
       ok("AI requests carry first names only, never last names", sent.length > 0 && sent.join("").includes("Nia") && !lasts.some((n) => sent.join("").includes(n)), lasts.filter((n) => sent.join("").includes(n)).join(", ")); }
     await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=head%40e2e.test`, { headers: { apikey: "anon" } }); await A.reload(); await A.waitForTimeout(800);
@@ -2760,7 +2761,7 @@ const scenarios = {
     if (only ? name !== only : name.startsWith("_")) continue; // "_" scenarios run only when named
     const t0 = Date.now(), f0 = failures; console.log(`• ${name}`);
     try { await fn(browser); } catch (e) {
-      failures++; console.log(`  ✗ ${name} crashed: ${String(e.message || e).split("\n")[0]}`);
+      failures++; console.log(`  ✗ ${name} crashed: ${String(e.message || e).split("\n")[0]}`); if (process.env.STACK) console.log(String(e.stack || e).split("\n").filter((l) => /run\.cjs/.test(l)).slice(0, 3).join("\n"));
       let i = 0; for (const pg of OPEN) { const f = path.join(require("os").tmpdir(), `e2e-${name}-${i++}.png`); await pg.screenshot({ path: f }).catch(() => {}); console.log("    screenshot: " + f); }
     }
     for (const pg of OPEN) await pg.context().close().catch(() => {});
