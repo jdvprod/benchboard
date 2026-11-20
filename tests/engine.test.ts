@@ -308,7 +308,7 @@ test("first lineup: setter 1, opposite 4, outsides 2 & 5, middles 3 & 6, libero 
   assert.equal(autoLineup([P("a", "OH"), P("b", "OH"), P("c", "DS"), P("d", "MB")]).lu.length, 4);
 });
 
-import { clipsFrom, filmTiming, highlightPick, shareable, videoKind, youtubeId } from "../src/film/clips";
+import { clipsFrom, clutch, filmTiming, highlightPick, shareable, videoKind, youtubeId } from "../src/film/clips";
 test("clips: video kinds, YouTube ids, timing from 'first serve at', best plays first", () => {
   assert.equal(videoKind("https://youtu.be/abc123XYZ"), "youtube"); assert.equal(youtubeId("https://youtu.be/abc123XYZ?t=4"), "abc123XYZ");
   assert.equal(youtubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=10s"), "dQw4w9WgXcQ"); assert.equal(youtubeId("https://www.youtube.com/live/abcDEF12345"), "abcDEF12345");
@@ -322,6 +322,14 @@ test("clips: video kinds, YouTube ids, timing from 'first serve at', best plays 
   assert.equal(clips[0].score, "1–0");
   assert.deepEqual(highlightPick(clips, 2).map((c) => c.t), ["K", "SA"], "kills and aces before digs, errors never");
   assert.equal(clipsFrom({ id: "m", date: "", opp: "" }, T, R.log, () => true, () => "").length, 0, "no video, no clips");
+});
+test("highlight pick: late close points move up, and the reel spreads across plays and matches", () => {
+  assert.equal(clutch("3–1", 1), 0); assert.ok(clutch("24–23", 1) > clutch("21–15", 1)); assert.ok(clutch("14–13", 5) >= 3); assert.equal(clutch(undefined), 0);
+  const c = (id: string, t: string, m: string, score?: string): any => ({ id, matchId: m, url: "", start: 0, end: 1, label: t, t, date: "", opp: "", score, set: 1 });
+  const kills = ["a", "b", "c", "d", "e"].map((x) => c(x, "K", "m1", "5–3"));
+  const pick = highlightPick([...kills, c("ace", "SA", "m2", "8–2"), c("blk", "BS", "m2", "10–9"), c("late", "K", "m3", "25–23")], 4);
+  assert.ok(pick.some((x) => x.id === "late"), "the set-winning kill makes it");
+  assert.ok(pick.some((x) => x.t === "SA") && pick.some((x) => x.t === "BS"), "not four kills in a row");
 });
 
 import { guessFields, linesOf, matchEvents, parseDate, parseSetScores, plansFrom, playsFor, readText, oppFromFileName, formatFrom } from "../src/import/statsImport";

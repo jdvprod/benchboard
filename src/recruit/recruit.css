@@ -139,3 +139,12 @@ body{padding-left:0}
 .rc-contact label{display:grid;gap:4px;font-size:13px;font-weight:600}.rc-contact textarea{resize:vertical}
 .rc-contact-note,.rc-contact-ok{margin:0;font-size:13px;color:var(--muted)}.rc-contact-ok{margin:0 14px 14px;color:var(--ink);font-weight:600}
 .rc-contact-btns{display:flex;gap:8px}
+/* Reel Studio: big moments found from the game's sound */
+.rg-sug{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.rg-sug .rg-meter{flex:1 1 200px;margin:0}
+.rg-sug h3{flex-basis:100%;margin:0;font-size:15px}.rg-sug h3 small{font-weight:400;margin-left:6px}
+.rg-sugs{list-style:none;margin:0;padding:0;display:grid;gap:4px;flex-basis:100%;max-height:360px;overflow:auto}
+.rg-sugs li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-bottom:1px solid var(--line);padding:6px 0}
+.rg-sugs select{width:auto}
+.rg-hype{display:inline-flex;gap:2px;align-items:flex-end;height:14px}.rg-hype i{width:4px;background:var(--line);border-radius:1px}
+.rg-hype i:nth-child(1){height:6px}.rg-hype i:nth-child(2){height:10px}.rg-hype i:nth-child(3){height:14px}.rg-hype i.on{background:var(--us)}

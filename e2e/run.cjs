@@ -1203,6 +1203,10 @@ const scenarios = {
     ok("studio: plays marked by button and key", (await p.locator(".rg-marks li").count()) >= 3, String(await p.locator(".rg-marks li").count()));
     ok("studio: a marked play runs 6 s before to 2 s after", /0:14–0:22/.test(await p.locator(".rg-marks").innerText()), await p.locator(".rg-marks").innerText());
     ok("studio: hitting reel available, defense needs more plays", /Hitting/.test(await p.locator(".rg-reels li:not(.off)").allInnerTexts().then((x) => x.join("|"))) && (await p.locator(".rg-reels li.off", { hasText: "Defense" }).count()) === 1);
+    await p.getByRole("button", { name: "Find big moments" }).click();
+    await p.waitForFunction(() => { const t = document.querySelector(".rg-sug")?.textContent || ""; return /Big moments|No clear rallies|can't read/.test(t); }, null, { timeout: 60000 }).catch(() => {});
+    { const t = await p.locator(".rg-sug").innerText(); ok("studio: Find big moments listens to the game and answers", /Big moments|No clear rallies|can't read/.test(t), t.slice(0, 200));
+      if (await p.locator(".rg-sugs li").count()) { const n = await p.locator(".rg-marks li").count(); await p.locator(".rg-sugs li").first().locator("select").selectOption("BS"); ok("studio: a big moment becomes a marked play", (await p.locator(".rg-marks li").count()) === n + 1); } }
     { const ax = await a11y(p); ok("studio controls all have names", !ax.length, ax.join(" | ")); }
     await p.locator(".rg-reels li", { hasText: "Hitting" }).locator("input").check();
     await p.locator(".rg-reels li", { hasText: "Best of" }).locator("input").uncheck();

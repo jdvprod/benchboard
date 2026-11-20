@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Athlete, EmailKind, EMAIL_KINDS, emailGaps, Target, writeEmail } from "./emails";
 import { Clip, clock } from "../film/clips";
 import { canMakeReel, reelLength, renderReel } from "../film/reel";
+import { bestOf, DECODE_LIMIT, loudMoments, Rally, ralliesFrom, scanFile, scanStream, withHype } from "../film/rallies";
+import { canStreamAudio } from "../film/mp4audio";
 import { cloudAvailable, currentUser, updateMeta, userMeta } from "../cloud/client";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
@@ -132,7 +134,7 @@ const CATS: [Cat, string, string][] = [["K", "Kill", "k"], ["BS", "Block", "b"],
 const CAT_NAME = Object.fromEntries(CATS.map(([c, l]) => [c, l])) as Record<Cat, string>;
 const RANK: Record<Cat, number> = { K: 5, BS: 5, SA: 4, D: 3, AST: 3, P3: 2, SI: 1, TAG: 2 };
 const REELS: [string, string, Cat[] | null][] = [["best", "Best of", null], ["hitting", "Hitting", ["K"]], ["blocking", "Blocking", ["BS"]], ["defense", "Defense and passing", ["D", "P3"]], ["serving", "Serving", ["SA", "SI"]], ["setting", "Setting", ["AST"]]];
-interface Film { id: string; name: string; url: string; dur: number; game: boolean }
+interface Film { id: string; name: string; url: string; dur: number; game: boolean; file?: File }
 interface Mark { id: string; film: string; at: number; start: number; end: number; cat: Cat; star?: boolean }
 let seq = 0; const nid = () => "s" + Date.now().toString(36) + (seq++).toString(36);
 
@@ -153,6 +155,26 @@ function Studio({ Shell }: { Shell: any }) {
   const [want, setWant] = useState<Record<string, boolean>>({ best: true }), [jobs, setJobs] = useState<{ key: string; name: string; status: string; f: number; url?: string; blob?: Blob }[]>([]);
   const vid = useRef<HTMLVideoElement>(null), stop = useRef<AbortController | null>(null);
   const film = films.find((f) => f.id === cur) || null;
+  // "Find big moments": listen to a game's sound for whistles and crowd noise, and suggest the loudest rallies
+  const [sug, setSug] = useState<Record<string, { text: string; f: number; list?: Rally[]; none?: boolean }>>({}), scanStop = useRef<AbortController | null>(null);
+  const findMoments = async (f: Film) => {
+    if (!f.file) return;
+    const ac = new AbortController(); scanStop.current = ac;
+    const prog = (text: string, x: number) => setSug((m) => ({ ...m, [f.id]: { text, f: x } }));
+    prog("Starting…", 0);
+    let got: { whistles: number[]; duration: number; frames: any[] } | null = null;
+    try { if (canStreamAudio()) got = await scanStream(f.file, prog, ac.signal); } catch (e: any) { if (e?.name === "AbortError") { setSug((m) => { const { [f.id]: _, ...r } = m; return r; }); return; } }
+    if (!got && f.file.size <= DECODE_LIMIT) { try { got = await scanFile(f.file, prog, ac.signal); } catch (e: any) { if (e?.name === "AbortError") { setSug((m) => { const { [f.id]: _, ...r } = m; return r; }); return; } } }
+    if (!got) { setSug((m) => ({ ...m, [f.id]: { text: "This browser can't read this film's sound. Mark your plays by hand, or try Chrome on a computer.", f: 0, none: true } })); return; }
+    const rs = withHype(got.frames, ralliesFrom(got.whistles, got.duration || f.dur));
+    const pool = rs.length ? bestOf(rs, 15) : loudMoments(got.frames, { duration: got.duration || f.dur, max: 15 });
+    // keep the end of each rally: the moment that won the point, with a few seconds before it
+    const list = pool.map((r) => ({ start: +Math.max(r.start, r.end - 10).toFixed(1), end: +Math.min(f.dur, r.end + 1).toFixed(1), h: r.h }));
+    setSug((m) => ({ ...m, [f.id]: { text: "", f: 1, list, none: !list.length } }));
+  };
+  const takeSug = (f: Film, r: Rally, cat: Cat) => { setMarks((x) => x.concat({ id: nid(), film: f.id, at: r.end, start: r.start, end: r.end, cat })); dropSug(f, r); };
+  const dropSug = (f: Film, r: Rally) => setSug((m) => ({ ...m, [f.id]: { ...m[f.id], list: m[f.id].list!.filter((x) => x !== r) } }));
+  const watch = (t: number) => { const v = vid.current; if (v) { v.currentTime = t; v.play().catch(() => {}); } };
   useEffect(() => () => { films.forEach((f) => URL.revokeObjectURL(f.url)); }, []);
 
   const add = async (list: FileList | null) => {
@@ -161,7 +183,7 @@ function Studio({ Shell }: { Shell: any }) {
       const url = URL.createObjectURL(file);
       const dur = await new Promise<number>((r) => { const v = document.createElement("video"); v.preload = "metadata"; v.onloadedmetadata = () => r(v.duration || 0); v.onerror = () => r(0); v.src = url; });
       if (!dur) { URL.revokeObjectURL(url); continue; }
-      const f: Film = { id: nid(), name: file.name, url, dur, game: dur > 90 };
+      const f: Film = { id: nid(), name: file.name, url, dur, game: dur > 90, file };
       setFilms((x) => x.concat(f));
       if (!f.game) setMarks((x) => x.concat({ id: nid(), film: f.id, at: dur, start: 0, end: dur, cat: "K" })); // a short clip is one play
       else setCur((c) => c || f.id);
@@ -224,6 +246,18 @@ function Studio({ Shell }: { Shell: any }) {
           <p className="small muted">Keys: Space play/pause · ← → 5 s · letters mark plays</p>
         </div>
       </div>
+      {(() => { const g = sug[film.id]; return <div className="rg-sug">
+        {!g && <><button className="btn" onClick={() => findMoments(film)} disabled={!film.file}>Find big moments</button><span className="small muted">FloorCall listens to the game's whistles and crowd and lines up the biggest rallies for you to check. It can't tell which player made the play, so you choose which ones are yours.</span></>}
+        {g && !g.list && !g.none && <><div className="rg-meter" role="progressbar" aria-label="Finding big moments" aria-valuenow={Math.round(g.f * 100)}><i style={{ width: Math.round(g.f * 100) + "%" }} /></div><span className="small muted">{g.text}</span><button className="btn sm" onClick={() => scanStop.current?.abort()}>Stop</button></>}
+        {g?.none && <p className="small muted">{g.text || "No clear rallies or loud moments in this film's sound. Mark your plays by hand."}</p>}
+        {g?.list && g.list.length > 0 && <><h3>Big moments <small className="muted">watch each one and add the plays that are yours</small></h3>
+          <ul className="rg-sugs">{g.list.map((r, i) => <li key={i}>
+            <button className="rg-at" onClick={() => watch(r.start)}>{clock(r.start)}–{clock(r.end)}</button>
+            <span className="rg-hype" aria-label={`Crowd ${Math.round((r.h ?? 0) * 100)} of 100`}>{[0.35, 0.6, 0.85].map((x) => <i key={x} className={(r.h ?? 0) >= x ? "on" : ""} />)}</span>
+            <select className="input" value="" aria-label="Add as" onChange={(e) => e.target.value && takeSug(film, r, e.target.value as Cat)}><option value="">Add as…</option>{CATS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}</select>
+            <button className="btn sm" onClick={() => dropSug(film, r)} aria-label="Not mine">Not mine</button></li>)}</ul></>}
+        {g?.list && !g.list.length && !g.none && <p className="small muted">You've gone through every big moment.</p>}
+      </div>; })()}
     </section>}
     {marks.length > 0 && <section className="rc-card"><h2>{film ? "3" : "2"}. Your plays <small className="muted">{marks.length}</small></h2>
       <ul className="rg-marks">{marks.map((m) => { const f = films.find((x) => x.id === m.film); return <li key={m.id}>

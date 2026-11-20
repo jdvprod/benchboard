@@ -52,9 +52,31 @@ export function clipsFrom(m: { id: string; video?: string; date: string; opp: st
   });
 }
 
-/** A player's best moments for a highlight reel: kills, aces and blocks first, then digs and great sets; at most `max`. */
+/** How much a play's moment matters: a point late in a close set counts more than one at 3–1. From the score after the
+ * play ("24–23") and the set (set 5 goes to 15). 0 when the score isn't known. */
+export function clutch(score?: string, set?: number): number {
+  const m = score?.match(/(\d+)\D+(\d+)/); if (!m) return 0;
+  const a = +m[1], b = +m[2], to = set === 5 ? 15 : 25, hi = Math.max(a, b), gap = Math.abs(a - b);
+  let w = 0;
+  if (hi >= to - 5) w += 1;            // the end of the set
+  if (hi >= to - 2) w += 1;            // set point territory
+  if (gap <= 2 && hi >= to - 8) w += 1; // close, once it matters
+  if (hi >= to && gap <= 2) w += 0.5;  // extra points
+  return w;
+}
+
+/** A player's best moments for a highlight reel, at most `max`: kills, aces and blocks first, then digs and great sets;
+ * plays late in close sets move up; and the pick spreads across kinds of play and matches so a reel isn't twelve
+ * of the same kill. Returned in the order they happened. */
 export function highlightPick(clips: Clip[], max = 12): Clip[] {
-  return clips.filter((c) => HIGHLIGHT[c.t]).map((c, i) => ({ c, i, w: HIGHLIGHT[c.t] })).sort((a, b) => b.w - a.w || a.i - b.i).slice(0, max).sort((a, b) => a.i - b.i).map((x) => x.c);
+  const pool = clips.map((c, i) => ({ c, i, w: (HIGHLIGHT[c.t] || 0) + clutch(c.score, c.set) * 0.8 })).filter((x) => HIGHLIGHT[x.c.t]);
+  const out: typeof pool = [], kinds: Record<string, number> = {}, games: Record<string, number> = {};
+  while (out.length < max && pool.length) {
+    let bi = 0, bv = -Infinity;
+    pool.forEach((x, k) => { const v = x.w - 0.7 * (kinds[x.c.t] || 0) - 0.35 * (games[x.c.matchId] || 0); if (v > bv || (v === bv && x.i < pool[bi].i)) { bv = v; bi = k; } });
+    const [x] = pool.splice(bi, 1); out.push(x); kinds[x.c.t] = (kinds[x.c.t] || 0) + 1; games[x.c.matchId] = (games[x.c.matchId] || 0) + 1;
+  }
+  return out.sort((a, b) => a.i - b.i).map((x) => x.c);
 }
 
 export const clock = (sec: number) => { let s = Math.max(0, Math.round(sec)); const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60); s %= 60; return (h ? h + ":" + String(m).padStart(2, "0") : m) + ":" + String(s).padStart(2, "0"); };
