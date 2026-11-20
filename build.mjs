@@ -54,6 +54,9 @@ const legalTokens = {
   "%LEGAL_STATE%": legal.state || "California",
   "%LEGAL_EFFECTIVE%": legal.effective || "",
   "%LEGAL_VERSION%": legal.version || "1",
+  // a postal address is required for copyright notices and news emails; until one is set, the sentence is left out
+  "%LEGAL_MAIL%": legal.address ? `By mail: ${legal.address}.` : "",
+  "%LEGAL_SUPPORT%": JSON.parse(readFileSync(path.join(root, "package.json"), "utf8")).contact || legal.email || "",
 };
 for (const f of readdirSync(path.join(dist, "legal"))) {
   if (!f.endsWith(".html")) continue;

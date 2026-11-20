@@ -358,6 +358,9 @@ expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_limit_
 expect "$(q -c "select has_function_privilege('authenticated', 'public.error_digest(int)', 'execute');" | tail -1 | tr -d ' ')" "f" "the error digest is server-only"
 asall $ADM "select admin_ai_grant('teamowner@example.com', null, false);" | grep ERROR || true
 expect "$(q -c "select ai_limit_for('$TM');" | tail -1 | tr -d ' ')" "-1" "reset back to the default"
+q -c "insert into app_errors (at, message) values (now() - interval '100 days', 'old crash'), (now(), 'new crash');" >/dev/null
+q -c "select ops_cleanup();" >/dev/null
+expect "$(q -c "select count(*) from app_errors where message in ('old crash', 'new crash');" | tail -1 | tr -d ' ')" "1" "crash reports older than 90 days are deleted"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

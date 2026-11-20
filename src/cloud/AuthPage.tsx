@@ -160,7 +160,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
       </div>}
       {mode === "signup" && <div className={"auth-agree" + (err?.field === "agree" ? " bad" : "")}>
         <label><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label>
+          <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>, including resolving disputes by individual arbitration (you can opt out). If I'm under 18, a parent or guardian agrees too.</span></label>
         {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
       {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send FloorCall news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
@@ -236,10 +236,10 @@ export function TermsGate() {
   const u = currentUser();
   return <AuthShell>
     <h1 className="auth-title">Our Terms and Privacy Policy</h1>
-    <p className="auth-sub">Signed in as <b>{u?.email}</b>. Please review and agree to keep using your account. In short: your team's data is yours, we don't sell it or show ads, and you need families' permission before tracking or sharing players' information.</p>
+    <p className="auth-sub">Signed in as <b>{u?.email}</b>. We updated them on November 20, 2026: they now cover every FloorCall site, and disputes are settled by individual arbitration unless you opt out within 30 days (Terms section 24). Please review and agree to keep using your account. In short: your team's data is yours, we don't sell it or show ads, and you need families' permission before tracking or sharing players' information.</p>
     <div className="auth-form">
       <div className={"auth-agree" + (err ? " bad" : "")}><label><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-        <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label></div>
+        <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>, including resolving disputes by individual arbitration (you can opt out). If I'm under 18, a parent or guardian agrees too.</span></label></div>
       {err && <p className="auth-err box" role="alert">{err}</p>}
       <button className="auth-btn" disabled={busy} onClick={async () => {
         if (!agree) { setErr("Check the box to agree."); return; }

@@ -33,8 +33,9 @@
     "owner": "the FloorCall team",
     "email": "privacy@getfloorcall.com",
     "state": "California",
-    "effective": "November 15, 2026",
-    "version": "2"
+    "effective": "November 20, 2026",
+    "version": "3",
+    "address": ""
   },
   "maxpreps": {
     "supplierId": "",

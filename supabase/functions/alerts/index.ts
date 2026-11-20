@@ -31,6 +31,7 @@ Deno.serve(async (req) => {
     await fetch(`${url}/rest/v1/app_alerts`, { method: "POST", headers: h, body: JSON.stringify({ kind: "spike", total: d.total }) });
   } else {
     const d = await rpc("error_digest", { mins: 1440 }), o = await rpc("ops_digest");
+    await rpc("ops_cleanup"); // old crash reports, AI counts and answered messages, as the Privacy Policy says
     subject = `FloorCall daily: ${o?.new_accounts ?? "?"} new accounts, ${o?.messages ?? "?"} open messages`;
     lines = [`New accounts (24 h): ${o?.new_accounts ?? "?"}`, `Contact messages waiting: ${o?.messages ?? "?"}`, `Coaches waiting for verification: ${o?.verify ?? "?"}`,
       `Crash reports (24 h): ${d?.total ?? "?"} from ${d?.people ?? "?"} people`, ...(d?.top || []).map((x: any) => `• ${x.n}× ${x.message}`), "", "Open the Admin page in the FloorCall app to follow up."];

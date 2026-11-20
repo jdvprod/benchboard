@@ -1716,6 +1716,19 @@ language sql stable security definer set search_path = public as $$
     'new_accounts', (select count(*) from auth.users where created_at > now() - interval '1 day'))
 $$;
 revoke execute on function public.ops_digest() from public, anon, authenticated;
+-- Housekeeping the Privacy Policy promises, run by the daily alerts call: crash reports and AI counts after 90 days,
+-- answered Contact messages after 2 years.
+create or replace function public.ops_cleanup() returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare a int; b int; c int; d int;
+begin
+  delete from app_errors where at < now() - interval '90 days'; get diagnostics a = row_count;
+  delete from app_alerts where at < now() - interval '90 days'; get diagnostics b = row_count;
+  delete from ai_usage where day < current_date - 90; get diagnostics c = row_count;
+  delete from support_messages where status = 'done' and created_at < now() - interval '2 years'; get diagnostics d = row_count;
+  return jsonb_build_object('errors', a, 'alerts', b, 'ai_usage', c, 'messages', d);
+end $$;
+revoke execute on function public.ops_cleanup() from public, anon, authenticated;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
@@ -1727,7 +1740,7 @@ grant execute on function public.watch(text), public.season_view(text), public.r
   public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
-revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest() from authenticated;
+revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest(), public.ops_cleanup() from authenticated;
 -- Functions added later start closed to anyone without an account.
 alter default privileges in schema public revoke execute on functions from public, anon;
 -- Tables: no account needed only to send a crash report; everything else goes through the functions above.
