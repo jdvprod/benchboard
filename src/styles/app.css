@@ -1189,3 +1189,5 @@ body.nav-mini .sm-btn span{display:none}
 /* better lately in green, worse in red (the arrow shows which way the number moved) */
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .kpi .dl.up{color:#4CC27A}:root:not([data-theme=light]) .kpi .dl.down{color:#F06A5D}}
 :root[data-theme=dark] .kpi .dl.up{color:#4CC27A}:root[data-theme=dark] .kpi .dl.down{color:#F06A5D}
+.pf-phys{border-top:1px solid var(--line);padding-top:10px}.pf-phys summary{cursor:pointer;font-weight:600}
+.pf-phys-h{margin:12px 0 6px;font-size:13px;color:var(--muted)}

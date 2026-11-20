@@ -2,6 +2,7 @@
  *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
  *   #/guide  #/emails  #/studio  for athletes: recruiting guide, emails to coaches, Reel Studio
  *   #/  what this is, enter a code */
+import { physOf } from "./physical";
 import { contactUrl } from "../cloud/links";
 import { CodeBox } from "../cloud/CodeBox";
 import "../styles/app.css";
@@ -63,7 +64,8 @@ function Profile({ code }: { code: string }) {
     ["Pass average", s.R ? fmtAvg(s.passAvg) : "—", `0–3 scale, ${plural(s.R, "pass", "passes")}`, s.R], ["Digs / set", fmtNum(s.dps, 2), `${plural(s.D, "dig")}`, s.D], ["Blocks / set", fmtNum(s.bps, 2), `${s.BS} solo, ${s.BA} assists${s.BT ? `, ${s.BT} touches` : ""}`, s.BS + s.BA], ["Assists / set", fmtNum(s.aps, 2), `${s.AST} assists`, s.AST],
   ];
   const shown = tiles.filter((x) => x[3] > 0);
-  const measure: [string, string | undefined][] = [["Height", p.height], ["Standing reach", pr.reach], ["Approach jump", pr.approach], ["Block jump", pr.block], ["Dominant hand", pr.hand], ["GPA", pr.gpa], ["Club", pr.club]];
+  const measure: [string, string | undefined][] = [["Height", p.height], ...physOf(pr, "Reach and jump"), ["Dominant hand", pr.hand], ["GPA", pr.gpa], ["Club", pr.club]];
+  const power = [...physOf(pr, "Speed"), ...physOf(pr, "Strength")];
   const contact = mail(pr.email);
   type G = RecruitData["games"][number];
   const allCols: [string, (g: G) => string | number, (g: G) => number][] = [["SP", (g) => g.sets, () => 1], ["K", (g) => g.K, (g) => g.K + g.TA], ["E", (g) => g.AE, (g) => g.TA], ["TA", (g) => g.TA, (g) => g.TA], ["Hit%", (g) => (g.TA ? fmtHit((g.K - g.AE) / g.TA) : "–"), (g) => g.TA],
@@ -89,6 +91,7 @@ function Profile({ code }: { code: string }) {
     {shown.length > 0 && <section className="rc-card"><h2>Season numbers</h2><div className="rc-tiles">{shown.map(([l, v, sub]) => <div key={l}><span>{l}</span><b>{v}</b><small>{sub}</small></div>)}</div></section>}
     <div className="rc-two">
       {measure.some(([, v]) => v) && <section className="rc-card"><h2>Measurables and academics</h2><dl className="rc-dl">{measure.filter(([, v]) => v).map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>}
+      {power.length > 0 && <section className="rc-card"><h2>Speed and strength{pr.tested ? <small className="rc-tested"> · {pr.tested}</small> : null}</h2><dl className="rc-dl">{power.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl></section>}
       <section className="rc-card"><h2>Contact</h2><dl className="rc-dl">
         {pr.email && <div><dt>Player email</dt><dd>{contact ? <a href={contact}>{pr.email}</a> : pr.email}</dd></div>}
         {pr.phone && <div><dt>Player phone</dt><dd><a href={"tel:" + pr.phone.replace(/[^\d+]/g, "")}>{pr.phone}</a></dd></div>}

@@ -6,6 +6,7 @@ export interface Athlete {
   club?: string; clubNum?: string; school?: string; city?: string; gpa?: string; major?: string;
   video?: string; profile?: string; email?: string; phone?: string; clubCoach?: string; clubCoachEmail?: string;
   stats?: string; // one line, e.g. "3.4 kills/set, .285 hitting, 2.1 digs/set"
+  wingspan?: string; vert?: string; approachVert?: string; broad?: string; shuttle?: string; sprint?: string; bench?: string; squat?: string; deadlift?: string; clean?: string; pullups?: string; tested?: string;
 }
 export interface Target { coach?: string; school?: string; why?: string; camp?: string; events?: string }
 export type EmailKind = "intro" | "schedule" | "camp" | "thanks" | "video";
@@ -21,7 +22,10 @@ const cap = (s: string) => s.trim().replace(/\s+/g, " ");
 const full = (a: Athlete) => cap(`${a.first} ${a.last}`);
 const greet = (t: Target) => `Dear ${t.coach?.trim() ? "Coach " + cap(t.coach).replace(/^coach\s+/i, "") : "Coach"},`;
 const tag = (a: Athlete) => [a.grad && `Class of ${a.grad}`, a.pos, a.height].filter(Boolean).join(" · ");
-const measures = (a: Athlete) => [a.approach && `${a.approach} approach`, a.block && `${a.block} block`, a.reach && `${a.reach} standing reach`].filter(Boolean).join(", ");
+const measures = (a: Athlete) => [a.approach && `${a.approach} approach`, a.block && `${a.block} block`, a.reach && `${a.reach} standing reach`, a.wingspan && `${a.wingspan} wingspan`,
+  a.approachVert && `${a.approachVert} approach vertical`, a.vert && `${a.vert} standing vertical`, a.broad && `${a.broad} broad jump`].filter(Boolean).join(", ");
+const strength = (a: Athlete) => [a.shuttle && `${a.shuttle} 5-10-5`, a.sprint && `${a.sprint} 10-yard sprint`, a.bench && `${a.bench} bench`, a.squat && `${a.squat} squat`,
+  a.deadlift && `${a.deadlift} deadlift`, a.clean && `${a.clean} power clean`, a.pullups && `${a.pullups} pull-ups`].filter(Boolean).join(", ");
 
 function signature(a: Athlete): string {
   return [full(a), tag(a), [a.club && `${a.club}${a.clubNum ? " #" + a.clubNum : ""}`, a.school].filter(Boolean).join(" · "), a.gpa && `GPA ${a.gpa}`,
@@ -33,8 +37,8 @@ const lines = (s: string) => s.split(/\n|;/).map((x) => x.trim()).filter(Boolean
 export function writeEmail(kind: EmailKind, a: Athlete, t: Target = {}): { subject: string; body: string } {
   const who = `${full(a) || "[Your name]"}${a.grad ? ` (${a.grad}` : ""}${a.pos ? (a.grad ? ", " : " (") + a.pos : ""}${a.grad || a.pos ? ")" : ""}`;
   const school = t.school?.trim() || "[school]";
-  const m = measures(a), stat = a.stats?.trim();
-  const facts = [stat && `This season: ${stat}.`, m && `Measurables: ${m}.`, a.gpa && `I carry a ${a.gpa} GPA${a.major ? " and want to study " + a.major : ""}.`].filter(Boolean).join(" ");
+  const m = measures(a), st = strength(a), stat = a.stats?.trim();
+  const facts = [stat && `This season: ${stat}.`, m && `Measurables: ${m}.`, st && `Speed and strength${a.tested?.trim() ? ` (tested ${a.tested.trim()})` : ""}: ${st}.`, a.gpa && `I carry a ${a.gpa} GPA${a.major ? " and want to study " + a.major : ""}.`].filter(Boolean).join(" ");
   const links = [a.video && `Highlight video: ${a.video}`, a.profile && `Verified stats and game log: ${a.profile}`].filter(Boolean).join("\n");
   const ev = t.events ? lines(t.events) : [];
   let subject = "", body = "";

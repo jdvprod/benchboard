@@ -22,6 +22,7 @@ import { ClipPlayer } from "../../ui/ClipPlayer";
 import { ReelMaker } from "../../film/ReelMaker";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { highlightPick } from "../../film/clips";
+import { PHYS_GROUPS, PHYSICAL, physOf } from "../../recruit/physical";
 import { playerClips, recruitData } from "./recruitData";
 import { copyText } from "../../ui/kit";
 import { QrButton } from "../../ui/QrButton";
@@ -199,7 +200,6 @@ table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{padding:6px;tex
 /* ---------- recruiting profile (preview of the recruiting add-on) ---------- */
 const PF: [keyof RecruitProfile, string, string][] = [
   ["club", "Club team", "e.g. Central Valley 16 Elite"], ["gpa", "GPA", "3.8"], ["hand", "Dominant hand", "Right"],
-  ["reach", "Standing reach", `7'6"`], ["approach", "Approach jump", `9'8"`], ["block", "Block jump", `9'2"`],
   ["email", "Player email", "name@email.com"], ["phone", "Player phone", ""], ["video", "Highlight video link", "https://…"], ["coachContact", "Coach contact", "Your name and email"],
 ];
 function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
@@ -219,6 +219,10 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
     <button className="btn sm primary" onClick={() => { download(`${p.first} ${p.last} recruiting profile.html`, recruitHtml(id, rows, A), "text/html"); toast("Recruiting sheet saved. Send it to college coaches or attach it to emails."); }}>Download recruiting sheet</button></div>}>
     {open ? <div className="stack">
       <div className="pf-grid">{PF.map(([k, label, ph]) => <label key={k} className="field"><span className="label">{label}</span><input key={id + k} defaultValue={String(pr[k] ?? "")} placeholder={ph} onBlur={(e) => set(k, e.target.value.trim())} /></label>)}</div>
+      <details className="pf-phys" open={PHYSICAL.some(([k]) => pr[k])}><summary>Physical and strength numbers <span className="small muted">optional</span></summary>
+        {PHYS_GROUPS.map((g) => <div key={g}><h4 className="pf-phys-h">{g}</h4><div className="pf-grid">{PHYSICAL.filter((x) => x[3] === g).map(([k, label, ph]) => <label key={k} className="field"><span className="label">{label}</span><input key={id + k} defaultValue={String(pr[k] ?? "")} placeholder={ph} onBlur={(e) => set(k, e.target.value.trim())} /></label>)}</div></div>)}
+        <label className="field" style={{ marginTop: 8 }}><span className="label">When and where measured</span><input key={id + "tested"} defaultValue={pr.tested || ""} placeholder="Club combine, March 2026" onBlur={(e) => set("tested", e.target.value.trim())} /></label>
+      </details>
       <label className="field"><span className="label">About</span><textarea key={id + "about"} rows={3} defaultValue={pr.about || ""} placeholder="Strengths, leadership, what they're looking for in a program" onBlur={(e) => set("about", e.target.value.trim())} /></label>
       <p className="keys">Stays private on your account until you share it. The download and the profile link show the player's full name, these details and verified stats; the link is a snapshot you can update anytime.</p>
     </div> : <p className="small muted">Measurables, contact info and a highlight link, combined with verified season stats into a one-page sheet for college coaches.</p>}
@@ -302,7 +306,8 @@ h1{margin:0;font-size:30px}.sub{color:var(--mut)}h2{font-size:12px;letter-spacin
 table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:6px;text-align:left}th{font-size:12px;color:var(--mut)}a{color:var(--c)}footer{margin-top:22px;color:var(--mut);font-size:12px}</style></head><body><main>
 <div class="hero"><div class="n">${esc(p.num)}</div><div><h1>${esc(p.first + " " + p.last)}</h1><div class="sub">${esc([p.pos, p.height, p.grad ? "Class of " + p.grad : ""].filter(Boolean).join(" · "))}</div><div class="sub">${esc([t.name, t.level, pr.club].filter(Boolean).join(" · "))}</div></div></div>
 ${pr.about ? `<p style="margin-top:14px">${esc(pr.about)}</p>` : ""}
-${p.height || pr.reach || pr.approach || pr.block || pr.hand || pr.gpa ? `<h2>Measurables</h2><div class="g">${item("Height", p.height)}${item("Standing reach", pr.reach)}${item("Approach jump", pr.approach)}${item("Block jump", pr.block)}${item("Dominant hand", pr.hand)}${item("GPA", pr.gpa)}</div>` : ""}
+${p.height || physOf(pr, "Reach and jump").length || pr.hand || pr.gpa ? `<h2>Measurables</h2><div class="g">${item("Height", p.height)}${physOf(pr, "Reach and jump").map(([l, v]) => item(l, v)).join("")}${item("Dominant hand", pr.hand)}${item("GPA", pr.gpa)}</div>` : ""}
+${physOf(pr, "Speed").length + physOf(pr, "Strength").length ? `<h2>Speed and strength${pr.tested ? ` · ${esc(pr.tested)}` : ""}</h2><div class="g">${[...physOf(pr, "Speed"), ...physOf(pr, "Strength")].map(([l, v]) => item(l, v)).join("")}</div>` : ""}
 <h2>Season stats (${pm.sets} ${pm.sets === 1 ? "set" : "sets"}, tracked live)</h2><div class="g">${stats.map(([l, v]) => item(l, v)).join("")}</div>
 ${best.length ? `<h2>Best matches</h2><table><thead><tr><th>Date</th><th>Opponent</th><th>Kills</th><th>Digs</th><th>Assists</th><th>Aces</th></tr></thead><tbody>${best.map(({ r }) => `<tr><td>${esc(r.m.date)}</td><td>${esc(r.m.opp)}</td><td>${r.s?.K ?? 0}</td><td>${r.s?.D ?? 0}</td><td>${r.s?.AST ?? 0}</td><td>${r.s?.SA ?? 0}</td></tr>`).join("")}</tbody></table>` : ""}
 ${safeUrl(pr.video) ? `<h2>Highlights</h2><p><a href="${esc(safeUrl(pr.video))}">${esc(pr.video)}</a></p>` : ""}

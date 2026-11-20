@@ -6,6 +6,7 @@ import { Clip, clock } from "../film/clips";
 import { canMakeReel, reelLength, renderReel } from "../film/reel";
 import { bestOf, DECODE_LIMIT, loudMoments, Rally, ralliesFrom, scanFile, scanStream, withHype } from "../film/rallies";
 import { canStreamAudio } from "../film/mp4audio";
+import { PHYS_GROUPS, PHYSICAL } from "./physical";
 import { cloudAvailable, currentUser, updateMeta, userMeta } from "../cloud/client";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 
@@ -110,11 +111,16 @@ function Emails({ Shell }: { Shell: any }) {
         </div></section>
         <section className="rc-card rg-you"><h2>About you <small className="muted">saved to your account</small></h2><div className="rg-form">
           {f("first", "First name")}{f("last", "Last name")}{f("grad", "Grad year", "2028")}{f("pos", "Position", "Outside hitter")}{f("height", "Height", "5'11\"")}
-          {f("approach", "Approach jump", "9'10\"")}{f("block", "Block jump", "9'4\"")}{f("club", "Club team", "Club name 17 Elite")}{f("clubNum", "Jersey #", "7")}{f("school", "High school")}{f("city", "City, state")}{f("gpa", "GPA", "3.8")}{f("major", "What you want to study")}
+          {f("club", "Club team", "Club name 17 Elite")}{f("clubNum", "Jersey #", "7")}{f("school", "High school")}{f("city", "City, state")}{f("gpa", "GPA", "3.8")}{f("major", "What you want to study")}
           {f("stats", "Your numbers (one line)", "3.2 kills/set, .260 hitting, 2.4 digs/set", true)}
           {f("video", "Highlight video link", "https://youtu.be/…", true)}{f("profile", "FloorCall profile link", "", true)}
           {f("email", "Your email")}{f("phone", "Your phone")}{f("clubCoach", "Club coach")}{f("clubCoachEmail", "Club coach email")}
-        </div></section>
+        </div>
+        <details className="rg-phys" open={PHYSICAL.some(([k]) => (a as any)[k])}><summary>Physical and strength numbers <small className="muted">optional · only add what's been measured</small></summary>
+          {PHYS_GROUPS.map((g) => <fieldset key={g}><legend>{g}</legend><div className="rg-form">{PHYSICAL.filter((x) => x[3] === g).map(([k, l, ph]) => <span key={k}>{f(k as keyof Athlete, l, ph)}</span>)}</div></fieldset>)}
+          <div className="rg-form">{f("tested", "When and where measured", "Club combine, March 2026", true)}</div>
+          <p className="rc-note">Coaches trust numbers measured at a camp, combine or by a trainer. Leave out anything you're unsure of.</p>
+        </details></section>
       </div>
       <section className="rc-card rg-preview" aria-label="Your email">
         <div className="rg-row"><h2>Your email</h2>{copied && <span className="rg-copied" role="status">{copied}</span>}</div>

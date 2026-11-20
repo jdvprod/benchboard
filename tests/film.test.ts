@@ -241,3 +241,14 @@ test("rallies: one stray whistle inside a rally doesn't flip serve and end for t
   // every rally keeps its own end; only the rally with the squeak may start at the squeak instead of the serve
   rallies.forEach(([a, b], i) => { assert.equal(r[i].end, b + 2); if (i !== 4) assert.equal(r[i].start, a - 1); });
 });
+
+import { physOf } from "../src/recruit/physical";
+test("recruit: optional physical numbers show only when filled, and go into the email", () => {
+  const pr = { reach: "7'6\"", bench: "115 lb", shuttle: " ", squat: "205 lb" };
+  assert.deepEqual(physOf(pr, "Reach and jump"), [["Standing reach", "7'6\""]]);
+  assert.deepEqual(physOf(pr, "Strength").map((x) => x[0]), ["Bench press", "Back squat"]);
+  assert.equal(physOf(pr, "Speed").length, 0, "blank stays out");
+  const e = writeEmail("intro", { first: "Maya", last: "Chen", grad: "2028", pos: "OH", height: "6'0\"", wingspan: "6'2\"", squat: "205 lb", tested: "March 2026" } as any, {});
+  assert.match(e.body, /6'2" wingspan/); assert.match(e.body, /Speed and strength \(tested March 2026\): 205 lb squat\./);
+  assert.doesNotMatch(writeEmail("intro", { first: "A", last: "B", grad: "", pos: "", height: "" }, {}).body, /Speed and strength/);
+});
