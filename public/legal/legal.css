@@ -19,3 +19,4 @@ footer{border-top:1px solid var(--line);color:var(--muted);font-size:14.5px}foot
 :focus-visible{outline:2px solid var(--blue);outline-offset:3px}
 @media print{header,footer{display:none}body{background:#fff;color:#000}a{color:#000}}
 .lg-brand{display:inline-flex;align-items:center;gap:8px}.lg-brand img{width:28px;height:28px;display:block}
+@media (max-width:640px){table{display:block;overflow-x:auto;font-size:14.5px}th,td{min-width:110px}}main{overflow-wrap:anywhere}
