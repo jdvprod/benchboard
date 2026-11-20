@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 30 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 31 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1193,13 +1193,231 @@ begin
 end $$;
 grant execute on function public.admin_decide_coach(uuid, boolean) to authenticated;
 
+-- ---------- Floorcall Lessons (version 31): private lessons, small groups and clinics ----------
+-- A trainer's athletes come from anywhere, so lessons aren't team records. Trainers (verified coaches) keep their
+-- athletes and sessions here; each athlete or parent joins with a personal code and sees only their own athlete's
+-- sessions, shared notes and numbers. Everything goes through the functions below; nobody reads these tables directly.
+create table if not exists public.lesson_athletes (
+  id text primary key, trainer uuid not null references auth.users(id) on delete cascade,
+  name text not null, grad text, position text, club text, contact text, notes text,
+  code text unique, created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create index if not exists lesson_athletes_trainer on public.lesson_athletes (trainer);
+create table if not exists public.lesson_access (
+  athlete_id text not null references public.lesson_athletes(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'athlete' check (role in ('athlete', 'parent')),
+  joined_at timestamptz not null default now(), primary key (athlete_id, user_id)
+);
+create table if not exists public.lesson_sessions (
+  id text primary key, trainer uuid not null references auth.users(id) on delete cascade,
+  starts timestamptz not null, minutes int not null default 60 check (minutes between 5 and 600),
+  kind text not null default 'private' check (kind in ('private', 'group', 'clinic')),
+  title text, place text, capacity int check (capacity between 1 and 500), focus text[] not null default '{}',
+  athletes text[] not null default '{}', open boolean not null default false, public boolean not null default false,
+  code text unique, price text, notes text, shared_note text,
+  status text not null default 'scheduled' check (status in ('scheduled', 'done', 'canceled')),
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create index if not exists lesson_sessions_trainer on public.lesson_sessions (trainer, starts);
+-- who came, what they did (reps per skill) and whether it's paid
+create table if not exists public.lesson_roster (
+  session_id text not null references public.lesson_sessions(id) on delete cascade,
+  athlete_id text not null references public.lesson_athletes(id) on delete cascade,
+  reps jsonb not null default '{}', attended boolean, paid boolean not null default false,
+  updated_at timestamptz not null default now(), primary key (session_id, athlete_id)
+);
+-- sign-ups from a clinic's public page, for the trainer to accept
+create table if not exists public.lesson_requests (
+  id uuid primary key default gen_random_uuid(),
+  session_id text not null references public.lesson_sessions(id) on delete cascade,
+  name text not null, contact text, note text, status text not null default 'pending' check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamptz not null default now()
+);
+alter table public.lesson_athletes enable row level security;
+alter table public.lesson_access enable row level security;
+alter table public.lesson_sessions enable row level security;
+alter table public.lesson_roster enable row level security;
+alter table public.lesson_requests enable row level security;
+revoke all on public.lesson_athletes, public.lesson_access, public.lesson_sessions, public.lesson_roster, public.lesson_requests from anon, authenticated;
+
+create or replace function public.lesson_code() returns text language sql volatile as $$
+  select string_agg(substr('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', 1 + floor(random() * 32)::int, 1), '') from generate_series(1, 6)
+$$;
+
+-- The trainer's whole book: athletes (with who has joined), sessions, roster rows and clinic sign-ups.
+create or replace function public.lesson_trainer_data() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  return jsonb_build_object(
+    'athletes', coalesce((select jsonb_agg(to_jsonb(a) || jsonb_build_object('joined', (select coalesce(jsonb_agg(jsonb_build_object('role', x.role, 'email', u.email)), '[]') from lesson_access x join auth.users u on u.id = x.user_id where x.athlete_id = a.id)) order by a.name) from lesson_athletes a where a.trainer = me), '[]'),
+    'sessions', coalesce((select jsonb_agg(to_jsonb(s) order by s.starts) from lesson_sessions s where s.trainer = me), '[]'),
+    'roster', coalesce((select jsonb_agg(to_jsonb(r)) from lesson_roster r join lesson_sessions s on s.id = r.session_id where s.trainer = me), '[]'),
+    'requests', coalesce((select jsonb_agg(to_jsonb(q) order by q.created_at) from lesson_requests q join lesson_sessions s on s.id = q.session_id where s.trainer = me and q.status = 'pending'), '[]'),
+    'verified', coach_ok());
+end $$;
+
+create or replace function public.lesson_save_athlete(a jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); owner uuid;
+begin
+  if not coach_ok() then raise exception 'Verify your coach account first: Floorcall checks every trainer before they add athletes.'; end if;
+  if length(trim(coalesce(a->>'name', ''))) < 1 then raise exception 'Add the athlete''s name.'; end if;
+  select trainer into owner from lesson_athletes where id = a->>'id';
+  if owner is not null and owner <> me then raise exception 'Not your athlete.'; end if;
+  insert into lesson_athletes (id, trainer, name, grad, position, club, contact, notes)
+  values (a->>'id', me, left(trim(a->>'name'), 80), left(a->>'grad', 10), left(a->>'position', 20), left(a->>'club', 80), left(a->>'contact', 120), left(a->>'notes', 2000))
+  on conflict (id) do update set name = excluded.name, grad = excluded.grad, position = excluded.position, club = excluded.club,
+    contact = excluded.contact, notes = excluded.notes, updated_at = now();
+end $$;
+
+create or replace function public.lesson_delete_athlete(aid text) returns void
+language sql security definer set search_path = public as $$
+  update lesson_sessions set athletes = array_remove(athletes, aid), updated_at = now() where trainer = auth.uid() and aid = any(athletes);
+  delete from lesson_athletes where id = aid and trainer = auth.uid();
+$$;
+
+-- A personal code for an athlete (or their parent) to join with. Made once; "new code" replaces it.
+create or replace function public.lesson_invite(aid text, fresh boolean default false) returns text
+language plpgsql security definer set search_path = public as $$
+declare c text;
+begin
+  select code into c from lesson_athletes where id = aid and trainer = auth.uid();
+  if not found then raise exception 'Not your athlete.'; end if;
+  if c is null or fresh then
+    loop c := lesson_code(); exit when not exists (select 1 from lesson_athletes where code = c); end loop;
+    update lesson_athletes set code = c, updated_at = now() where id = aid;
+  end if;
+  return c;
+end $$;
+
+create or replace function public.lesson_save_session(x jsonb) returns void
+language plpgsql security definer set search_path = public as $$
+declare me uuid := auth.uid(); owner uuid; ids text[]; c text;
+begin
+  if not coach_ok() then raise exception 'Verify your coach account first.'; end if;
+  select trainer, code into owner, c from lesson_sessions where id = x->>'id';
+  if owner is not null and owner <> me then raise exception 'Not your session.'; end if;
+  -- only the trainer's own athletes
+  select coalesce(array_agg(a.id), '{}') into ids from lesson_athletes a where a.trainer = me and a.id in (select jsonb_array_elements_text(coalesce(x->'athletes', '[]')));
+  if coalesce((x->>'public')::boolean, false) and c is null then
+    loop c := lesson_code(); exit when not exists (select 1 from lesson_sessions where code = c); end loop;
+  end if;
+  insert into lesson_sessions (id, trainer, starts, minutes, kind, title, place, capacity, focus, athletes, open, public, code, price, notes, shared_note, status)
+  values (x->>'id', me, (x->>'starts')::timestamptz, coalesce((x->>'minutes')::int, 60), coalesce(x->>'kind', 'private'), left(x->>'title', 100), left(x->>'place', 120),
+    nullif(x->>'capacity', '')::int, coalesce((select array_agg(v) from jsonb_array_elements_text(coalesce(x->'focus', '[]')) v), '{}'), ids,
+    coalesce((x->>'open')::boolean, false), coalesce((x->>'public')::boolean, false), c, left(x->>'price', 40), left(x->>'notes', 4000), left(x->>'shared_note', 2000), coalesce(x->>'status', 'scheduled'))
+  on conflict (id) do update set starts = excluded.starts, minutes = excluded.minutes, kind = excluded.kind, title = excluded.title, place = excluded.place,
+    capacity = excluded.capacity, focus = excluded.focus, athletes = excluded.athletes, open = excluded.open, public = excluded.public,
+    code = coalesce(lesson_sessions.code, excluded.code), price = excluded.price, notes = excluded.notes, shared_note = excluded.shared_note, status = excluded.status, updated_at = now();
+end $$;
+
+create or replace function public.lesson_delete_session(sid text) returns void
+language sql security definer set search_path = public as $$ delete from lesson_sessions where id = sid and trainer = auth.uid(); $$;
+
+create or replace function public.lesson_save_roster(sid text, aid text, reps jsonb, attended boolean, paid boolean) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from lesson_sessions where id = sid and trainer = auth.uid()) or not exists (select 1 from lesson_athletes where id = aid and trainer = auth.uid()) then
+    raise exception 'Not your session.'; end if;
+  insert into lesson_roster (session_id, athlete_id, reps, attended, paid) values (sid, aid, coalesce(reps, '{}'), attended, coalesce(paid, false))
+  on conflict (session_id, athlete_id) do update set reps = excluded.reps, attended = excluded.attended, paid = excluded.paid, updated_at = now();
+end $$;
+
+-- An athlete or parent joins with their personal code.
+create or replace function public.lesson_join(invite text, as_role text default 'athlete') returns text
+language plpgsql security definer set search_path = public as $$
+declare aid text; nm text;
+begin
+  if auth.uid() is null then raise exception 'Sign in first.'; end if;
+  perform code_gate();
+  select id, name into aid, nm from lesson_athletes where code = upper(trim(invite));
+  if aid is null then perform code_miss(invite); raise exception 'That code doesn''t match. Check it with your trainer.'; end if;
+  insert into lesson_access (athlete_id, user_id, role) values (aid, auth.uid(), case when as_role = 'parent' then 'parent' else 'athlete' end)
+  on conflict (athlete_id, user_id) do update set role = excluded.role;
+  return nm;
+end $$;
+
+-- What an athlete or parent sees: their athletes, those athletes' sessions (no other athletes' names, no private
+-- notes), their numbers, and open sessions from the same trainers they can book.
+create or replace function public.my_lessons() returns jsonb
+language plpgsql stable security definer set search_path = public as $$
+declare me uuid := auth.uid();
+begin
+  if me is null then raise exception 'Sign in first.'; end if;
+  return jsonb_build_object(
+    'athletes', coalesce((select jsonb_agg(jsonb_build_object('id', a.id, 'name', a.name, 'role', x.role, 'trainer', coalesce(u.raw_user_meta_data->>'name', 'Your trainer'))) from lesson_access x join lesson_athletes a on a.id = x.athlete_id join auth.users u on u.id = a.trainer where x.user_id = me), '[]'),
+    'sessions', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'starts', s.starts, 'minutes', s.minutes, 'kind', s.kind, 'title', s.title, 'place', s.place, 'focus', s.focus,
+        'shared_note', s.shared_note, 'status', s.status, 'price', s.price, 'mine', (select coalesce(jsonb_agg(m), '[]') from unnest(s.athletes) m where m in (select athlete_id from lesson_access where user_id = me)),
+        'spots', case when s.capacity is null then null else greatest(s.capacity - cardinality(s.athletes), 0) end, 'open', s.open) order by s.starts)
+      from lesson_sessions s where s.status <> 'canceled' and (s.athletes && (select coalesce(array_agg(athlete_id), '{}') from lesson_access where user_id = me)
+        or (s.open and s.starts > now() and s.trainer in (select a.trainer from lesson_access x join lesson_athletes a on a.id = x.athlete_id where x.user_id = me)))), '[]'),
+    'roster', coalesce((select jsonb_agg(jsonb_build_object('session_id', r.session_id, 'athlete_id', r.athlete_id, 'reps', r.reps, 'attended', r.attended, 'paid', r.paid))
+      from lesson_roster r where r.athlete_id in (select athlete_id from lesson_access where user_id = me)), '[]'));
+end $$;
+
+-- Book (or leave) an open session for one of your athletes.
+create or replace function public.lesson_book(sid text, aid text, join_it boolean default true) returns void
+language plpgsql security definer set search_path = public as $$
+declare s lesson_sessions;
+begin
+  if not exists (select 1 from lesson_access where athlete_id = aid and user_id = auth.uid()) then raise exception 'Not your athlete.'; end if;
+  select * into s from lesson_sessions where id = sid for update;
+  if s.id is null or s.trainer <> (select trainer from lesson_athletes where id = aid) then raise exception 'That session isn''t available.'; end if;
+  if join_it then
+    if not s.open or s.status <> 'scheduled' or s.starts < now() then raise exception 'That session isn''t open for booking.'; end if;
+    if s.capacity is not null and cardinality(s.athletes) >= s.capacity and not aid = any(s.athletes) then raise exception 'That session is full.'; end if;
+    update lesson_sessions set athletes = array_append(array_remove(athletes, aid), aid), updated_at = now() where id = sid;
+  else
+    if s.starts < now() then raise exception 'That session has already started.'; end if;
+    update lesson_sessions set athletes = array_remove(athletes, aid), updated_at = now() where id = sid;
+  end if;
+end $$;
+
+-- A clinic's public page: anyone with the link sees what, when, where and how many spots are left, and can sign up.
+create or replace function public.lesson_public(c text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('title', s.title, 'starts', s.starts, 'minutes', s.minutes, 'place', s.place, 'focus', s.focus, 'price', s.price, 'shared_note', s.shared_note,
+    'spots', case when s.capacity is null then null else greatest(s.capacity - cardinality(s.athletes) - (select count(*) from lesson_requests q where q.session_id = s.id and q.status = 'pending'), 0) end,
+    'trainer', coalesce((select raw_user_meta_data->>'name' from auth.users where id = s.trainer), 'Floorcall trainer'), 'status', s.status)
+  from lesson_sessions s where s.code = upper(trim(c)) and s.public
+$$;
+create or replace function public.lesson_signup(c text, who text, contact text, note text default null) returns void
+language plpgsql security definer set search_path = public as $$
+declare sid text; cap int; n int;
+begin
+  select id, capacity, cardinality(athletes) into sid, cap, n from lesson_sessions where code = upper(trim(c)) and public and status = 'scheduled' and starts > now();
+  if sid is null then raise exception 'Sign-ups for this clinic are closed.'; end if;
+  if length(trim(coalesce(who, ''))) < 2 or length(trim(coalesce(contact, ''))) < 5 then raise exception 'Add the player''s name and a parent''s email or phone.'; end if;
+  if (select count(*) from lesson_requests where session_id = sid) >= 300 then raise exception 'Sign-ups for this clinic are closed.'; end if;
+  if cap is not null and n + (select count(*) from lesson_requests where session_id = sid and status = 'pending') >= cap then raise exception 'This clinic is full.'; end if;
+  insert into lesson_requests (session_id, name, contact, note) values (sid, left(trim(who), 80), left(trim(contact), 120), left(note, 500));
+end $$;
+-- The trainer takes a sign-up: it becomes one of their athletes, booked into the clinic.
+create or replace function public.lesson_request_decide(rid uuid, accept boolean) returns text
+language plpgsql security definer set search_path = public as $$
+declare q lesson_requests; aid text;
+begin
+  select q2.* into q from lesson_requests q2 join lesson_sessions s on s.id = q2.session_id where q2.id = rid and s.trainer = auth.uid();
+  if q.id is null then raise exception 'Not your clinic.'; end if;
+  update lesson_requests set status = case when accept then 'accepted' else 'declined' end where id = rid;
+  if not accept then return null; end if;
+  aid := 'la_' || replace(gen_random_uuid()::text, '-', '');
+  insert into lesson_athletes (id, trainer, name, contact) values (aid, auth.uid(), q.name, q.contact);
+  update lesson_sessions set athletes = array_append(athletes, aid), updated_at = now() where id = q.session_id;
+  return aid;
+end $$;
+
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
 -- Row security already guards the tables; this takes the defaults away as well and gives back exactly what each role uses.
 -- Anyone (no account): the public pages only.
 revoke execute on all functions in schema public from public, anon;
 grant execute on function public.watch(text), public.season_view(text), public.recruit_view(text), public.recruit_seen(text),
-  public.recruit_board(text), public.beach_view(text), public.schema_version(), public.server_time() to anon;
+  public.recruit_board(text), public.beach_view(text), public.schema_version(), public.server_time(),
+  public.lesson_public(text), public.lesson_signup(text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
 revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text) from authenticated;

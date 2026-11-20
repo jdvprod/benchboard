@@ -118,6 +118,9 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}footer a{color:var(--grey)}
 .plan li::before{content:"";position:absolute;left:2px;top:.55em;width:10px;height:6px;border-left:2px solid var(--blue);border-bottom:2px solid var(--blue);transform:rotate(-45deg)}
 .plan .btn{margin-top:auto;justify-content:center}
 @media (max-width:1100px){.plans{grid-template-columns:repeat(2,minmax(0,1fr))}}@media (max-width:640px){.plans{grid-template-columns:1fr;max-width:520px;margin-inline:auto}}
+.plan.trainer{margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) auto;gap:20px 40px;align-items:center}
+.plan.trainer ul{margin:0;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 24px}.plan.trainer .btn{margin-top:0}
+@media (max-width:1100px){.plan.trainer{grid-template-columns:1fr}.plan.trainer .btn{justify-self:start}}@media (max-width:640px){.plan.trainer{max-width:520px;margin-inline:auto}.plan.trainer ul{grid-template-columns:1fr}}
 .free{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:40px;margin-top:clamp(40px,5vw,56px)}
 .free p{margin:6px 0 0;color:var(--grey);font-size:17px}
 @media (max-width:760px){.free{grid-template-columns:1fr;gap:24px}}
@@ -140,12 +143,12 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}footer a{color:var(--grey)}
 .beliefs div{padding:24px 0;border-bottom:1px solid var(--line)}
 .beliefs p{margin:0;color:var(--grey);font-size:17px}
 @media (max-width:760px){.beliefs{grid-template-columns:1fr}}
-.family{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;margin-top:clamp(40px,5vw,56px)}
+.family{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:clamp(40px,5vw,56px)}
 .family a{display:block;padding:24px;border:1px solid var(--line);border-radius:16px;color:inherit}
 .family a:hover{text-decoration:none;border-color:var(--black)}
 .family b{display:block;font:700 22px var(--display);color:var(--black)}
 .family span{display:block;margin-top:6px;color:var(--grey);font-size:16px}
-@media (max-width:1000px){.family{grid-template-columns:repeat(3,minmax(0,1fr))}}@media (max-width:760px){.family{grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.family{grid-template-columns:1fr 1fr}}
 @media (max-width:560px){.family{grid-template-columns:1fr}}
 .brand .mark{width:32px;height:32px;object-fit:contain;flex:none}
 .pagetop .logo{display:block;width:min(260px,60vw);height:auto;margin:0 auto 20px}

@@ -1,4 +1,4 @@
-# Floorcall Lessons: plan (not built yet)
+# Floorcall Lessons: plan (built 2026-11-19, schema v31)
 
 Private lessons, small-group training and clinics. Written 2026-11-19 from Jason's notes; open questions at the end.
 
@@ -38,14 +38,20 @@ Private lessons, small-group training and clinics. Written 2026-11-19 from Jason
 - `lesson_stats` (session, athlete, reps per skill)
 - Row-level security: trainers see their own; an athlete or parent sees only rows for their athlete.
 
-## Pricing (to decide)
+## Pricing
 
-Fits the plan doc: a Trainer plan (around $15–19 a month), with the trainer's athletes and parents included.
-Taking lesson payments through Floorcall (Stripe Connect) is a later step.
+Trainer plan, $9.99 a month. Taking lesson payments through Floorcall (Stripe Connect) is a possible later step.
 
-## Questions for Jason
+## Decisions (Jason, 2026-11-19)
 
-- Can athletes book open time slots themselves, or does the trainer schedule everything?
-- Should clinics have a public sign-up page anyone can open?
-- Should Floorcall collect lesson payments for trainers, or only track who's paid?
-- Name: Floorcall Lessons or Floorcall Training?
+- Booking: both. Trainers schedule sessions, and can mark any session "Athletes can book this" so their athletes book open spots.
+- Clinics: public or private. A public clinic gets a sign-up page anyone can open; the trainer accepts each sign-up.
+- Payments: track only (paid or not per athlete per session). No money moves through Floorcall.
+- Name: Floorcall Lessons.
+- Price: Trainer plan $9.99 a month or $89 a year, athletes and parents included; included with a Team or Club plan.
+
+## As built
+
+- Tables: lesson_athletes, lesson_access, lesson_sessions, lesson_roster (reps, came, paid), lesson_requests (clinic sign-ups).
+  Nobody reads them directly; everything goes through security-definer functions (see schema.sql, version 31).
+- Coaching app: a player's page has "Add to Floorcall Lessons".

@@ -8,13 +8,14 @@ export const FEES = false;
  * with a plan are included. Payments go through Stripe Checkout and a Supabase `billing` function (not built yet;
  * it needs the Stripe keys in Supabase secrets) that sets the team's plan and paid-through date. */
 export const BILLING = false;
-export type Plan = "team" | "club" | "player";
+export type Plan = "team" | "club" | "player" | "trainer";
 /** Floorcall Live is the only free product. Academy, Beach and Recruit's athlete tools need an account (SiteGate) and,
  * once billing is on, a plan: a team's plan covers its coaches, players and families; the Player plan covers one person. */
 export const PLANS: Record<Plan, { name: string; price: string; per: string }> = {
   team: { name: "Team", price: "$149", per: "per team per year, or $19 a month" },
   club: { name: "Club", price: "$99", per: "per team per year, 4 teams or more" },
   player: { name: "Player", price: "$4.99", per: "a month, or $39 a year: Academy, Beach and the recruiting tools" },
+  trainer: { name: "Trainer", price: "$9.99", per: "a month, or $89 a year: Floorcall Lessons, with the trainer's athletes and parents included (included with a Team or Club plan)" },
 };
 export const TRIAL_HOURS = 24, TRIAL_MAX_DAYS = 14;
 

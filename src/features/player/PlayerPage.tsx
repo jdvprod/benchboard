@@ -13,7 +13,9 @@ import { AiCard } from "../../ui/ai";
 import { reportCardPrompt } from "../../ai/prompts";
 import { go } from "../../app/router";
 import { setUi } from "../../app/ui";
-import { cloudAvailable, currentUser } from "../../cloud/client";
+import { cloudAvailable, CloudError, currentUser, rpc } from "../../cloud/client";
+import { placeUrl } from "../../cloud/links";
+import { isViewer } from "../../app/viewAs";
 import { isLinked, recruitViews, setRecruitListed, shareRecruit, unshareRecruit } from "../../cloud/sync";
 import { LEGAL } from "../../app/legal";
 import { ClipPlayer } from "../../ui/ClipPlayer";
@@ -67,6 +69,23 @@ function GraphicButton({ p }: { p: Player }) {
   </div>;
 }
 
+/** Floorcall Lessons: a coach who also trains privately adds a player to their lessons in one tap.
+ * The athlete there is the trainer's own record (name, grad year, position, club), not linked to the team. */
+function LessonsButton({ p, club }: { p: Player; club: string }) {
+  const [busy, setBusy] = useState(false);
+  if (!cloudAvailable() || !currentUser()) return null;
+  const add = async () => {
+    setBusy(true);
+    const id = "la_" + p.id.replace(/[^\w]/g, "").slice(0, 20) + "_" + currentUser()!.id.slice(0, 6);
+    try {
+      await rpc("lesson_save_athlete", { a: { id, name: `${p.first} ${p.last}`.trim(), grad: p.grad ? String(p.grad) : null, position: p.pos || null, club } });
+      toast(`${p.first} is in Floorcall Lessons`, { label: "Open", fn: () => window.open(placeUrl("lessons", "athletes/" + id), "_blank", "noopener") });
+    } catch (e) { toast(e instanceof CloudError ? e.message : "Couldn't reach Floorcall Lessons. Try again."); }
+    setBusy(false);
+  };
+  return <button className="btn sm ghost" disabled={busy} onClick={add} title="Private lessons and training: schedule sessions and count reps for this player">{busy ? "Adding…" : "Add to Floorcall Lessons"}</button>;
+}
+
 export function PlayerPage({ id }: { id: string }) {
   const p = player(id), t = team()!;
   const [pickMetric, setMetric] = useState<GoalMetric | "net" | null>(null), [src, setSrc] = useState<"games" | "practice" | "all">("games");
@@ -94,7 +113,7 @@ export function PlayerPage({ id }: { id: string }) {
         <p className="small muted">{src === "practice" ? plural(rows.length, "practice") : src === "all" ? plural(rows.length, "match or practice", "matches and practices") : plural(rows.length, "match", "matches")} · {plural(pm.sets, "set")} this season{pm.plusMinus != null ? ` · ${fmtSigned(pm.plusMinus)} on court` : ""}{att ? ` · practice ${att}` : ""}</p></div>
       <div className="stack" style={{ alignItems: "flex-end" }}><Seg value={src} onChange={setSrc} options={[["games", "Matches"], ["practice", "Practice"], ["all", "All"]]} label="Which stats" />
         <button className="btn" onClick={() => shareReport(id, rowsFor(id, "games"), aggregate(rowsFor(id, "games").flatMap((r) => r.sets)))}>Download player report</button>
-        <GraphicButton p={p} /><PhotoPicker p={p} /></div>
+        <GraphicButton p={p} /><PhotoPicker p={p} />{!isViewer(t.id) && <LessonsButton p={p} club={t.name} />}</div>
     </div></section>
     {!s ? <Card><p className="empty">No stats yet this season.</p></Card> : <>
       <div className="kpis">

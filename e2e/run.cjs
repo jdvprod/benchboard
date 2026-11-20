@@ -1349,7 +1349,7 @@ const scenarios = {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "beach/"); await p.waitForTimeout(500);
     await siteSignUp(p, "beach-player@e2e.test", "athlete", "Ava Beach");
-    ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 5);
+    ok("beach site opens with a start form and links to the other sites", (await p.getByRole("button", { name: "Start match" }).count()) === 1 && (await p.locator(".site-switch a").count()) === 6);
     await p.getByLabel("Your player 1").fill("Ava"); await p.getByLabel("Your player 2").fill("Maya");
     await p.getByLabel("Opponent 1").fill("Kim"); await p.getByLabel("Opponent 2").fill("Lee");
     await p.getByRole("button", { name: "Start match" }).click(); await p.waitForTimeout(300);
@@ -1529,11 +1529,124 @@ const scenarios = {
     ok("no errors on the site pages or in the players' view", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
     await A.context().close();
   },
+  async lessons(browser) {
+    // a trainer: athletes, a past private lesson with reps, an open group session, a public clinic
+    const T = await newPage(browser, { size: { width: 1280, height: 900 } });
+    await T.goto(U + "lessons/"); await T.waitForTimeout(500);
+    await siteSignUp(T, "trainer@e2e.test", "coach", "Tess Trainer");
+    ok("lessons opens on an empty schedule that starts with athletes", (await T.locator(".ls-start").count()) === 1 && (await T.locator(".site-switch a").count()) === 6);
+    await T.getByRole("link", { name: "Add athletes" }).click(); await T.waitForTimeout(300);
+    const addAthlete = async (name, grad) => { await T.getByLabel("Name", { exact: true }).fill(name); await T.getByLabel("Grad year").fill(grad); await T.getByRole("button", { name: "Add athlete" }).click(); await T.waitForTimeout(400); };
+    await addAthlete("Mia Torres", "2028"); await addAthlete("Ava Kim", "2029");
+    ok("athletes from anywhere are added", (await T.locator(".ls-athletes li").count()) === 2);
+    await T.locator(".ls-athletes a", { hasText: "Mia Torres" }).click(); await T.waitForTimeout(300);
+    await T.getByRole("button", { name: "Make an invite code" }).click(); await T.waitForTimeout(400);
+    const code = (await T.locator(".ls-code-big").innerText()).trim();
+    ok("each athlete gets a six-letter code", /^[A-Z2-9]{6}$/.test(code), code);
+    // a lesson last week, with reps
+    const d = new Date(Date.now() - 7 * 864e5), ymd = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    await T.goto(U + "lessons/#/new"); await T.waitForTimeout(300);
+    await T.getByLabel("Date").fill(ymd); await T.getByLabel("Where").fill("Northside gym");
+    await T.getByRole("button", { name: "Passing" }).click(); await T.getByRole("button", { name: "Serving" }).click();
+    await T.locator(".ls-pick-list label", { hasText: "Mia Torres" }).locator("input").check();
+    await T.getByLabel("Note for athletes and parents").fill("Bring kneepads"); await T.getByLabel(/Private notes/).fill("watch her platform angle");
+    await T.getByRole("button", { name: "Schedule", exact: true }).click(); await T.waitForTimeout(600);
+    ok("a private lesson is scheduled", /#\/s\/ls_/.test(T.url()) && (await T.locator("h1").innerText()) === "Private lesson");
+    await T.getByRole("link", { name: "Count reps" }).click(); await T.waitForTimeout(300);
+    for (const k of ["3", "3", "3", "2"]) await T.getByRole("button", { name: "Passing: " + k, exact: true }).click();
+    await T.getByRole("button", { name: "Serving: Ace" }).click(); await T.getByRole("button", { name: "Serving: Error" }).click();
+    await T.getByRole("button", { name: "Undo" }).click(); await T.waitForTimeout(900);
+    ok("counting reps shows the number as you go", (await T.locator(".ls-skill", { hasText: "Passing" }).locator(".ls-skill-hd b").innerText()) === "2.75" && (await T.locator(".ls-skill", { hasText: "Serving" }).locator(".ls-skill-hd b").innerText()) === "100%");
+    ok("and saves", (await T.locator(".ls-stat-title small").innerText()) === "Saved");
+    await T.getByRole("button", { name: "Done" }).click(); await T.waitForTimeout(600);
+    ok("the session shows the reps and that she came", (await T.locator(".ls-reps").innerText()).includes("2.75") && await T.getByLabel("Mia Torres came").isChecked());
+    await T.getByLabel("Mia Torres paid").check(); await T.waitForTimeout(500);
+    ok("paid is tracked", await T.getByLabel("Mia Torres paid").isChecked());
+    if (process.env.SHOTS) await T.screenshot({ path: path.join(process.env.SHOTS, "ls-session.png"), fullPage: true });
+    // an open group session athletes can book, and a public clinic
+    await T.goto(U + "lessons/#/new"); await T.waitForTimeout(300);
+    await T.locator(".ls-kinds label", { hasText: "Small group" }).click(); await T.getByLabel("Spots").fill("4"); await T.getByLabel("Name (optional)").fill("Passing group");
+    await T.locator(".ls-switches label", { hasText: "Athletes can book this" }).locator("input").check();
+    await T.getByLabel("Repeat").selectOption("3"); await T.getByRole("button", { name: "Schedule 3 sessions" }).click(); await T.waitForTimeout(800);
+    await T.goto(U + "lessons/#/new"); await T.waitForTimeout(300);
+    await T.locator(".ls-kinds label", { hasText: "Clinic" }).click(); await T.getByLabel("Spots").fill("2"); await T.getByLabel("Name (optional)").fill("Serve clinic"); await T.getByLabel("Price (optional)").fill("$40");
+    await T.locator(".ls-switches label", { hasText: "Public sign-up page" }).locator("input").check();
+    if (process.env.SHOTS) await T.screenshot({ path: path.join(process.env.SHOTS, "ls-new.png"), fullPage: true });
+    await T.getByRole("button", { name: "Schedule", exact: true }).click(); await T.waitForTimeout(600);
+    const clinic = (await T.locator(".ls-link code").innerText()).trim();
+    ok("a public clinic has a link to share", /#\/c\/[A-Z2-9]{6}$/.test(clinic), clinic);
+    await T.goto(U + "lessons/"); await T.waitForTimeout(500);
+    ok("the schedule lists what's coming and the past lesson", (await T.locator(".ls-day:not(.ls-past) .ls-row").count()) === 4 && (await T.locator(".ls-past .ls-row").count()) === 1);
+    if (process.env.SHOTS) await T.screenshot({ path: path.join(process.env.SHOTS, "ls-schedule.png"), fullPage: true });
+    // the trainer also coaches a team: one tap adds a player from the coaching app
+    await go(T, "team"); await T.waitForTimeout(800);
+    if (await T.locator("#nt-name").count()) { await T.locator("#nt-name").fill("Trainer Club 16s"); await T.getByRole("button", { name: "Create team" }).click(); await T.waitForTimeout(800); }
+    await go(T, "team"); await T.getByRole("button", { name: "Paste list" }).click(); await T.locator("textarea").first().fill("7 Maya Chen OH"); await T.getByRole("button", { name: "Add players" }).click(); await T.waitForTimeout(400);
+    await T.getByRole("button", { name: "View", exact: true }).first().click(); await T.waitForTimeout(500);
+    await T.getByRole("button", { name: "Add to Floorcall Lessons" }).click(); await T.waitForTimeout(700);
+    ok("a coach adds a team player to Floorcall Lessons from the player's page", (await T.locator(".toast").innerText()).includes("Maya is in Floorcall Lessons"));
+    await T.goto(U + "lessons/#/athletes"); await T.waitForTimeout(700);
+    ok("and she's in the trainer's athletes, with her position and club", (await T.locator(".ls-athletes li", { hasText: "Maya Chen" }).innerText()).includes("Trainer Club 16s"));
+    // a parent joins with Mia's code and sees only Mia's lessons
+    const P = await newPage(browser, { phone: true });
+    await P.goto(U + "lessons/#/join/" + code); await P.waitForTimeout(500);
+    await siteSignUp(P, "mia.parent@e2e.test", "parent", "Dana Torres");
+    ok("the join link fills in the code", (await P.getByLabel("Code from your trainer").inputValue()) === code && await P.getByLabel("I'm a parent").isChecked());
+    await P.getByRole("button", { name: "Join", exact: true }).click(); await P.waitForTimeout(900);
+    const pt = await P.locator(".ls-page").innerText();
+    ok("the parent sees Mia's lessons", pt.includes("Mia's lessons") && pt.includes("Bring kneepads") && (await P.locator(".ls-prog-card").count()) === 2);
+    ok("but not the trainer's private notes or other athletes", !/watch her platform|Ava Kim/.test(pt));
+    ok("and can book the open group times", (await P.locator(".ls-open").count()) === 3);
+    await P.locator(".ls-open").first().getByRole("button", { name: "Book" }).click(); await P.waitForTimeout(700);
+    ok("booking puts it in Coming up", (await P.locator(".ls-card").count()) === 1 && (await P.locator(".ls-open").count()) === 2);
+    ok("lessons fit a phone", (await overflow(P)) <= 0);
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "ls-parent.png"), fullPage: true });
+    // anyone with the clinic link signs up, no account
+    const S = await newPage(browser, { phone: true, cloud: true });
+    const signup = async (who) => { await S.goto(clinic.replace(/^.*lessons\//, U + "lessons/")); await S.reload(); await S.waitForTimeout(600);
+      await S.getByLabel("Player's name").fill(who); await S.getByLabel("Parent's email or phone").fill(who.split(" ")[0].toLowerCase() + "@e2e.test"); await S.getByRole("button", { name: "Sign up" }).click(); await S.waitForTimeout(500); };
+    await S.goto(clinic.replace(/^.*lessons\//, U + "lessons/")); await S.waitForTimeout(600);
+    ok("the clinic page opens without an account", (await S.locator(".ls-clinic h1").innerText()) === "Serve clinic" && (await S.locator(".sg .ma").count()) === 0 && (await S.locator(".ls-clinic-facts").innerText()).includes("$40"));
+    if (process.env.SHOTS) await S.screenshot({ path: path.join(process.env.SHOTS, "ls-clinic.png"), fullPage: true });
+    await signup("Zoe Park"); ok("a player signs up", (await S.locator(".ls-clinic-form h2").innerText()) === "You're signed up");
+    await signup("Lily Ng"); await S.reload(); await S.waitForTimeout(600);
+    ok("a full clinic says so", (await S.locator(".ls-clinic-form h2").innerText()) === "This clinic is full");
+    ok("the clinic page fits a phone", (await overflow(S)) <= 0);
+    // the trainer takes a sign-up
+    await T.goto(U + "lessons/#/signups"); await T.waitForTimeout(600);
+    ok("sign-ups wait for the trainer", (await T.locator(".ls-badge").innerText()) === "2" && (await T.locator(".ls-reqs li").count()) === 2);
+    await T.locator(".ls-reqs li", { hasText: "Zoe Park" }).getByRole("button", { name: "Accept" }).click(); await T.waitForTimeout(600);
+    if (process.env.SHOTS) { await T.goto(U + "lessons/#/athletes"); await T.waitForTimeout(500); await T.locator(".ls-athletes a", { hasText: "Mia Torres" }).click(); await T.waitForTimeout(500); await T.screenshot({ path: path.join(process.env.SHOTS, "ls-athlete.png"), fullPage: true }); await T.goto(U + "lessons/#/signups"); await T.waitForTimeout(500); }
+    ok("accepting adds the athlete and books her in", (await T.locator(".ls-reqs li").count()) === 1 && (await T.locator(".ls-tabs a", { hasText: "Athletes" }).innerText()).includes("4"));
+    // the trainer's view on a phone, counting reps
+    const Tp = await newPage(browser, { phone: true });
+    await Tp.goto(U + "lessons/"); await Tp.waitForTimeout(300); await Tp.locator(".ma-tab, button", { hasText: /^Sign in$/ }).first().click().catch(() => {});
+    await Tp.locator(".sg .ma").getByLabel("Email", { exact: true }).fill("trainer@e2e.test"); await Tp.locator(".sg .ma").getByLabel("Password", { exact: true }).fill("secret-pass-1");
+    await Tp.locator(".sg .ma").getByRole("button", { name: /^Sign in$/ }).last().click(); await deviceCode(Tp, "trainer@e2e.test", { expect: false }) && null; await Tp.waitForTimeout(1500);
+    if (await Tp.locator(".ma-code, #auth-code").count()) await deviceCode(Tp, "trainer@e2e.test");
+    await Tp.goto(U + "lessons/"); await Tp.waitForTimeout(800);
+    ok("the trainer's schedule fits a phone", (await Tp.locator(".ls-row").count()) >= 4 && (await overflow(Tp)) <= 0);
+    await Tp.locator(".ls-past .ls-row a").first().click(); await Tp.waitForTimeout(300); await Tp.getByRole("link", { name: "Count reps" }).click(); await Tp.waitForTimeout(400);
+    ok("counting reps fits a phone", (await overflow(Tp)) <= 0 && (await Tp.locator(".ls-pad").count()) === 7);
+    if (process.env.SHOTS) await Tp.screenshot({ path: path.join(process.env.SHOTS, "ls-stat.png"), fullPage: true });
+    // a stranger without a code sees nothing
+    const X = await newPage(browser);
+    await X.goto(U + "lessons/"); await X.waitForTimeout(400); await siteSignUp(X, "stranger@e2e.test", "athlete", "Sam Stranger"); await X.waitForTimeout(500);
+    ok("an athlete without a code is asked for one", (await X.locator(".ls-join-first").count()) === 1 && !(await X.locator(".ls-page").innerText()).includes("Mia"));
+    await X.getByLabel("Code from your trainer").fill("ZZZZZZ"); await X.getByRole("button", { name: "Join", exact: true }).click(); await X.waitForTimeout(500);
+    ok("a wrong code says so", (await X.locator(".ls-err").innerText()).includes("doesn't match"));
+    // an unverified coach can look but not add athletes
+    const V = await newPage(browser);
+    await V.goto(U + "lessons/"); await V.waitForTimeout(400); await siteSignUp(V, "unverified-trainer@e2e.test", "coach", "New Trainer"); await V.waitForTimeout(800);
+    ok("an unverified trainer is asked to verify first", (await V.locator(".ls-verify .cv").count()) === 1);
+    ok("no errors on the lessons site", ![T, P, S, Tp, X, V].some((x) => x.errors.length), [T, P, S, Tp, X, V].flatMap((x) => x.errors).slice(0, 3).join("; "));
+    for (const x of [T, P, S, Tp, X, V]) await x.context().close();
+  },
   async academy(browser) {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "academy/"); await p.waitForTimeout(500);
     await siteSignUp(p, "academy-coach@e2e.test", "coach", "Coach Kim");
-    ok("academy opens on the five skills, for players first", (await p.locator(".ac-skills li").count()) === 5 && (await p.getByRole("button", { name: "For players" }).getAttribute("aria-pressed")) === "true" && (await p.locator(".site-switch a").count()) === 5);
+    ok("academy opens on the five skills, for players first", (await p.locator(".ac-skills li").count()) === 5 && (await p.getByRole("button", { name: "For players" }).getAttribute("aria-pressed")) === "true" && (await p.locator(".site-switch a").count()) === 6);
     ok("academy fits a phone", (await overflow(p)) <= 0);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "ac-home.png"), fullPage: true });
     await p.getByRole("link", { name: /^Serving/ }).click(); await p.waitForTimeout(300);

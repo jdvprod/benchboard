@@ -13,7 +13,7 @@ export function SiteGate({ name, what, kind, children, points, art }: { name: st
       <h1>{name}</h1>
       <p className="sg-what">{what}</p>
       <ul>{points.map((p) => <li key={p}>{p}</li>)}</ul>
-      <p className="sg-small">One Floorcall account works for the coaching app, Live, Recruit, Beach and Academy. Try everything free first.</p>
+      <p className="sg-small">One Floorcall account works for the coaching app, Live, Recruit, Beach, Academy and Lessons. Try everything free first.</p>
     </div>
     <MiniAuth kind={kind} title="Create your account to start" sub="Already have one? Choose Sign in." onIn={() => location.reload()} />
   </div>;

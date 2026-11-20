@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "30" "schema version is reported"
+check "select schema_version();" "31" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -263,10 +263,47 @@ as $E "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is not null;")" "t" "nobody else can take it down"
 as $B "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is null;")" "t" "the owner can stop sharing"
+# ---------- Floorcall Lessons: T trains, P is an athlete's parent, B is a stranger ----------
+T=eeeeeeee-1111-2222-3333-444444444444; P=dddddddd-1111-2222-3333-444444444444
+q -c "insert into auth.users values ('$T', 'trainer@example.com'), ('$P', 'parent@example.com'); insert into coach_verify (user_id, name, status) values ('$T', 'Tess Trainer', 'approved');" >/dev/null
+expect "$(q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$B', false); select lesson_save_athlete('{\"id\":\"la1\",\"name\":\"Nope\"}');" 2>&1 | grep -c Verify)" "1" "only verified coaches can train athletes"
+asall $T "select lesson_save_athlete('{\"id\":\"la1\",\"name\":\"Mia Torres\",\"grad\":\"2028\",\"notes\":\"secret trainer note\"}');" | grep ERROR || true
+asall $T "select lesson_save_athlete('{\"id\":\"la2\",\"name\":\"Other Kid\"}');" | grep ERROR || true
+asall $T "select lesson_save_session('{\"id\":\"ls1\",\"starts\":\"2030-01-05T17:00:00Z\",\"kind\":\"group\",\"athletes\":[\"la1\",\"la2\",\"nobody\"],\"focus\":[\"passing\"],\"notes\":\"private plan\",\"shared_note\":\"bring kneepads\",\"capacity\":3}');" | grep ERROR || true
+expect "$(asall $T "select cardinality(athletes) from lesson_sessions where id = 'ls1';" | grep -c 'permission denied')" "1" "nobody reads lesson tables directly"
+expect "$(as $T "select jsonb_array_length(lesson_trainer_data()->'sessions[0]'->'athletes') is null, (lesson_trainer_data()->'sessions'->0->'athletes')::text;")" "t|[\"la1\", \"la2\"]" "a session keeps only the trainer's own athletes"
+expect "$(asall $B "select lesson_save_roster('ls1', 'la1', '{}', true, true);" | grep -c 'Not your')" "1" "strangers can't stat someone else's session"
+asall $T "select lesson_save_roster('ls1', 'la1', '{\"passing\":{\"3\":4,\"2\":1}}', true, true);" | grep ERROR || true
+CODE="$(as $T "select lesson_invite('la1');")"
+expect "$(asall $B "select lesson_invite('la1');" | grep -c 'Not your')" "1" "only the trainer makes invite codes"
+expect "$(as $P "select lesson_join('$CODE', 'parent');")" "Mia Torres" "a parent joins with the athlete's code"
+expect "$(as $P "select my_lessons()::text ~ '(secret trainer note|private plan|Other Kid|la2)';")" "f" "a parent never sees private notes or the other athletes"
+expect "$(as $P "select my_lessons()->'sessions'->0->>'shared_note';")" "bring kneepads" "but does see the shared note"
+expect "$(as $P "select my_lessons()->'roster'->0->'reps'->'passing'->>'3';")" "4" "and their athlete's numbers"
+expect "$(as $B "select jsonb_array_length(my_lessons()->'sessions');")" "0" "strangers see no sessions"
+asall $T "select lesson_save_session('{\"id\":\"ls2\",\"starts\":\"2030-01-06T17:00:00Z\",\"kind\":\"private\",\"open\":true,\"capacity\":1}');" | grep ERROR || true
+expect "$(as $P "select my_lessons()->'sessions'->1->>'open';")" "true" "the parent sees the trainer's open slot"
+asall $P "select lesson_book('ls2', 'la1');" | grep ERROR || true
+expect "$(as $T "select (lesson_trainer_data()->'sessions'->1->'athletes')::text;")" "[\"la1\"]" "and books it"
+expect "$(asall $B "select lesson_book('ls2', 'la1');" | grep -c 'Not your')" "1" "strangers can't book for someone else's athlete"
+asall $T "select lesson_save_session('{\"id\":\"ls3\",\"starts\":\"2030-02-01T17:00:00Z\",\"kind\":\"clinic\",\"title\":\"Serve clinic\",\"public\":true,\"capacity\":2,\"notes\":\"private plan\"}');" | grep ERROR || true
+CC="$(as $T "select lesson_trainer_data()->'sessions'->2->>'code';")"
+expect "$(q -c "set role anon; select lesson_public('$CC')->>'title';")" "Serve clinic" "anyone with the link sees a public clinic"
+expect "$(q -c "set role anon; select lesson_public('$CC')::text like '%private%';")" "f" "without the trainer's notes"
+expect "$(q -c "set role anon; select lesson_public('$CODE') is null;" 2>&1 | tail -1)" "t" "an athlete code isn't a clinic page"
+q -c "set role anon; select lesson_signup('$CC', 'Ava Kim', 'ava.mom@example.com');" >/dev/null
+q -c "set role anon; select lesson_signup('$CC', 'Bea Lo', 'bea.dad@example.com');" >/dev/null
+expect "$(q -c "set role anon; select lesson_signup('$CC', 'Cal Ng', 'cal@example.com');" 2>&1 | grep -c 'full')" "1" "a full clinic turns sign-ups away"
+RQ="$(as $T "select lesson_trainer_data()->'requests'->0->>'id';")"
+expect "$(asall $B "select lesson_request_decide('$RQ', true);" | grep -c 'Not your')" "1" "only the trainer takes sign-ups"
+asall $T "select lesson_request_decide('$RQ', true);" | grep ERROR || true
+expect "$(as $T "select cardinality(array(select jsonb_array_elements_text(lesson_trainer_data()->'sessions'->2->'athletes')));")" "1" "a taken sign-up is booked into the clinic"
+asall $T "select lesson_save_session('{\"id\":\"ls4\",\"starts\":\"2030-02-02T17:00:00Z\",\"kind\":\"clinic\",\"title\":\"Private clinic\",\"capacity\":10}');" | grep ERROR || true
+expect "$(as $T "select lesson_trainer_data()->'sessions'->3->>'code' is null;")" "t" "a private clinic has no public page"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"
-expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,watch" "without an account only the public page functions run"
+expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,lesson_public,lesson_signup,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,watch" "without an account only the public page functions run"
 expect "$(q -c "select coalesce(string_agg(table_name || ':' || privilege_type, ','), '') from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public';")" "app_errors:INSERT" "without an account no table can be read or changed"
 expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_bump(uuid)', 'execute');")" "f" "the AI counter is server-only"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read team data directly"

@@ -1,4 +1,4 @@
-/** The other Floorcall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach and Academy). */
+/** The other Floorcall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach, Academy and Lessons). */
 import { useEffect, useRef, useState } from "react";
 import { placeUrl, PLACES } from "../cloud/links";
 
