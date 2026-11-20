@@ -27,6 +27,7 @@ import { copyText } from "../../ui/kit";
 import { QrButton } from "../../ui/QrButton";
 import { CourtSvg } from "../../ui/court";
 import { tendencies } from "../../sports/volleyball/tendencies";
+import { TrendStat, TrendTiles } from "../../ui/TrendTiles";
 
 export const GOALS: Record<GoalMetric, { label: string; key: keyof PlayerMetrics; fmt: (v: number | null) => string; step: number; lowerBetter?: boolean }> = {
   hitting: { label: "Hitting %", key: "hitting", fmt: fmtHit, step: 0.01 },
@@ -40,9 +41,38 @@ export const GOALS: Record<GoalMetric, { label: string; key: keyof PlayerMetrics
   blocksPerSet: { label: "Blocks per set", key: "bps", fmt: (v) => fmtNum(v, 2), step: 0.05 },
   assistsPerSet: { label: "Assists per set", key: "aps", fmt: (v) => fmtNum(v, 2), step: 0.5 },
 };
-const TREND: [GoalMetric | "net", string][] = [["hitting", "Hitting %"], ["passAvg", "Passing"], ["serveIn", "Serve in %"], ["killsPerSet", "Kills/set"], ["digsPerSet", "Digs/set"], ["net", "Net pts/set"]];
 
 interface Row { m: Match; sets: SetState[]; A: Agg; s: Stat; pm: PlayerMetrics }
+
+/** The numbers that matter most for a position, in that order, each with its trend. Stats the player has no data
+ * for are left out (a libero has no hitting). */
+const BY_POS: Record<string, GoalMetric[]> = {
+  OH: ["hitting", "killsPerSet", "passAvg", "serveIn", "digsPerSet"],
+  OPP: ["hitting", "killsPerSet", "blocksPerSet", "serveIn", "digsPerSet"],
+  RS: ["hitting", "killsPerSet", "blocksPerSet", "serveIn", "digsPerSet"],
+  MB: ["hitting", "killsPerSet", "blocksPerSet", "serveIn"],
+  S: ["assistsPerSet", "serveIn", "digsPerSet", "blocksPerSet", "hitting"],
+  L: ["passAvg", "perfectPass", "digsPerSet", "serveIn"],
+  DS: ["passAvg", "perfectPass", "digsPerSet", "serveIn"],
+};
+function keyStats(pid: string, pos: string | undefined, rows: Row[], s: Stat, pm: PlayerMetrics): TrendStat[] {
+  const order = BY_POS[(pos || "").toUpperCase()] || ["hitting", "passAvg", "serveIn", "digsPerSet", "killsPerSet"];
+  const agg = (list: Row[]) => (list.length ? aggregate(list.flatMap((r) => r.sets)) : null);
+  const metric = (list: Row[], k: GoalMetric | "net") => { const A = agg(list); if (!A || !A.ps[pid]) return null; const m = playerMetrics(A, pid); return k === "net" ? m.netPerSet : (m[GOALS[k].key] as number | null); };
+  const has: Record<string, boolean> = { hitting: s.TA > 0, passAvg: s.R > 0, perfectPass: s.R > 0, serveIn: serveAttempts(s) > 0, digsPerSet: s.D > 0, killsPerSet: s.K > 0 || s.TA > 0, blocksPerSet: blocks(s) > 0, assistsPerSet: s.AST > 0, acesPerSet: s.SA > 0, serveEff: serveAttempts(s) > 0 };
+  const subs: Partial<Record<GoalMetric, string>> = {
+    hitting: `${s.K} K · ${s.AE} E · ${s.TA} TA`, killsPerSet: `${s.K} kills`, passAvg: `${s.R} received · ${s.P0} aced`, perfectPass: `${s.R} received`,
+    serveIn: `${plural(s.SA, "ace")} · ${serveErrors(s)} errors`, digsPerSet: `${s.D} digs`, blocksPerSet: `${s.BS} solo · ${s.BA} assist`, assistsPerSet: `${s.AST} assists · ${s.BHE} errors`,
+  };
+  const list: (GoalMetric | "net")[] = [...order.filter((k) => has[k]), "net"];
+  return list.map((k) => ({
+    key: k, label: k === "net" ? "Net points per set" : GOALS[k].label, step: k === "net" ? 0.25 : GOALS[k].step,
+    fmt: k === "net" ? (v: number) => fmtNum(v, 2) : (v: number) => GOALS[k].fmt(v), lowerBetter: k === "net" ? false : GOALS[k].lowerBetter,
+    per: rows.map((r) => ({ label: r.m.date.slice(5).replace("-", "/"), sub: r.m.opp, v: k === "net" ? r.pm.netPerSet : (r.pm[GOALS[k].key] as number | null) })),
+    over: (n: number) => metric(n ? rows.slice(-n) : rows, k), except: (n: number) => metric(rows.slice(0, -n), k),
+    sub: k === "net" ? `${fmtSigned(pm.netPoints)} this season` : subs[k],
+  }));
+}
 
 function rowsFor(id: string, src: "games" | "practice" | "all" = "games"): Row[] {
   const t = team()!;
@@ -88,21 +118,12 @@ function LessonsButton({ p, club }: { p: Player; club: string }) {
 
 export function PlayerPage({ id }: { id: string }) {
   const p = player(id), t = team()!;
-  const [pickMetric, setMetric] = useState<GoalMetric | "net" | null>(null), [src, setSrc] = useState<"games" | "practice" | "all">("games");
+  const [src, setSrc] = useState<"games" | "practice" | "all">("games");
   if (!p) return <div className="page"><Card><p className="empty">Player not found.</p><button className="btn" onClick={() => go("team")}>Back to roster</button></Card></div>;
   const rows = rowsFor(id, src);
   const taken = plansOf().filter((pl) => pl.attendance && Object.keys(pl.attendance).length);
   const att = taken.length ? (() => { const here = taken.filter((pl) => pl.attendance![id] === "in" || pl.attendance![id] === "late").length; return `${here} of ${taken.length} (${Math.round((100 * here) / taken.length)}%)`; })() : "";
   const A = aggregate(rows.flatMap((r) => r.sets)), s = A.ps[id], pm = playerMetrics(A, id);
-  // last 3 matches vs the season, shown under each number
-  const L3 = rows.length >= 4 ? aggregate(rows.slice(-3).flatMap((r) => r.sets)) : null, l3 = L3?.ps[id], lm = L3 ? playerMetrics(L3, id) : null;
-  const fd = (a: number | null | undefined, b: number | null | undefined, f: (v: number) => string) => (a == null || b == null ? null : f(a) === f(b) ? { text: "Last 3: same", better: null } : { text: `${a > b ? "▲" : "▼"} last 3: ${f(a)}`, better: a > b });
-  const has = (k: keyof Stat) => !!s && s[k] > 0;
-  const valOf = (r: Row, k: GoalMetric | "net") => (k === "net" ? r.pm.netPerSet : (r.pm[GOALS[k].key] as number | null));
-  // default to the first stat this player actually has a trend for (a setter has no hitting trend)
-  const metric = pickMetric || (TREND.map((x) => x[0]).find((k) => k !== "net" && rows.filter((r) => valOf(r, k) != null && (k !== "hitting" || (r.s?.TA || 0) > 0)).length >= 2 && rows.some((r) => (valOf(r, k) || 0) !== 0)) ?? "net");
-  const trend = rows.map((r) => ({ label: r.m.date.slice(5).replace("-", "/"), sub: r.m.opp, v: metric === "net" ? r.pm.netPerSet : (r.pm[GOALS[metric].key] as number | null) }));
-  const fmt = metric === "net" ? (v: number) => fmtNum(v, 1) : (v: number) => GOALS[metric].fmt(v);
 
   return <div className="page">
     <div className="row"><button className="btn sm" onClick={() => history.length > 1 ? history.back() : go("stats")}>← Back</button></div>
@@ -116,21 +137,8 @@ export function PlayerPage({ id }: { id: string }) {
         <GraphicButton p={p} /><PhotoPicker p={p} />{!isViewer(t.id) && <LessonsButton p={p} club={t.name} />}</div>
     </div></section>
     {!s ? <Card><p className="empty">No stats yet this season.</p></Card> : <>
-      <div className="kpis">
-        {has("TA") && <Kpi label="Hitting" value={fmtHit(hitting(s))} delta={l3 && l3.TA >= 5 ? fd(hitting(l3), hitting(s), (v) => fmtHit(v)) : null} sub={`${s.K} K · ${s.AE} E · ${s.TA} TA · ${fmtNum(pm.kps, 2)} K/set`} />}
-        {has("R") && <Kpi label="Passing" value={fmtAvg(passAvg(s))} delta={l3 && l3.R >= 5 ? fd(passAvg(l3), passAvg(s), (v) => fmtAvg(v)) : null} sub={`${s.R} rec · ${fmtPct(pm.perfectPass)} perfect · ${s.P0} aced`} />}
-        {serveAttempts(s) > 0 && <Kpi label="Serving" value={fmtPct(pm.serveIn)} delta={lm && l3 && serveAttempts(l3) >= 5 ? fd(lm.serveIn, pm.serveIn, (v) => fmtPct(v)) : null} sub={`${plural(s.SA, "ace")} · ${serveErrors(s)} err · eff ${fmtHit(pm.serveEff)}`} />}
-        {has("D") && <Kpi label="Digs" value={s.D} delta={lm ? fd(lm.dps, pm.dps, (v) => fmtNum(v, 2) + "/set") : null} sub={`${fmtNum(pm.dps, 2)} per set · ${plural(s.DE, "error")}`} />}
-        {(s.BS + s.BA + (s.BT || 0)) > 0 && <Kpi label="Blocks" value={fmtNum(blocks(s))} sub={`${s.BS} solo · ${s.BA} assist${s.BT ? ` · ${s.BT} touch${s.BT === 1 ? "" : "es"}` : ""} · ${fmtNum(pm.bps, 2)}/set`} />}
-        {has("AST") && <Kpi label="Assists" value={s.AST} sub={`${fmtNum(pm.aps, 2)} per set · ${plural(s.BHE, "error")}`} />}
-        <Kpi label="Net points" value={fmtSigned(pm.netPoints)} delta={lm ? fd(lm.netPerSet, pm.netPerSet, (v) => fmtNum(v, 2) + "/set") : null} sub={`${fmtNum(pm.netPerSet, 2)} per set`} />
-      </div>
-      <div className="grid2" style={{ alignItems: "start" }}>
-        <Card title="Trend" actions={<Seg value={metric} onChange={setMetric} options={TREND} />}>
-          {trend.filter((x) => x.v != null).length >= 2 ? <LineChart points={trend} format={fmt} /> : <p className="empty">Needs two or more matches with this stat.</p>}
-        </Card>
-        <Goals id={id} A={A} />
-      </div>
+      <TrendTiles stats={keyStats(id, p.pos, rows, s, pm)} unit={src === "practice" ? "practice" : "match"} />
+      <Goals id={id} A={A} />
       <PlayerCourt id={id} A={A} />
       <Card title="Match by match"><div className="tbl"><table>
         <thead><tr><th className="l">Date</th><th className="l">Opponent</th><th>Sets</th><th>K</th><th>E</th><th>TA</th><th>Hit %</th><th>Ace</th><th>SE</th><th>Pass</th><th>Dig</th><th>Blk</th><th>Ast</th><th>+/−</th></tr></thead>

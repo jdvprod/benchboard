@@ -1647,6 +1647,28 @@ const scenarios = {
     ok("no errors on the calendar", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
     for (const x of [p, ph]) await x.context().close();
   },
+  async trends(browser) {
+    // a player's key numbers for their position, each with a trend line and last 3 / 5 / 10 / season
+    const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);
+    await go(p, "stats"); await p.waitForTimeout(500); await p.getByRole("button", { name: /^Season/ }).first().click(); await p.getByRole("button", { name: "Players", exact: true }).click(); await p.waitForTimeout(400);
+    await p.locator("tr.click").first().click(); await p.waitForTimeout(500);
+    const tiles = p.locator(".tt-tile");
+    ok("player trends: key numbers as tiles with a trend line", (await tiles.count()) >= 3 && (await p.locator(".tt-tile .tt-spark path").count()) >= 2, String(await tiles.count()));
+    ok("player trends: some show better or worse lately", (await p.locator(".tt-chip.good, .tt-chip.bad, .tt-chip.flat").count()) >= 1);
+    await tiles.first().click(); await p.waitForTimeout(300);
+    ok("player trends: a tile opens last 5 by default", (await p.locator(".tt-detail .tt-wins button[aria-pressed=true]").innerText()) === "Last 5" && (await p.locator(".tt-detail svg").count()) >= 1);
+    await p.locator(".tt-wins").getByRole("button", { name: "Last 3" }).click(); await p.waitForTimeout(200);
+    ok("player trends: and switches to the last 3 matches", /Last 3 matches/.test(await p.locator(".tt-facts").innerText()));
+    await p.locator(".tt-wins").getByRole("button", { name: "Season" }).click(); await p.waitForTimeout(200);
+    ok("player trends: or the season, with the best and lowest match", /Best/.test(await p.locator(".tt-facts").innerText()));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "trends.png"), fullPage: false });
+    const ph = await newPage(browser, { phone: true }); await go(ph, "sample"); await ph.waitForTimeout(900); await go(ph, "stats"); await ph.waitForTimeout(400); await ph.getByRole("button", { name: /^Season/ }).first().click(); await ph.getByRole("button", { name: "Players", exact: true }).click(); await ph.waitForTimeout(400);
+    await ph.locator("tr.click").first().click(); await ph.waitForTimeout(500);
+    ok("player trends fit a phone", (await overflow(ph)) <= 0);
+    if (process.env.SHOTS) await ph.screenshot({ path: path.join(process.env.SHOTS, "trends-phone.png"), fullPage: true });
+    ok("no errors on player trends", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
+    for (const x of [p, ph]) await x.context().close();
+  },
   async wheel(browser) {
     // Lineup → rotation wheel: who serves, front row, setter and libero in each rotation
     const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);
