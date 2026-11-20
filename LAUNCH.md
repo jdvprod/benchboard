@@ -15,20 +15,25 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 ## 1. Supabase (the database and accounts)
 
-1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 29: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
+1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 35 (Settings → Setup check shows the version your project has). Among other things it makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
    Since version 18 it also turns on: team announcements (18), availability, "Going / Maybe / Can't go" (19), college messages to coaches, still switched off in the app (20), beach live links (21), the shared team playbook (22), volunteer jobs (23), availability for a named player (24) upcoming practices on the team page (25) tryouts shared with evaluators (26) practice plans shown to the team (27) and a security tightening (28): people without an account can only open the public pages, storage buckets can no longer be listed by outsiders, a network that tries 20 wrong share codes in 10 minutes has to wait, and deleting an account also clears its answers, sign-ups, tryouts and subscriptions. Version 29 keeps player fees in their own table that only a team's owner and coaches can read (view-only members can't). Version 30 adds coach verification: a coach must be verified by a FloorCall admin (Admin console → Coach verification) before their team can sync, coaches who join with a coach code wait for the team owner's approval, and view-only members (players, families) no longer receive scouting, drills, practice plans or boards. Coaches who already own a synced team are verified automatically. Version 31 adds FloorCall Lessons: trainers' athletes, sessions, reps and paid status, athlete and parent access by code, and clinic sign-ups. Version 32 adds the contact form's inbox (Admin console → Messages) and one code box that takes a team code or a Lessons code. Version 33 adds verified badges on a team's staff list and the Academy drills coaches pick for their players. Version 34 adds notes from coaches: one-way notes to the team, a position group or one player, read by the player and the parents a coach links to her. Version 35 adds per-account AI limits (Admin → AI access) and the error digest the alerts function reads. Make yourself an admin once: `insert into public.admins select id from auth.users where email = 'YOUR EMAIL';` Until it is run, those features stay hidden or say they can't connect.
-2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**`, `https://recruit.getfloorcall.com/**` and `https://beach.getfloorcall.com/**`.
+2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**`, `https://recruit.getfloorcall.com/**`, `https://beach.getfloorcall.com/**`, `https://academy.getfloorcall.com/**`, `https://lessons.getfloorcall.com/**` and `https://getfloorcall.com/**` (every site has its own sign-in, and password-reset and change-email links come back to the site they were sent from).
 3. **Emails (required before launch).** Sign-up confirmation, password resets and the new-device sign-in code all go by email, and Supabase's built-in email only reaches your own team, a couple an hour.
    - Make a free **Resend** account (resend.com) → **Domains → Add domain** `getfloorcall.com` → add the DNS records it shows in Cloudflare (DNS → Records) → wait for **Verified**. Then **API Keys → Create** (sending access).
    - Supabase **Authentication → Emails → SMTP Settings** → Enable custom SMTP: host `smtp.resend.com`, port `465`, username `resend`, password = that API key, sender `no-reply@getfloorcall.com`, name `FloorCall`.
    - **Authentication → Emails → Templates**: paste each file from `supabase/email-templates/` (Confirm signup, Magic Link, Reset password, Change email). The Magic Link one carries the 6-digit code for new devices.
    - **Authentication → Sign In / Providers → Email**: turn **Confirm email** on.
    - **Authentication → Rate Limits**: raise "emails sent per hour" to about 100.
+   - **Authentication → Sign In / Providers → Email**: turn **Secure email change** on (a change of sign-in email is confirmed from both the old and the new address).
+   - In Cloudflare DNS also add a **DMARC** record if Resend didn't: type `TXT`, name `_dmarc`, content `v=DMARC1; p=none; rua=mailto:YOUR EMAIL`. With SPF and DKIM from Resend, school email systems are far less likely to junk FloorCall's emails.
+   - Test: sign up with a Gmail address and a school address. Both should get the confirmation within a minute, from `no-reply@getfloorcall.com`, not in spam.
 4. **Edge Functions → Deploy a new function → Via Editor**:
    - `ai`: paste `supabase/functions/ai/index.ts` and turn **off** "Verify JWT" (the function checks the sign-in itself). Secret: `ANTHROPIC_API_KEY`.
    - `notify`: paste `supabase/functions/notify/index.ts`, and turn **off** "Verify JWT" for it. Secrets: `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (make them in the app: Settings → Setup check → Make notification keys) and `VAPID_SUBJECT` (`mailto:` + your contact email).
 
    - **Updating a function later** (only when `supabase/functions/...` changes): Edge Functions → click the function → **Code** → select all, paste the new `index.ts` from the repo → **Deploy**. Secrets stay as they are. Or from a terminal with the Supabase CLI: `supabase functions deploy ai --no-verify-jwt` (and the same for `notify`).
+
+   - `alerts` (optional but recommended): see **Error alerts** below.
 
 5. **Make yourself an admin** (SQL Editor, after you've created your account in the app):
    `insert into public.admins select id from auth.users where email = 'you@example.com';`
@@ -63,6 +68,23 @@ On phone B (parent):
 7. Phone A finishes the match. Phone B gets "Final: …" within a minute.
 
 Also: Settings → **Admin** shows your test team, the uploads and no problems. Live tab → **Stream overlay** → Preview shows the score bug; a player's page → **Stat graphic** saves an image.
+
+## Error alerts, uptime and backups
+
+**Error alerts by email.** The app already sends crash reports (error, screen, version; never team data) to the database, and Admin → Problems lists them. The `alerts` function emails you when they spike, and once a day with a short summary.
+1. Edge Functions → New function `alerts` → paste `supabase/functions/alerts/index.ts` → turn **off** "Verify JWT" → Deploy.
+2. Secrets: `ALERTS_SECRET` (any long random string), `RESEND_API_KEY` (your Resend key), `ALERT_EMAIL` (where alerts go). Optional: `ALERT_MIN` (errors in an hour that count as a spike, default 10).
+3. Database → Extensions: turn on `pg_cron` and `pg_net`. Then SQL Editor → run (with your project's URL and the same secret):
+   ```sql
+   select cron.schedule('floorcall-alerts', '*/15 * * * *', $$ select net.http_post('https://YOUR-PROJECT.supabase.co/functions/v1/alerts', '{"kind":"check"}'::jsonb, '{}'::jsonb, '{"x-alerts-secret":"YOUR ALERTS_SECRET","content-type":"application/json"}'::jsonb) $$);
+   select cron.schedule('floorcall-daily', '0 15 * * *', $$ select net.http_post('https://YOUR-PROJECT.supabase.co/functions/v1/alerts', '{"kind":"daily"}'::jsonb, '{}'::jsonb, '{"x-alerts-secret":"YOUR ALERTS_SECRET","content-type":"application/json"}'::jsonb) $$);
+   ```
+   (`0 15 * * *` is 7 am Pacific.) A spike sends at most one email every 3 hours.
+
+**Uptime.** Make a free monitor at Better Stack (betterstack.com/uptime) or UptimeRobot: check `https://app.getfloorcall.com`, `https://live.getfloorcall.com` and `https://YOUR-PROJECT.supabase.co/auth/v1/health` every few minutes, alerting your phone. Cloudflare → Notifications can also email you about outages on its side.
+
+**Backups.** Supabase's free plan has no backups you can restore. Before launch, upgrade the project to **Pro** (it also stops the weekly pause): Pro keeps daily backups for 7 days (Database → Backups). Add **Point-in-time recovery** later when there are paying customers; it can restore to any minute. Coaches can always save their own copy too (Team tab → Backup), and the app keeps every team on the device as well.
+Test a restore once before the season: Database → Backups → restore the newest backup into a **new** project, sign in there and check a team opens.
 
 ## 5. After launch
 

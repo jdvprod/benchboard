@@ -1704,6 +1704,18 @@ language sql stable security definer set search_path = public as $$
       where at > now() - make_interval(mins => mins) group by message order by count(*) desc limit 5) x), '[]'::jsonb))
 $$;
 revoke execute on function public.error_digest(int) from public, anon, authenticated;
+-- When the alerts function last emailed, so a long outage sends one email every few hours, not one every 15 minutes.
+create table if not exists public.app_alerts (id bigserial primary key, at timestamptz not null default now(), kind text not null, total int);
+alter table public.app_alerts enable row level security;
+revoke all on public.app_alerts from anon, authenticated;
+-- For the alerts function's daily email: open Contact messages and coaches waiting for verification.
+create or replace function public.ops_digest() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('messages', (select count(*) from support_messages where status = 'open'),
+    'verify', (select count(*) from coach_verify where status = 'pending'),
+    'new_accounts', (select count(*) from auth.users where created_at > now() - interval '1 day'))
+$$;
+revoke execute on function public.ops_digest() from public, anon, authenticated;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
@@ -1715,7 +1727,7 @@ grant execute on function public.watch(text), public.season_view(text), public.r
   public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
-revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int) from authenticated;
+revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest() from authenticated;
 -- Functions added later start closed to anyone without an account.
 alter default privileges in schema public revoke execute on functions from public, anon;
 -- Tables: no account needed only to send a crash report; everything else goes through the functions above.
