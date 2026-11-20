@@ -27,44 +27,13 @@ export function config(): { url: string; key: string } | null {
 export function setConfig(c: { url: string; key: string } | null) { write(CONFIG_KEY, c); }
 export const cloudAvailable = () => !!config();
 
-/* One sign-in for every FloorCall site. Each site (app., live., academy., lessons. …) is its own origin with its own
- * storage, so on the real domain the session is also kept in a cookie every *.getfloorcall.com site can read.
- * Whichever copy is newer wins: a site that refreshed the sign-in writes the new tokens there, so the next site
- * doesn't refresh with an old token. Signing out anywhere clears it everywhere. Elsewhere (tests, previews) only
- * local storage is used. */
-const SSO_DOMAIN = (() => { try { const h = location.hostname; return /(^|\.)getfloorcall\.com$/.test(h) ? ".getfloorcall.com" : (globalThis as any).__FC_SSO_DOMAIN__ || null; } catch { return null; } })();
-const COOKIE = "fc_s", OUT = "fc_out";
-type Slim = { a: string; r: string; e: number; u: string; m: string; t?: string; n?: string; k?: string; at: number };
-const getCookie = (k: string) => { try { const m = document.cookie.match(new RegExp("(?:^|; )" + k + "=([^;]*)")); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
-const setCookie = (k: string, v: string | null, days = 30) => { try { document.cookie = `${k}=${v == null ? "" : encodeURIComponent(v)}; Domain=${SSO_DOMAIN}; Path=/; Max-Age=${v == null ? 0 : days * 86400}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch { /* ignore */ } };
-function shared(): Slim | null { if (!SSO_DOMAIN) return null; try { const c = getCookie(COOKIE); return c ? JSON.parse(c) : null; } catch { return null; } }
-function share(s: Session | null) {
-  if (!SSO_DOMAIN) return;
-  if (!s) { setCookie(COOKIE, null); setCookie(OUT, String(Date.now()), 30); return; }
-  const meta = s.user.meta || {};
-  setCookie(COOKIE, JSON.stringify({ a: s.access_token, r: s.refresh_token, e: s.expires_at, u: s.user.id, m: s.user.email, t: s.user.terms, n: meta.name, k: meta.kind, at: Date.now() } satisfies Slim));
-}
-const SAVED_AT = "bs-session-at";
-/** The newer of this site's session and the shared one (or none, if the person signed out on another site since). */
-function reconcile(local: Session | null): Session | null {
-  if (!SSO_DOMAIN) return local;
-  const c = shared(), localAt = read<number>(SAVED_AT) || 0, out = +(getCookie(OUT) || 0);
-  if (!c) { if (local && out > localAt) return null; if (local) share(local); return local; } // first visit since this change: share it
-  if (local && local.user.id === c.u && localAt >= c.at) return local;
-  const meta = local && local.user.id === c.u ? local.user.meta : { name: c.n, kind: c.k as AccountKind | undefined };
-  return { access_token: c.a, refresh_token: c.r, expires_at: c.e, user: { id: c.u, email: c.m, terms: c.t, meta } };
-}
-let session: Session | null = reconcile(read<Session>(SESSION_KEY));
-if (SSO_DOMAIN) write(SESSION_KEY, session);
+/* Each FloorCall site (app., live., academy., lessons. …) is its own origin with its own storage, so each keeps its own
+ * sign-in: being signed in to the coach app doesn't sign you in to Lessons. A site you don't have access to says so
+ * (see AccessNote). Earlier builds shared the session in a *.getfloorcall.com cookie; clear any left behind. */
+try { if (/(^|\.)getfloorcall\.com$/.test(location.hostname)) for (const k of ["fc_s", "fc_out"]) document.cookie = `${k}=; Domain=.getfloorcall.com; Path=/; Max-Age=0; SameSite=Lax; Secure`; } catch { /* not a browser */ }
+let session: Session | null = read<Session>(SESSION_KEY);
 export const currentUser = () => session?.user || null;
-function setSession(s: Session | null) { session = s; write(SESSION_KEY, s); write(SAVED_AT, Date.now()); share(s); }
-/** Another site signed in, out, or refreshed: pick that up when this tab comes back (the page reloads if who's signed in changed). */
-if (SSO_DOMAIN && typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState !== "visible") return;
-  const before = session?.user.id || null, next = reconcile(session);
-  if (next !== session) { session = next; write(SESSION_KEY, next); write(SAVED_AT, Date.now()); }
-  if ((next?.user.id || null) !== before) location.reload();
-});
+function setSession(s: Session | null) { session = s; write(SESSION_KEY, s); }
 
 function msg(body: any, fallback: string) {
   const m = body && (body.error_description || body.msg || body.message || body.error || body.hint);
@@ -166,9 +135,6 @@ if (session && !(read<string[]>(TRUST_KEY) || []).length) trustDevice(session.us
 let refreshing: Promise<void> | null = null;
 async function refresh() {
   if (!session) return;
-  // another FloorCall site may have refreshed already: use its tokens rather than spend ours twice
-  const c = shared();
-  if (c && session && c.u === session.user.id && c.r !== session.refresh_token && c.e * 1000 > Date.now() + 60_000) { session = { ...session, access_token: c.a, refresh_token: c.r, expires_at: c.e }; write(SESSION_KEY, session); return; }
   refreshing ||= (async () => {
     try { setSession(fromAuth(await call("/auth/v1/token?grant_type=refresh_token", { method: "POST", auth: false, body: JSON.stringify({ refresh_token: session!.refresh_token }) }))); }
     catch (e) { if (e instanceof CloudError && e.status >= 400 && e.status < 500) setSession(null); throw e; }

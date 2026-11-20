@@ -19,6 +19,7 @@ import { COACH_ONLY, isViewer } from "./viewAs";
 import { setUi, ui } from "./ui";
 import { access, BILLING } from "./flags";
 import { Paywall } from "./Paywall";
+import { AppAccess } from "../cloud/AccessNote";
 import { AccountChip, AccountPage, AuthPage, skipAccounts, syncDot, wantsAuthGate } from "../cloud/AuthPage";
 import { needsTermsAgreement, currentUser } from "../cloud/client";
 
@@ -81,7 +82,7 @@ export function App() {
   if (!user && wantsAuthGate() && !(t && t.sample)) return <><AuthPage initial={all("teams").some((x) => !x.sample) ? "signin" : "signup"} onSkip={skipAccounts} /><Toast /></>;
   if (!t) {
     if (route.page === "join" && route.id && user) return <><div className="content"><JoinPage code={route.id} /></div><Toast /></>;
-    return <>{wantsAuthGate() ? <AuthPage onSkip={skipAccounts} /> : <Welcome />}<Toast /></>;
+    return <>{wantsAuthGate() ? <AuthPage onSkip={skipAccounts} /> : <Welcome />}{user && <AppAccess />}<Toast /></>;
   }
 
   // View-only members (players and families) get the team's stats, never the coaching tools

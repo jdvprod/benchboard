@@ -20,6 +20,7 @@ import { copyText, download, plural } from "../ui/kit";
 import { contactUrl, placeUrl } from "../cloud/links";
 import { cloudAvailable, CloudError, rpc, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
+import { AccessNote } from "../cloud/AccessNote";
 import { CoachVerify, useCoachStatus } from "../cloud/CoachVerify";
 import { Calendar, CalItem, ymd } from "../ui/Calendar";
 import { Badge } from "../cloud/Badge";
@@ -499,6 +500,15 @@ function Signups({ book, act }: { book: Book; act: Act }) {
 }
 
 /* ====================================================================== athletes and parents */
+/** Signed in, but no trainer has this account: say so once, then the code form. */
+function NoLessons({ coach, onJoined }: { coach: boolean; onJoined: () => void }) {
+  const [note, setNote] = useState(!coach);
+  return <div className="ls-page">
+    {coach && <a className="ls-back" href="#/">Your schedule</a>}
+    <Join code="" onJoined={onJoined} first />
+    {note && <AccessNote site="FloorCall Lessons" from="lessons" reason="trainer" onCode={() => { setNote(false); setTimeout(() => (document.querySelector(".ls-page input") as HTMLInputElement | null)?.focus(), 0); }} onClose={() => setNote(false)} />}
+  </div>;
+}
 function AthleteSide({ route, coach }: { route: string[]; coach: boolean }) {
   const [d, setD] = useState<Mine | null>(null), [err, setErr] = useState(""), [pick, setPick] = useState("");
   const load = useCallback(async () => { try { setD(await rpc("my_lessons", {})); setErr(""); } catch (e) { setErr(errText(e)); } }, []);
@@ -508,10 +518,7 @@ function AthleteSide({ route, coach }: { route: string[]; coach: boolean }) {
   if (route[0] === "join") return <Join code={route[1] || ""} onJoined={async () => { await load(); go(coach ? "mine" : ""); }} />;
   if (err && !d) return <div className="ls-page"><p className="ls-err">{err}</p><button className="btn" onClick={load}>Try again</button></div>;
   if (!d) return <div className="ls-page"><p className="muted">Loading your lessons…</p></div>;
-  if (!d.athletes.length) return <div className="ls-page">
-    {coach && <a className="ls-back" href="#/">Your schedule</a>}
-    <Join code="" onJoined={load} first />
-  </div>;
+  if (!d.athletes.length) return <NoLessons coach={coach} onJoined={load} />;
   const a = d.athletes.find((x) => x.id === pick) || d.athletes[0];
   const mine = d.sessions.filter((s) => s.mine.includes(a.id));
   const next = mine.filter(upcoming), past = mine.filter((s) => !upcoming(s)).reverse();

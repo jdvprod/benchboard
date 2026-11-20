@@ -8,7 +8,7 @@ import "./codebox.css";
 
 interface Coverage { teams: { id: string; name: string; role: string }[]; lessons: { athlete: string; trainer: string }[] }
 
-export function CodeBox({ site }: { site: string }) {
+export function CodeBox({ site, onDone }: { site: string; onDone?: () => void }) {
   const [cov, setCov] = useState<Coverage | null>(null), [open, setOpen] = useState(false), [code, setCode] = useState(""), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [done, setDone] = useState<null | { kind: string; name: string }>(null);
   const show = cloudAvailable() && !!currentUser() && userMeta().kind !== "coach";
   const load = () => rpc("my_coverage", {}).then(setCov).catch(() => setCov({ teams: [], lessons: [] }));
@@ -16,7 +16,7 @@ export function CodeBox({ site }: { site: string }) {
   if (!show || !cov) return null;
   const redeem = async () => {
     setBusy(true); setErr("");
-    try { const r = await rpc("redeem_code", { invite: code.trim() }); setDone(r); setCode(""); setOpen(false); await load(); }
+    try { const r = await rpc("redeem_code", { invite: code.trim() }); setDone(r); setCode(""); setOpen(false); await load(); onDone?.(); }
     catch (e) { setErr(tooMany(e) ? TOO_MANY : e instanceof CloudError ? e.message : "Couldn't reach FloorCall. Try again."); }
     setBusy(false);
   };

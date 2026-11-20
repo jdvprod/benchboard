@@ -1,0 +1,11 @@
+/* "You don't have access" (AccessNote.tsx) */
+.an-back{position:fixed;inset:0;z-index:200;background:rgba(10,12,16,.55);display:grid;place-items:center;padding:16px;overflow:auto}
+.an{background:var(--surface,#fff);color:var(--ink,#0B0C0E);border-radius:14px;max-width:460px;width:100%;padding:22px 22px 18px;box-shadow:0 18px 50px rgba(0,0,0,.28);outline:none;display:grid;gap:12px}
+.an h2{margin:0;font-size:20px;line-height:1.2}
+.an p{margin:0;color:var(--muted,#5B616B);line-height:1.5}.an p b{color:var(--ink,#0B0C0E);overflow-wrap:anywhere}
+.an-ways{margin:0;padding:0 0 0 18px;display:grid;gap:8px;line-height:1.45}
+.an-ways a,.an-link{color:var(--us,#2B79B0);font-weight:600}
+.an-link{border:0;background:none;padding:0;font:inherit;cursor:pointer;text-decoration:underline}
+.an-acts{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:4px}
+.an .cb{margin:0}
+.an .an-live{font-size:13.5px}

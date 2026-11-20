@@ -1596,15 +1596,15 @@ const scenarios = {
     ok("no errors on the site pages or in the players' view", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
     await A.context().close();
   },
-  async sso() {
-    // One sign-in for every site: app., academy., lessons. … are separate origins; the session travels in a cookie for
-    // .getfloorcall.com. Here *.getfloorcall.com points at a local server that routes like worker/index.js.
+  async sites() {
+    // Each site has its own sign-in (app., academy., lessons. … are separate origins). A site the account isn't set up
+    // for says so: "You don't have access". Here *.getfloorcall.com points at a local server that routes like worker/index.js.
     const http = require("http"), fs = require("fs"), PORT = 5213;
     const types = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".png": "image/png", ".webp": "image/webp", ".json": "application/json", ".svg": "image/svg+xml" };
     const srv = http.createServer((q, r) => {
       const sub = (q.headers.host || "").split(".")[0], dir = ["live", "recruit", "beach", "academy", "lessons"].includes(sub) ? sub + "/" : "";
       let p0 = decodeURIComponent(q.url.split("?")[0]); if (p0.endsWith("/")) p0 += "index.html";
-      let f = path.join(DIST, dir, p0); if (!fs.existsSync(f)) f = path.join(DIST, p0.replace(/^\/(\.\.\/)*/, "/")); // shared files (brand/, legal/) from the root, like the worker
+      let f = path.join(DIST, dir, p0); if (!fs.existsSync(f)) f = path.join(DIST, p0.replace(/^\/(\.\.\/)*/, "/"));
       if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
       r.writeHead(200, { "content-type": types[path.extname(f)] || "application/octet-stream" }); r.end(fs.readFileSync(f));
     }).listen(PORT);
@@ -1614,16 +1614,26 @@ const scenarios = {
     const at = (site) => `http://${site}.getfloorcall.com:${PORT}/`;
     const L = await ctx.newPage();
     await L.goto(at("lessons")); await L.waitForTimeout(800);
-    await siteSignUp(L, "sso-coach@e2e.test", "coach", "Sam Sso");
-    ok("sso: signed in on Lessons", (await L.locator(".ls-tabs").count()) === 1);
+    await siteSignUp(L, "sites-kid@e2e.test", "athlete", "Kai Sites");
+    const note = L.getByRole("alertdialog");
+    ok("sites: an athlete no trainer has added is told they don't have access to Lessons", /don't have access to FloorCall Lessons/.test(await note.innerText().catch(() => "")));
+    ok("sites: the note says what to do: code, coach or admin, plan", /code/i.test(await note.innerText()) && /Contact your trainer/.test(await note.innerText()) && /Check your plan/.test(await note.innerText()));
+    { const ax = await a11y(L); ok("sites: access note controls all have names", !ax.length, ax.join(" | ")); }
+    await note.getByRole("button", { name: /Enter the code/ }).click();
+    ok("sites: 'Enter the code' closes the note onto the code form", (await L.getByRole("alertdialog").count()) === 0 && (await L.locator(".ls-page input").count()) >= 1);
     const A = await ctx.newPage(); await A.goto(at("academy")); await A.waitForTimeout(800);
-    ok("sso: Academy opens already signed in", (await A.locator(".sg .ma").count()) === 0 && (await A.locator(".ac-hero").count()) === 1);
-    const B = await ctx.newPage(); await B.goto(at("beach")); await B.waitForTimeout(800);
-    ok("sso: so does Beach", (await B.locator(".sg .ma").count()) === 0);
-    // signing out on one site signs out everywhere
-    await B.evaluate(() => { document.cookie = "fc_s=; Domain=.getfloorcall.com; Path=/; Max-Age=0"; document.cookie = `fc_out=${Date.now()}; Domain=.getfloorcall.com; Path=/`; });
-    await A.reload(); await A.waitForTimeout(800);
-    ok("sso: after signing out elsewhere, a site asks for the account again", (await A.locator(".sg .ma").count()) === 1);
+    ok("sites: Academy has its own sign-in", (await A.locator(".sg .ma").count()) === 1);
+    const P = await ctx.newPage(); await P.goto(at("app")); await P.waitForTimeout(800);
+    { const si = P.getByRole("button", { name: /^Sign in$/ }); if (await si.count()) await si.first().click(); }
+    await P.getByLabel("Email").fill("sites-kid@e2e.test"); await P.locator("#auth-pw").fill("secret-pass-1");
+    await P.locator("form").getByRole("button", { name: /^Sign in$/ }).click(); await P.waitForTimeout(1500);
+    ok("sites: a player's account on no team gets the note on the coaching app", /don't have access to the FloorCall coaching app/.test(await P.getByRole("alertdialog").innerText().catch(() => "")), (await P.locator("body").innerText()).slice(0, 300));
+    ok("sites: the app note offers the team code box", (await P.locator(".an .cb").count()) === 1);
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "access-note.png") });
+    await P.getByRole("button", { name: "Use a different account" }).click(); await P.waitForTimeout(800);
+    ok("sites: 'Use a different account' signs out of this site only", (await P.getByRole("alertdialog").count()) === 0 && (await P.locator("#auth-pw").count()) === 1);
+    await L.reload(); await L.waitForTimeout(800);
+    ok("sites: still signed in on Lessons", (await L.locator(".sg .ma").count()) === 0);
     await b.close(); srv.close();
   },
   async calendar(browser) {
