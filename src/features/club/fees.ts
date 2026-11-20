@@ -1,6 +1,6 @@
 /** Player fees: what each family owes for the season, what they've paid, and who still owes. For coaches and club
- * directors who track this in a spreadsheet today. Floorcall doesn't take payments; this is the ledger.
- * Kept on the team (so every coach on a synced team sees it), never on Floorcall Live. Pure and unit tested. */
+ * directors who track this in a spreadsheet today. FloorCall doesn't take payments; this is the ledger.
+ * Kept on the team (so every coach on a synced team sees it), never on FloorCall Live. Pure and unit tested. */
 export interface Payment { id: string; at: string; amt: number; note?: string }
 export interface FeeLine { amt?: number; paid: Payment[]; waived?: number; note?: string }
 export interface Fees { amt: number; due?: string; label?: string; lines: Record<string, FeeLine> }

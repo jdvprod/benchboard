@@ -1,4 +1,4 @@
-/** English / Spanish for the public sites (Floorcall Live). The coaching app stays English: it never calls setLang.
+/** English / Spanish for the public sites (FloorCall Live). The coaching app stays English: it never calls setLang.
  * tr("Set {n}", { n: 2 }) looks the English text up and fills in the blanks. */
 import { ACTIONS } from "../sports/volleyball/actions";
 
@@ -25,7 +25,7 @@ const ES: Record<string, string> = {
   "Team or game code": "Código del equipo o del partido", "Follow": "Seguir", "Finding…": "Buscando…", "Codes are 6 letters and numbers, like K7Q2XM.": "Los códigos tienen 6 letras y números, como K7Q2XM.",
   "No team or game uses that code. Check it with the coach.": "Ningún equipo o partido usa ese código. Confírmalo con el entrenador.", "Couldn't check the code. Check your connection.": "No se pudo revisar el código. Revisa tu conexión.",
   "This site isn't connected yet.": "Este sitio aún no está conectado.", "Back to {team}": "Volver a {team}", "Loading…": "Cargando…", "Loading the game…": "Cargando el partido…",
-  "Stats recorded by the team's coaches with Floorcall": "Estadísticas registradas por los entrenadores del equipo con Floorcall", "Privacy": "Privacidad", "Terms": "Términos", "Help": "Ayuda",
+  "Stats recorded by the team's coaches with FloorCall": "Estadísticas registradas por los entrenadores del equipo con FloorCall", "Privacy": "Privacidad", "Terms": "Términos", "Help": "Ayuda",
   "Updated just now": "Actualizado hace un momento", "Updated {n}s ago": "Actualizado hace {n} s", "Reconnecting…": "Reconectando…", "Too many codes that didn't match. Wait a few minutes, then check the code with the coach.": "Demasiados códigos que no coinciden. Espera unos minutos y confirma el código con el entrenador.",
   "We couldn't find that team. Check the link or code with the coach.": "No encontramos ese equipo. Confirma el enlace o el código con el entrenador.",
   "This game link isn't active. Ask the coach for a new one.": "Este enlace ya no está activo. Pide uno nuevo al entrenador.", "Live links aren't set up for this site yet.": "Los enlaces en vivo aún no están listos en este sitio.",
@@ -75,7 +75,7 @@ const ES: Record<string, string> = {
   "Email": "Correo electrónico",
   "Password": "Contraseña",
   "At least 8 characters": "Al menos 8 caracteres",
-  "Send Floorcall news and new features to my inbox.": "Envíame noticias y novedades de Floorcall por correo.",
+  "Send FloorCall news and new features to my inbox.": "Envíame noticias y novedades de FloorCall por correo.",
   "One moment…": "Un momento…",
   "Send reset link": "Enviar enlace",
   "Forgot password?": "¿Olvidaste tu contraseña?",
@@ -100,7 +100,7 @@ const ES: Record<string, string> = {
   "If this email has an account, a reset link is on its way:": "Si este correo tiene una cuenta, el enlace para restablecer va en camino:",
   "Sign in to see your teams on this phone": "Inicia sesión para ver tus equipos en este teléfono",
   "Your teams follow your account to every phone.": "Tus equipos siguen a tu cuenta en cada teléfono.",
-  "Floorcall sites": "Sitios de Floorcall",
+  "FloorCall sites": "Sitios de FloorCall",
   "Coaches": "Entrenadores",
   "Recruit": "Reclutamiento",
   "Team film": "Video del equipo",
@@ -116,7 +116,7 @@ const ES: Record<string, string> = {
   "Volunteer": "Voluntariado", "Volunteers needed": "Se necesitan voluntarios", "You're on it": "Te toca", "Covered": "Cubierto", "Sign up": "Apuntarme", "Sign up for {job}": "Apuntarme a {job}", "Drop out of {job}": "Salir de {job}", "Couldn't save. Check your connection.": "No se pudo guardar. Revisa tu conexión.",
   "Practice plan": "Plan del entrenamiento", "Save picture": "Guardar imagen", "Practice": "Entrenamiento", "practice": "entrenamiento", "Answering for": "Respondo por", "Just me": "Solo yo",
   "Great rep": "Gran jugada", "Solid": "Bien", "Needs work": "A mejorar", "For": "Para", "Show clips for": "Ver clips de", "Everyone": "Todos",
-  "Create a free Floorcall account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de Floorcall para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
+  "Create a free FloorCall account to get {team}'s match starts and final scores on this {device}.": "Crea una cuenta gratis de FloorCall para recibir los inicios de partido y los resultados finales de {team} en este {device}.",
   "You'll get {team}'s {what} on this {device}.": "Recibirás avisos de {team} ({what}) en este {device}.", "phone": "teléfono", "device": "dispositivo",
   "match starts and final scores": "inicio y resultado final", "match starts": "inicio de partidos", "final scores": "resultados finales",
   "Pick at least one: match starts or final scores.": "Elige al menos uno: inicio del partido o resultado final.",

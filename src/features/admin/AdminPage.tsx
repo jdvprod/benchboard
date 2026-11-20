@@ -1,4 +1,4 @@
-/** Admin console for the people who run Floorcall: sign-ups, active teams, what's live, and a review of every uploaded
+/** Admin console for the people who run FloorCall: sign-ups, active teams, what's live, and a review of every uploaded
  * photo and logo with a one-tap take-down. Only accounts listed in the admins table can open it (the database checks). */
 import { useEffect, useState } from "react";
 import { Card, ConfirmButton, download, Kpi } from "../../ui/kit";
@@ -13,7 +13,7 @@ interface Staff { user_id: string; email: string; name: string; school: string; 
 
 const ago = (iso?: string | null) => { if (!iso) return "never"; const m = Math.round((Date.now() - +new Date(iso)) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`; };
 
-/** True when the signed-in account is a Floorcall admin (cached for the session). */
+/** True when the signed-in account is a FloorCall admin (cached for the session). */
 let adminCache: Promise<boolean> | null = null;
 export const amAdmin = () => (adminCache ||= rpc("is_admin", {}).then((x) => x === true).catch(() => false));
 
@@ -42,7 +42,7 @@ function Messages({ list, onDone }: { list: Msg[]; onDone: (m: Msg, done: boolea
     {!shown.length ? <p className="empty">{all ? "No messages yet." : "Nothing waiting for a reply."}</p> : <ul className="log admin-msgs">{shown.map((m) => <li key={m.id}>
       <div className="admin-msg-hd"><b>{TOPIC[m.topic] || m.topic}</b><span className="small muted">{m.name ? m.name + " · " : ""}{m.email} · from {m.site || "the website"} · {ago(m.created_at)}</span></div>
       <p className="admin-msg-body">{m.message}</p>
-      <div className="row"><a className="btn sm primary" href={`mailto:${m.email}?subject=${encodeURIComponent("Re: your Floorcall message")}&body=${encodeURIComponent("\n\n> " + m.message.split("\n").slice(0, 8).join("\n> "))}`}>Reply by email</a>
+      <div className="row"><a className="btn sm primary" href={`mailto:${m.email}?subject=${encodeURIComponent("Re: your FloorCall message")}&body=${encodeURIComponent("\n\n> " + m.message.split("\n").slice(0, 8).join("\n> "))}`}>Reply by email</a>
         <button className="btn sm ghost" onClick={() => onDone(m, m.status === "open")}>{m.status === "open" ? "Mark done" : "Reopen"}</button></div>
     </li>)}</ul>}
   </Card>;
@@ -54,7 +54,7 @@ export function AdminPage() {
   const load = async () => {
     rpc("admin_support", {}).then(setMsgs).catch(() => setMsgs(null));
     try { setO(await rpc("admin_overview", {})); setPics(await rpc("admin_pictures", { lim: 60 })); setStaff(await rpc("admin_college_staff", {}).catch(() => [])); setCoaches(await rpc("admin_coach_requests", {}).catch(() => null)); setAcc(await rpc("admin_accounts", {}).catch(() => null)); setErr(""); }
-    catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a Floorcall admin." : e?.message || "Couldn't load the admin console."); }
+    catch (e: any) { setErr(/admins only/i.test(e?.message || "") ? "This account isn't a FloorCall admin." : e?.message || "Couldn't load the admin console."); }
   };
   useEffect(() => { load(); const t = setInterval(load, 60000); return () => clearInterval(t); }, []);
   const base = config()?.url + "/storage/v1/object/public/media/";
@@ -85,7 +85,7 @@ export function AdminPage() {
     </div>
     {msgs && <Messages list={msgs} onDone={async (m, done) => { try { await rpc("admin_support_done", { mid: m.id, done }); setMsgs((x) => x && x.map((y) => (y.id === m.id ? { ...y, status: done ? "done" : "open" } : y))); } catch (e: any) { toast(e?.message || "Couldn't save."); } }} />}
     {coaches && <CoachRequests list={coaches} onDecide={async (c, approve) => { await rpc("admin_decide_coach", { uid: c.user_id, approve }); setCoaches((x) => x && x.map((y) => (y.user_id === c.user_id ? { ...y, status: approve ? "approved" : "denied" } : y))); toast(approve ? `${c.name || c.email} can sync teams now` : "Turned down"); }} />}
-    {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on Floorcall Recruit. Check the school's staff directory first.</span>}>
+    {COLLEGE_SEARCH && <Card title="College coaches" actions={<span className="small muted">Approve staff who can search listed players on FloorCall Recruit. Check the school's staff directory first.</span>}>
       {!staff.length ? <p className="empty">No requests yet.</p> : <div className="tbl"><table><thead><tr><th className="l">Name</th><th className="l">School</th><th className="l">Email</th><th>Status</th><th></th></tr></thead>
         <tbody>{staff.map((s) => <tr key={s.user_id}><td className="l">{s.name}{s.title ? <div className="small muted">{s.title}</div> : null}</td><td className="l">{s.school}</td><td className="l small">{s.email}</td><td>{s.status === "pending" ? <b>Waiting</b> : s.status === "approved" ? "Approved" : "Turned down"}</td>
           <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{s.status !== "approved" && <button className="btn sm primary" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: true }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "approved" } : y))); }}>Approve</button>}

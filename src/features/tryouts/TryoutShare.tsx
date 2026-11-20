@@ -70,7 +70,7 @@ export function JoinTryout({ code }: { code: string }) {
       go("tryouts", id);
     }).catch((e) => setMsg(e?.message || "Couldn't open that tryout. Check your connection."));
   }, [code, signed]);
-  if (!cloudAvailable()) return <div className="page"><p className="empty">This copy of Floorcall isn't connected, so it can't open a shared tryout.</p></div>;
+  if (!cloudAvailable()) return <div className="page"><p className="empty">This copy of FloorCall isn't connected, so it can't open a shared tryout.</p></div>;
   return <div className="page"><div className="pagehead"><h1>Join a tryout</h1></div>
     {msg ? <p className="empty">{msg}</p> : signed ? <p className="empty">Opening tryout {code.toUpperCase()}…</p>
       : <div style={{ maxWidth: 460 }}><MiniAuth kind="coach" title="Sign in to rate at this tryout" sub="Your ratings go to the head coach only." onIn={() => bump((x) => x + 1)} legalBase="legal/" /></div>}

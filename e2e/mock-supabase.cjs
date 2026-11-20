@@ -1,4 +1,4 @@
-// Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints Floorcall uses, mirroring schema.sql rules.
+// Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints FloorCall uses, mirroring schema.sql rules.
 const http = require("http");
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
@@ -15,8 +15,8 @@ const interest = []; // college staff -> a player's coaches {id, team_id, code, 
 const rsvps = new Map(); // availability: "team|item|user" -> {team_id, item, user, name, status, at}
 const posts = []; // team announcements {id, team_id, body, by, pinned, at, reads:Set}
 const films = new Map(), filmViews = new Map(); // film sessions by code; views by code:user
-const L = { athletes: new Map(), access: [], sessions: new Map(), roster: new Map(), requests: [] }; // Floorcall Lessons (version 31)
-const support = []; // version 32: contact form messages
+const L = { athletes: new Map(), access: [], sessions: new Map(), roster: new Map(), requests: [] }; // FloorCall Lessons (version 31)
+const support = [], drillPicks = []; // drillPicks: version 33 // version 32: contact form messages
 const pushSubs = new Map(), pushSent = new Set(), pushes = []; // notify function: subscriptions, sent (match:kind), and what went out
 let clock = Date.now();
 const now = () => new Date(++clock).toISOString();
@@ -74,9 +74,15 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     if (p === "/rest/v1/rpc/my_coverage") { if (!me) return send(res, 200, { teams: [], lessons: [] });
       return send(res, 200, { teams: members.filter((m) => m.user_id === me && (m.status || "active") === "active").map((m) => ({ id: m.team_id, name: teams.get(m.team_id)?.name || "", role: m.role })),
         lessons: L.access.filter((x) => x.user_id === me).map((x) => { const a = L.athletes.get(x.athlete_id); return { athlete: a?.name, trainer: users.get(a?.trainer)?.meta?.name || "Your trainer" }; }) }); }
+    // version 33: badges and drill picks
+    const onTeam = (t, roles) => members.some((m) => m.team_id === t && m.user_id === me && (m.status || "active") === "active" && (!roles || roles.includes(m.role)));
+    if (p === "/rest/v1/rpc/team_badges") return send(res, 200, !onTeam(b.t) ? [] : members.filter((m) => m.team_id === b.t && m.role !== "viewer").map((m) => ({ user_id: m.user_id, role: m.role, badge: admins.has(m.user_id) ? "admin" : coachVerify.get(m.user_id)?.status === "approved" || (!coachVerify.get(m.user_id) && coachOk(m.user_id) && m.role === "owner") ? "verified" : m.role === "coach" && (m.status || "active") === "active" ? "assistant" : m.role === "owner" ? "not" : null })));
+    if (p === "/rest/v1/rpc/team_pick_drill") { if (!onTeam(b.t, ["owner", "coach"])) return send(res, 400, { message: "Only the team's coaches pick drills." }); const i = drillPicks.findIndex((x) => x.team_id === b.t && x.drill_id === b.drill); if (i >= 0) drillPicks.splice(i, 1); if (b.pick) drillPicks.push({ team_id: b.t, drill_id: b.drill, note: b.note || null, at: now() }); return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/team_drill_list") return send(res, 200, onTeam(b.t) ? drillPicks.filter((x) => x.team_id === b.t).reverse().map((x) => ({ drill: x.drill_id, note: x.note, at: x.at })) : []);
+    if (p === "/rest/v1/rpc/my_drill_picks") return send(res, 200, drillPicks.filter((x) => members.some((m) => m.team_id === x.team_id && m.user_id === me && (m.status || "active") === "active")).reverse().map((x) => ({ team: teams.get(x.team_id)?.name || "", drill: x.drill_id, note: x.note, at: x.at })));
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
-    // Floorcall Lessons (version 31): mirrors the lesson_* functions in schema.sql
+    // FloorCall Lessons (version 31): mirrors the lesson_* functions in schema.sql
     if (p.startsWith("/rest/v1/rpc/lesson_") || p === "/rest/v1/rpc/my_lessons") {
       const fn = p.slice("/rest/v1/rpc/".length), bad = (m) => send(res, 400, { message: m });
       const code6 = () => Array.from({ length: 6 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
@@ -91,7 +97,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       if (fn === "lesson_trainer_data") { const S = [...L.sessions.values()].filter((x) => x.trainer === me).sort((a, c) => a.starts.localeCompare(c.starts)); const ids = new Set(S.map((x) => x.id));
         return send(res, 200, { athletes: [...L.athletes.values()].filter((a) => a.trainer === me).sort((a, c) => a.name.localeCompare(c.name)).map((a) => ({ ...a, joined: L.access.filter((x) => x.athlete_id === a.id).map((x) => ({ role: x.role, email: users.get(x.user_id)?.email })) })),
           sessions: S, roster: [...L.roster.values()].filter((r) => ids.has(r.session_id)), requests: L.requests.filter((q) => ids.has(q.session_id) && q.status === "pending"), verified: coachOk(me) }); }
-      if (fn === "lesson_save_athlete") { const a = b.a || {}; if (!coachOk(me)) return bad("Verify your coach account first: Floorcall checks every trainer before they add athletes."); if (!String(a.name || "").trim()) return bad("Add the athlete's name."); const cur = L.athletes.get(a.id); if (cur && cur.trainer !== me) return bad("Not your athlete."); L.athletes.set(a.id, { ...(cur || { code: null, created_at: now() }), id: a.id, trainer: me, name: String(a.name).trim().slice(0, 80), grad: a.grad || null, position: a.position || null, club: a.club || null, contact: a.contact || null, notes: a.notes || null, updated_at: now() }); return send(res, 200, null); }
+      if (fn === "lesson_save_athlete") { const a = b.a || {}; if (!coachOk(me)) return bad("Verify your coach account first: FloorCall checks every trainer before they add athletes."); if (!String(a.name || "").trim()) return bad("Add the athlete's name."); const cur = L.athletes.get(a.id); if (cur && cur.trainer !== me) return bad("Not your athlete."); L.athletes.set(a.id, { ...(cur || { code: null, created_at: now() }), id: a.id, trainer: me, name: String(a.name).trim().slice(0, 80), grad: a.grad || null, position: a.position || null, club: a.club || null, contact: a.contact || null, notes: a.notes || null, updated_at: now() }); return send(res, 200, null); }
       if (fn === "lesson_delete_athlete") { if (mineA(b.aid)) { L.athletes.delete(b.aid); for (const x of L.sessions.values()) if (x.trainer === me) x.athletes = x.athletes.filter((i) => i !== b.aid); L.access = L.access.filter((x) => x.athlete_id !== b.aid); for (const [k, r] of L.roster) if (r.athlete_id === b.aid) L.roster.delete(k); } return send(res, 200, null); }
       if (fn === "lesson_invite") { const a = mineA(b.aid); if (!a) return bad("Not your athlete."); if (!a.code || b.fresh) a.code = code6(); return send(res, 200, a.code); }
       if (fn === "lesson_save_session") { const x = b.x || {}; if (!coachOk(me)) return bad("Verify your coach account first."); const cur = L.sessions.get(x.id); if (cur && cur.trainer !== me) return bad("Not your session.");
@@ -129,7 +135,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 32);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 33);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

@@ -1,4 +1,4 @@
-// Makes the link-preview images (1200×630) shown when someone shares a Floorcall link in a text, Slack or social post.
+// Makes the link-preview images (1200×630) shown when someone shares a FloorCall link in a text, Slack or social post.
 // Run: node scripts/og-cards.cjs   (writes public/og.png, public/live/og.png, public/recruit/og.png)
 const { chromium } = require("playwright"), path = require("path");
 const card = (kicker, title, sub, right) => `<!doctype html><html><head><style>
@@ -38,8 +38,8 @@ const profile = `<div class="prof"><div class="ph"></div><h2>Maya Chen</h2><smal
   const out = (f) => path.join(__dirname, "..", "public", f);
   for (const [f, html] of [
     ["og.png", card("Volleyball stats", "Every point, tracked from the bench.", "Live stats, lineups, practice plans and scouting for coaches. Gamecasts for families.", scoreboard)],
-    ["live/og.png", card("Floorcall Live", "Follow the game, point by point.", "Live scores, box scores and player stats, straight from the team's bench.", scoreboard)],
-    ["recruit/og.png", card("Floorcall Recruit", "Verified stats for college coaches.", "Numbers recorded live by the player's own coaching staff, with highlight clips.", profile)],
+    ["live/og.png", card("FloorCall Live", "Follow the game, point by point.", "Live scores, box scores and player stats, straight from the team's bench.", scoreboard)],
+    ["recruit/og.png", card("FloorCall Recruit", "Verified stats for college coaches.", "Numbers recorded live by the player's own coaching staff, with highlight clips.", profile)],
   ]) { await p.setContent(html); await p.waitForTimeout(150); await p.screenshot({ path: out(f) }); console.log("wrote", f); }
   await b.close();
 })();

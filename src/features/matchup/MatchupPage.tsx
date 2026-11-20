@@ -312,5 +312,5 @@ function scheduleIcs(items: ScheduleItem[], teamName: string): string {
     else { const nd = new Date(s.date + "T12:00"); nd.setDate(nd.getDate() + 1); when = `DTSTART;VALUE=DATE:${d(s.date)}\r\nDTEND;VALUE=DATE:${nd.toISOString().slice(0, 10).replace(/-/g, "")}`; }
     return `BEGIN:VEVENT\r\nUID:${s.id}@floorcall\r\nDTSTAMP:${stamp}\r\n${when}\r\nSUMMARY:${esc(title)}\r\n${s.event ? "DESCRIPTION:" + esc(s.event) + "\r\n" : ""}END:VEVENT`;
   }).join("\r\n");
-  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Floorcall//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n${ev}\r\nEND:VCALENDAR\r\n`;
+  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FloorCall//Schedule//EN\r\nCALSCALE:GREGORIAN\r\n${ev}\r\nEND:VCALENDAR\r\n`;
 }

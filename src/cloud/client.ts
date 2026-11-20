@@ -27,9 +27,44 @@ export function config(): { url: string; key: string } | null {
 export function setConfig(c: { url: string; key: string } | null) { write(CONFIG_KEY, c); }
 export const cloudAvailable = () => !!config();
 
-let session: Session | null = read<Session>(SESSION_KEY);
+/* One sign-in for every FloorCall site. Each site (app., live., academy., lessons. …) is its own origin with its own
+ * storage, so on the real domain the session is also kept in a cookie every *.getfloorcall.com site can read.
+ * Whichever copy is newer wins: a site that refreshed the sign-in writes the new tokens there, so the next site
+ * doesn't refresh with an old token. Signing out anywhere clears it everywhere. Elsewhere (tests, previews) only
+ * local storage is used. */
+const SSO_DOMAIN = (() => { try { const h = location.hostname; return /(^|\.)getfloorcall\.com$/.test(h) ? ".getfloorcall.com" : (globalThis as any).__FC_SSO_DOMAIN__ || null; } catch { return null; } })();
+const COOKIE = "fc_s", OUT = "fc_out";
+type Slim = { a: string; r: string; e: number; u: string; m: string; t?: string; n?: string; k?: string; at: number };
+const getCookie = (k: string) => { try { const m = document.cookie.match(new RegExp("(?:^|; )" + k + "=([^;]*)")); return m ? decodeURIComponent(m[1]) : null; } catch { return null; } };
+const setCookie = (k: string, v: string | null, days = 30) => { try { document.cookie = `${k}=${v == null ? "" : encodeURIComponent(v)}; Domain=${SSO_DOMAIN}; Path=/; Max-Age=${v == null ? 0 : days * 86400}; SameSite=Lax${location.protocol === "https:" ? "; Secure" : ""}`; } catch { /* ignore */ } };
+function shared(): Slim | null { if (!SSO_DOMAIN) return null; try { const c = getCookie(COOKIE); return c ? JSON.parse(c) : null; } catch { return null; } }
+function share(s: Session | null) {
+  if (!SSO_DOMAIN) return;
+  if (!s) { setCookie(COOKIE, null); setCookie(OUT, String(Date.now()), 30); return; }
+  const meta = s.user.meta || {};
+  setCookie(COOKIE, JSON.stringify({ a: s.access_token, r: s.refresh_token, e: s.expires_at, u: s.user.id, m: s.user.email, t: s.user.terms, n: meta.name, k: meta.kind, at: Date.now() } satisfies Slim));
+}
+const SAVED_AT = "bs-session-at";
+/** The newer of this site's session and the shared one (or none, if the person signed out on another site since). */
+function reconcile(local: Session | null): Session | null {
+  if (!SSO_DOMAIN) return local;
+  const c = shared(), localAt = read<number>(SAVED_AT) || 0, out = +(getCookie(OUT) || 0);
+  if (!c) { if (local && out > localAt) return null; if (local) share(local); return local; } // first visit since this change: share it
+  if (local && local.user.id === c.u && localAt >= c.at) return local;
+  const meta = local && local.user.id === c.u ? local.user.meta : { name: c.n, kind: c.k as AccountKind | undefined };
+  return { access_token: c.a, refresh_token: c.r, expires_at: c.e, user: { id: c.u, email: c.m, terms: c.t, meta } };
+}
+let session: Session | null = reconcile(read<Session>(SESSION_KEY));
+if (SSO_DOMAIN) write(SESSION_KEY, session);
 export const currentUser = () => session?.user || null;
-function setSession(s: Session | null) { session = s; write(SESSION_KEY, s); }
+function setSession(s: Session | null) { session = s; write(SESSION_KEY, s); write(SAVED_AT, Date.now()); share(s); }
+/** Another site signed in, out, or refreshed: pick that up when this tab comes back (the page reloads if who's signed in changed). */
+if (SSO_DOMAIN && typeof document !== "undefined") document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  const before = session?.user.id || null, next = reconcile(session);
+  if (next !== session) { session = next; write(SESSION_KEY, next); write(SAVED_AT, Date.now()); }
+  if ((next?.user.id || null) !== before) location.reload();
+});
 
 function msg(body: any, fallback: string) {
   const m = body && (body.error_description || body.msg || body.message || body.error || body.hint);
@@ -39,7 +74,7 @@ function msg(body: any, fallback: string) {
   if (/already registered/i.test(m)) return "That email already has an account. Sign in instead.";
   if (/password should be/i.test(m)) return "Use a password with at least 6 characters.";
   // Supabase's built-in email only reaches the project's own team and a couple of emails an hour; real use needs custom SMTP (see README)
-  if (/email address not authorized|error sending (confirmation|recovery|magic link)? ?(email|mail)|smtp/i.test(m)) return "We couldn't send the email. The app's email service isn't fully set up yet; tell the person who runs your Floorcall.";
+  if (/email address not authorized|error sending (confirmation|recovery|magic link)? ?(email|mail)|smtp/i.test(m)) return "We couldn't send the email. The app's email service isn't fully set up yet; tell the person who runs your FloorCall.";
   if (/token has expired|otp.*(expired|invalid)|invalid.*(otp|token)/i.test(m)) return "That code didn't work. Use the code in the newest email, or send a new one.";
   if (/signups not allowed for otp|user not found/i.test(m)) return "Wrong email or password.";
   if (/rate limit|too many|over_email_send_rate|for security purposes, you can only request/i.test(m)) return "Too many emails were requested. Wait a few minutes and try again.";
@@ -51,7 +86,7 @@ async function call(path: string, init: RequestInit & { auth?: boolean } = {}): 
   if (init.auth !== false && session && session.expires_at * 1000 < Date.now() + 60_000) await refresh();
   const headers: Record<string, string> = { apikey: c.key, "content-type": "application/json", ...(init.headers as any) };
   if (init.auth !== false && session) headers.authorization = "Bearer " + session.access_token;
-  // Edge Functions want a bearer token even from visitors who aren't signed in (Floorcall Live notifications): the legacy anon key is one
+  // Edge Functions want a bearer token even from visitors who aren't signed in (FloorCall Live notifications): the legacy anon key is one
   else if (path.startsWith("/functions/") && /^eyJ/.test(c.key)) headers.authorization = "Bearer " + c.key;
   let res: Response;
   try { res = await fetch(c.url + path, { ...init, headers }); }
@@ -81,7 +116,7 @@ export async function signUp(email: string, password: string, about: { name?: st
 }
 /**
  * Password sign-in. On a device (browser) this account has used before, that's it. Anywhere else the right password isn't
- * enough: Floorcall throws that sign-in away and emails a one-time code (and a sign-in link) to prove the person also has the inbox.
+ * enough: FloorCall throws that sign-in away and emails a one-time code (and a sign-in link) to prove the person also has the inbox.
  */
 export async function signIn(email: string, password: string): Promise<"signed-in" | "check-device"> {
   const s = fromAuth(await call("/auth/v1/token?grant_type=password", { method: "POST", auth: false, body: JSON.stringify({ email, password }) }));
@@ -131,6 +166,9 @@ if (session && !(read<string[]>(TRUST_KEY) || []).length) trustDevice(session.us
 let refreshing: Promise<void> | null = null;
 async function refresh() {
   if (!session) return;
+  // another FloorCall site may have refreshed already: use its tokens rather than spend ours twice
+  const c = shared();
+  if (c && session && c.u === session.user.id && c.r !== session.refresh_token && c.e * 1000 > Date.now() + 60_000) { session = { ...session, access_token: c.a, refresh_token: c.r, expires_at: c.e }; write(SESSION_KEY, session); return; }
   refreshing ||= (async () => {
     try { setSession(fromAuth(await call("/auth/v1/token?grant_type=refresh_token", { method: "POST", auth: false, body: JSON.stringify({ refresh_token: session!.refresh_token }) }))); }
     catch (e) { if (e instanceof CloudError && e.status >= 400 && e.status < 500) setSession(null); throw e; }

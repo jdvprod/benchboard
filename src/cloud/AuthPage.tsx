@@ -7,6 +7,8 @@ import { acceptTerms, CloudError, cloudAvailable, currentUser, resendConfirmatio
 import { isLinked, linkTeam, pendingCount, restoreTeams, status, syncNow } from "./sync";
 import { go } from "../app/router";
 import { Card } from "../ui/kit";
+import { Badge, badgeFor } from "./Badge";
+import { useCoachStatus } from "./CoachVerify";
 
 /* Sample numbers for the stat sheet on the sign-in panel. */
 const SHEET: [string, string, number, number, number, string, string][] = [
@@ -33,7 +35,7 @@ function StatSheet() {
 export function AuthShell({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return <div className="auth">
     <aside className="auth-board">
-      <div className="auth-brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>Floorcall</b></div>
+      <div className="auth-brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>FloorCall</b></div>
       <div className="auth-hero">
         <h2 className="auth-head">Live stats and advanced metrics for volleyball coaches.</h2>
         <StatSheet />
@@ -46,8 +48,8 @@ export function AuthShell({ children, wide }: { children: ReactNode; wide?: bool
           <li>Assistants track together. Parents follow live.</li>
         </ul>
         <ul className="soon">
-          <li><a href={placeUrl("home")} style={{ color: "#9BD3F2" }}>See everything Floorcall does</a><span style={{ border: 0 }} /></li>
-          <li>Floorcall Recruit profiles and clips <span>Early access</span></li>
+          <li><a href={placeUrl("home")} style={{ color: "#9BD3F2" }}>See everything FloorCall does</a><span style={{ border: 0 }} /></li>
+          <li>FloorCall Recruit profiles and clips <span>Early access</span></li>
           <li>College coach search <span>Coming soon</span></li>
         </ul>
       </div>
@@ -93,7 +95,7 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     setBusy(false);
   };
 
-  if (!cloudAvailable()) return <AuthShell><h1 className="auth-title">Accounts aren't set up</h1><p className="auth-sub">This version of Floorcall runs on this device only.</p>{onSkip && <button className="auth-btn" onClick={onSkip}>Continue</button>}</AuthShell>;
+  if (!cloudAvailable()) return <AuthShell><h1 className="auth-title">Accounts aren't set up</h1><p className="auth-sub">This version of FloorCall runs on this device only.</p>{onSkip && <button className="auth-btn" onClick={onSkip}>Continue</button>}</AuthShell>;
 
   if (mode === "check" || mode === "sent") return <AuthShell>
     <div className="auth-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3.5 6.5l8.5 6.5 8.5-6.5" /></svg></div>
@@ -127,8 +129,8 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     </div>
   </AuthShell>;
 
-  const title = { signin: "Sign in to Floorcall", signup: "Create your account", forgot: "Reset your password", newpw: "Choose a new password" }[mode];
-  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff, and families follow along live.", forgot: "Enter the email you use for Floorcall and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
+  const title = { signin: "Sign in to FloorCall", signup: "Create your account", forgot: "Reset your password", newpw: "Choose a new password" }[mode];
+  const sub = { signin: "Your teams, stats and lineups on every device.", signup: "Free for coaches. Your teams sync across your devices and staff, and families follow along live.", forgot: "Enter the email you use for FloorCall and we'll send you a reset link.", newpw: "You're signed in. Set a new password to finish." }[mode];
   const cta = { signin: "Sign in", signup: "Create account", forgot: "Send reset link", newpw: "Save password" }[mode];
 
   return <AuthShell>
@@ -160,16 +162,16 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
           <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. If I'm under 18, a parent or guardian agrees too.</span></label>
         {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
-      {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send Floorcall news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
+      {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send FloorCall news and new features to my inbox. Turn it off any time in Account.</span></label></div>}
       {err && !err.field && <p className="auth-err box" role="alert">{err.text}</p>}
       <button className="auth-btn" type="submit" disabled={busy} aria-busy={busy}>{busy ? <span className="auth-spin" aria-label="Working" /> : cta}</button>
     </form>
     <div className="auth-foot">
-      {mode === "signin" && <p>New to Floorcall? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
+      {mode === "signin" && <p>New to FloorCall? <button className="auth-link" onClick={() => setMode("signup")}>Create an account</button></p>}
       {mode === "signup" && <p>Already have an account? <button className="auth-link" onClick={() => setMode("signin")}>Sign in</button></p>}
       {mode === "forgot" && <p><button className="auth-link" onClick={() => setMode("signin")}>Back to sign in</button></p>}
       {onSkip && offlineAllowed() && (mode === "signin" || mode === "signup") && <div className="auth-skip"><button className="auth-btn alt" onClick={onSkip}>Use without an account</button><span>Everything stays on this device. You can sign in later.</span></div>}
-      <p className="auth-legal">By using Floorcall you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
+      <p className="auth-legal">By using FloorCall you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>.</p>
     </div>
   </AuthShell>;
 }
@@ -182,7 +184,7 @@ export function AccountPage() {
     <Card>
       <div className="acct">
         <span className="avatar big">{u.email.slice(0, 1).toUpperCase()}</span>
-        <div className="grow" style={{ minWidth: 0 }}><b style={{ fontSize: 17 }}>{u.email}</b>
+        <div className="grow" style={{ minWidth: 0 }}><b style={{ fontSize: 17 }}>{u.email}</b> <CoachBadge />
           <p className="small muted">{status.state === "error" ? status.error : status.last ? "Synced " + new Date(status.last).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "Signed in"}</p></div>
         <button className="btn" onClick={() => syncNow()}>Sync now</button>
       </div>
@@ -212,7 +214,7 @@ function EmailPrefs() {
   return <Card>
     <div className="stack">
       <label className="field"><span className="label">Your name</span><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name.trim() !== (m.name || "")) save({ name: name.trim() }, "Name saved"); }} /></label>
-      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get Floorcall news by email" : "No more news emails")} /> Send Floorcall news and new features to my inbox</label>
+      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get FloorCall news by email" : "No more news emails")} /> Send FloorCall news and new features to my inbox</label>
     </div>
   </Card>;
 }
@@ -223,8 +225,16 @@ export function AccountChip() {
   if (!cloudAvailable()) return null;
   return <a className="tab acct-chip wide-only" href="#/account">
     {u ? <span className={"avatar " + syncDot()}>{u.email.slice(0, 1).toUpperCase()}</span> : <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.5" /><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" /></svg>}
-    <span>{u ? u.email : "Sign in"}</span>
+    <span>{u ? u.email : "Sign in"}</span>{u && <CoachBadge short />}
   </a>;
+}
+/** Coaches see whether FloorCall has verified them; players, parents and fans see nothing. */
+function CoachBadge({ short }: { short?: boolean }) {
+  const kindCoach = userMeta().kind === "coach" || !userMeta().kind;
+  const [s] = useCoachStatus();
+  const b = kindCoach ? badgeFor(s) : null;
+  if (!b || (short && b !== "verified" && b !== "admin")) return null;
+  return <Badge kind={b} short={short} />;
 }
 
 /** Status dot on the avatar: synced, waiting (offline or changes pending) or error. */

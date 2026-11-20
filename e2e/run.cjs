@@ -579,7 +579,7 @@ const scenarios = {
     await go(p, "team"); await card.locator("input[type=file]").setInputFiles([path.join(__dirname, "fixtures", "Buchanan.txt")]); await p.waitForTimeout(300);
     await card.locator(".imp-file").first().getByLabel("Set scores (optional)").fill("25-20, 22-25, 15-12");
     ok("a file already imported is skipped", (await card.getByRole("button", { name: "Import 0 matches" }).isDisabled()) && (await card.getByText("already imported").count()) === 1);
-    // Floorcall's own spreadsheet comes back in as season totals
+    // FloorCall's own spreadsheet comes back in as season totals
     await card.getByRole("button", { name: "Cancel" }).click();
     await go(p, "stats"); const xl = await download(p, () => p.getByRole("button", { name: "Download spreadsheet" }).click());
     ok("own spreadsheet export downloads", xl.size > 3000);
@@ -631,7 +631,7 @@ const scenarios = {
     ok("up next moves to the following game", (await A.locator(".tn-next", { hasText: "vs Central" }).count()) === 1);
     const st = (await A.locator(".card", { hasText: "standings" }).locator("tbody tr").allInnerTexts()).map((r) => r.split("\t")[0].trim());
     ok("pool standings rank by record, then sets, then points", st.join("|") === "TN Club|Central|Fresno Elite|Buchanan", st.join("|"));
-    // families see it on Floorcall Live
+    // families see it on FloorCall Live
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
     await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
     const teamUrl = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
@@ -808,7 +808,7 @@ const scenarios = {
     { await A.getByRole("button", { name: "Stat graphic" }).click();
       const g = await download(A, () => A.getByRole("button", { name: /^Last match: vs / }).click(), 15000); ok("stat graphic with a photo saves", g.size > 20000, String(g.size));
       if (process.env.SHOTS) fs.copyFileSync(g.path, path.join(process.env.SHOTS, "player-graphic-photo.png")); }
-    // the people who run Floorcall review uploads and take one down
+    // the people who run FloorCall review uploads and take one down
     await go(A, "settings"); await A.waitForTimeout(600); ok("the admin console is hidden from coaches", (await A.getByRole("button", { name: "Open admin" }).count()) === 0);
     await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=pics%40e2e.test`, { headers: { apikey: "anon" } });
     await A.reload(); await go(A, "settings"); await A.waitForTimeout(800);
@@ -899,7 +899,7 @@ const scenarios = {
     // playbook: the coach shares a play; a signed-in parent studies it on the team's Live page
     await go(A, "court"); await A.getByRole("button", { name: "Playbook", exact: true }).click(); await A.waitForTimeout(300);
     await A.getByRole("button", { name: "Slide", exact: true }).click(); await A.locator("input[aria-label='Play name']").fill("Slide vs Central"); await A.getByRole("button", { name: "Save to my plays" }).click(); await A.waitForTimeout(300);
-    await A.getByLabel(/Share with the team on Floorcall Live/).check(); await A.waitForTimeout(700);
+    await A.getByLabel(/Share with the team on FloorCall Live/).check(); await A.waitForTimeout(700);
     ok("a saved play can be shared with the team", /Slide vs Central · shared/.test(await A.locator(".pb-group").first().innerText()));
     await P.goto(teamUrl + "/plays"); await P.waitForTimeout(1000);
     ok("the shared play shows on the team's Live page on the 3D court", (await P.locator(".lv-play-pick button").allInnerTexts()).join("|") === "Slide vs Central" && (await P.locator(".lv-plays .c3d").count()) === 1 && (await P.locator(".lv-plays .c3d-route").count()) === 3 && /one foot/.test(await P.locator(".lv-play-note").innerText()));
@@ -909,7 +909,7 @@ const scenarios = {
     { const f = await download(P, () => P.getByRole("button", { name: "Save picture" }).click(), 10000); ok("a player can save the play as a picture", /Slide vs Central\.png$/.test(f.name) && f.size > 20000, f.name + " " + f.size); }
     { const ax = await a11y(P); ok("playbook controls on Live all have names", !ax.length, ax.join(" | ")); ok("the Live playbook fits a phone", (await overflow(P)) <= 0); }
     if (process.env.QASHOT5) await P.screenshot({ path: process.env.QASHOT5, fullPage: true });
-    await A.getByLabel(/Share with the team on Floorcall Live/).uncheck(); await A.waitForTimeout(700);
+    await A.getByLabel(/Share with the team on FloorCall Live/).uncheck(); await A.waitForTimeout(700);
     await P.reload(); await P.waitForTimeout(1000);
     ok("un-sharing takes the play off the team page", (await P.getByText("The coaches haven't shared any plays yet.").count()) === 1);
     await P.goto(teamUrl.replace(/#.*$/, "")); await P.waitForTimeout(600);
@@ -943,7 +943,7 @@ const scenarios = {
     await A.locator(".att .mu-avail summary").click().catch(() => {});
     ok("the coach sees who may miss practice on the plan", /Players who may miss it: #7 Maya/.test(await A.locator(".att .mu-avail").innerText().catch(() => "")), await A.locator(".att").innerText().catch(() => "none"));
     // the coach shows the plan; families see the blocks with start times (not the notes)
-    await A.getByRole("button", { name: "+ Custom block" }).click(); await A.getByLabel(/Show this plan to the team on Floorcall Live/).check(); await A.waitForTimeout(2800);
+    await A.getByRole("button", { name: "+ Custom block" }).click(); await A.getByLabel(/Show this plan to the team on FloorCall Live/).check(); await A.waitForTimeout(2800);
     await P.reload(); await P.waitForTimeout(1200);
     { const pl = P.locator(".lv-games li", { hasText: "Practice" }).locator(".lv-plan"); await pl.locator("summary").click().catch(() => {});
       ok("a shown practice plan lists its blocks for the team", (await pl.count()) === 1 && (await pl.locator("li").count()) > 0, await P.locator(".lv-games li", { hasText: "Practice" }).innerText().catch(() => "")); }
@@ -1243,7 +1243,7 @@ const scenarios = {
       ok("accounts: a coach account keeps the name, kind and news choice", u && u.meta.name === "Coach Rivera" && u.meta.kind === "coach" && u.meta.email_ok === true, JSON.stringify(u)); }
     ok("accounts: signed in, the coach sets up a team", (await A.getByLabel("Team name").count()) === 1);
     await A.context().close();
-    // athletes on Floorcall Recruit
+    // athletes on FloorCall Recruit
     const R = await newPage(browser, { strict: true });
     await R.goto(U + "recruit/#/emails"); await R.waitForTimeout(400);
     ok("accounts: the athlete tools ask for a free account", (await R.locator(".ma").count()) === 1 && !(await R.locator(".rg-body").count()));
@@ -1495,8 +1495,8 @@ const scenarios = {
     await go(p, "settings"); ok("settings has the tracking choice and the old Labs switches", (await p.getByRole("group", { name: "What to track" }).count()) === 1 && (await p.getByLabel("Type-in stat codes").count()) === 1);
     ok("Labs is gone from the sidebar; Formations sit under Lineup", (await p.locator(".nav a.tab[href='#/labs']").count()) === 0);
     await go(p, "formations"); ok("formations has the lineup tabs", (await p.getByRole("group", { name: "Lineup section" }).count()) === 1);
-    // the sidebar's Floorcall sites menu
-    await go(p, "home"); await p.locator(".sm-btn").click(); ok("the sidebar lists the other Floorcall sites", (await p.locator(".sm-menu a", { hasText: "Floorcall Academy" }).count()) === 1);
+    // the sidebar's FloorCall sites menu
+    await go(p, "home"); await p.locator(".sm-btn").click(); ok("the sidebar lists the other FloorCall sites", (await p.locator(".sm-menu a", { hasText: "FloorCall Academy" }).count()) === 1);
     await p.keyboard.press("Escape");
     // scout an opponent from their film
     await go(p, "film"); await p.waitForTimeout(300);
@@ -1509,6 +1509,10 @@ const scenarios = {
     await p.locator("body").click({ position: { x: 5, y: 5 } }); await p.keyboard.type("7"); await p.keyboard.press("a"); await p.waitForTimeout(200);
     const rows = await p.locator(".sf-table tbody tr").allInnerTexts();
     ok("their players add up, most dangerous first, typed numbers and keys work", rows.length === 2 && /^#12\s+2/.test(rows[0].trim()) && /#7/.test(rows[1]), rows.join(" | "));
+    await p.locator("body").click({ position: { x: 5, y: 5 } }); await p.keyboard.type("12"); await p.keyboard.press("t"); await p.waitForTimeout(200);
+    ok("an attack kept in play counts toward attacks and hitting %", /#12\s+2\s+3\s+\.667/.test((await p.locator(".sf-table tbody tr").first().innerText()).replace(/\s+/g, " ")), await p.locator(".sf-table tbody tr").first().innerText());
+    await p.getByLabel("Ask for clips from their film").fill("every attack by #12"); await p.getByRole("button", { name: "Show clips" }).click(); await p.waitForTimeout(400);
+    ok("ask for clips: every attack by #12", (await p.locator(".card", { hasText: "#12's attacks · 3 clips" }).count()) === 1);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "scout.png"), fullPage: true });
     await p.getByRole("button", { name: "Open in Matchup" }).click(); await p.waitForTimeout(400);
     ok("the Matchup page shows what their film says", (await p.locator(".card", { hasText: "From their film" }).count()) === 1);
@@ -1516,17 +1520,20 @@ const scenarios = {
     await p.context().close();
   },
   async verify(browser) {
-    // a new head coach must be verified by a Floorcall admin before their team can sync
+    // a new head coach must be verified by a FloorCall admin before their team can sync
     const A = await newPage(browser);
     await go(A, "track"); { const ca = A.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
     await A.getByLabel("Email").fill("unverified-head@e2e.test"); await A.locator("#auth-pw").fill("secret123"); await A.locator("#auth-name").fill("Dana Park"); await A.locator(".auth-agree input").first().check(); await A.getByRole("button", { name: "Create account" }).click(); await A.waitForTimeout(500);
     await A.getByLabel("Team name").fill("Verify Prep"); await A.getByRole("button", { name: "Boys" }).click(); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(900);
     ok("a new team starts on the team page with the gender chosen", (await A.locator(".seg button[aria-pressed=true]", { hasText: "Boys" }).count()) === 1);
     ok("an unverified coach is asked to verify before syncing", (await A.getByRole("heading", { name: "Verify your coach account" }).count()) === 1 && (await A.getByRole("button", { name: "Sync this team" }).count()) === 0);
+    await go(A, "account"); await A.waitForTimeout(500);
+    ok("an unverified coach's account says Not verified", (await A.locator(".acct .vbadge", { hasText: "Not verified" }).count()) === 1);
+    await go(A, "team"); await A.waitForTimeout(500);
     await A.getByLabel("School or club").fill("Verify Prep Academy"); await A.getByRole("button", { name: "Ask to be verified" }).click(); await A.waitForTimeout(500);
     ok("after asking, the coach sees it's being checked", (await A.getByRole("heading", { name: "Verifying your coach account" }).count()) === 1);
     if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "verify-pending.png"), fullPage: true });
-    // the Floorcall admin verifies them
+    // the FloorCall admin verifies them
     const D = await newPage(browser);
     await go(D, "track"); { const ca = D.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
     await D.getByLabel("Email").fill("boss@e2e.test"); await D.locator("#auth-pw").fill("secret123"); await D.locator("#auth-name").fill("Boss"); await D.locator(".auth-agree input").first().check(); await D.getByRole("button", { name: "Create account" }).click(); await D.waitForTimeout(500);
@@ -1540,6 +1547,10 @@ const scenarios = {
     ok("once verified, the coach can sync the team", (await A.getByRole("button", { name: "Sync this team" }).count()) === 1);
     await A.getByRole("button", { name: "Sync this team" }).click(); await A.waitForTimeout(1200);
     ok("and it syncs", (await A.getByText("Synced").count()) > 0);
+    await go(A, "account"); await A.waitForTimeout(500);
+    ok("a verified coach's account shows the Verified badge", (await A.locator(".acct .vbadge", { hasText: "Verified coach" }).count()) === 1);
+    await go(A, "team"); await A.waitForTimeout(800);
+    ok("and so does the team's staff list", (await A.locator(".log li", { hasText: "(you)" }).locator(".vbadge", { hasText: "Verified coach" }).count()) === 1);
     // settings: no setup or background sections for coaches; admins see them
     await go(A, "settings"); await A.waitForTimeout(500);
     ok("coaches' settings leave out setup and background tools", (await A.getByRole("heading", { name: "Setup check" }).count()) === 0 && (await A.getByRole("heading", { name: "AI features" }).count()) === 0 && (await A.getByRole("button", { name: "Light" }).count()) === 1 && (await A.getByRole("button", { name: "System" }).count()) === 0);
@@ -1565,7 +1576,7 @@ const scenarios = {
     const A = await newPage(browser, { cloud: false, size: { width: 1280, height: 860 } });
     await go(A, "sample"); await A.waitForTimeout(800);
     await A.locator(".sm-btn").click(); await A.waitForTimeout(100);
-    ok("the folded sidebar's sites menu shows each site's name", await A.locator(".sm-menu a", { hasText: "Floorcall Live" }).isVisible() && (await A.locator(".sm-menu a", { hasText: "getfloorcall.com" }).count()) === 0);
+    ok("the folded sidebar's sites menu shows each site's name", await A.locator(".sm-menu a", { hasText: "FloorCall Live" }).isVisible() && (await A.locator(".sm-menu a", { hasText: "getfloorcall.com" }).count()) === 0);
     await A.keyboard.press("Escape");
     ok("there's no What's New card on Home", (await A.getByText("What's new").count()) === 0);
     await go(A, "settings"); await A.getByRole("button", { name: "Preview", exact: true }).click(); await A.waitForTimeout(400);
@@ -1578,6 +1589,61 @@ const scenarios = {
     ok("exiting brings the coaching tools back", (await A.locator(".preview-bar").count()) === 0 && (await A.locator(".nav a.tab[href='#/track']").count()) === 1);
     ok("no errors on the site pages or in the players' view", !p.errors.length && !A.errors.length, [...p.errors, ...A.errors].slice(0, 3).join("; "));
     await A.context().close();
+  },
+  async sso() {
+    // One sign-in for every site: app., academy., lessons. … are separate origins; the session travels in a cookie for
+    // .getfloorcall.com. Here *.getfloorcall.com points at a local server that routes like worker/index.js.
+    const http = require("http"), fs = require("fs"), PORT = 5213;
+    const types = { ".js": "text/javascript", ".css": "text/css", ".html": "text/html", ".png": "image/png", ".webp": "image/webp", ".json": "application/json", ".svg": "image/svg+xml" };
+    const srv = http.createServer((q, r) => {
+      const sub = (q.headers.host || "").split(".")[0], dir = ["live", "recruit", "beach", "academy", "lessons"].includes(sub) ? sub + "/" : "";
+      let p0 = decodeURIComponent(q.url.split("?")[0]); if (p0.endsWith("/")) p0 += "index.html";
+      let f = path.join(DIST, dir, p0); if (!fs.existsSync(f)) f = path.join(DIST, p0.replace(/^\/(\.\.\/)*/, "/")); // shared files (brand/, legal/) from the root, like the worker
+      if (!fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
+      r.writeHead(200, { "content-type": types[path.extname(f)] || "application/octet-stream" }); r.end(fs.readFileSync(f));
+    }).listen(PORT);
+    const b = await chromium.launch({ args: ["--host-resolver-rules=MAP *.getfloorcall.com 127.0.0.1"] });
+    const ctx = await b.newContext({ viewport: { width: 1200, height: 860 } });
+    await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
+    const at = (site) => `http://${site}.getfloorcall.com:${PORT}/`;
+    const L = await ctx.newPage();
+    await L.goto(at("lessons")); await L.waitForTimeout(800);
+    await siteSignUp(L, "sso-coach@e2e.test", "coach", "Sam Sso");
+    ok("sso: signed in on Lessons", (await L.locator(".ls-tabs").count()) === 1);
+    const A = await ctx.newPage(); await A.goto(at("academy")); await A.waitForTimeout(800);
+    ok("sso: Academy opens already signed in", (await A.locator(".sg .ma").count()) === 0 && (await A.locator(".ac-hero").count()) === 1);
+    const B = await ctx.newPage(); await B.goto(at("beach")); await B.waitForTimeout(800);
+    ok("sso: so does Beach", (await B.locator(".sg .ma").count()) === 0);
+    // signing out on one site signs out everywhere
+    await B.evaluate(() => { document.cookie = "fc_s=; Domain=.getfloorcall.com; Path=/; Max-Age=0"; document.cookie = `fc_out=${Date.now()}; Domain=.getfloorcall.com; Path=/`; });
+    await A.reload(); await A.waitForTimeout(800);
+    ok("sso: after signing out elsewhere, a site asks for the account again", (await A.locator(".sg .ma").count()) === 1);
+    await b.close(); srv.close();
+  },
+  async calendar(browser) {
+    // the Calendar tab: matches, practices and team events by month and by week, on a laptop and a phone
+    const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);
+    await go(p, "calendar"); await p.waitForTimeout(500);
+    ok("calendar: a month of the season with matches", (await p.locator(".cal-month").count()) === 1 && (await p.locator(".cal-item.k-match").count()) > 0, String(await p.locator(".cal-item").count()));
+    const before = await p.locator(".cal-title").innerText();
+    await p.getByRole("button", { name: "Previous month" }).click();
+    ok("calendar: moves by month", (await p.locator(".cal-title").innerText()) !== before);
+    await p.getByRole("button", { name: "Today" }).click();
+    await p.getByRole("button", { name: "Add event" }).click();
+    await p.getByLabel("What").fill("Team dinner"); await p.getByLabel("Time (optional)").fill("18:30"); await p.getByRole("button", { name: "Add event", exact: true }).last().click(); await p.waitForTimeout(300);
+    ok("calendar: a team event shows on today", (await p.locator(".cal-day.today .cal-item.k-event", { hasText: "Team dinner" }).count()) === 1);
+    await p.getByRole("button", { name: "Week", exact: true }).click(); await p.waitForTimeout(200);
+    ok("calendar: the week view shows times and details", (await p.locator(".cal-week .cal-day").count()) === 7 && /6:30pm/.test(await p.locator(".cal-day.today").innerText()));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "calendar-week.png"), fullPage: true });
+    await p.getByRole("button", { name: "Month", exact: true }).click(); await p.waitForTimeout(200);
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "calendar-month.png"), fullPage: true });
+    const ph = await newPage(browser, { phone: true }); await go(ph, "sample"); await ph.waitForTimeout(900); await go(ph, "calendar"); await ph.waitForTimeout(500);
+    ok("calendar fits a phone", (await overflow(ph)) <= 0);
+    const busy = ph.locator(".cal-day:has(.cal-item) button.cal-num").first();
+    if (await busy.count()) { await busy.click(); ok("calendar: on a phone, tapping a day lists what's on it", (await ph.locator(".cal-pick .cal-item").count()) > 0); }
+    if (process.env.SHOTS) await ph.screenshot({ path: path.join(process.env.SHOTS, "calendar-phone.png"), fullPage: true });
+    ok("no errors on the calendar", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
+    for (const x of [p, ph]) await x.context().close();
   },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
@@ -1661,13 +1727,17 @@ const scenarios = {
     await T.goto(U + "lessons/"); await T.waitForTimeout(500);
     ok("the schedule lists what's coming and the past lesson", (await T.locator(".ls-day:not(.ls-past) .ls-row").count()) === 4 && (await T.locator(".ls-past .ls-row").count()) === 1);
     if (process.env.SHOTS) await T.screenshot({ path: path.join(process.env.SHOTS, "ls-schedule.png"), fullPage: true });
+    await T.goto(U + "lessons/#/calendar"); await T.waitForTimeout(500);
+    ok("lessons: the trainer's calendar shows sessions and opens them", (await T.locator(".cal-item").count()) >= 1 && /#\/s\//.test(await T.locator(".cal-item").first().getAttribute("href")));
+    await T.getByRole("button", { name: "Week", exact: true }).click(); await T.waitForTimeout(200);
+    if (process.env.SHOTS) await T.screenshot({ path: path.join(process.env.SHOTS, "ls-calendar.png"), fullPage: true });
     // the trainer also coaches a team: one tap adds a player from the coaching app
     await go(T, "team"); await T.waitForTimeout(800);
     if (await T.locator("#nt-name").count()) { await T.locator("#nt-name").fill("Trainer Club 16s"); await T.getByRole("button", { name: "Create team" }).click(); await T.waitForTimeout(800); }
     await go(T, "team"); await T.getByRole("button", { name: "Paste list" }).click(); await T.locator("textarea").first().fill("7 Maya Chen OH"); await T.getByRole("button", { name: "Add players" }).click(); await T.waitForTimeout(400);
     await T.getByRole("button", { name: "View", exact: true }).first().click(); await T.waitForTimeout(500);
-    await T.getByRole("button", { name: "Add to Floorcall Lessons" }).click(); await T.waitForTimeout(700);
-    ok("a coach adds a team player to Floorcall Lessons from the player's page", (await T.locator(".toast").innerText()).includes("Maya is in Floorcall Lessons"));
+    await T.getByRole("button", { name: "Add to FloorCall Lessons" }).click(); await T.waitForTimeout(700);
+    ok("a coach adds a team player to FloorCall Lessons from the player's page", (await T.locator(".toast").innerText()).includes("Maya is in FloorCall Lessons"));
     await T.goto(U + "lessons/#/athletes"); await T.waitForTimeout(700);
     ok("and she's in the trainer's athletes, with her position and club", (await T.locator(".ls-athletes li", { hasText: "Maya Chen" }).innerText()).includes("Trainer Club 16s"));
     // a parent joins with Mia's code and sees only Mia's lessons
@@ -1681,6 +1751,7 @@ const scenarios = {
     ok("but not the trainer's private notes or other athletes", !/watch her platform|Ava Kim/.test(pt));
     ok("and can book the open group times", (await P.locator(".ls-open").count()) === 3);
     await P.locator(".ls-open").first().getByRole("button", { name: "Book" }).click(); await P.waitForTimeout(700);
+    ok("the parent's calendar shows the booked session and open times", (await P.locator(".cal-item, .cal-day:has(.cal-item)").count()) >= 1);
     ok("booking puts it in Coming up", (await P.locator(".ls-card").count()) === 1 && (await P.locator(".ls-open").count()) === 2);
     ok("lessons fit a phone", (await overflow(P)) <= 0);
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "ls-parent.png"), fullPage: true });
@@ -2035,7 +2106,7 @@ const scenarios = {
     await C.getByLabel("Your name").fill("Pat Coach"); await C.getByLabel("College or university").fill("State University"); await C.getByLabel("Title").fill("Assistant coach"); await C.getByRole("button", { name: "Request access" }).click(); await C.waitForTimeout(500);
     ok("the request waits for approval", /Your request for State University is in/.test(await C.locator("main").innerText()));
     { const ax = await a11y(C); ok("college sign-up controls all have names", !ax.length, ax.join(" | ")); }
-    // Floorcall approves
+    // FloorCall approves
     await go(A, "settings"); await A.waitForTimeout(800); await A.getByRole("button", { name: "Open admin" }).click(); await A.waitForTimeout(800);
     const row = A.locator("tr", { hasText: "pat@state.edu" }); ok("admin sees the college request", (await row.count()) === 1 && /Waiting/.test(await row.innerText()));
     await row.getByRole("button", { name: "Approve" }).click(); await A.waitForTimeout(300);
@@ -2113,7 +2184,7 @@ const scenarios = {
     // season page + recruiting link
     await go(A, "team"); await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1200);
     const season = await A.locator("a", { hasText: "/live/#/t/" }).first().getAttribute("href");
-    await P.goto(season); await P.waitForTimeout(1200); ok("team page on Floorcall Live loads", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
+    await P.goto(season); await P.waitForTimeout(1200); ok("team page on FloorCall Live loads", (await P.locator(".lv-team", { hasText: "Cloud Club" }).count()) === 1);
     await P.goto(season + "/roster"); await P.waitForTimeout(800); ok("team roster shows first names", (await P.locator("body").innerText()).includes("Nia")); await P.goto(season); await P.waitForTimeout(800);
     ok("team page shows the live match with a link to the gamecast", (await P.locator(".lv-livecard .gs-big").first().innerText()).trim() === "3" && (await P.getByRole("link", { name: "Open the gamecast" }).count()) === 1);
     // the game from the team page: ESPN-style tabs
@@ -2151,7 +2222,7 @@ const scenarios = {
     await A.locator(".consent-check input").check();
     await A.getByRole("button", { name: "Share profile link" }).click(); await A.waitForTimeout(1000);
     const rec = await A.locator("a", { hasText: "/recruit/#/p/" }).first().getAttribute("href");
-    await P.goto(rec); await P.waitForTimeout(1200); ok("Floorcall Recruit shows the profile with her full name", (await P.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
+    await P.goto(rec); await P.waitForTimeout(1200); ok("FloorCall Recruit shows the profile with her full name", (await P.locator(".rc-id h1").innerText()).toLowerCase() === "nia lopez");
     ok("profile says the stats are verified by the coaching staff", (await P.locator(".rc-verified").innerText()).includes("Cloud Club"));
     ok("profile plays her highlight clips", (await P.locator(".rc-card .clip-stage video").count()) === 1 && (await P.locator(".clip-list li").count()) >= 1);
     ok("Recruit profile fits a phone", (await overflow(P)) <= 1);
@@ -2279,7 +2350,7 @@ const scenarios = {
     await go(F, "home"); await look(F, "parent", "app-home");
     await go(F, "team"); await look(F, "parent", "app-team");
     await F.goto(U + "beach/"); await look(F, "parent", "beach");
-    // ---------- 4. Floorcall Lessons: the coach trains privately, the parent and player join ----------
+    // ---------- 4. FloorCall Lessons: the coach trains privately, the parent and player join ----------
     await C.goto(U + "lessons/"); await look(C, "coach", "lessons-empty");
     { const add = C.getByRole("link", { name: "Add athletes" }); if (await add.count()) await add.click(); await C.waitForTimeout(300);
       await C.getByLabel("Name", { exact: true }).fill("Maya Chen"); await C.getByRole("button", { name: "Add athlete" }).click(); await C.waitForTimeout(500); }
@@ -2464,7 +2535,7 @@ const scenarios = {
     if (p.errors.length) console.log(`    errors: ${p.errors.slice(0, 5).join(" | ")}`);
     console.log("    screenshots: " + OUT);
   },
-  /** Floorcall Live and Recruit with screenshots (node e2e/run.cjs _explore3). */
+  /** FloorCall Live and Recruit with screenshots (node e2e/run.cjs _explore3). */
   async _explore3(browser) {
     const OUT = process.env.SHOTS || path.join(require("os").tmpdir(), "bb-explore3"); fs.mkdirSync(OUT, { recursive: true });
     let n = 0; const shot = async (pg, name, full = true) => { await pg.waitForTimeout(300); await pg.screenshot({ path: path.join(OUT, `${String(++n).padStart(2, "0")}-${name}.png`), fullPage: full }); };

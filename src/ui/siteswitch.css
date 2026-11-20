@@ -10,7 +10,7 @@
 .nav .site-switch a{border-radius:6px;padding:7px 12px;color:var(--bar-muted)}
 .nav .site-switch a:hover{color:var(--bar-ink);background:var(--bar-2)}
 .nav .site-switch a[aria-current=page]{display:none}
-.nav .site-switch::before{content:"Other Floorcall sites";font-size:11.5px;color:var(--bar-muted);padding:0 12px 2px;font-weight:600}
+.nav .site-switch::before{content:"Other FloorCall sites";font-size:11.5px;color:var(--bar-muted);padding:0 12px 2px;font-weight:600}
 @media (max-width:1023px){.nav .site-switch{display:none}}
 /* six sites don't fit across every phone (narrow fonts help, but not all phones have them): the strip scrolls on its own */
 @media (max-width:640px){.site-switch:not(.nav .site-switch){max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}.site-switch::-webkit-scrollbar{display:none}.site-switch a{flex:0 0 auto}.site-switch a:first-child{margin-left:auto}.site-switch a:last-child{margin-right:auto}}

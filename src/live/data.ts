@@ -1,4 +1,4 @@
-/** Data for Floorcall Live: the public season hub and single-game links, polled while a match is live. */
+/** Data for FloorCall Live: the public season hub and single-game links, polled while a match is live. */
 import { useEffect, useRef, useState } from "react";
 import { cloudAvailable, rpc, TOO_MANY, tooMany } from "../cloud/client";
 import { mergeLogs, replay, Replay } from "../sports/volleyball/engine";

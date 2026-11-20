@@ -1,6 +1,6 @@
 {
-  "name": "Floorcall",
-  "short_name": "Floorcall",
+  "name": "FloorCall",
+  "short_name": "FloorCall",
   "description": "Live volleyball stat tracking, lineups, film and practice planning for coaches",
   "start_url": "./#/track",
   "scope": "./",

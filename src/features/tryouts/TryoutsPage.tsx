@@ -34,7 +34,7 @@ function TryoutList({ list }: { list: Tryout[] }) {
           <label className="field"><span className="label">Date</span><input className="input" type="date" value={date} onChange={(e) => setDate(e.target.value)} /></label>
           <button className="btn primary">Start</button>
         </form>
-        <p className="keys">Add the players trying out, then every evaluator rates them 1 to 5 on each skill from their own phone. Floorcall ranks them and turns your offers into a roster. Kept on this device; share ratings as a file.</p>
+        <p className="keys">Add the players trying out, then every evaluator rates them 1 to 5 on each skill from their own phone. FloorCall ranks them and turns your offers into a roster. Kept on this device; share ratings as a file.</p>
       </Card>
       <Card title="Rating for another coach?"><form className="row" onSubmit={(e) => { e.preventDefault(); const v = ((e.target as HTMLFormElement).elements.namedItem("jc") as HTMLInputElement).value.trim().toUpperCase(); if (v) go("tryout-join", v); }}>
         <input name="jc" className="input" placeholder="Code" aria-label="Tryout code" maxLength={8} style={{ textTransform: "uppercase", maxWidth: 160 }} /><button className="btn">Join</button></form>
@@ -72,7 +72,7 @@ function Players({ t, onChange }: { t: Tryout; onChange: (t: Tryout) => void }) 
   return <div className="grid2">
     <Card title="Add players">
       <textarea className="input" rows={6} value={text} onChange={(e) => setText(e.target.value)} placeholder={"One per line: bib, name, position, grade\n12 Maya Chen OH 10th\n13 Ava Ramirez S Jr"} aria-label="Players trying out, one per line" />
-      <div className="row" style={{ marginTop: 8 }}><button className="btn primary" disabled={!text.trim()} onClick={add}>Add</button><span className="small muted">No bib? Floorcall numbers them.</span></div>
+      <div className="row" style={{ marginTop: 8 }}><button className="btn primary" disabled={!text.trim()} onClick={add}>Add</button><span className="small muted">No bib? FloorCall numbers them.</span></div>
     </Card>
     <Card title="Skills">
       <p className="small muted" style={{ marginTop: 0 }}>Rated 1 to 5. Weight a skill to count it more in the ranking.</p>
@@ -132,7 +132,7 @@ function Rankings({ t, onChange, ev }: { t: Tryout; onChange: (t: Tryout) => voi
   const merge = async (f: File) => {
     try { const j = JSON.parse(await f.text()); if (j?.floorcallTryout !== 1 || !j.tryout?.candidates) throw 0;
       const r = mergeTryout(t, j.tryout as Tryout, () => uid("c")); onChange(r.t); toast(`Added ${r.ratings} ratings${r.added ? ` and ${r.added} new players` : ""}.`); }
-    catch { toast("That isn't a Floorcall tryout ratings file."); }
+    catch { toast("That isn't a FloorCall tryout ratings file."); }
   };
   const makeTeam = () => {
     const name = teamName.trim() || t.name; const team = createTeam({ name });

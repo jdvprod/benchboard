@@ -26,7 +26,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http") && loca
     navigator.serviceWorker.addEventListener("controllerchange", () => {
       if (!hadController || ready) return; ready = true;
       if (document.visibilityState === "hidden") { location.reload(); return; }
-      toast("A new version of Floorcall is ready. It switches over the next time you come back to the app.");
+      toast("A new version of FloorCall is ready. It switches over the next time you come back to the app.");
       document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") location.reload(); });
     });
   });

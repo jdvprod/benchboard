@@ -1,4 +1,4 @@
-/** Floorcall Lessons: private lessons, small-group training and clinics. Its own site, lessons.getfloorcall.com.
+/** FloorCall Lessons: private lessons, small-group training and clinics. Its own site, lessons.getfloorcall.com.
  * Trainers (verified coaches) keep athletes from anywhere, schedule sessions, count reps and track who has paid.
  * Athletes and parents join with a personal code and see only their own sessions, shared notes and numbers.
  *   #/                 trainer: the schedule. athlete or parent: my lessons
@@ -21,6 +21,8 @@ import { contactUrl, placeUrl } from "../cloud/links";
 import { cloudAvailable, CloudError, rpc, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
 import { CoachVerify, useCoachStatus } from "../cloud/CoachVerify";
+import { Calendar, CalItem, ymd } from "../ui/Calendar";
+import { Badge } from "../cloud/Badge";
 import { allReps, detail, fmtMeasure, ics, measure, message, REP_KINDS, Reps, sessionName, SKILL_IDS, SkillId, sum, tap, total, trend, weekly, when } from "./reps";
 
 type Kind = "private" | "group" | "clinic";
@@ -35,7 +37,7 @@ const KINDS: [Kind, string][] = [["private", "Private"], ["group", "Small group"
 const parse = () => location.hash.replace(/^#\/?/, "").split(/[/?]/).filter(Boolean).map(decodeURIComponent);
 const go = (h: string) => { location.hash = "#/" + h; };
 const newId = (p: string) => p + "_" + (crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "").slice(0, 16) : Math.random().toString(36).slice(2, 14));
-const errText = (e: unknown) => (e instanceof CloudError ? e.message : "Couldn't reach Floorcall. Check your connection and try again.");
+const errText = (e: unknown) => (e instanceof CloudError ? e.message : "Couldn't reach FloorCall. Check your connection and try again.");
 const upcoming = (s: { starts: string; minutes: number; status: string }) => s.status !== "canceled" && new Date(s.starts).getTime() + s.minutes * 60000 > Date.now();
 /** "Nov 12", with the year only when it isn't this year. */
 const shortDate = (iso: string) => { const d = new Date(iso); return d.toLocaleDateString(undefined, { month: "short", day: "numeric", ...(d.getFullYear() !== new Date().getFullYear() ? { year: "numeric" } : {}) }); };
@@ -65,11 +67,11 @@ function App() {
   const athleteSide = !coach || route[0] === "mine" || route[0] === "join";
   return <div className="ls">
     <header className="ls-top">
-      <a className="ls-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Lessons</span></a>
+      <a className="ls-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Lessons</span></a>
       <SiteSwitch here="lessons" />
     </header>
     {open ? <main className="ls-main"><ClinicPage code={route[1]} /></main>
-      : <main className="ls-main"><SiteGate name="Floorcall Lessons" kind={route[0] === "join" ? "athlete" : "coach"}
+      : <main className="ls-main"><SiteGate name="FloorCall Lessons" kind={route[0] === "join" ? "athlete" : "coach"}
           art={<div className="ls-gate-art">{SKILL_IDS.slice(0, 3).map((x) => <img key={x} src={`../brand/skill-${x}.png`} alt="" width="84" height="84" />)}</div>}
           what="Private lessons, small-group training and clinics. Trainers schedule sessions, count reps and see each athlete improve. Athletes and parents see their own sessions and numbers."
           points={["Trainers: schedule one-off or weekly sessions, open times athletes can book, and clinics with a sign-up page", "Count reps in a session: serves, passes, sets, swings and digs", "Athletes and parents join with a code from their trainer and see only their own lessons"]}>
@@ -87,10 +89,10 @@ function Trainer({ route }: { route: string[] }) {
   // fresh on each tab and whenever the page comes back into view (a parent may have booked, a clinic may have filled)
   useEffect(() => { load(); }, [load, route[0]]);
   useEffect(() => { const f = () => { if (document.visibilityState === "visible") load(); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, [load]);
-  useEffect(() => { document.title = "Floorcall Lessons"; }, []);
+  useEffect(() => { document.title = "FloorCall Lessons"; }, []);
   if (err && !book) return <div className="ls-page"><p className="ls-err">{err}</p><button className="btn" onClick={load}>Try again</button></div>;
   if (!book) return <div className="ls-page"><p className="muted">Loading your lessons…</p></div>;
-  const tab = route[0] === "athletes" ? "athletes" : route[0] === "signups" ? "signups" : "schedule";
+  const tab = route[0] === "athletes" ? "athletes" : route[0] === "signups" ? "signups" : route[0] === "calendar" ? "calendar" : "schedule";
   const act = async (f: () => Promise<unknown>, done?: string) => { try { await f(); await load(); if (done) toast(done); return true; } catch (e) { toast(errText(e)); return false; } };
   const s = route[0] === "s" ? book.sessions.find((x) => x.id === route[1]) : undefined;
   const a = route[0] === "athletes" && route[1] ? book.athletes.find((x) => x.id === route[1]) : undefined;
@@ -99,11 +101,13 @@ function Trainer({ route }: { route: string[] }) {
   else if (route[0] === "s") page = !s ? <Missing /> : route[2] === "edit" ? <SessionForm book={book} act={act} s={s} /> : route[2] === "stat" ? <StatMode book={book} s={s} reload={load} /> : <SessionPage book={book} s={s} act={act} />;
   else if (route[0] === "athletes") page = route[1] ? (a ? <AthletePage book={book} a={a} act={act} /> : <Missing />) : <Athletes book={book} act={act} />;
   else if (route[0] === "signups") page = <Signups book={book} act={act} />;
+  else if (route[0] === "calendar") page = <TrainerCalendar book={book} />;
   else page = <Schedule book={book} />;
   if (route[0] === "s" && route[2] === "stat") return <>{page}</>; // counting reps fills the screen
   return <>
     <nav className="ls-tabs" aria-label="Lessons">
       <a href="#/" aria-current={tab === "schedule" ? "page" : undefined}>Schedule</a>
+      <a href="#/calendar" aria-current={tab === "calendar" ? "page" : undefined}>Calendar</a>
       <a href="#/athletes" aria-current={tab === "athletes" ? "page" : undefined}>Athletes <small>{book.athletes.length}</small></a>
       <a href="#/signups" aria-current={tab === "signups" ? "page" : undefined}>Clinic sign-ups {book.requests.length > 0 && <small className="ls-badge">{book.requests.length}</small>}</a>
     </nav>
@@ -115,7 +119,7 @@ function Trainer({ route }: { route: string[] }) {
 function Verify() {
   const [s, setS] = useCoachStatus();
   if (!s || s.status === "approved") return null;
-  return <div className="ls-page ls-verify"><p className="ls-lead">Floorcall checks every trainer before they add athletes, because most athletes are minors. Look around now; you can add athletes and schedule as soon as you're verified.</p><CoachVerify s={s} onChange={setS} /></div>;
+  return <div className="ls-page ls-verify"><p className="ls-lead">FloorCall checks every trainer before they add athletes, because most athletes are minors. Look around now; you can add athletes and schedule as soon as you're verified.</p><CoachVerify s={s} onChange={setS} /></div>;
 }
 
 function Missing() { return <div className="ls-page"><h1>That isn't here</h1><p><a href="#/">Back to your schedule</a></p></div>; }
@@ -139,6 +143,21 @@ function Schedule({ book }: { book: Book }) {
     {[...days].map(([d, list]) => <section key={d} className="ls-day"><h2>{d}</h2><ul className="ls-list">{list.map((x) => <SessionRow key={x.id} s={x} book={book} />)}</ul></section>)}
     {done.length > 0 && <section className="ls-day ls-past"><h2>Past sessions</h2><ul className="ls-list">{done.map((x) => <SessionRow key={x.id} s={x} book={book} showDate />)}</ul>
       {!past && book.sessions.length - up.length > done.length && <button className="btn sm" onClick={() => setPast(true)}>Show all past sessions</button>}</section>}
+  </div>;
+}
+
+/** A session as a calendar item, in the viewer's own time zone. */
+const hhmm = (iso: string) => { const d = new Date(iso); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
+function sessionItem(s: { id: string; starts: string; minutes: number; kind: string; title?: string | null; place?: string | null; status: string; open: boolean }, who: string, href?: string, open = false): CalItem {
+  return { id: s.id, date: ymd(new Date(s.starts)), time: hhmm(s.starts), title: sessionName(s) + (who ? " · " + who : ""), sub: [`${s.minutes} min`, s.place].filter(Boolean).join(" · "),
+    kind: s.status === "canceled" ? "canceled" : open ? "open" : s.kind, href, done: s.status === "done" };
+}
+function TrainerCalendar({ book }: { book: Book }) {
+  const items = book.sessions.map((s) => { const who = names(s.athletes, book); return sessionItem(s, s.kind === "private" ? who[0] || (s.open ? "open" : "") : who.length ? `${who.length}${s.capacity ? "/" + s.capacity : ""}` : s.open ? "open" : "", "#/s/" + s.id, s.open && !s.athletes.length); });
+  return <div className="ls-page">
+    <div className="ls-head"><div><h1>Calendar</h1><p className="muted">Every session, by month or by week. Tap one to open it.</p></div><a className="btn primary" href="#/new">New session</a></div>
+    <Calendar items={items} storeKey="fc-ls-cal" legend={[["private", "Private and small group"], ["clinic", "Clinics"], ["open", "Open, nobody booked"], ["canceled", "Canceled"]]}
+      empty={<>Nothing scheduled in these dates. <a href="#/new">Schedule a session</a>.</>} />
   </div>;
 }
 
@@ -251,7 +270,7 @@ function SessionPage({ book, s, act }: { book: Book; s: Sess; act: Act }) {
   const others = book.athletes.filter((a) => !s.athletes.includes(a.id));
   const full = s.capacity != null && s.athletes.length >= s.capacity;
   const reqs = book.requests.filter((r) => r.session_id === s.id);
-  const sendText = (a?: Athlete) => message(s, a?.name.split(" ")[0]) + (a && !a.joined?.length && a.code ? `\n\nSee your lessons and numbers in Floorcall: ${joinLink(a.code)}` : "");
+  const sendText = (a?: Athlete) => message(s, a?.name.split(" ")[0]) + (a && !a.joined?.length && a.code ? `\n\nSee your lessons and numbers in FloorCall: ${joinLink(a.code)}` : "");
   return <div className="ls-page">
     <a className="ls-back" href="#/">Schedule</a>
     <div className="ls-head">
@@ -265,7 +284,7 @@ function SessionPage({ book, s, act }: { book: Book; s: Sess; act: Act }) {
     </div>
     {s.focus.length > 0 && <p className="ls-focusline">Focus: {s.focus.map((f, i) => <span key={f}>{i ? ", " : ""}<a href={academy(f)} target="_blank" rel="noopener">{skillName(f)}</a></span>)} <small className="muted">(Academy guides open in a new tab)</small></p>}
     {(s.open || s.public) && <div className="ls-callout">
-      {s.open && <p><b>Open to book.</b> Your athletes and their parents can book {s.capacity ? `the ${plural(Math.max(s.capacity - s.athletes.length, 0), "spot")} left` : "a spot"} from their Floorcall Lessons page.</p>}
+      {s.open && <p><b>Open to book.</b> Your athletes and their parents can book {s.capacity ? `the ${plural(Math.max(s.capacity - s.athletes.length, 0), "spot")} left` : "a spot"} from their FloorCall Lessons page.</p>}
       {s.public && s.code && <div><p><b>Public sign-up page.</b> Share this link anywhere: {reqs.length ? plural(reqs.length, "sign-up") + " waiting for you." : "sign-ups come to you to accept."}</p>
         <div className="ls-link"><code>{clinicLink(s.code)}</code><button className="btn sm" onClick={() => copy(clinicLink(s.code!), "Link copied")}>Copy link</button><QrButton url={clinicLink(s.code)} title={sessionName(s)} /></div></div>}
     </div>}
@@ -377,7 +396,7 @@ function Athletes({ book, act }: { book: Book; act: Act }) {
       </div>
       <div className="row"><button className="btn primary" disabled={!f.name.trim() || !book.verified} onClick={add}>Add athlete</button>{book.athletes.length > 0 && <button className="btn ghost" onClick={() => setOpen(false)}>Close</button>}
         {!book.verified && <span className="small muted">You can add athletes once your coach account is verified.</span>}</div>
-      <p className="small muted">Coaching a team in Floorcall? Open a player in the coaching app and choose "Add to Floorcall Lessons".</p>
+      <p className="small muted">Coaching a team in FloorCall? Open a player in the coaching app and choose "Add to FloorCall Lessons".</p>
     </div>}
     {book.athletes.length > 0 && <ul className="ls-list ls-athletes">{book.athletes.map((a) => { const l = last(a.id), n = next(a.id), u = unpaid(a.id);
       return <li key={a.id} className="ls-row"><a href={"#/athletes/" + a.id}>
@@ -395,7 +414,7 @@ function AthletePage({ book, a, act }: { book: Book; a: Athlete; act: Act }) {
   const mine = book.sessions.filter((x) => x.athletes.includes(a.id) && x.status !== "canceled");
   const rows = mine.map((x) => ({ s: x, r: book.roster.find((r) => r.session_id === x.id && r.athlete_id === a.id) }));
   const invite = async (fresh = false) => { try { const c = await rpc("lesson_invite", { aid: a.id, fresh }); setCode(c); if (fresh) toast("New code made. The old one no longer works."); } catch (e) { toast(errText(e)); } };
-  const inviteText = (c: string) => `${a.name.split(" ")[0]}'s lessons are on Floorcall: sessions, what we're working on, and progress. Make a free account and join with code ${c}: ${joinLink(c)}`;
+  const inviteText = (c: string) => `${a.name.split(" ")[0]}'s lessons are on FloorCall: sessions, what we're working on, and progress. Make a free account and join with code ${c}: ${joinLink(c)}`;
   return <div className="ls-page">
     <a className="ls-back" href="#/athletes">Athletes</a>
     <div className="ls-head"><div><h1>{a.name}</h1><p className="ls-sub">{[a.position, a.grad && "Class of " + a.grad, a.club].filter(Boolean).join(" · ") || "No details yet"}{a.contact ? " · " + a.contact : ""}</p></div>
@@ -414,9 +433,9 @@ function AthletePage({ book, a, act }: { book: Book; a: Athlete; act: Act }) {
     </div>}
     {!edit && a.notes && <p className="ls-privnote"><b>Private notes:</b> {a.notes}</p>}
     <section className="ls-sec">
-      <h2>Their Floorcall Lessons page</h2>
+      <h2>Their FloorCall Lessons page</h2>
       {a.joined?.length ? <p>{a.joined.map((j) => `${j.role === "parent" ? "A parent" : a.name.split(" ")[0]} (${j.email})`).join(" and ")} {a.joined.length > 1 ? "have" : "has"} joined and see{a.joined.length > 1 ? "" : "s"} {a.name.split(" ")[0]}'s sessions and numbers.</p>
-        : <p className="muted">Nobody has joined yet. Send the code to the athlete or a parent: they make a free Floorcall account and see only {a.name.split(" ")[0]}'s sessions, the notes you share, and their numbers.</p>}
+        : <p className="muted">Nobody has joined yet. Send the code to the athlete or a parent: they make a free FloorCall account and see only {a.name.split(" ")[0]}'s sessions, the notes you share, and their numbers.</p>}
       {code ? <div className="ls-code"><span className="ls-code-big">{code}</span>
         <div className="row"><button className="btn sm primary" onClick={() => copy(inviteText(code), "Invite copied")}>Copy invite</button><button className="btn sm" onClick={() => copy(joinLink(code), "Link copied")}>Copy link</button><QrButton url={joinLink(code)} title={"Join " + a.name + "'s lessons"} /><ConfirmButtonLite onConfirm={() => invite(true)}>New code</ConfirmButtonLite></div></div>
         : <button className="btn" onClick={() => invite()}>Make an invite code</button>}
@@ -485,7 +504,7 @@ function AthleteSide({ route, coach }: { route: string[]; coach: boolean }) {
   const load = useCallback(async () => { try { setD(await rpc("my_lessons", {})); setErr(""); } catch (e) { setErr(errText(e)); } }, []);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const f = () => { if (document.visibilityState === "visible") load(); }; document.addEventListener("visibilitychange", f); return () => document.removeEventListener("visibilitychange", f); }, [load]);
-  useEffect(() => { document.title = "My lessons · Floorcall Lessons"; }, []);
+  useEffect(() => { document.title = "My lessons · FloorCall Lessons"; }, []);
   if (route[0] === "join") return <Join code={route[1] || ""} onJoined={async () => { await load(); go(coach ? "mine" : ""); }} />;
   if (err && !d) return <div className="ls-page"><p className="ls-err">{err}</p><button className="btn" onClick={load}>Try again</button></div>;
   if (!d) return <div className="ls-page"><p className="muted">Loading your lessons…</p></div>;
@@ -502,10 +521,10 @@ function AthleteSide({ route, coach }: { route: string[]; coach: boolean }) {
   const first = a.name.split(" ")[0], parent = a.role === "parent";
   return <div className="ls-page ls-mine">
     {coach && <a className="ls-back" href="#/">Your schedule</a>}
-    <div className="ls-head"><div><h1>{parent ? first + "'s lessons" : "My lessons"}</h1><p className="muted">With {a.trainer}</p></div>
+    <div className="ls-head"><div><h1>{parent ? first + "'s lessons" : "My lessons"}</h1><p className="muted">With {a.trainer} <Badge kind="verified" /></p></div>
       {d.athletes.length > 1 && <div className="ls-kids" role="group" aria-label="Athlete">{d.athletes.map((x) => <button key={x.id} aria-pressed={x.id === a.id} onClick={() => setPick(x.id)}>{x.name.split(" ")[0]}</button>)}</div>}</div>
     <section className="ls-sec">
-      <div className="ls-sec-hd"><h2>Coming up</h2>{next.length > 1 && <button className="btn sm" onClick={() => download("Floorcall lessons.ics", ics(next as any), "text/calendar")}>Add all to calendar</button>}</div>
+      <div className="ls-sec-hd"><h2>Coming up</h2>{next.length > 1 && <button className="btn sm" onClick={() => download("FloorCall lessons.ics", ics(next as any), "text/calendar")}>Add all to calendar</button>}</div>
       {next.length ? <ul className="ls-cards">{next.map((s) => { const r = row(s.id); return <li key={s.id} className="ls-card">
         <div className="ls-card-when"><b>{new Date(s.starts).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</b><span>{time(s.starts)} · {s.minutes} min</span></div>
         <div className="ls-card-body"><h3>{sessionName(s)}</h3>
@@ -519,6 +538,11 @@ function AthleteSide({ route, coach }: { route: string[]; coach: boolean }) {
           </div>
         </div></li>; })}</ul>
         : <p className="ls-empty">Nothing scheduled right now.{openTimes.length ? " Book one of the open times below." : ""}</p>}
+    </section>
+    <section className="ls-sec">
+      <h2>Calendar</h2>
+      <Calendar items={[...mine.map((s) => sessionItem(s as any, "", undefined)), ...openTimes.map((s) => sessionItem(s as any, "open", undefined, true))]} storeKey="fc-ls-mycal"
+        legend={[["private", parent ? first + "'s sessions" : "Your sessions"], ["open", "Open times you can book"]]} empty="Nothing in these dates." />
     </section>
     {openTimes.length > 0 && <section className="ls-sec">
       <h2>Open times</h2>
@@ -572,14 +596,14 @@ function Join({ code, onJoined, first }: { code: string; onJoined: () => void; f
 /* ====================================================================== public clinic page */
 function ClinicPage({ code }: { code: string }) {
   const [c, setC] = useState<any>(undefined), [f, setF] = useState({ who: "", contact: "", note: "" }), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [sent, setSent] = useState(false);
-  useEffect(() => { rpc("lesson_public", { c: code }, true).then((x) => { setC(x); if (x) document.title = (x.title || "Clinic") + " · Floorcall Lessons"; }).catch(() => setC(null)); }, [code]);
+  useEffect(() => { rpc("lesson_public", { c: code }, true).then((x) => { setC(x); if (x) document.title = (x.title || "Clinic") + " · FloorCall Lessons"; }).catch(() => setC(null)); }, [code]);
   const closed = useMemo(() => !c || c.status !== "scheduled" || new Date(c.starts).getTime() < Date.now(), [c]);
   if (c === undefined) return <div className="ls-page"><p className="muted">Loading…</p></div>;
   if (!c) return <div className="ls-page"><h1>This sign-up page isn't open</h1><p className="muted">Check the link with the trainer who sent it.</p></div>;
   const send = async () => { setBusy(true); setErr(""); try { await rpc("lesson_signup", { c: code, who: f.who.trim(), contact: f.contact.trim(), note: f.note.trim() || null }, true); setSent(true); } catch (e) { setErr(errText(e)); } setBusy(false); };
   return <div className="ls-clinic">
     <div className="ls-clinic-band">
-      <p className="ls-clinic-by">{c.trainer} · Floorcall Lessons</p>
+      <p className="ls-clinic-by">{c.trainer} <Badge kind="verified" /> · FloorCall Lessons</p>
       <h1>{c.title || "Volleyball clinic"}</h1>
       <p className="ls-clinic-when">{new Date(c.starts).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}, {time(c.starts)} · {c.minutes} min</p>
       {c.place && <p>{c.place}</p>}
@@ -592,7 +616,7 @@ function ClinicPage({ code }: { code: string }) {
       <button className="btn sm" onClick={() => download((c.title || "Clinic") + ".ics", ics([{ id: "clinic-" + code, ...c, kind: "clinic" }]), "text/calendar")}>Add to calendar</button>
     </div>
     <div className="ls-clinic-form">
-      {sent ? <div><h2>You're signed up</h2><p>{c.trainer.split(" ")[0]} will confirm your spot{c.price ? " and how to pay" : ""}. If you have a Floorcall account, you'll also be able to see the session there once you're in.</p></div>
+      {sent ? <div><h2>You're signed up</h2><p>{c.trainer.split(" ")[0]} will confirm your spot{c.price ? " and how to pay" : ""}. If you have a FloorCall account, you'll also be able to see the session there once you're in.</p></div>
         : closed ? <div><h2>Sign-ups are closed</h2><p className="muted">This clinic has started or was canceled.</p></div>
         : c.spots === 0 ? <div><h2>This clinic is full</h2><p className="muted">Ask the trainer about the next one.</p></div>
         : <>

@@ -27,7 +27,7 @@ save(render(MAIN, {"figure": "#111111"}, None, 96, "figure", 0.02), "brand/mark-
 save(render("01-spiker-grey-wordmark-on-dark", {"figure": "light", "fc": "columbia"}, None, 960, "mark", 0.04), "brand/logo-wordmark-light.png")
 save(render(MAIN, ON_DARK, None, 720, "mark", 0.04), "brand/logo-light.png")
 save(render(MAIN, {"figure": "#111111", "swoosh": "blue", "fc": "#6A707A"}, None, 720, "mark", 0.04), "brand/logo-dark.png")
-# Floorcall Academy: one mark per skill
+# FloorCall Academy: one mark per skill
 for skill, logo in {"serving": "08-spiker-girl-pink-on-dark", "passing": "16-passer-grey-on-dark", "setting": "13-setter-girl-grey-on-dark",
                     "hitting": "04-spiker-pink-on-dark", "defense": "12-passer-girl-grey-on-dark"}.items():
     save(render(logo, {"figure": "white", "swoosh": "columbia", "fc": "none"}, "black", 360, "mark", 0.06), f"brand/skill-{skill}.png")

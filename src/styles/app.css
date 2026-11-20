@@ -1,4 +1,4 @@
-/* Floorcall design system. Layout: dark sidebar on wide screens, bottom tab bar on phones. */
+/* FloorCall design system. Layout: dark sidebar on wide screens, bottom tab bar on phones. */
 :root{
   /* Palette: white, black, grey and Columbia blue. Red is used only for errors and destructive actions. */
   --bg:#F3F4F6; --surface:#FFFFFF; --surface-2:#F6F7F8; --ink:#0B0C0E; --muted:#686E77; --line:#E2E4E8;
@@ -644,7 +644,7 @@ kbd{display:inline-block;min-width:22px;text-align:center;font:600 12px/1 var(--
 .gs-run.us{color:var(--us-bright)}.gs-run.them{color:var(--them-bright)}
 /* scrollable tables show a soft shadow on the side that has more columns */
 .tbl{background:linear-gradient(to right,var(--surface) 30%,rgba(255,255,255,0)) left center/32px 100% no-repeat local,linear-gradient(to left,var(--surface) 30%,rgba(255,255,255,0)) right center/32px 100% no-repeat local,radial-gradient(farthest-side at 0 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) left center/12px 100% no-repeat scroll,radial-gradient(farthest-side at 100% 50%,rgba(0,0,0,.2),rgba(0,0,0,0)) right center/12px 100% no-repeat scroll}
-/* clip player (coaching app and Floorcall Recruit) */
+/* clip player (coaching app and FloorCall Recruit) */
 .clips{display:grid;gap:8px;min-width:0}
 .clip-title{font:700 15px var(--display);letter-spacing:.05em;text-transform:uppercase}
 .clip-stage{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
@@ -1142,7 +1142,7 @@ textarea.grow{field-sizing:content;min-height:2.6em;max-height:50vh}
 .set-admin{display:grid;gap:14px;padding:14px;border:1px dashed var(--line);border-radius:12px}
 .set-admin-hd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.set-admin-hd span{color:var(--muted);font-size:13px}
 .lu-tabs{margin-bottom:4px}.lu-tabs .seg{max-width:100%}
-/* Floorcall sites menu in the sidebar */
+/* FloorCall sites menu in the sidebar */
 .sm-wrap{position:relative}
 .sm-btn{width:100%;appearance:none;border:0;background:none;font:inherit;cursor:pointer;text-align:left}
 .sm-menu{top:auto;bottom:calc(100% + 6px);left:0;width:280px}
@@ -1179,7 +1179,7 @@ body.nav-mini .sm-btn span{display:none}
 .pw-price{font:700 32px var(--display)}.pw-price small{font:500 14px var(--body);color:var(--muted)}
 .tname .tn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media (max-width:420px){.tname{letter-spacing:.03em;font-size:14px}}
-/* the Floorcall mark beside the name */
+/* the FloorCall mark beside the name */
 .brandmark{width:32px;height:32px;object-fit:contain;flex:none;display:block}
 .mobilebar .brandmark{width:24px;height:24px}
 .lv-brand .brandmark,.rc-brand .brandmark,.bv-brand .brandmark,.ac-brand .brandmark{width:26px;height:26px}

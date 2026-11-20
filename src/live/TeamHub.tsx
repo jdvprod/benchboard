@@ -1,4 +1,4 @@
-/** A team on Floorcall Live: live game up top, schedule and results, season stats, roster and player pages. */
+/** A team on FloorCall Live: live game up top, schedule and results, season stats, roster and player pages. */
 import { lazy, Suspense, useEffect, useRef } from "react";
 /** The playbook (with its 3D court) loads only when someone opens Plays. */
 const TeamPlays = lazy(() => import("./Plays").then((m) => ({ default: m.TeamPlays })));

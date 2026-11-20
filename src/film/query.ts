@@ -64,6 +64,10 @@ export function parseQuery(text: string, roster: QueryPlayer[] = []): Parsed {
   const take = (re: RegExp, f: (m: RegExpMatchArray) => void) => { let m: RegExpMatchArray | null; const g = new RegExp(re.source, "g"); while ((m = g.exec(s))) f(m); s = s.replace(g, " "); };
   const N = "(\\d|one|two|three|four|five|six|first|second|third|fourth|fifth|1st|2nd|3rd|4th|5th)";
 
+  // "… from the opponent", "… by the other team": the same plays, made by them
+  let theirs = false;
+  take(/\b(?:from|by|for) (?:the )?(?:opponents?|other team|them|their team|other side)\b/, () => { theirs = true; });
+  take(/\b(?:opponents?|other team) (?=blocks?|stuffs?)/, () => { theirs = true; });
   // opponents' jerseys first ("their #7", "from their 12")
   take(new RegExp(`\\b(?:their|opponent|opponents|other team) (?:number |no |#)?#?(\\d{1,2})\\b`), (m) => { q.opp.push(m[1]); chips.push("Their #" + m[1]); });
   // where the ball went
@@ -103,6 +107,15 @@ export function parseQuery(text: string, roster: QueryPlayer[] = []): Parsed {
   const codes = new Set<string>();
   for (const [re, c, label] of PLAYS) if (re.test(s)) { c.forEach((x) => codes.add(x)); chips.push(label); s = s.replace(new RegExp(re.source, "g"), " "); }
   if (/\bevery point\b|\ball points\b|\bpoints?\b|\brallies\b/.test(s) && !codes.size && !q.won) { q.won = undefined; chips.push("Every point"); q.pointsOnly = true; }
+  if (theirs && codes.size) {
+    // what we log about them: their kills, their aces, their errors; their blocks are our attacks they blocked
+    const map: Record<string, string> = { K: "OK", KT: "OK", SA: "OA", BS: "AB", BA: "AB", BT: "AB", BE: "AB" };
+    const mapped = new Set<string>();
+    for (const c of codes) mapped.add(OUR_ERR.includes(c) && c !== "BE" ? "OE" : map[c] || c);
+    codes.clear(); mapped.forEach((c) => codes.add(c));
+    chips.push("By the other team");
+  }
+  if (/\btheir blocks?\b|\bblocks? by them\b/.test(text.toLowerCase()) && codes.size && [...codes].every((c) => ["BS", "BA", "BT", "BE"].includes(c))) { codes.clear(); codes.add("AB"); chips.push("Our attacks they blocked"); }
   if (codes.size) q.codes = [...codes];
   // "#7" means their player when only their plays are asked for, otherwise ours
   const theirsOnly = !!q.codes && q.codes.every((c) => c === "OK" || c === "OA" || c === "OE");

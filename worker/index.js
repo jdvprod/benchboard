@@ -1,11 +1,11 @@
-/** Floorcall on Cloudflare: one Worker, seven addresses.
+/** FloorCall on Cloudflare: one Worker, seven addresses.
  *   getfloorcall.com          product page (about.html), legal pages, shared images
  *   app.getfloorcall.com      the coaching app
- *   live.getfloorcall.com     Floorcall Live   (files under /live/)
- *   recruit.getfloorcall.com  Floorcall Recruit (files under /recruit/)
- *   beach.getfloorcall.com    Floorcall Beach   (files under /beach/)
- *   academy.getfloorcall.com  Floorcall Academy (files under /academy/)
- *   lessons.getfloorcall.com  Floorcall Lessons (files under /lessons/)
+ *   live.getfloorcall.com     FloorCall Live   (files under /live/)
+ *   recruit.getfloorcall.com  FloorCall Recruit (files under /recruit/)
+ *   beach.getfloorcall.com    FloorCall Beach   (files under /beach/)
+ *   academy.getfloorcall.com  FloorCall Academy (files under /academy/)
+ *   lessons.getfloorcall.com  FloorCall Lessons (files under /lessons/)
  * workers.dev and other test addresses work as before: /, /live/, /recruit/ side by side. */
 const PAGE = /(\.html|\/)$/;
 export default {

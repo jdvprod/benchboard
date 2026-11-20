@@ -17,7 +17,7 @@ export function FeesCard() {
   if (!f || edit) {
     const start = () => { const a = parseMoney(amt || String(f?.amt ?? "")); if (a === null) { toast("Enter the fee in dollars, like 450"); return; } save({ ...(f || { lines: {} }), amt: a, due: due || f?.due || undefined, label: (label || f?.label || "").trim() || undefined }); setEdit(false); toast(f ? "Fee updated" : "Tracking fees"); };
     return <Card title="Player fees">
-      <p className="small muted">Track the season fee for each family: what they've paid and who still owes. Coaches on this team see it; families never do. Floorcall doesn't take payments.</p>
+      <p className="small muted">Track the season fee for each family: what they've paid and who still owes. Coaches on this team see it; families never do. FloorCall doesn't take payments.</p>
       <div className="fee-setup">
         <label className="field"><span className="label">Fee per player</span><input className="input" inputMode="decimal" value={amt} placeholder={f ? String(f.amt) : "450"} onChange={(e) => setAmt(e.target.value)} /></label>
         <label className="field"><span className="label">Due date (optional)</span><input className="input" type="date" value={due || f?.due || ""} onChange={(e) => setDue(e.target.value)} /></label>

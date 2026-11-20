@@ -1,4 +1,4 @@
-/** Floorcall Lessons: what a trainer counts in a session, the numbers that come out of it, and calendar files. */
+/** FloorCall Lessons: what a trainer counts in a session, the numbers that come out of it, and calendar files. */
 
 export type SkillId = "serving" | "passing" | "setting" | "hitting" | "defense";
 export type Reps = Partial<Record<SkillId, Record<string, number>>>;
@@ -74,7 +74,7 @@ const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replac
 const fold = (line: string) => { const out: string[] = []; let s = line; while (s.length > 74) { out.push(s.slice(0, 74)); s = " " + s.slice(74); } out.push(s); return out.join("\r\n"); };
 
 export function ics(list: CalSession[], now = new Date()): string {
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Floorcall//Lessons//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//FloorCall//Lessons//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH"];
   for (const x of list) {
     const start = new Date(x.starts), end = new Date(start.getTime() + (x.minutes || 60) * 60000);
     const desc = [x.focus?.length ? "Focus: " + x.focus.map((f) => REP_KINDS[f as SkillId]?.name || f).join(", ") : "", x.shared_note || ""].filter(Boolean).join("\n");

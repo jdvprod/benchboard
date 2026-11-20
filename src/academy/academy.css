@@ -1,4 +1,4 @@
-/* Floorcall Academy. Same palette and type as the coach app's Home: black bars, white pages, Columbia blue for us. */
+/* FloorCall Academy. Same palette and type as the coach app's Home: black bars, white pages, Columbia blue for us. */
 body{padding-left:0;background:var(--surface)}
 .ac{min-height:100vh;display:flex;flex-direction:column}
 .ac-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 24px;background:var(--bar);color:var(--bar-ink);position:sticky;top:0;z-index:20}

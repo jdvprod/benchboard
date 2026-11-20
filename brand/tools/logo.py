@@ -1,4 +1,4 @@
-"""Floorcall logo tool: cut a logo out of its background and redraw it in any colours, size and crop.
+"""FloorCall logo tool: cut a logo out of its background and redraw it in any colours, size and crop.
 
 Each master in brand/logos has up to four parts drawn in flat colours:
   figure  the player and the ball (and the FLOORCALL wordmark in 01)

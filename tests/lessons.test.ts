@@ -48,3 +48,25 @@ test("team levels: college, pro and adult teams are women's and men's", () => {
   for (const l of ["Varsity", "JV", "16U Club", "18U Open", "Middle school", ""]) assert.ok(!isAdultLevel(l), l);
   assert.deepEqual(gendersFor("Professional").map((x) => x[1]), ["Women", "Men", "Coed"]);
 });
+
+import { parseScoutQuery } from "../src/film/scout";
+import { parseQuery } from "../src/film/query";
+test("film: scouting search in plain words", () => {
+  assert.deepEqual(parseScoutQuery("every attack by #12"), { codes: ["K", "TA", "AE"], nums: ["12"], label: "#12's attacks" });
+  assert.deepEqual(parseScoutQuery("all their blocks").codes, ["B"]);
+  assert.deepEqual(parseScoutQuery("#7 kills").nums, ["7"]);
+  assert.deepEqual(parseScoutQuery("attempts by number 3").codes, ["K", "TA", "AE"]);
+  assert.equal(parseScoutQuery("everything 14 did").codes, null);
+});
+test("film: our match search covers the coach's examples", () => {
+  const roster = [{ id: "p7", first: "Maya", last: "Chen", num: "7" }];
+  assert.deepEqual(parseQuery("all blocking clips", roster).q.codes, ["BS", "BA", "BT", "BE"]);
+  assert.deepEqual(parseQuery("all kills from the opponent", roster).q.codes, ["OK"]);
+  const a = parseQuery("all attempts by #7", roster).q; assert.deepEqual(a.players, ["p7"]); assert.ok(a.codes!.includes("TA"));
+});
+test("film: plays by the other team, in our film", () => {
+  assert.deepEqual(parseQuery("aces by the other team").q.codes, ["OA"]);
+  assert.deepEqual(parseQuery("their blocks").q.codes, ["AB"]);
+  assert.deepEqual(parseQuery("opponent errors").q.codes, ["OE"]);
+  assert.deepEqual(parseQuery("our blocks").q.codes, ["BS", "BA", "BT", "BE"]);
+});

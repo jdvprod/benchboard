@@ -1,6 +1,6 @@
 {
-  "name": "Floorcall Live",
-  "short_name": "Floorcall Live",
+  "name": "FloorCall Live",
+  "short_name": "FloorCall Live",
   "description": "Live volleyball scores, box scores and player stats from the team's bench.",
   "start_url": "./",
   "scope": "./",

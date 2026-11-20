@@ -1,4 +1,4 @@
-/** Team announcements: a coach writes a message; everyone following the team on Floorcall Live gets a notification
+/** Team announcements: a coach writes a message; everyone following the team on FloorCall Live gets a notification
  * and reads it there. One way on purpose: no replies and no direct messages with players. */
 import { isViewer } from "../../app/viewAs";
 import { useEffect, useState } from "react";
@@ -47,7 +47,7 @@ export function Announcements() {
       <div className="ann-meta"><span>{p.pinned ? "Pinned · " : ""}{p.by} · {when(p.at)} · read by {p.reads}</span>
         {can && <span className="row" style={{ gap: 6 }}><button className="btn sm ghost" onClick={() => change(p, { pin: !p.pinned })}>{p.pinned ? "Unpin" : "Pin"}</button><ConfirmButton className="btn sm ghost" confirmText="Delete for everyone?" onConfirm={() => change(p, { del: true })}>Delete</ConfirmButton></span>}</div>
     </li>)}</ul>}
-    {posts && !posts.length && <p className="small muted">{can ? "Nothing sent yet." : "No announcements yet. Your coaches' messages show up here and on Floorcall Live."}</p>}
-    {can && <p className="small muted">Followers get a notification and read it on your team page on Floorcall Live (they need a free account). Messages go one way: nobody can reply here, and there are no private messages with players.</p>}
+    {posts && !posts.length && <p className="small muted">{can ? "Nothing sent yet." : "No announcements yet. Your coaches' messages show up here and on FloorCall Live."}</p>}
+    {can && <p className="small muted">Followers get a notification and read it on your team page on FloorCall Live (they need a free account). Messages go one way: nobody can reply here, and there are no private messages with players.</p>}
   </Card>;
 }

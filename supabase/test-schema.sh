@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "32" "schema version is reported"
+check "select schema_version();" "33" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -70,7 +70,7 @@ expect() { [ "$1" = "$2" ] && echo "ok   $3" || { echo "FAIL $3 (got: $1)"; exit
 expect "$(as $A "insert into teams_cloud (id, name) values ('t0', 'Too soon');" | grep -c 'row-level security')" "1" "a coach who isn't verified can't put a team in the cloud"
 expect "$(as $A "select coach_request('Ann Lee', 'Clovis North', 'Head coach');")" "pending" "a coach asks to be verified"
 q -c "update coach_verify set status = 'approved' where user_id = '$A';"
-expect "$(as $A "select coach_status()->>'status';")" "approved" "and is verified by a Floorcall admin"
+expect "$(as $A "select coach_status()->>'status';")" "approved" "and is verified by a FloorCall admin"
 as $A "insert into teams_cloud (id, name) values ('t2', 'Mine');" >/dev/null
 expect "$(as $A "select role from members where team_id = 't2';")" "owner" "creating a team makes you its owner"
 as $A "insert into records (store, id, team_id, data, u) values ('players', 'p9', 't2', '{\"first\":\"Ann\"}', 5);" >/dev/null
@@ -263,7 +263,7 @@ as $E "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is not null;")" "t" "nobody else can take it down"
 as $B "select beach_unshare('$BC');" >/dev/null
 expect "$(q -c "set role anon; select beach_view('$BC') is null;")" "t" "the owner can stop sharing"
-# ---------- Floorcall Lessons: T trains, P is an athlete's parent, B is a stranger ----------
+# ---------- FloorCall Lessons: T trains, P is an athlete's parent, B is a stranger ----------
 T=eeeeeeee-1111-2222-3333-444444444444; P=dddddddd-1111-2222-3333-444444444444
 q -c "insert into auth.users values ('$T', 'trainer@example.com'), ('$P', 'parent@example.com'); insert into coach_verify (user_id, name, status) values ('$T', 'Tess Trainer', 'approved');" >/dev/null
 expect "$(q -c "set role authenticated; select set_config('request.jwt.claim.sub', '$B', false); select lesson_save_athlete('{\"id\":\"la1\",\"name\":\"Nope\"}');" 2>&1 | grep -c Verify)" "1" "only verified coaches can train athletes"
@@ -312,6 +312,17 @@ expect "$(asall $B "select admin_support();" | grep -c 'Admins only')" "1" "only
 expect "$(asall $P "select redeem_code('$CODE')->>'kind';" | grep -c lessons)" "1" "a lessons code works in the one code box"
 expect "$(asall $P "select redeem_code('NOPE99');" | grep -c "doesn't match")" "1" "a wrong code says so"
 expect "$(asall $P "select jsonb_array_length(my_coverage()->'lessons');" | tail -1)" "1" "coverage lists the lessons someone joined"
+# ---------- version 33: badges and drill picks ----------
+TM=ffffffff-1111-2222-3333-444444444444; q -c "insert into auth.users values ('$TM', 'teamowner@example.com'); insert into coach_verify (user_id, name, status) values ('$TM', 'Owner', 'approved');" >/dev/null
+asall $TM "insert into teams_cloud (id, name) values ('tb1', 'Badge Team');" >/dev/null
+q -c "insert into members (team_id, user_id, role, status) values ('tb1', '$P', 'viewer', 'active'), ('tb1', '$B', 'coach', 'active') on conflict do nothing;" >/dev/null
+expect "$(asall $TM "select (select b->>'badge' from jsonb_array_elements(team_badges('tb1')) b where b->>'user_id' = '$TM');" | tail -1)" "verified" "the verified head coach shows as verified"
+expect "$(asall $TM "select (select b->>'badge' from jsonb_array_elements(team_badges('tb1')) b where b->>'user_id' = '$B');" | tail -1)" "assistant" "an approved assistant shows as approved by the head coach"
+expect "$(asall $T "select team_badges('tb1')::text;" | tail -1)" "[]" "people off the team see no badges"
+asall $TM "select team_pick_drill('tb1', 'passing-1', true, 'Do 10 a day');" | grep ERROR || true
+expect "$(asall $P "select team_pick_drill('tb1', 'serving-1', true);" | grep -c "Only the team")" "1" "players can't pick drills"
+expect "$(asall $P "select my_drill_picks()->0->>'drill';" | tail -1)" "passing-1" "a player sees the drills their coach picked"
+expect "$(asall $T "select jsonb_array_length(team_drill_list('tb1'));" | tail -1)" "0" "people off the team don't"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

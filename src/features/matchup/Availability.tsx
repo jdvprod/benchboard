@@ -1,4 +1,4 @@
-/** Who can make each scheduled match: answers families and players gave on Floorcall Live. Names are shown to the team's staff only. */
+/** Who can make each scheduled match: answers families and players gave on FloorCall Live. Names are shown to the team's staff only. */
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
@@ -42,7 +42,7 @@ export function useSignups(): Signup[] | null {
   return list;
 }
 
-/** The coach adds jobs to a scheduled match; families sign up on Floorcall Live; the names show here. */
+/** The coach adds jobs to a scheduled match; families sign up on FloorCall Live; the names show here. */
 export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (jobs: Job[]) => void; signups: Signup[] | null }) {
   const jobs = s.jobs || [], [name, setName] = useState(""), [need, setNeed] = useState(1);
   const add = (n: string, k: number) => { const nm = n.trim().slice(0, 40); if (!nm || jobs.some((j) => j.name.toLowerCase() === nm.toLowerCase())) return; onSave(jobs.concat({ id: "j" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: nm, need: Math.max(1, Math.min(10, k)) })); };
@@ -75,7 +75,7 @@ export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (j
       <button className="btn sm" disabled={!name.trim()}>Add</button>
     </form>
     {canAsk && open.length > 0 && <button className="btn sm primary" style={{ marginTop: 8 }} disabled={asking} onClick={ask}>{asking ? "Posting…" : "Ask the families"}</button>}
-    <p className="keys">Families following your team page sign up on Floorcall Live (free account). They see how many spots are left; you see the names.{canAsk ? " Ask the families posts an announcement with the open spots." : ""}</p>
+    <p className="keys">Families following your team page sign up on FloorCall Live (free account). They see how many spots are left; you see the names.{canAsk ? " Ask the families posts an announcement with the open spots." : ""}</p>
   </details>;
 }
 

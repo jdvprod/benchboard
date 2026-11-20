@@ -1,4 +1,4 @@
-/** Where each Floorcall site lives.
+/** Where each FloorCall site lives.
  * On the real domain each site has its own address: getfloorcall.com (product page), app.getfloorcall.com (coaches),
  * live.getfloorcall.com (families and fans) and recruit.getfloorcall.com (athletes, college coaches). Anywhere else
  * (test deployments, previews) they sit side by side as paths: /, /live/, /recruit/. */
@@ -19,7 +19,7 @@ export function placeUrl(p: Place, hashPath = ""): string {
 }
 export const siteUrl = (site: Site, hashPath = "") => placeUrl(site, hashPath);
 
-/** The three Floorcall places, for the switchers at the top of each site. */
+/** The three FloorCall places, for the switchers at the top of each site. */
 export const PLACES: [Place, string, string][] = [["app", "Coaches", "Stat, scout and run the team"], ["live", "Live", "Scores and team film for families"], ["recruit", "Recruit", "Recruiting for athletes"], ["beach", "Beach", "Score and stat beach doubles"], ["academy", "Academy", "Learn and teach each skill"], ["lessons", "Lessons", "Private lessons, training and clinics"]];
 
 /** The Contact page on getfloorcall.com, with where the person came from (and, for a problem report, device details). */

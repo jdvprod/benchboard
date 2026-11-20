@@ -139,7 +139,7 @@ function Announce({ teams }: { teams: Team[] }) {
     <div className="row between"><span className="small muted">{pick.length} of {can.length} teams</span><button className="btn primary" disabled={busy || !text.trim() || !pick.length} onClick={send}>{busy ? "Sending…" : `Send to ${pick.length} ${pick.length === 1 ? "team" : "teams"}`}</button></div>
     {done && done.length > 0 && <p className="small" role="status">Posted on {done.join(", ")}.</p>}
     {err && <p className="small" role="alert" style={{ color: "var(--bad)" }}>{err}</p>}
-    <p className="keys">Each team's followers get it on their team page on Floorcall Live, the same as an announcement from that team. One way: nobody can reply.</p>
+    <p className="keys">Each team's followers get it on their team page on FloorCall Live, the same as an announcement from that team. One way: nobody can reply.</p>
   </div>;
 }
 
@@ -159,6 +159,6 @@ function FeesTab({ teams }: { teams: Team[] }) {
         {S ? <><td className="num">{fmtMoney(S.got)}</td><td className="num">{fmtMoney(S.left)}</td><td className="num">{S.owing} of {S.n}</td></> : <td colSpan={3} className="small muted">Not tracking fees</td>}
         <td><button className="btn sm" onClick={() => open(t.id, "team")}>{S ? "Open" : "Set up"}</button></td></tr>)}</tbody>
     </table></div>
-    <p className="small muted" style={{ marginTop: 8 }}>Each team's fees are on its Team page. Coaches on a team see its fees; families never do. Floorcall doesn't take payments.</p></section>
+    <p className="small muted" style={{ marginTop: 8 }}>Each team's fees are on its Team page. Coaches on a team see its fees; families never do. FloorCall doesn't take payments.</p></section>
   </div>;
 }

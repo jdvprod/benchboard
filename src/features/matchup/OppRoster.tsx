@@ -1,5 +1,5 @@
 /** Their roster: jersey numbers, and names and positions if the coach wants them. Used when tracking their plays
- * and on Floorcall Live; with no names, Live just says the team name. */
+ * and on FloorCall Live; with no names, Live just says the team name. */
 import { useState } from "react";
 import { OppRoster } from "../../data/model";
 import { POSITIONS } from "../../sports/volleyball/actions";
@@ -47,6 +47,6 @@ export function OppRosterEditor({ roster, onChange, team }: { roster: OppRoster;
       <textarea className="input" rows={4} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"One per line or separated by commas:\n11 Kayla Smith OH\n7\n3 Jordan L"} aria-label="Their roster as a list" />
       <button className="btn sm primary" disabled={!Object.keys(parseRoster(paste)).length} onClick={() => { onChange({ ...roster, ...parseRoster(paste) }); setPaste(""); setBulk(false); }}>Add {Object.keys(parseRoster(paste)).length || ""} players</button>
     </div>}
-    <p className="small muted">Numbers let you tap who scored on you. Names are optional; if you add them they show on Floorcall Live next to {team}'s plays. Without names, Live just says {team}.</p>
+    <p className="small muted">Numbers let you tap who scored on you. Names are optional; if you add them they show on FloorCall Live next to {team}'s plays. Without names, Live just says {team}.</p>
   </div>;
 }

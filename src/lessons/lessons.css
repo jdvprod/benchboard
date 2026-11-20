@@ -1,4 +1,4 @@
-/* Floorcall Lessons. Same palette and type as Academy: black bar, white pages, Columbia blue for actions and progress.
+/* FloorCall Lessons. Same palette and type as Academy: black bar, white pages, Columbia blue for actions and progress.
  * The schedule reads like a day planner: a time column on the left, the session on the right. */
 body{padding-left:0;background:var(--surface)}
 .ls{min-height:100vh;display:flex;flex-direction:column}

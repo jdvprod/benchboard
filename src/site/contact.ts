@@ -1,5 +1,5 @@
 /** The contact form on getfloorcall.com/contact.html: sends to support_send (schema v32), read in Admin console → Messages.
- * Falls back to the email address when Floorcall can't be reached. */
+ * Falls back to the email address when FloorCall can't be reached. */
 import { CloudError, cloudAvailable, rpc } from "../cloud/client";
 
 const form = document.getElementById("contact") as HTMLFormElement | null;

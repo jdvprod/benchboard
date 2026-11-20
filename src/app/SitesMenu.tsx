@@ -1,4 +1,4 @@
-/** The other Floorcall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach, Academy and Lessons). */
+/** The other FloorCall sites, from the sidebar: one button that opens a short list (Live, Recruit, Beach, Academy and Lessons). */
 import { useEffect, useRef, useState } from "react";
 import { placeUrl, PLACES } from "../cloud/links";
 
@@ -20,13 +20,13 @@ export function SitesMenu({ mini }: { mini?: boolean }) {
     return () => { document.removeEventListener("pointerdown", away); document.removeEventListener("keydown", key); };
   }, [open]);
   return <div className="sm-wrap wide-only" ref={root}>
-    <button ref={btn} className="tab sm-btn" aria-haspopup="menu" aria-expanded={open} title={mini ? "Floorcall sites" : undefined} onClick={() => setOpen(!open)}>
+    <button ref={btn} className="tab sm-btn" aria-haspopup="menu" aria-expanded={open} title={mini ? "FloorCall sites" : undefined} onClick={() => setOpen(!open)}>
       <svg className="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5" /><rect x="14" y="4" width="6" height="6" rx="1.5" /><rect x="4" y="14" width="6" height="6" rx="1.5" /><rect x="14" y="14" width="6" height="6" rx="1.5" /></svg>
-      <span>Floorcall sites</span>
+      <span>FloorCall sites</span>
     </button>
-    {open && <div className="tm-menu sm-menu" role="menu" aria-label="Floorcall sites">
+    {open && <div className="tm-menu sm-menu" role="menu" aria-label="FloorCall sites">
       {PLACES.filter(([p]) => p !== "app" && p !== "home").map(([p, name, what]) => <a key={p} role="menuitem" className="tm-item sm-item" href={placeUrl(p)} target="_blank" rel="noopener" onClick={() => setOpen(false)}>
-        <span className="tm-name"><b>Floorcall {name}</b><small>{what}</small></span>
+        <span className="tm-name"><b>FloorCall {name}</b><small>{what}</small></span>
         <svg className="sm-out" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3h7v7M13 3 5.5 10.5M11 9.5V13H3V5h3.5" /></svg>
       </a>)}
     </div>}

@@ -1,4 +1,4 @@
-/* Floorcall Lessons opens without a signal (the gym): the page and its files are kept on the device after the first visit.
+/* FloorCall Lessons opens without a signal (the gym): the page and its files are kept on the device after the first visit.
  * Pages and scripts come from the network when there is one (so updates arrive) and from the copy when there isn't. */
 const CACHE = "fc-lessons-1";
 self.addEventListener("install", () => self.skipWaiting());

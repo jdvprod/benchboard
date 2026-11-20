@@ -1,4 +1,4 @@
--- Floorcall cloud schema for Supabase.
+-- FloorCall cloud schema for Supabase.
 -- Paste this whole file into Supabase → SQL Editor → New query → Run. Safe to run again.
 --
 -- Model: the app is local-first. Every record (team, player, match, event log, plan...) is stored as JSON
@@ -291,7 +291,7 @@ drop policy if exists "recruit update" on public.recruit_shares;
 create policy "recruit update" on public.recruit_shares for update using (can_edit(team_id));
 drop policy if exists "recruit delete" on public.recruit_shares;
 create policy "recruit delete" on public.recruit_shares for delete using (can_edit(team_id));
--- the profile as data (stats, game log, highlight clips) for Floorcall Recruit; html stays as the printable sheet
+-- the profile as data (stats, game log, highlight clips) for FloorCall Recruit; html stays as the printable sheet
 alter table public.recruit_shares add column if not exists data jsonb;
 create or replace function public.recruit_view(share text) returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
@@ -343,7 +343,7 @@ end $$;
 grant execute on function public.recruit_board(text) to anon, authenticated;
 
 -- ---------- schema version: the app's Settings → Setup check compares this with what it expects ----------
--- ---------- match notifications for families (Floorcall Live), used only by the "notify" edge function ----------
+-- ---------- match notifications for families (FloorCall Live), used only by the "notify" edge function ----------
 create table if not exists public.push_subs (
   endpoint text primary key,
   team_id text not null references public.teams_cloud(id) on delete cascade,
@@ -396,7 +396,7 @@ do $do$ begin
   end if;
 end $do$;
 
--- ---------- admin console (the people who run Floorcall) ----------
+-- ---------- admin console (the people who run FloorCall) ----------
 -- Add yourself once, in the SQL Editor:  insert into public.admins select id from auth.users where email = 'you@example.com';
 create table if not exists public.admins (user_id uuid primary key references auth.users(id) on delete cascade, added_at timestamptz not null default now());
 alter table public.admins enable row level security;   -- no policies: only these functions read it
@@ -417,7 +417,7 @@ grant insert on public.app_errors to anon, authenticated;
 grant usage on sequence public.app_errors_id_seq to anon, authenticated;
 create index if not exists app_errors_at on public.app_errors (at);
 
--- How Floorcall is doing: accounts, teams, matches, what's live now, and the most active teams.
+-- How FloorCall is doing: accounts, teams, matches, what's live now, and the most active teams.
 create or replace function public.admin_overview() returns jsonb
 language plpgsql stable security definer set search_path = public, auth as $$
 declare out jsonb;
@@ -473,7 +473,7 @@ begin
 end $$;
 grant execute on function public.admin_remove_picture(text) to authenticated;
 
--- ---------- college coach search (Floorcall Recruit) ----------
+-- ---------- college coach search (FloorCall Recruit) ----------
 -- A profile appears in search only when its team lists it (on top of the family's consent to share it), and only
 -- college staff an admin approved (school .edu email) can search. Search returns summaries; the profile link has the rest.
 alter table public.recruit_shares add column if not exists listed boolean not null default false;
@@ -548,7 +548,7 @@ grant execute on function public.admin_decide_college(uuid, boolean) to authenti
 
 -- ---------- accounts (version 16) ----------
 -- Everyone has an account now: coaches, athletes, families and fans. Name, who they are ("coach", "athlete", "parent",
--- "fan") and whether they want Floorcall news by email are kept in auth.users.raw_user_meta_data (set at sign-up,
+-- "fan") and whether they want FloorCall news by email are kept in auth.users.raw_user_meta_data (set at sign-up,
 -- changed in Account). Notifications are kept with the account that turned them on.
 alter table public.push_subs add column if not exists user_id uuid;
 -- Admins: everyone who said yes to news emails (for product updates; every email must have an unsubscribe link).
@@ -574,7 +574,7 @@ grant execute on function public.admin_accounts() to authenticated;
 
 -- ---------- film sessions (version 16) ----------
 -- A coach's film session from Film Room: clips (small videos in Storage at media/<team>/film/<session>/), each with the
--- coach's note and drawing. Players and families open it on Floorcall Live by its code, signed in; the coach sees who watched.
+-- coach's note and drawing. Players and families open it on FloorCall Live by its code, signed in; the coach sees who watched.
 create table if not exists public.film_sessions (
   code text primary key,
   team_id text not null references public.teams_cloud(id) on delete cascade,
@@ -699,7 +699,7 @@ language sql security definer set search_path = public stable as $$
     from (select * from team_posts where team_id = t order by created_at desc limit 50) p), '[]'::jsonb) end
 $$;
 
--- Floorcall Live: a signed-in follower reads the team's announcements by its team page code (and they count as read)
+-- FloorCall Live: a signed-in follower reads the team's announcements by its team page code (and they count as read)
 create or replace function public.posts_by_code(c text) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare t text; out jsonb;
@@ -744,7 +744,7 @@ begin
     on conflict (team_id, item_id, user_id) do update set status = excluded.status, name = excluded.name, updated_at = now();
 end $$;
 
--- Floorcall Live: counts for each scheduled match and the signed-in person's own answer (no names)
+-- FloorCall Live: counts for each scheduled match and the signed-in person's own answer (no names)
 create or replace function public.rsvps_by_code(c text) returns jsonb
 language plpgsql security definer set search_path = public stable as $$
 declare t text;
@@ -813,7 +813,7 @@ end $$;
 revoke all on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) from public, anon;
 grant execute on function public.college_contact(text, text), public.college_inbox(text), public.college_inbox_read(text) to authenticated;
 
--- ---------- Floorcall Beach: a beach match shared live by a link (anyone with the link can watch; only its owner can update it) ----------
+-- ---------- FloorCall Beach: a beach match shared live by a link (anyone with the link can watch; only its owner can update it) ----------
 create table if not exists public.beach_shares (
   code text primary key,
   owner uuid not null,
@@ -857,7 +857,7 @@ revoke all on function public.beach_publish(text, text), public.beach_unshare(te
 grant execute on function public.beach_publish(text, text), public.beach_unshare(text) to authenticated;
 grant execute on function public.beach_view(text) to anon, authenticated;
 
--- ---------- Team playbook: plays the coaches chose to share; signed-in followers study them on Floorcall Live ----------
+-- ---------- Team playbook: plays the coaches chose to share; signed-in followers study them on FloorCall Live ----------
 create table if not exists public.team_plays (
   team_id text primary key references public.teams_cloud(id) on delete cascade,
   data jsonb not null,
@@ -912,7 +912,7 @@ begin
   insert into team_signups (team_id, item_id, job_id, user_id, name) values (t, left(item, 60), left(job, 40), auth.uid(), left(nm, 60)) on conflict do nothing;
 end $$;
 
--- Floorcall Live: how many signed up for each job, and whether you did (no names)
+-- FloorCall Live: how many signed up for each job, and whether you did (no names)
 create or replace function public.jobs_by_code(c text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 declare t text;
@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 32 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 33 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1081,7 +1081,7 @@ update public.records set data = data - 'fees' where store = 'teams' and data ? 
 
 -- ---------- verified coaches and team approval (version 30) ----------
 -- Who may do what:
---   Floorcall admins (the admins table) verify team admins: the coaches who may put a team in the cloud.
+--   FloorCall admins (the admins table) verify team admins: the coaches who may put a team in the cloud.
 --   A team's owner (its team admin) approves every coach who joins with a coach code; until then they see nothing.
 --   View-only members (players and families) see stats, never the coaches' scouting, drills, practice plans or boards.
 alter table public.members add column if not exists status text not null default 'active';
@@ -1193,7 +1193,7 @@ begin
 end $$;
 grant execute on function public.admin_decide_coach(uuid, boolean) to authenticated;
 
--- ---------- Floorcall Lessons (version 31): private lessons, small groups and clinics ----------
+-- ---------- FloorCall Lessons (version 31): private lessons, small groups and clinics ----------
 -- A trainer's athletes come from anywhere, so lessons aren't team records. Trainers (verified coaches) keep their
 -- athletes and sessions here; each athlete or parent joins with a personal code and sees only their own athlete's
 -- sessions, shared notes and numbers. Everything goes through the functions below; nobody reads these tables directly.
@@ -1263,7 +1263,7 @@ create or replace function public.lesson_save_athlete(a jsonb) returns void
 language plpgsql security definer set search_path = public as $$
 declare me uuid := auth.uid(); owner uuid;
 begin
-  if not coach_ok() then raise exception 'Verify your coach account first: Floorcall checks every trainer before they add athletes.'; end if;
+  if not coach_ok() then raise exception 'Verify your coach account first: FloorCall checks every trainer before they add athletes.'; end if;
   if length(trim(coalesce(a->>'name', ''))) < 1 then raise exception 'Add the athlete''s name.'; end if;
   select trainer into owner from lesson_athletes where id = a->>'id';
   if owner is not null and owner <> me then raise exception 'Not your athlete.'; end if;
@@ -1381,7 +1381,7 @@ create or replace function public.lesson_public(c text) returns jsonb
 language sql stable security definer set search_path = public as $$
   select jsonb_build_object('title', s.title, 'starts', s.starts, 'minutes', s.minutes, 'place', s.place, 'focus', s.focus, 'price', s.price, 'shared_note', s.shared_note,
     'spots', case when s.capacity is null then null else greatest(s.capacity - cardinality(s.athletes) - (select count(*) from lesson_requests q where q.session_id = s.id and q.status = 'pending'), 0) end,
-    'trainer', coalesce((select raw_user_meta_data->>'name' from auth.users where id = s.trainer), 'Floorcall trainer'), 'status', s.status)
+    'trainer', coalesce((select raw_user_meta_data->>'name' from auth.users where id = s.trainer), 'FloorCall trainer'), 'status', s.status)
   from lesson_sessions s where s.code = upper(trim(c)) and s.public
 $$;
 create or replace function public.lesson_signup(c text, who text, contact text, note text default null) returns void
@@ -1453,7 +1453,7 @@ begin
 end $$;
 
 -- A player or parent types whatever code their coach or trainer gave them: a team's code (joins the team, so the
--- team's plan covers them) or a Floorcall Lessons code (joins that athlete's lessons). One box, either kind.
+-- team's plan covers them) or a FloorCall Lessons code (joins that athlete's lessons). One box, either kind.
 create or replace function public.redeem_code(invite text, as_role text default null) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare c text := upper(trim(coalesce(invite, ''))); t text; r text; aid text; nm text;
@@ -1485,6 +1485,52 @@ language sql stable security definer set search_path = public as $$
   select jsonb_build_object(
     'teams', coalesce((select jsonb_agg(jsonb_build_object('id', m.team_id, 'name', tc.name, 'role', m.role) order by tc.name) from members m join teams_cloud tc on tc.id = m.team_id where m.user_id = auth.uid() and m.status = 'active'), '[]'::jsonb),
     'lessons', coalesce((select jsonb_agg(jsonb_build_object('athlete', a.name, 'trainer', coalesce(u.raw_user_meta_data->>'name', 'Your trainer'))) from lesson_access x join lesson_athletes a on a.id = x.athlete_id join auth.users u on u.id = a.trainer where x.user_id = auth.uid()), '[]'::jsonb))
+$$;
+
+-- ---------- version 33: verified badges for a team's staff, and the drills a coach picks for their players ----------
+-- Each coach on a team, with how they were checked: verified by FloorCall (coach_verify approved), an admin, or an
+-- assistant the head coach approved. Only people on the team can ask.
+create or replace function public.team_badges(t text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when not exists (select 1 from members where team_id = t and user_id = auth.uid() and status = 'active') then '[]'::jsonb else
+    coalesce((select jsonb_agg(jsonb_build_object('user_id', m.user_id, 'role', m.role,
+      'badge', case when exists (select 1 from admins a where a.user_id = m.user_id) then 'admin'
+                    when exists (select 1 from coach_verify v where v.user_id = m.user_id and v.status = 'approved') then 'verified'
+                    when m.role = 'coach' and m.status = 'active' then 'assistant'
+                    when m.role = 'owner' then 'not' else null end))
+      from members m where m.team_id = t and m.role <> 'viewer'), '[]'::jsonb) end
+$$;
+
+-- Academy drills a team's coaches pick for their players ("from your coach"). Once billing is on, a player whose
+-- team has a plan sees these; a player with their own Player plan sees every drill.
+create table if not exists public.team_drill_picks (
+  team_id text not null references public.teams_cloud(id) on delete cascade,
+  drill_id text not null, note text, picked_by uuid references auth.users(id) on delete set null,
+  at timestamptz not null default now(), primary key (team_id, drill_id)
+);
+alter table public.team_drill_picks enable row level security;
+revoke all on public.team_drill_picks from anon, authenticated;
+create or replace function public.team_pick_drill(t text, drill text, pick boolean, note text default null) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from members where team_id = t and user_id = auth.uid() and role in ('owner', 'coach') and status = 'active') then raise exception 'Only the team''s coaches pick drills.'; end if;
+  if length(coalesce(drill, '')) not between 1 and 80 then raise exception 'Unknown drill.'; end if;
+  if pick then
+    if (select count(*) from team_drill_picks where team_id = t) >= 300 then raise exception 'That''s a lot of drills: unpick some first.'; end if;
+    insert into team_drill_picks (team_id, drill_id, note, picked_by) values (t, drill, left(note, 300), auth.uid())
+    on conflict (team_id, drill_id) do update set note = excluded.note, picked_by = excluded.picked_by, at = now();
+  else delete from team_drill_picks where team_id = t and drill_id = drill; end if;
+end $$;
+create or replace function public.team_drill_list(t text) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select case when not exists (select 1 from members where team_id = t and user_id = auth.uid() and status = 'active') then '[]'::jsonb else
+    coalesce((select jsonb_agg(jsonb_build_object('drill', drill_id, 'note', note, 'at', at) order by at desc) from team_drill_picks where team_id = t), '[]'::jsonb) end
+$$;
+-- Everything picked for the signed-in player across their teams (Academy's "From your coach").
+create or replace function public.my_drill_picks() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_agg(jsonb_build_object('team', tc.name, 'drill', p.drill_id, 'note', p.note, 'at', p.at) order by p.at desc)
+    from team_drill_picks p join members m on m.team_id = p.team_id and m.user_id = auth.uid() and m.status = 'active' join teams_cloud tc on tc.id = p.team_id), '[]'::jsonb)
 $$;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------

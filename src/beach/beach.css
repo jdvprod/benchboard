@@ -1,4 +1,4 @@
-/* Floorcall Beach. Same palette as the rest of Floorcall; the only extra color is sand, used for the court. */
+/* FloorCall Beach. Same palette as the rest of FloorCall; the only extra color is sand, used for the court. */
 body{padding-left:0}
 .bv{min-height:100vh;display:flex;flex-direction:column}
 .bv-top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 20px;background:var(--bar);color:var(--bar-ink)}

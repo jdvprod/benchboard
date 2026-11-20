@@ -1,4 +1,4 @@
-/** Floorcall Academy: each volleyball skill, for players learning it and coaches teaching it. Its own site.
+/** FloorCall Academy: each volleyball skill, for players learning it and coaches teaching it. Its own site.
  *   #/                     the skills (in the last view chosen)
  *   #/players, #/coaches   the skills, for players or for coaches
  *   #/players/serving      one skill; links can be sent to a team
@@ -24,7 +24,7 @@ const roleOf = (seg?: string): Who | null => (seg === "players" ? "player" : seg
 /** "I can dig a down ball" → "Can dig a down ball", for the coach's progression list. */
 const coachLine = (t: string) => { const x = t.replace(/^I can /, "can ").replace(/^I'm /, "is ").replace(/^I /, "").replace(/^My /, "their "); return x[0].toUpperCase() + x.slice(1); };
 const seg = (w: Who) => (w === "player" ? "players" : "coaches");
-/** A drill, packed into a link that adds it to the coach's drill library in the Floorcall app. */
+/** A drill, packed into a link that adds it to the coach's drill library in the FloorCall app. */
 export const drillLink = (d: Drill, s: Skill) => {
   const json = JSON.stringify({ n: d.name, c: s.category, m: d.minutes, d: [d.needs + ".", ...d.how, "Coaching points: " + d.points.join(" ")].join(" "), src: "academy", ...(d.for ? { f: d.for } : {}) });
   const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(json))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -41,19 +41,19 @@ function App() {
   const id = roleOf(route[0]) ? route[1] : route[0];
   const sk = id ? skill(id) : undefined;
   useEffect(() => { const f = () => { setRoute(parse()); scrollTo(0, 0); }; addEventListener("hashchange", f); return () => removeEventListener("hashchange", f); }, []);
-  useEffect(() => { write("fc-academy-role", who); document.title = (sk ? sk.name + " · " : "") + "Floorcall Academy"; }, [who, sk]);
+  useEffect(() => { write("fc-academy-role", who); document.title = (sk ? sk.name + " · " : "") + "FloorCall Academy"; }, [who, sk]);
   const toggle = (k: string) => { const next = done.includes(k) ? done.filter((x) => x !== k) : [...done, k]; setDone(next); write("fc-academy-done", next); };
   const switchTo = (w: Who) => { location.hash = "#/" + seg(w) + (sk ? "/" + sk.id : ""); };
   return <div className="ac">
     <header className="ac-top">
-      <a className="ac-brand" href={"#/" + seg(who)}><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Academy</span></a>
+      <a className="ac-brand" href={"#/" + seg(who)}><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Academy</span></a>
       {coach && <div className="ac-role" role="group" aria-label="Show this for">
         <button aria-pressed={who === "player"} onClick={() => switchTo("player")}>For players</button>
         <button aria-pressed={who === "coach"} onClick={() => switchTo("coach")}>For coaches</button>
       </div>}
       <SiteSwitch here="academy" />
     </header>
-    <main className="ac-main"><SiteGate name="Floorcall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
+    <main className="ac-main"><SiteGate name="FloorCall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
       {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
     <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("academy")}>Help</a></footer>
@@ -70,7 +70,7 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
       <h1>{who === "player" ? "Get better at volleyball, one skill at a time." : "Teach every skill the same way, every season."}</h1>
       <p>{who === "player"
         ? "What good looks like for each skill, the mistakes that cost points and how to fix them, drills you can do on your own, and a checklist to see how far you've come."
-        : "The key points to teach, what to watch for, the mistakes and their fixes, team concepts, and drills you can drop straight into a practice plan in Floorcall."}</p>
+        : "The key points to teach, what to watch for, the mistakes and their fixes, team concepts, and drills you can drop straight into a practice plan in FloorCall."}</p>
       {!coach && <CodeBox site="academy" />}
     </section>
     <ol className="ac-skills">{SKILLS.map((s) => {
@@ -122,7 +122,7 @@ function SkillPage({ s, who, done, toggle }: { s: Skill; who: Who; done: string[
           {s.concepts.map((c) => <div key={c.title} className="ac-concept"><h3>{c.title}</h3><p>{c.text}</p>{c.points && <ul>{c.points.map((p) => <li key={p}>{p}</li>)}</ul>}</div>)}</section>}
         <section id="ac-drills" className="ac-sec"><h2>{who === "player" ? "Drills on your own" : "Drills for practice"}</h2>
           {tagged && <div className="ac-for" role="group" aria-label="Drills for">{([["", "All drills"], ["girls", "Girls"], ["boys", "Boys"]] as const).map(([k, l]) => <button key={k} aria-pressed={forWho === k} onClick={() => { setFor(k); write("fc-academy-for", k); }}>{l}</button>)}</div>}
-          {who === "coach" && <p className="ac-note">"Add to my practice" opens Floorcall and puts the drill in your drill library, ready for any practice plan.</p>}
+          {who === "coach" && <p className="ac-note">"Add to my practice" opens FloorCall and puts the drill in your drill library, ready for any practice plan.</p>}
           <ul className="ac-drills">{drills.map((d) => <DrillRow key={d.id} d={d} s={s} who={who} />)}</ul></section>
         {who === "player" && <section id="ac-check" className="ac-sec"><h2>Check yourself</h2>
           <p className="ac-note">Check off what you can do. It's saved on this device. {n ? `${n} of ${all.length} so far.` : ""}</p>

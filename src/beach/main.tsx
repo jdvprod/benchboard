@@ -1,4 +1,4 @@
-/** Floorcall Beach: score and stat a beach volleyball match, two players a side. Its own site, beside the indoor app.
+/** FloorCall Beach: score and stat a beach volleyball match, two players a side. Its own site, beside the indoor app.
  *   #/         your matches, start a new one
  *   #/m/ID     the match: scoreboard, sand court, one-tap stats, box score
  * Matches are kept on this device. */
@@ -30,11 +30,11 @@ function App() {
   const m = route[0] === "m" ? list.find((x) => x.id === route[1]) : null;
   const shared = route[0] === "v" ? unpack(route[1] || "") : null;
   return <div className="bv">
-    <header className="bv-top"><a className="bv-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Beach</span></a><SiteSwitch here="beach" /></header>
+    <header className="bv-top"><a className="bv-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Beach</span></a><SiteSwitch here="beach" /></header>
     <main className="bv-main">
       {route[0] === "live" ? <Watch code={route[1] || ""} render={(lm, fresh) => <Match m={lm} onChange={() => {}} readOnly live={fresh ? "on" : "stale"} />} />
         : route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)
-        : <SiteGate name="Floorcall Beach" kind="athlete" what="Score and stat beach doubles from your phone: side-outs, aces, kills and digs for both pairs, with a live link anyone can follow."
+        : <SiteGate name="FloorCall Beach" kind="athlete" what="Score and stat beach doubles from your phone: side-outs, aces, kills and digs for both pairs, with a live link anyone can follow."
             points={["One-tap scoring with switch-side and timeout reminders", "Stats for all four players, and a box score after", "A live link for family and fans, no account needed to watch"]}>
           {m ? <Match m={m} onChange={(n) => save(list.map((x) => (x.id === n.id ? n : x)))} />
           : <Home list={list} onNew={(n) => { save([n, ...list]); location.hash = "#/m/" + n.id; }} onDelete={(id) => save(list.filter((x) => x.id !== id))} />}</SiteGate>}
@@ -54,7 +54,7 @@ function Home({ list, onNew, onDelete }: { list: BeachMatch[]; onNew: (m: BeachM
   return <>
     <section className="bv-hero">
       <h1>Beach volleyball, scored and statted in one tap.</h1>
-      <p>Two players a side. Floorcall Beach keeps the score, tells you who serves next and when to switch sides, and builds a box score for each player as you go.</p>
+      <p>Two players a side. FloorCall Beach keeps the score, tells you who serves next and when to switch sides, and builds a box score for each player as you go.</p>
       <CodeBox site="beach" />
     </section>
     <form className="card bv-new" onSubmit={start}>
@@ -164,7 +164,7 @@ function Match({ m, onChange, readOnly = false, live }: { m: BeachMatch; onChang
       </div>)}
     </section>}
 
-    {readOnly ? <section className="bv-bar">{live ? <span className={"bv-livetag" + (live === "stale" || S.over ? " off" : "")} role="status">{S.over ? "Final" : live === "stale" ? "Reconnecting…" : "Live"}</span> : null}<span className="muted small">{live ? "Updates as the scorer enters points" : "Shared from Floorcall Beach"} · {day(m.at)}</span><span className="bv-gap" /><a className="btn primary" href="#/">Score your own match</a></section> : <section className="bv-bar">
+    {readOnly ? <section className="bv-bar">{live ? <span className={"bv-livetag" + (live === "stale" || S.over ? " off" : "")} role="status">{S.over ? "Final" : live === "stale" ? "Reconnecting…" : "Live"}</span> : null}<span className="muted small">{live ? "Updates as the scorer enters points" : "Shared from FloorCall Beach"} · {day(m.at)}</span><span className="bv-gap" /><a className="btn primary" href="#/">Score your own match</a></section> : <section className="bv-bar">
       {!S.over && <><button className="btn" onClick={() => add({ t: "pt", w: "us" })}>+1 {m.us}</button><button className="btn" onClick={() => add({ t: "pt", w: "them" })}>+1 {m.them}</button>
         <button className="btn" onClick={() => add({ t: "to", w: "us" })} disabled={S.timeouts.us >= 1}>Timeout {S.timeouts.us}/1</button>
         <button className="btn" onClick={() => add({ t: "to", w: "them" })} disabled={S.timeouts.them >= 1}>Their timeout {S.timeouts.them}/1</button></>}

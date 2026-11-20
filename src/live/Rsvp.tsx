@@ -1,4 +1,4 @@
-/** Availability on Floorcall Live: a signed-in follower tells the coaches whether they can make a scheduled match.
+/** Availability on FloorCall Live: a signed-in follower tells the coaches whether they can make a scheduled match.
  * Everyone signed in sees the counts and their own answer; names go to the team's coaches only. */
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../cloud/client";

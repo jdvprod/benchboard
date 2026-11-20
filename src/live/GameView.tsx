@@ -1,4 +1,4 @@
-/** One game on Floorcall Live: scoreboard, then Gamecast · Box score · Play-by-play · Team stats. */
+/** One game on FloorCall Live: scoreboard, then Gamecast · Box score · Play-by-play · Team stats. */
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { useState } from "react";
 import { aggregate, LogEntry, momentum, serverOf, Stat } from "../sports/volleyball/engine";

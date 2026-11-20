@@ -54,7 +54,7 @@ function FilmHome() {
   return <div className="page film-home">
     <header className="fr-hero">
       <h1>Film Room</h1>
-      <p>Stat a whole game from its video. Floorcall finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
+      <p>Stat a whole game from its video. FloorCall finds every rally from the referee's whistle, skips the dead time, and turns every stat into a clip you can pull by asking: “all solo blocks”, “kills to area 1”, “Maya's digs in set 2”.</p>
     </header>
     <SeasonFind />
     <SeasonBest />
@@ -343,7 +343,7 @@ function RallyList({ m, R, T, rallies, now, onSeek, onAdded }: { m: Match; R: Re
   const moments = !rallies.length ? m.moments || [] : [];
   const list = rallies.length ? rallies : moments, word = rallies.length ? "Rally" : "Moment", many = rallies.length ? "rallies" : "moments";
   const rated = list.some((r) => typeof r.h === "number");
-  if (!list.length) return <div className="stack"><p className="empty">No rallies found yet. Tap “Find rallies from the whistle” under the video: Floorcall listens for the referee's whistle, marks every rally, ranks them by how the crowd reacted and skips the dead time between them.</p>
+  if (!list.length) return <div className="stack"><p className="empty">No rallies found yet. Tap “Find rallies from the whistle” under the video: FloorCall listens for the referee's whistle, marks every rally, ranks them by how the crowd reacted and skips the dead time between them.</p>
     {plays.length > 0 && <p className="small muted">{plural(plays.length, "play")} statted so far.</p>}</div>;
   const check = rallies.length ? rallyCheck(rallies, plays.map((p) => ({ t: p.t, point: !!p.l.w }))) : { scored: [], missing: [] as number[] };
   const best = rated ? bestOf(list, Math.min(n, list.length)) : [];

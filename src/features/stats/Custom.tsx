@@ -93,7 +93,7 @@ function printTable(title: string, cols: StatDef[], rows: { label: string; sub?:
 body{font:13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;color:#000;margin:24px}h1{font-size:20px;margin:0 0 4px}p{margin:0 0 14px;color:#555}
 table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #ccc;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}th{font-size:11px;text-transform:none;border-bottom:2px solid #000}
 th:first-child,td:first-child{text-align:left}tfoot td{font-weight:700;border-top:2px solid #000}small{color:#666}.k{margin-top:12px;font-size:11px;color:#555}@page{margin:12mm}</style></head><body>
-<h1>${esc(title)}</h1><p>Floorcall, printed ${new Date().toLocaleDateString()}</p><table><thead><tr><th></th>${cols.map((d) => `<th>${esc(d.short)}</th>`).join("")}</tr></thead>
+<h1>${esc(title)}</h1><p>FloorCall, printed ${new Date().toLocaleDateString()}</p><table><thead><tr><th></th>${cols.map((d) => `<th>${esc(d.short)}</th>`).join("")}</tr></thead>
 <tbody>${rows.filter((r) => !r.total).map((r) => `<tr><td>${esc(r.label)}${r.sub ? ` <small>${esc(r.sub)}</small>` : ""}</td>${cols.map((d) => `<td>${esc(fmtStat(d, d.get(r.x)))}</td>`).join("")}</tr>`).join("")}</tbody>
 <tfoot>${rows.filter((r) => r.total).map((r) => `<tr><td>${esc(r.label)}</td>${cols.map((d) => `<td>${esc(fmtStat(d, d.get(r.x)))}</td>`).join("")}</tr>`).join("")}</tfoot></table>
 <p class="k">${cols.map((d) => `${esc(d.short)} = ${esc(d.label)}`).join(". ")}.</p></body></html>`;

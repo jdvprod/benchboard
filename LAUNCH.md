@@ -1,4 +1,4 @@
-# Launching Floorcall
+# Launching FloorCall
 
 Do these in order. Each step says how to know it worked. About an hour the first time.
 
@@ -16,11 +16,11 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 ## 1. Supabase (the database and accounts)
 
 1. **SQL Editor → New query**: paste all of `supabase/schema.sql` → **Run**. Safe to run again any time. This is version 29: it also makes the `media` storage for photos and logos, the `film` storage for team film sessions, crash reports, the admin console, and the account and film-session functions.
-   Since version 18 it also turns on: team announcements (18), availability, "Going / Maybe / Can't go" (19), college messages to coaches, still switched off in the app (20), beach live links (21), the shared team playbook (22), volunteer jobs (23), availability for a named player (24) upcoming practices on the team page (25) tryouts shared with evaluators (26) practice plans shown to the team (27) and a security tightening (28): people without an account can only open the public pages, storage buckets can no longer be listed by outsiders, a network that tries 20 wrong share codes in 10 minutes has to wait, and deleting an account also clears its answers, sign-ups, tryouts and subscriptions. Version 29 keeps player fees in their own table that only a team's owner and coaches can read (view-only members can't). Version 30 adds coach verification: a coach must be verified by a Floorcall admin (Admin console → Coach verification) before their team can sync, coaches who join with a coach code wait for the team owner's approval, and view-only members (players, families) no longer receive scouting, drills, practice plans or boards. Coaches who already own a synced team are verified automatically. Version 31 adds Floorcall Lessons: trainers' athletes, sessions, reps and paid status, athlete and parent access by code, and clinic sign-ups. Version 32 adds the contact form's inbox (Admin console → Messages) and one code box that takes a team code or a Lessons code. Make yourself an admin once: `insert into public.admins select id from auth.users where email = 'YOUR EMAIL';` Until it is run, those features stay hidden or say they can't connect.
+   Since version 18 it also turns on: team announcements (18), availability, "Going / Maybe / Can't go" (19), college messages to coaches, still switched off in the app (20), beach live links (21), the shared team playbook (22), volunteer jobs (23), availability for a named player (24) upcoming practices on the team page (25) tryouts shared with evaluators (26) practice plans shown to the team (27) and a security tightening (28): people without an account can only open the public pages, storage buckets can no longer be listed by outsiders, a network that tries 20 wrong share codes in 10 minutes has to wait, and deleting an account also clears its answers, sign-ups, tryouts and subscriptions. Version 29 keeps player fees in their own table that only a team's owner and coaches can read (view-only members can't). Version 30 adds coach verification: a coach must be verified by a FloorCall admin (Admin console → Coach verification) before their team can sync, coaches who join with a coach code wait for the team owner's approval, and view-only members (players, families) no longer receive scouting, drills, practice plans or boards. Coaches who already own a synced team are verified automatically. Version 31 adds FloorCall Lessons: trainers' athletes, sessions, reps and paid status, athlete and parent access by code, and clinic sign-ups. Version 32 adds the contact form's inbox (Admin console → Messages) and one code box that takes a team code or a Lessons code. Version 33 adds verified badges on a team's staff list and the Academy drills coaches pick for their players. Make yourself an admin once: `insert into public.admins select id from auth.users where email = 'YOUR EMAIL';` Until it is run, those features stay hidden or say they can't connect.
 2. **Authentication → URL Configuration**: Site URL = `https://app.getfloorcall.com`. Redirect URLs: add `https://app.getfloorcall.com/**`, `https://live.getfloorcall.com/**`, `https://recruit.getfloorcall.com/**` and `https://beach.getfloorcall.com/**`.
 3. **Emails (required before launch).** Sign-up confirmation, password resets and the new-device sign-in code all go by email, and Supabase's built-in email only reaches your own team, a couple an hour.
    - Make a free **Resend** account (resend.com) → **Domains → Add domain** `getfloorcall.com` → add the DNS records it shows in Cloudflare (DNS → Records) → wait for **Verified**. Then **API Keys → Create** (sending access).
-   - Supabase **Authentication → Emails → SMTP Settings** → Enable custom SMTP: host `smtp.resend.com`, port `465`, username `resend`, password = that API key, sender `no-reply@getfloorcall.com`, name `Floorcall`.
+   - Supabase **Authentication → Emails → SMTP Settings** → Enable custom SMTP: host `smtp.resend.com`, port `465`, username `resend`, password = that API key, sender `no-reply@getfloorcall.com`, name `FloorCall`.
    - **Authentication → Emails → Templates**: paste each file from `supabase/email-templates/` (Confirm signup, Magic Link, Reset password, Change email). The Magic Link one carries the 6-digit code for new devices.
    - **Authentication → Sign In / Providers → Email**: turn **Confirm email** on.
    - **Authentication → Rate Limits**: raise "emails sent per hour" to about 100.
@@ -38,8 +38,8 @@ Then run `npm run launch-check`. Everything should say `ok` (the `site.url` line
 
 1. **Workers & Pages → Create → Import a repository** → `jdvprod/benchboard`, project name `floorcall`.
 2. Build command `npm run build`, deploy command `npx wrangler deploy`, production branch `live`.
-3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all eight: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`, `beach.getfloorcall.com`, `academy.getfloorcall.com`, `lessons.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, Floorcall Live, Recruit, Beach, Academy and Lessons.
-4. Releases: `git push origin main:live` (the app, Floorcall Live and Floorcall Recruit all go out together).
+3. Under the Worker's **Settings → Domains & Routes → Add → Custom domain**, add all eight: `getfloorcall.com`, `www.getfloorcall.com`, `app.getfloorcall.com`, `live.getfloorcall.com`, `recruit.getfloorcall.com`, `beach.getfloorcall.com`, `academy.getfloorcall.com`, `lessons.getfloorcall.com`. `worker/index.js` sends each address to its site: the product page, the coaching app, FloorCall Live, Recruit, Beach, Academy and Lessons.
+4. Releases: `git push origin main:live` (the app, FloorCall Live and FloorCall Recruit all go out together).
 
 Worked when: getfloorcall.com shows the product page, app.getfloorcall.com opens the app, live.getfloorcall.com shows "Follow the game, point by point", and a made-up address shows "That page isn't here."
 
@@ -74,13 +74,13 @@ Also: Settings → **Admin** shows your test team, the uploads and no problems. 
 
 MaxPreps has no API for stat apps; every partner gives the coach a `.txt` file to load at Team Admin → Schedule → pencil on the game → Enter Stats → Import Stats.
 
-1. Register Floorcall as a stat supplier: support.maxpreps.com → "Stat Import Partners" → start the registration. A stat supplier link then shows under your MaxPreps account; fill it in. MaxPreps gives you a **supplier ID** and the **volleyball column list**.
+1. Register FloorCall as a stat supplier: support.maxpreps.com → "Stat Import Partners" → start the registration. A stat supplier link then shows under your MaxPreps account; fill it in. MaxPreps gives you a **supplier ID** and the **volleyball column list**.
 2. Put both in `package.json` under `"maxpreps"`: `supplierId`, and `fields` (the column names joined with `|`, in MaxPreps' order; the default there is the usual volleyball list, check it against what they send).
 3. Release. Stats → one match now shows **MaxPreps import file** next to the MaxPreps sheet.
 
 ## Beach site
 
-Floorcall Beach is built with everything else and lives at `beach.getfloorcall.com`. One step in Cloudflare:
+FloorCall Beach is built with everything else and lives at `beach.getfloorcall.com`. One step in Cloudflare:
 Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `beach.getfloorcall.com`.
 Do this before sharing the link: `getfloorcall.com/beach/` redirects to the beach address, so it does not work until the domain is added.
 
@@ -88,17 +88,17 @@ Beach matches are saved on the device. A scorer with a free account can tap Go l
 
 ## Academy site
 
-Floorcall Academy (hitting, setting, serving, serve receive, defense; a version for players and one for coaches) is built with everything else and lives at `academy.getfloorcall.com`. One step in Cloudflare:
+FloorCall Academy (hitting, setting, serving, serve receive, defense; a version for players and one for coaches) is built with everything else and lives at `academy.getfloorcall.com`. One step in Cloudflare:
 Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `academy.getfloorcall.com`.
 It needs no database and no account. Players' checklists stay on their device. A coach's "Add to my practice" opens the coaching app and puts the drill in that team's drill library. The words and drills are in `src/academy/content.ts`.
 
 ## Lessons site
 
-Floorcall Lessons (private lessons, small-group training and clinics) is built with everything else and lives at `lessons.getfloorcall.com`. Two steps:
+FloorCall Lessons (private lessons, small-group training and clinics) is built with everything else and lives at `lessons.getfloorcall.com`. Two steps:
 1. Cloudflare: Workers → floorcall → Settings → Domains & Routes → Add → Custom domain → `lessons.getfloorcall.com`.
 2. Supabase: run `supabase/schema.sql` again (database version 31 or later). It adds the lesson tables and functions.
 
-Trainers must be verified coaches (Admin console → Coach verification) before they add athletes or schedule. Each athlete has a six-letter code; an athlete or parent joins with it and sees only that athlete's sessions, the notes the trainer shares, and their numbers, never other athletes in a group or clinic. A clinic can have a public sign-up page (anyone with the link, no account); each sign-up waits for the trainer to accept it. Payments are tracked only (paid or not); Floorcall doesn't collect lesson money. The plan is in `docs/LESSONS-PLAN.md`.
+Trainers must be verified coaches (Admin console → Coach verification) before they add athletes or schedule. Each athlete has a six-letter code; an athlete or parent joins with it and sees only that athlete's sessions, the notes the trainer shares, and their numbers, never other athletes in a group or clinic. A clinic can have a public sign-up page (anyone with the link, no account); each sign-up waits for the trainer to accept it. Payments are tracked only (paid or not); FloorCall doesn't collect lesson money. The plan is in `docs/LESSONS-PLAN.md`.
 
 ## App stores
 

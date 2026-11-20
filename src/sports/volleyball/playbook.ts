@@ -3,7 +3,7 @@
  * Spots are in rotation order: right back, right front, middle front, left front, left back, middle back. */
 export type PlayKind = "defense" | "block" | "receive" | "attack" | "mine";
 export interface Spot { r: string; name: string; x: number; y: number; to?: [number, number] | null; via?: [number, number] | null; lib?: boolean }
-export interface Play { id: string; kind: PlayKind; name: string; note: string; spots: Spot[]; ball?: [number, number, number] | null; /** shared with the team on Floorcall Live */ shared?: boolean }
+export interface Play { id: string; kind: PlayKind; name: string; note: string; spots: Spot[]; ball?: [number, number, number] | null; /** shared with the team on FloorCall Live */ shared?: boolean }
 
 /** Plays arriving from the server are checked before they are drawn: six spots, real numbers, short text. */
 export function cleanPlays(raw: unknown): Play[] {

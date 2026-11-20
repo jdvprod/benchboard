@@ -9,7 +9,8 @@ import { ClipPlayer } from "../../ui/ClipPlayer";
 import { go } from "../../app/router";
 import { Clip, clock, LOCAL, videoKind } from "../../film/clips";
 import { localVideo, setLocalVideo } from "../../film/localVideos";
-import { SCOUT_CODES, scoutLine, scoutLong, scoutNumbers, scoutTotals } from "../../film/scout";
+import { attacks, parseScoutQuery, SCOUT_CODES, scoutHitting, scoutLine, scoutLong, scoutNumbers, scoutTotals } from "../../film/scout";
+import { fmtHit } from "../../sports/volleyball/metrics";
 import { resolve } from "./words";
 
 const key = (f: OppFilm) => "scout:" + f.id;
@@ -106,7 +107,7 @@ export function ScoutWork({ oppId, filmId }: { oppId: string; filmId: string }) 
       <div className="sf-video">
         {src ? <video ref={vid} src={src} controls playsInline preload="metadata" />
           : <label className="fr-drop"><input type="file" accept="video/*" onChange={(e) => { const x = e.target.files?.[0]; if (x) setSrc(setLocalVideo(key(f), x)); }} aria-label="Pick the video again" /><b>Pick {f.video.startsWith(LOCAL) ? f.video.slice(LOCAL.length) : "the video"} again</b><span className="small muted">Videos stay on the device they were picked on.</span></label>}
-        <p className="keys">Keys: type a number, then <b>K</b> kill · <b>E</b> hit error · <b>A</b> ace · <b>S</b> serve error · <b>B</b> block · <b>D</b> dig · <b>X</b> error. Space plays or pauses, ←/→ skip 5 s, Backspace undoes.</p>
+        <p className="keys">Keys: type a number, then <b>K</b> kill · <b>T</b> attack in play · <b>E</b> hit error · <b>A</b> ace · <b>S</b> serve error · <b>B</b> block · <b>D</b> dig · <b>X</b> error. Space plays or pauses, ←/→ skip 5 s, Backspace undoes.</p>
       </div>
       <div className="sf-pad">
         <div className="sf-num">
@@ -121,6 +122,7 @@ export function ScoutWork({ oppId, filmId }: { oppId: string; filmId: string }) 
         {f.evs.length > 0 && <ul className="log sf-recent">{f.evs.slice(-6).reverse().map((e) => <li key={e.id}><button className="sf-t num" onClick={() => seek(Math.max(0, e.vt - 5))}>{clock(e.vt)}</button><span>{e.n ? "#" + e.n + " " : ""}{scoutLong(e.t)}</span><button className="btn sm ghost" aria-label="Delete" onClick={() => save(f.evs.filter((x) => x.id !== e.id))}>×</button></li>)}</ul>}
       </div>
     </div>
+    <ScoutAsk films={[{ f, key: key(f) }]} onShow={show} />
     {watch && <Card title={watch.title} actions={<button className="btn sm" onClick={() => setWatch(null)}>Close</button>}><ClipPlayer key={watch.title} clips={watch.clips} resolve={resolve} title={watch.title} /></Card>}
     <Card title="Their players in this game">{totals.length ? <ScoutTable lines={totals} onWatch={(n) => show(`#${n}'s plays`, clipsFor((e) => (e.n || "?") === n))} roster={o.roster} />
       : <p className="empty">Nothing yet. Pick a number and tap what happened.</p>}
@@ -131,9 +133,9 @@ export function ScoutWork({ oppId, filmId }: { oppId: string; filmId: string }) 
 
 export function ScoutTable({ lines, roster, onWatch }: { lines: ReturnType<typeof scoutTotals>; roster?: Opponent["roster"]; onWatch?: (n: string) => void }) {
   return <div className="tablewrap"><table className="sf-table">
-    <thead><tr><th>Player</th><th className="num">Kills</th><th className="num">Hit err</th><th className="num">Aces</th><th className="num">Serve err</th><th className="num">Blocks</th><th className="num">Digs</th><th className="num">Other err</th>{onWatch && <th />}</tr></thead>
+    <thead><tr><th>Player</th><th className="num">Kills</th><th className="num">Attacks</th><th className="num">Hit %</th><th className="num">Hit err</th><th className="num">Aces</th><th className="num">Serve err</th><th className="num">Blocks</th><th className="num">Digs</th><th className="num">Other err</th>{onWatch && <th />}</tr></thead>
     <tbody>{lines.map((x) => <tr key={x.n}><td><b>#{x.n}</b>{roster?.[x.n]?.name ? " " + roster[x.n].name : ""}{roster?.[x.n]?.pos ? <span className="muted"> {roster[x.n].pos}</span> : null}</td>
-      <td className="num">{x.K}</td><td className="num">{x.AE}</td><td className="num">{x.SA}</td><td className="num">{x.SE}</td><td className="num">{x.B}</td><td className="num">{x.D}</td><td className="num">{x.E}</td>
+      <td className="num">{x.K}</td><td className="num">{attacks(x)}</td><td className="num">{fmtHit(scoutHitting(x))}</td><td className="num">{x.AE}</td><td className="num">{x.SA}</td><td className="num">{x.SE}</td><td className="num">{x.B}</td><td className="num">{x.D}</td><td className="num">{x.E}</td>
       {onWatch && <td><button className="btn sm" onClick={() => onWatch(x.n)}>Watch</button></td>}</tr>)}</tbody>
   </table></div>;
 }
@@ -141,10 +143,33 @@ export function ScoutTable({ lines, roster, onWatch }: { lines: ReturnType<typeo
 /** Matchup page: what their film says, across every game of theirs you scouted. */
 export function ScoutSummary({ o }: { o: Opponent }) {
   const films = o.films || [];
+  const [watch, setWatch] = useState<{ title: string; clips: Clip[] } | null>(null);
   if (!films.some((f) => f.evs.length)) return null;
   const lines = scoutTotals(films);
-  return <Card title="From their film" actions={<button className="btn sm" onClick={() => go("film", scoutRoute(o, films[films.length - 1]))}>Open film</button>}>
+  return <><Card title="From their film" actions={<button className="btn sm" onClick={() => go("film", scoutRoute(o, films[films.length - 1]))}>Open film</button>}>
     <p className="small muted" style={{ marginBottom: 8 }}>{plural(films.length, "game")} of theirs scouted. Most dangerous first: {lines.slice(0, 3).map((x) => `#${x.n} (${scoutLine(x)})`).join("; ")}.</p>
     <ScoutTable lines={lines} roster={o.roster} />
+  </Card>
+    <ScoutAsk films={films.map((f) => ({ f, key: key(f) }))} onShow={(title, clips) => setWatch({ title, clips })} />
+    {watch && <Card title={watch.title} actions={<button className="btn sm" onClick={() => setWatch(null)}>Close</button>}><ClipPlayer key={watch.title} clips={watch.clips} resolve={resolve} title={watch.title} /></Card>}
+  </>;
+}
+
+/** "Every attack by #12", "their blocks", "#7 kills": clips from scouting film in plain words. */
+export function ScoutAsk({ films, onShow }: { films: { f: OppFilm; key: string }[]; onShow: (title: string, clips: Clip[]) => void }) {
+  const [text, setText] = useState("");
+  const ask = (t = text) => {
+    const q = parseScoutQuery(t);
+    const clips: Clip[] = films.flatMap(({ f, key: k }) => f.evs.filter((e) => (!q.codes || q.codes.includes(e.t)) && (!q.nums.length || q.nums.includes(e.n)))
+      .sort((a, b) => a.vt - b.vt).map((e) => ({ id: e.id, matchId: k, url: f.video, start: Math.max(0, e.vt - 6), end: e.vt + 2, label: `${e.n ? "#" + e.n + " " : ""}${scoutLong(e.t)}${films.length > 1 ? " · " + fmtDate(f.date) : ""}`, t: e.t, date: f.date } as Clip)));
+    if (!clips.length) { toast(`No clips for "${t}". Try "every attack by #12" or "their blocks".`); return; }
+    onShow(`${q.label} · ${plural(clips.length, "clip")}`, clips);
+  };
+  return <Card title="Ask for clips">
+    <form className="row" onSubmit={(e) => { e.preventDefault(); if (text.trim()) ask(); }}>
+      <input className="input" style={{ flex: 1, minWidth: 220 }} value={text} onChange={(e) => setText(e.target.value)} placeholder="“every attack by #12”, “their blocks”, “#7 kills”" aria-label="Ask for clips from their film" />
+      <button className="btn primary" disabled={!text.trim()}>Show clips</button>
+    </form>
+    <div className="row" style={{ marginTop: 8 }}>{["Every kill", "Every attack", "Blocks", "Aces", "Errors"].map((x) => <button key={x} className="btn sm ghost" onClick={() => ask(x)}>{x}</button>)}</div>
   </Card>;
 }

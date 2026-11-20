@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { isAdultLevel } from "../data/model";
 import { get, seasonsOf, team, toast } from "../data/store";
 import { Card, ConfirmButton, copyText, download } from "../ui/kit";
-import { cloudAvailable, CloudError, currentUser, signOut } from "./client";
+import { cloudAvailable, CloudError, currentUser, rpc, signOut } from "./client";
 import { CoachVerify, useCoachStatus } from "./CoachVerify";
+import { Badge, BadgeKind } from "./Badge";
 import { createInvite, decideMember, isLinked, joinedMsg, joinWithCode, linkTeam, Member, members, pendingCount, removeMember, roleOn, shareLive, shareSeason, status, syncNow, unlinkTeam, shareBoard } from "./sync";
 import { go } from "../app/router";
 import { QrButton } from "../ui/QrButton";
@@ -17,10 +18,10 @@ export function CloudCard() {
   const [seasonUrl, setSeasonUrl] = useState(""), [boardUrl, setBoardUrl] = useState("");
   const t = team()!, user = currentUser(), linked = isLinked(t.id);
   const [busy, setBusy] = useState(false), [err, setErr] = useState(""), [invite, setInvite] = useState<{ code: string; role: string } | null>(null);
-  const [joinCode, setJoinCode] = useState(""), [mem, setMem] = useState<Member[] | null>(null);
+  const [joinCode, setJoinCode] = useState(""), [mem, setMem] = useState<Member[] | null>(null), [badges, setBadges] = useState<Record<string, BadgeKind | null>>({});
   const [coach, setCoach] = useCoachStatus();
   // players and families don't see who else is on the team
-  useEffect(() => { setMem(null); setInvite(null); if (user && linked && roleOn(t.id) !== "viewer") members(t.id).then(setMem).catch(() => setMem(null)); }, [t.id, user?.id, linked]);
+  useEffect(() => { setMem(null); setInvite(null); if (user && linked && roleOn(t.id) !== "viewer") { members(t.id).then(setMem).catch(() => setMem(null)); rpc("team_badges", { t: t.id }).then((x: { user_id: string; badge: BadgeKind | null }[]) => setBadges(Object.fromEntries(x.map((y) => [y.user_id, y.badge])))).catch(() => {}); } }, [t.id, user?.id, linked]);
   const act = async (f: () => Promise<void>) => { setBusy(true); setErr(""); try { await f(); } catch (e) { setErr(errText(e)); } setBusy(false); };
 
   if (!cloudAvailable()) return <Card title="Cloud sync">
@@ -57,7 +58,7 @@ export function CloudCard() {
               <button className="btn sm primary" disabled={busy} onClick={() => act(async () => { await decideMember(t.id, m.user_id, true); toast("Approved"); setMem(await members(t.id)); })}>Approve</button>
               <button className="btn sm ghost" disabled={busy} onClick={() => act(async () => { await decideMember(t.id, m.user_id, false); setMem(await members(t.id)); })}>Turn down</button></li>)}</ul>
           </div>}
-          {mem ? <ul className="log">{mem.filter((m) => m.status !== "pending").map((m) => <li key={m.user_id} style={{ gridTemplateColumns: "1fr auto auto" }}><span>{m.email || "Coach"}{m.user_id === user.id ? " (you)" : ""}</span><span className="tag" style={{ marginLeft: 0 }}>{m.role === "viewer" ? "view-only" : m.role}</span>
+          {mem ? <ul className="log">{mem.filter((m) => m.status !== "pending").map((m) => <li key={m.user_id} style={{ gridTemplateColumns: "1fr auto auto" }}><span>{m.email || "Coach"}{m.user_id === user.id ? " (you)" : ""}{badges[m.user_id] && <> <Badge kind={badges[m.user_id]!} /></>}</span><span className="tag" style={{ marginLeft: 0 }}>{m.role === "viewer" ? "view-only" : m.role}</span>
             {m.user_id !== user.id && m.role !== "owner" ? <ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => act(async () => { await removeMember(t.id, m.user_id); setMem(await members(t.id)); })}>✕</ConfirmButton> : <span />}</li>)}</ul> : roleOn(t.id) === "viewer" ? null : <p className="small muted">Loading…</p>}
           {isOwnerOrCoach && <div className="row">
             <button className="btn sm" disabled={busy} onClick={() => act(async () => setInvite({ code: await createInvite(t.id, "coach"), role: "coach" }))}>Invite a coach</button>
@@ -67,17 +68,17 @@ export function CloudCard() {
             <div className="row" style={{ marginTop: 6 }}><b style={{ fontFamily: "var(--display)", fontSize: 22, letterSpacing: ".12em" }}>{invite.code}</b><button className="btn sm" onClick={() => copyText(link).then((ok) => toast(ok ? "Link copied" : link))}>Copy link</button></div>
             <div className="small muted" style={{ marginTop: 4 }}>{invite.role === "coach" ? "Coaches can track matches, edit the roster and plan practices. You approve each one here after they join." : "For players and families: they see stats, results and the schedule, never your scouting, drills or practice plans."}</div></div>}
           {isOwnerOrCoach && <>
-            <div className="label">Team page on Floorcall Live</div>
-            <p className="small muted" style={{ margin: 0 }}>A separate public site for families and fans: live scores during matches, results, schedule, box scores and every player's stats. Last names show as initials, and nobody can change anything. Families can open the link or type the code at Floorcall Live.</p>
+            <div className="label">Team page on FloorCall Live</div>
+            <p className="small muted" style={{ margin: 0 }}>A separate public site for families and fans: live scores during matches, results, schedule, box scores and every player's stats. Last names show as initials, and nobody can change anything. Families can open the link or type the code at FloorCall Live.</p>
             <div className="row"><button className="btn sm" disabled={busy || !t.activeSeasonId} onClick={() => act(async () => { const r = await shareSeason(t.id, t.activeSeasonId!); setSeasonUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Team page link copied. Share it with families." : "Team page: " + r.url); })}>Share team page</button>
-              {seasonUrl && <QrButton url={seasonUrl} title="Scan to follow the team on Floorcall Live" label="QR code" />}
+              {seasonUrl && <QrButton url={seasonUrl} title="Scan to follow the team on FloorCall Live" label="QR code" />}
               {seasonUrl && <span className="small">Code <b style={{ fontFamily: "var(--display)", letterSpacing: ".12em" }}>{seasonUrl.split("/").pop()}</b></span>}
               {seasonUrl && <a className="small" href={seasonUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{seasonUrl}</a>}</div>
             {seasonUrl && <div className="row"><span className="small muted">Get families following:</span>
               <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; download(`${t.name} - follow us live.html`.replace(/[^\w\- .]+/g, ""), flyerHtml(t, seasonUrl, se), "text/html"); toast("Flyer saved. Open it to print for the gym or the team table."); }}>Printable flyer</button>
               <button className="btn sm" onClick={async () => { const se = seasonsOf().find((x) => x.id === t.activeSeasonId)?.name; const b = await flyerImage(t, seasonUrl, se); if (!b) return; const name = `${t.name} - follow us live.png`.replace(/[^\w\- .]+/g, ""), file = new File([b], name, { type: "image/png" }), nav: any = navigator; if (nav.canShare?.({ files: [file] })) { try { await nav.share({ files: [file], title: name }); return; } catch { /* save instead */ } } download(name, b, "image/png"); toast("Flyer image saved. Post it in the team group chat."); }}>Flyer image</button></div>}
             {!isAdultLevel(t.level) && <>
-            <div className="label">Recruiting board on Floorcall Recruit</div>
+            <div className="label">Recruiting board on FloorCall Recruit</div>
             <p className="small muted" style={{ margin: 0 }}>One link for college coaches listing every player whose recruiting profile you've shared (only with the family's permission, from each player's page), with verified stats and highlight clips.</p>
             <div className="row"><button className="btn sm" disabled={busy} onClick={() => act(async () => { const r = await shareBoard(t.id); setBoardUrl(r.url); const ok = await copyText(r.url); toast(ok ? "Recruiting board link copied." : "Recruiting board: " + r.url); })}>Share recruiting board</button>
               {boardUrl && <a className="small" href={boardUrl} target="_blank" rel="noopener" style={{ maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{boardUrl}</a>}</div>
@@ -104,7 +105,7 @@ export function JoinPage({ code }: { code: string }) {
     <Card title="Join a team">
       {!cloudAvailable() ? <p>Cloud sync isn't set up in this version of the app.</p>
         : !user ? <div className="stack"><p className="small">Sign in or create an account first. Then you'll join the team.</p><div className="row"><button className="btn primary" onClick={() => { try { sessionStorage.setItem("bs-join", code); } catch { /* ignore */ } go("account"); }}>Sign in</button></div></div>
-          : <div className="stack"><p>You've been invited to a team on Floorcall with the code <b className="num" style={{ letterSpacing: ".08em" }}>{code}</b>.</p>
+          : <div className="stack"><p>You've been invited to a team on FloorCall with the code <b className="num" style={{ letterSpacing: ".08em" }}>{code}</b>.</p>
             <p className="small muted">Players and families see the team's results, stats and announcements. Coaches who join are approved by the head coach first. You're signed in as {user.email}.</p><div className="row"><button className="btn primary" disabled={state === "busy"} onClick={join}>{state === "busy" ? "Joining…" : "Join team"}</button></div></div>}
       {err && <p className="hint warn" style={{ marginTop: 8 }}>{err}</p>}
     </Card>

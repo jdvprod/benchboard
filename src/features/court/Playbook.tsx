@@ -35,7 +35,7 @@ export function Playbook() {
     else { const id = uid("pl"); setMine([...mine, { ...copy(play), id, kind: "mine" as PlayKind, name: LIBRARY.some((l) => l.name === name) ? name + " (mine)" : name }]); setSrc(id); }
     setDirty(false);
   };
-  // sharing: the plays marked shared are what players see on Floorcall Live (signed in, by the team page)
+  // sharing: the plays marked shared are what players see on FloorCall Live (signed in, by the team page)
   const role = roleOn(t.id), canShare = cloudAvailable() && !!currentUser() && isLinked(t.id) && (role === "owner" || role === "coach");
   const publish = (list: Play[]) => { if (canShare) rpc("plays_publish", { t: t.id, d: list.filter((p) => p.shared).map((p) => ({ id: p.id, name: p.name, note: p.note, spots: p.spots, ball: p.ball || null })) }).catch((e) => toast(e?.message || "Couldn't update the team's plays. Check your connection.")); };
   const setMine = (list: Play[]) => { patch("teams", t.id, { plays: list }); if (list.some((p) => p.shared) || mine.some((p) => p.shared)) publish(list); };
@@ -67,7 +67,7 @@ export function Playbook() {
         <button className="btn" onClick={save} disabled={saved && !dirty}>{saved ? "Save changes" : "Save to my plays"}</button>
         {saved && <button className="btn danger" onClick={remove}>Delete</button>}
       </div>
-      {saved && (canShare ? <label className="pb-share"><input type="checkbox" checked={!!cur?.shared} onChange={(e) => share(e.target.checked)} /> Share with the team on Floorcall Live <span className="muted">(players and families who are signed in)</span></label>
+      {saved && (canShare ? <label className="pb-share"><input type="checkbox" checked={!!cur?.shared} onChange={(e) => share(e.target.checked)} /> Share with the team on FloorCall Live <span className="muted">(players and families who are signed in)</span></label>
         : <p className="keys pb-share">To share plays with your players, sign in and sync this team (Team → Account).</p>)}
       <textarea className="input pb-note" rows={2} value={play.note} placeholder="Notes for this play: who has tips, what to call, when to use it." onChange={(e) => edit((p) => { p.note = e.target.value; })} aria-label="Notes" />
       <p className="keys">Dashed arrows show where a player goes; Run it plays the movement. These are the common textbook shapes. Move anyone to match how your team plays it, then save your version.</p>

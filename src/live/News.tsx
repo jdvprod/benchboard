@@ -1,4 +1,4 @@
-/** Team announcements on Floorcall Live: signed-in followers read what the coach posted. */
+/** Team announcements on FloorCall Live: signed-in followers read what the coach posted. */
 import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../cloud/client";
 import { MiniAuth } from "../cloud/MiniAuth";

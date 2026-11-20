@@ -52,14 +52,14 @@ th{background:#f1f3f5;font-size:12px}th.g{background:#e3e8ed}td.l,th.l{text-alig
 <div class="wrap"><table><thead><tr><th class="l" rowspan="2">#</th><th class="l" rowspan="2">Player</th>${head1}</tr><tr>${head2}</tr></thead>
 <tbody>${rows.map((r) => `<tr><td class="l">${esc(r.num)}</td><td class="l">${esc(r.name)}</td>${CODES.map((c) => `<td>${r.v[c]}</td>`).join("")}</tr>`).join("")}</tbody>
 <tfoot><tr><td class="l" colspan="2">Team</td>${CODES.map((c) => `<td>${tot[c]}</td>`).join("")}</tr></tfoot></table></div>
-<p class="note">Type these into MaxPreps' stat entry for this match; the columns follow MaxPreps' volleyball categories. Good receptions are every pass rated 1 to 3; ball handling attempts are set attempts, assists and ball handling errors. Made with Floorcall.</p>
+<p class="note">Type these into MaxPreps' stat entry for this match; the columns follow MaxPreps' volleyball categories. Good receptions are every pass rated 1 to 3; ball handling attempts are set attempts, assists and ball handling errors. Made with FloorCall.</p>
 </main></body></html>`;
 }
 
 /**
  * MaxPreps import file. MaxPreps has no API for stat partners: every stat app hands the coach a .txt file to load at
  * Team Admin > Schedule > Enter Stats > Import Stats. The first line is the stat supplier's ID (MaxPreps issues it when
- * Floorcall registers as a stat supplier), the second names the columns, then one line per player by jersey number.
+ * FloorCall registers as a stat supplier), the second names the columns, then one line per player by jersey number.
  * The ID and column names live in package.json "maxpreps" so they can follow MaxPreps' spec without touching code.
  */
 declare const __MAXPREPS__: { supplierId?: string; fields?: string } | undefined;

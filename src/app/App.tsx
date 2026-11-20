@@ -38,11 +38,12 @@ const AdminPage = lazy(() => import("../features/admin/AdminPage").then((m) => (
 const TryoutsPage = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.TryoutsPage })));
 const JoinTryout = lazy(() => import("../features/tryouts/TryoutsPage").then((m) => ({ default: m.JoinTryout })));
 const TeamPage = lazy(() => import("../features/team/TeamPage").then((m) => ({ default: m.TeamPage })));
+const CalendarPage = lazy(() => import("../features/calendar/CalendarPage").then((m) => ({ default: m.CalendarPage })));
 const ClubPage = lazy(() => import("../features/club/ClubPage").then((m) => ({ default: m.ClubPage })));
 const Wait = () => <div className="page"><p className="empty" style={{ padding: 24 }}>Loading…</p></div>;
 
 const HOST_THEME = typeof document !== "undefined" ? document.documentElement.getAttribute("data-theme") : null;
-const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
+const NAV: [string, string, string?][] = [["home", "Home"], ["track", "Track"], ["lineup", "Lineup"], ["matchup", "Matchup"], ["practice", "Practice"], ["calendar", "Calendar"], ["stats", "Stats"], ["court", "Court"], ["team", "Team"], ["film", "Film", "wide-only"], ["live", "Live", "wide-only"]];
 
 
 export function App() {
@@ -50,7 +51,7 @@ export function App() {
   const route = useRoute(), t = team();
   useEffect(() => { applyTheme(t?.color || "#2A78AE", state.prefs.theme, state.prefs.size, HOST_THEME); }, [t?.color, state.prefs.theme, state.prefs.size]);
   useEffect(() => { document.body.classList.toggle("nav-mini", !!state.prefs.navMini); }, [state.prefs.navMini]);
-  // public pages moved to their own sites: Floorcall Live and Floorcall Recruit (old links keep working)
+  // public pages moved to their own sites: FloorCall Live and FloorCall Recruit (old links keep working)
   if ((route.page === "watch" || route.page === "season" || route.page === "recruit") && route.id) {
     location.replace(siteUrl(route.page === "recruit" ? "recruit" : "live", (route.page === "watch" ? "g/" : route.page === "season" ? "t/" : "p/") + route.id));
     return <Wait />;
@@ -91,6 +92,7 @@ export function App() {
   let body;
   switch (page) {
     case "club": body = <ClubPage />; break;
+    case "calendar": body = <CalendarPage />; break;
     case "tryouts": body = <TryoutsPage id={route.id} />; break;
     case "tryout-join": body = <JoinTryout code={route.id || ""} />; break;
     case "lineup": body = <LineupPage />; break;
@@ -115,7 +117,7 @@ export function App() {
   }
   return <>
     <nav className="nav" aria-label="Sections">
-      <div className="brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>Floorcall</b></div>
+      <div className="brand"><img className="brandmark" src="brand/mark-white.png" alt="" width="28" height="28" /><b>FloorCall</b></div>
       <div className="teamswitch"><TeamMenu compact={!!state.prefs.navMini} /></div>
       {NAV.filter(([k]) => !viewer || !COACH_ONLY.includes(k)).map(([k, l, cls]) => <a key={k} className={"tab " + (cls || "")} href={"#/" + k} title={state.prefs.navMini ? l : undefined} aria-current={page === k || (k === "stats" && page === "player") || (k === "lineup" && page === "formations") || (k === "matchup" && page === "tournament") ? "page" : undefined}><Icon name={k} /><span>{l}</span></a>)}
       <SitesMenu mini={!!state.prefs.navMini} />
@@ -124,9 +126,9 @@ export function App() {
       <button className="tab wide-only nav-fold" onClick={() => { document.body.classList.add("nav-anim"); setTimeout(() => document.body.classList.remove("nav-anim"), 300); setPrefs({ navMini: !state.prefs.navMini }); }} aria-label={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"} title={state.prefs.navMini ? "Expand the sidebar" : "Collapse the sidebar"}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" />{state.prefs.navMini ? <path d="m13 10 2 2-2 2" /> : <path d="m16 10-2 2 2 2" />}</svg><span>Collapse</span></button>
     </nav>
     <div className="content">
-      <div className="mobilebar"><img className="brandmark" src="brand/mark-white.png" alt="" width="24" height="24" /><b>Floorcall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
+      <div className="mobilebar"><img className="brandmark" src="brand/mark-white.png" alt="" width="24" height="24" /><b>FloorCall</b><TeamMenu />{user ? <a className={"avatar " + syncDot()} href="#/account" aria-label="Account">{user.email.slice(0, 1).toUpperCase()}</a> : null}</div>
       {showBoard && page !== "live" && <Scoreboard />}
-      {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting Floorcall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
+      {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting FloorCall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
       {ui.previewPlayer && <div className="preview-bar" role="status"><span><b>Players' view.</b> This is what your players and families see when they join {t?.name || "the team"} with a view-only code.</span><button className="btn sm" onClick={() => { setUi({ previewPlayer: false }); go("settings"); }}>Exit preview</button></div>}
       <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{BILLING && t && !viewer && !["settings", "team", "home", "stats", "player", "admin"].includes(page) && !access(t, matchesOf().filter((m) => m.status === "done" && m.kind === "match").length).ok ? <Paywall /> : body}</Suspense></ErrorBoundary>
     </div>

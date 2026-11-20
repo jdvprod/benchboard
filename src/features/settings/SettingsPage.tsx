@@ -50,7 +50,7 @@ export function SettingsPage() {
     </Card>}
     <CloudSettings admin={admin} />
     {admin && <section className="set-admin" aria-label="Admin">
-      <div className="set-admin-hd"><b>Admin</b><span>Only Floorcall admins see this part.</span></div>
+      <div className="set-admin-hd"><b>Admin</b><span>Only FloorCall admins see this part.</span></div>
       <AdminLink />
       <SetupCheck />
       <AiKey />
@@ -62,7 +62,7 @@ export function SettingsPage() {
     </Card>
     <HelpCard />
     <PrivacyCard />
-    <p className="small muted" style={{ textAlign: "center" }}>Floorcall {APP_VERSION} · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
+    <p className="small muted" style={{ textAlign: "center" }}>FloorCall {APP_VERSION} · <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy</a> · <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a></p>
   </div>;
 }
 
@@ -90,14 +90,14 @@ function InstallCard() {
   useEffect(() => onInstallChange(() => setN((x) => x + 1)), []);
   if (installed()) return null;
   return <Card title="Install the app">
-    <p className="small muted">Put Floorcall on your home screen. It opens full screen, works without signal in the gym, and keeps your data on the device.</p>
-    {canPrompt() ? <button className="btn primary" onClick={async () => { if (await promptInstall()) toast("Installed"); }}>Install Floorcall</button>
+    <p className="small muted">Put FloorCall on your home screen. It opens full screen, works without signal in the gym, and keeps your data on the device.</p>
+    {canPrompt() ? <button className="btn primary" onClick={async () => { if (await promptInstall()) toast("Installed"); }}>Install FloorCall</button>
       : isIOS() ? <p className="small">On iPhone or iPad: tap <b>Share</b> in Safari, then <b>Add to Home Screen</b>.</p>
-      : <p className="small">In Chrome or Edge, use the install icon in the address bar, or the browser menu → <b>Install Floorcall</b>.</p>}
+      : <p className="small">In Chrome or Edge, use the install icon in the address bar, or the browser menu → <b>Install FloorCall</b>.</p>}
   </Card>;
 }
 
-/** True for Floorcall admins (the admins table in Supabase). Coaches, players and families never see the setup and background settings. */
+/** True for FloorCall admins (the admins table in Supabase). Coaches, players and families never see the setup and background settings. */
 export function useAdmin() {
   const [ok, setOk] = useState(false);
   useEffect(() => { if (currentUser()) import("../admin/AdminPage").then((m) => m.amAdmin()).then(setOk); }, []);
@@ -133,7 +133,7 @@ function AiKey() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 32;
+const SCHEMA_VERSION = 33;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);
@@ -213,7 +213,7 @@ function NotifyKeys() {
 /** What a coach needs to report a problem: version, device and app state. No names, stats or email. */
 export function diagnostics(): string {
   const u = currentUser(), t = team();
-  return [`Floorcall ${APP_VERSION}`, `Browser: ${navigator.userAgent}`, `Screen: ${screen.width}×${screen.height} (window ${innerWidth}×${innerHeight})`,
+  return [`FloorCall ${APP_VERSION}`, `Browser: ${navigator.userAgent}`, `Screen: ${screen.width}×${screen.height} (window ${innerWidth}×${innerHeight})`,
     `Installed: ${matchMedia("(display-mode: standalone)").matches ? "yes" : "no"} · Online: ${navigator.onLine ? "yes" : "no"} · Signed in: ${u ? "yes" : "no"}`,
     `Teams on this device: ${all("teams").length} · This team synced: ${t && isLinked(t.id) ? "yes" : "no"}`, `Page: ${location.hash || "#/"}`].join("\n");
 }
@@ -222,7 +222,7 @@ function HelpCard() {
   const report = () => window.open(contactUrl("app", "bug", diagnostics()), "_blank", "noopener");
   return <Card title="Help and feedback">
     <div className="row">
-      <a className="btn sm" href={placeUrl("home")} target="_blank" rel="noopener">Everything Floorcall does</a>
+      <a className="btn sm" href={placeUrl("home")} target="_blank" rel="noopener">Everything FloorCall does</a>
       <a className="btn sm" href={LEGAL.accessibility} target="_blank" rel="noopener">Accessibility</a>
       <a className="btn sm" href={contactUrl("app")} target="_blank" rel="noopener">Contact us</a>
       <button className="btn sm" onClick={report}>Report a problem</button>
@@ -241,7 +241,7 @@ function PrivacyCard() {
       <div className="row"><a className="btn sm" href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a><a className="btn sm" href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a>
         <a className="btn sm" href={LEGAL.consent + (t ? "#team=" + encodeURIComponent(t.name) : "")} target="_blank" rel="noopener">Parent and guardian form</a>
         <a className="btn sm" href={LEGAL.schools} target="_blank" rel="noopener">For schools</a></div>
-      <p className="small muted" style={{ margin: 0 }}>Floorcall doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
+      <p className="small muted" style={{ margin: 0 }}>FloorCall doesn't sell data, show ads or track you. Export everything any time from Team → Backup.</p>
       {user ? <>
         {step === "idle" && <SetRow title="Delete your account" sub="Removes your account and every cloud team you own (for everyone on it), and takes you off other teams. Data on this device stays unless you erase it too."><button className="btn sm" onClick={() => setStep("confirm")}>Delete account</button></SetRow>}
         {step === "confirm" && <div className="banner warn" style={{ display: "block" }}>
@@ -254,7 +254,7 @@ function PrivacyCard() {
         {step === "busy" && <p className="small">Deleting…</p>}
       </> : step === "deleted" ? null : <p className="small muted" style={{ margin: 0 }}>You're not signed in, so everything is stored only on this device.</p>}
       {step === "deleted" && <p className="hint">Your account is deleted. Your teams are still saved on this device; erase them below if you want them gone here too.</p>}
-      <SetRow title="Erase this device" sub="Deletes every team, match and setting Floorcall stored in this browser. Synced teams stay in the cloud for their other coaches.">
+      <SetRow title="Erase this device" sub="Deletes every team, match and setting FloorCall stored in this browser. Synced teams stay in the cloud for their other coaches.">
         <ConfirmButton className="btn sm" confirmText="Erase everything here?" onConfirm={erase}>Erase this device</ConfirmButton></SetRow>
     </div>
   </Card>;

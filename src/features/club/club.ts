@@ -45,7 +45,7 @@ export function homeClashes(events: ClubEvent[]): Clash[] {
 }
 
 /** One calendar file with every team's matches, tournaments and practices. */
-export function clubIcs(events: ClubEvent[], club = "Floorcall club"): string {
+export function clubIcs(events: ClubEvent[], club = "FloorCall club"): string {
   const esc = (x: string) => x.replace(/[\\,;]/g, (c) => "\\" + c).replace(/\n/g, "\\n");
   const d = (s: string) => s.replace(/-/g, ""), stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const ev = events.map((e) => {
@@ -55,7 +55,7 @@ export function clubIcs(events: ClubEvent[], club = "Floorcall club"): string {
     const summary = `${e.team}: ${e.kind === "practice" ? e.title : e.kind === "tournament" ? e.title : e.title}`;
     return `BEGIN:VEVENT\r\nUID:${e.id.replace(/[^\w:-]/g, "")}@floorcall\r\nDTSTAMP:${stamp}\r\n${when}\r\nSUMMARY:${esc(summary)}\r\n${e.where ? "LOCATION:" + esc(e.where) + "\r\n" : ""}END:VEVENT`;
   }).join("\r\n");
-  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Floorcall//Club//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:${esc(club)}\r\n${ev}${ev ? "\r\n" : ""}END:VCALENDAR\r\n`;
+  return `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//FloorCall//Club//EN\r\nCALSCALE:GREGORIAN\r\nX-WR-CALNAME:${esc(club)}\r\n${ev}${ev ? "\r\n" : ""}END:VCALENDAR\r\n`;
 }
 
 export interface LeaderRow { id: string; name: string; num: string; team: string; v: number; sets: number }

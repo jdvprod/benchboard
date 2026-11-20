@@ -37,10 +37,10 @@ export function Welcome() {
         <button className="btn" disabled={busy || code.trim().length < 4}>Join team</button>
       </form>}
       <button className="auth-alt-btn" onClick={() => { createSampleTeam(); go("home"); }}><b>Explore a sample team</b><span>Five matches already tracked, so every screen is filled in.</span></button>
-      <label className="auth-alt-btn"><b>Import a backup</b><span>A Floorcall backup file from another device.</span><input type="file" accept=".json,application/json" hidden onChange={(e) => onFile(e.target.files?.[0])} /></label>
+      <label className="auth-alt-btn"><b>Import a backup</b><span>A FloorCall backup file from another device.</span><input type="file" accept=".json,application/json" hidden onChange={(e) => onFile(e.target.files?.[0])} /></label>
       {cloudAvailable() && !user && <button className="auth-alt-btn" onClick={() => go("account")}><b>Sign in</b><span>Already have an account? Your teams come with you.</span></button>}
     </div>
     {msg && <p className="auth-err box" role="alert">{msg}</p>}
-    <p className="auth-legal" style={{ marginTop: 18 }}>By using Floorcall you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. Only add players you have permission to track.</p>
+    <p className="auth-legal" style={{ marginTop: 18 }}>By using FloorCall you agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>. Only add players you have permission to track.</p>
   </AuthShell>;
 }

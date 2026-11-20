@@ -1,4 +1,4 @@
-/** Floorcall Beach, live: the scorer shares a match by link and it updates as points are entered; anyone with the link
+/** FloorCall Beach, live: the scorer shares a match by link and it updates as points are entered; anyone with the link
  * watches the score, the court and the box score with no account. Sharing needs a free account so a link has an owner. */
 import { ReactNode, useEffect, useRef, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../cloud/client";
@@ -67,7 +67,7 @@ export function Watch({ code, render }: { code: string; render: (m: BeachMatch, 
     document.addEventListener("visibilitychange", vis);
     return () => { on = false; clearTimeout(timer); document.removeEventListener("visibilitychange", vis); };
   }, [code]);
-  if (!cloudAvailable()) return <section className="card"><h2>Live isn't set up here</h2><p>This copy of Floorcall Beach isn't connected. <a href="#/">Score a match of your own</a>.</p></section>;
+  if (!cloudAvailable()) return <section className="card"><h2>Live isn't set up here</h2><p>This copy of FloorCall Beach isn't connected. <a href="#/">Score a match of your own</a>.</p></section>;
   if (m === undefined) return <p className="bv-note" role="status">Loading the match…</p>;
   if (!m) return <section className="card"><h2>This match isn't being shared</h2><p>The scorer stopped sharing it, or the link is mistyped. <a href="#/">Score a match of your own</a>.</p></section>;
   return <>{render(m, fresh)}</>;

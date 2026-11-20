@@ -1,4 +1,4 @@
-/** Everything Floorcall saves. Each record belongs to a team, so one coach can run many teams. */
+/** Everything FloorCall saves. Each record belongs to a team, so one coach can run many teams. */
 import type { MatchEvent } from "../sports/volleyball/engine";
 
 export interface TeamSettings {
@@ -76,6 +76,8 @@ export interface Team {
   targets?: Partial<Record<"hitting" | "sideOut" | "pointScoring" | "passAvg" | "serveIn" | "firstBallSO", number>>;
   /** Upcoming matches. */
   schedule?: ScheduleItem[];
+  /** The team's own calendar events: team dinner, picture day, film session (Calendar tab). */
+  events?: TeamEvent[];
   /** Tournament days: games with times and courts, pool, bracket path. */
   tournaments?: import("../tournament/model").Tournament[];
   /** A stream overlay link is in use: every live match gets a gamecast link automatically so the overlay updates fast. */
@@ -107,7 +109,7 @@ export interface Player {
   /** Recruiting profile (shared only when the coach downloads the sheet). */
   profile?: RecruitProfile;
 }
-export interface RecruitProfile { clipsOff?: boolean; /** Shown to verified college staff in Floorcall Recruit search (needs consent too). */ listed?: boolean; consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
+export interface RecruitProfile { clipsOff?: boolean; /** Shown to verified college staff in FloorCall Recruit search (needs consent too). */ listed?: boolean; consentAt?: number; consentBy?: string; sharedUrl?: string; club?: string; gpa?: string; email?: string; phone?: string; reach?: string; approach?: string; block?: string; hand?: string; video?: string; about?: string; coachContact?: string }
 
 export type MatchKind = "match" | "scrimmage" | "drills";
 export interface ScrimSetup { a: { name: string; ids: string[] }; b: { name: string; ids: string[] }; to: number }
@@ -140,7 +142,7 @@ export interface Match {
   imported?: { source: string; file: string; at: number; season?: boolean };
   /** Part of a tournament day (Team.tournaments). */
   tournamentId?: string;
-  /** Families were told this match started / finished (Floorcall Live notifications). */
+  /** Families were told this match started / finished (FloorCall Live notifications). */
   notified?: { start?: boolean; final?: boolean };
   /** The opponent's logo when the match was played (copied from Opponent.logo so public pages can show it). */
   oppLogo?: string;
@@ -164,11 +166,12 @@ export interface EventLog { id: string; matchId: string; device: string; events:
 export interface PlanItem { id: string; text: string; done?: boolean }
 export type OppRoster = Record<string, { name?: string; pos?: string }>;
 /** One of the opponent's games, statted from video with a few buttons (their players, by jersey number). */
-export interface ScoutEv { id: string; vt: number; n: string; t: "K" | "AE" | "SA" | "SE" | "B" | "D" | "E" }
+export interface ScoutEv { id: string; vt: number; n: string; t: "K" | "TA" | "AE" | "SA" | "SE" | "B" | "D" | "E" }
 export interface OppFilm { id: string; date: string; vs: string; video: string; evs: ScoutEv[]; at: number }
 export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster; films?: OppFilm[] }
-export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** volunteer jobs families can sign up for on Floorcall Live */ jobs?: Job[] }
+export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** volunteer jobs families can sign up for on FloorCall Live */ jobs?: Job[] }
 export interface Job { id: string; name: string; need: number }
+export interface TeamEvent { id: string; date: string; time: string; title: string; place: string; note: string }
 
 export const DRILL_CATEGORIES = ["Warm-up", "Serving", "Serve receive", "Setting", "Attacking", "Blocking", "Defense", "Transition", "Game play", "Conditioning", "Team talk"] as const;
 export type Gender = "girls" | "boys" | "coed";
@@ -186,7 +189,7 @@ export interface PracticePlan {
   blocks: PlanBlock[]; notes: string; status: "planned" | "done"; createdAt: number;
   /** Who was at practice: present, late or absent (missing = not taken). */
   attendance?: Record<string, "in" | "late" | "out">;
-  /** show the blocks (names and minutes) to the team on Floorcall Live */
+  /** show the blocks (names and minutes) to the team on FloorCall Live */
   share?: boolean;
 }
 

@@ -1,4 +1,4 @@
-/** The team's playbook on Floorcall Live: plays the coaches chose to share, on the 3D court. Signed-in followers pick a
+/** The team's playbook on FloorCall Live: plays the coaches chose to share, on the 3D court. Signed-in followers pick a
  * play, turn the court, and run the movement. Read only. */
 import { useEffect, useRef, useState } from "react";
 import { cloudAvailable, currentUser, rpc } from "../cloud/client";

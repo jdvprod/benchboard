@@ -69,7 +69,7 @@ function GraphicButton({ p }: { p: Player }) {
   </div>;
 }
 
-/** Floorcall Lessons: a coach who also trains privately adds a player to their lessons in one tap.
+/** FloorCall Lessons: a coach who also trains privately adds a player to their lessons in one tap.
  * The athlete there is the trainer's own record (name, grad year, position, club), not linked to the team. */
 function LessonsButton({ p, club }: { p: Player; club: string }) {
   const [busy, setBusy] = useState(false);
@@ -79,11 +79,11 @@ function LessonsButton({ p, club }: { p: Player; club: string }) {
     const id = "la_" + p.id.replace(/[^\w]/g, "").slice(0, 20) + "_" + currentUser()!.id.slice(0, 6);
     try {
       await rpc("lesson_save_athlete", { a: { id, name: `${p.first} ${p.last}`.trim(), grad: p.grad ? String(p.grad) : null, position: p.pos || null, club } });
-      toast(`${p.first} is in Floorcall Lessons`, { label: "Open", fn: () => window.open(placeUrl("lessons", "athletes/" + id), "_blank", "noopener") });
-    } catch (e) { toast(e instanceof CloudError ? e.message : "Couldn't reach Floorcall Lessons. Try again."); }
+      toast(`${p.first} is in FloorCall Lessons`, { label: "Open", fn: () => window.open(placeUrl("lessons", "athletes/" + id), "_blank", "noopener") });
+    } catch (e) { toast(e instanceof CloudError ? e.message : "Couldn't reach FloorCall Lessons. Try again."); }
     setBusy(false);
   };
-  return <button className="btn sm ghost" disabled={busy} onClick={add} title="Private lessons and training: schedule sessions and count reps for this player">{busy ? "Adding…" : "Add to Floorcall Lessons"}</button>;
+  return <button className="btn sm ghost" disabled={busy} onClick={add} title="Private lessons and training: schedule sessions and count reps for this player">{busy ? "Adding…" : "Add to FloorCall Lessons"}</button>;
 }
 
 export function PlayerPage({ id }: { id: string }) {
@@ -223,11 +223,11 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
       </> : <p className="small muted" style={{ margin: "4px 0 0" }}>Link match videos on Stats → One match → Film (YouTube, Vimeo or a video file link), and {p.first || "this player"}'s best plays become highlight clips here.</p>}
       {reel ? <ReelMaker id={id} onClose={() => setReel(false)} /> : <div className="row" style={{ marginTop: 8 }}><button className="btn sm" onClick={() => setReel(true)}>Make highlight video</button><button className="btn sm" onClick={() => { setUi({ filmAsk: `${p.first || "#" + p.num}'s plays this season` }); go("film"); }}>Search {p.first || "their"}'s film</button></div>}
     </div>
-    <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">Floorcall's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free with an account.</p>
+    <p className="small muted" style={{ margin: "8px 0 0" }}>For the family: <a href={new URL("recruit/#/guide", location.href.replace(/#.*$/, "")).href} target="_blank" rel="noopener">FloorCall's recruiting guide</a> covers what to have ready, emails to college coaches, and Reel Studio for making highlight videos from their own film. Free with an account.</p>
     {canShare && <label className="consent-check"><input type="checkbox" checked={consented} onChange={(e) => patch("players", id, { profile: { ...(player(id)!.profile || {}), consentAt: e.target.checked ? Date.now() : undefined, consentBy: e.target.checked ? currentUser()?.email : undefined } })} />
       <span>{p.first || "The player"} and a parent or guardian (if under 18) agreed to share this profile publicly with their full name. <a href={LEGAL.consent + "#team=" + encodeURIComponent(t.name)} target="_blank" rel="noopener">Parent form</a></span></label>}
     {COLLEGE_SEARCH && canShare && consented && <label className="consent-check"><input type="checkbox" checked={!!pr.listed} onChange={async (e) => { const on = e.target.checked; patch("players", id, { profile: { ...(player(id)!.profile || {}), listed: on || undefined } }); if (url) { try { await setRecruitListed(t.id, id, on); toast(on ? "Listed in college coach search." : "Taken out of college coach search."); } catch { toast("Couldn't update the listing. Check your connection."); } } }} />
-      <span>List {p.first || "this player"} in <b>college coach search</b> on Floorcall Recruit. Only college staff Floorcall has verified can search; they see the same profile as the link.</span></label>}
+      <span>List {p.first || "this player"} in <b>college coach search</b> on FloorCall Recruit. Only college staff FloorCall has verified can search; they see the same profile as the link.</span></label>}
     {url && <div className="row" style={{ marginTop: 6 }}><span className="small">Profile link: <a href={url} target="_blank" rel="noopener">{url}</a></span><QrButton url={url} title={`${p.first} ${p.last}: recruiting profile`} label="QR code" />
       <ConfirmButton className="btn sm ghost" confirmText="Take it down?" onConfirm={async () => { try { await unshareRecruit(t.id, id); setUrl(""); toast("Profile link taken down. It no longer opens."); } catch (e: any) { toast(e?.message || "Couldn't take it down. Check your connection."); } }}>Stop sharing</ConfirmButton></div>}
     {url && views && <p className="small" style={{ margin: "6px 0 0" }}><b>{views.views === 0 ? "Not opened yet" : `Opened ${views.views} ${views.views === 1 ? "time" : "times"}`}</b>{views.last ? <span className="muted"> · last {new Date(views.last).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span> : null}<span className="muted"> · counts each visit to the profile link</span></p>}
@@ -237,7 +237,7 @@ function Recruiting({ id, rows, A }: { id: string; rows: Row[]; A: Agg }) {
 import { safeUrl } from "../../lib/safeUrl";
 export { safeUrl };
 
-/** Everything Floorcall holds about one player, as a file a family can keep (access requests). */
+/** Everything FloorCall holds about one player, as a file a family can keep (access requests). */
 export function playerExport(id: string) {
   const p = player(id)!, t = team()!;
   const matches = matchesOf().filter((m) => m.teamId === t.id).map((m) => {
@@ -249,7 +249,7 @@ export function playerExport(id: string) {
   const practices = plansOf().filter((pl) => pl.attendance?.[id]).map((pl) => ({ date: pl.date, title: pl.title, attendance: pl.attendance![id] }));
   const { teamId: _t, ...rest } = p;
   return { exported: new Date().toISOString(), team: t.name, player: rest, matches, practices,
-    note: "Stat codes: K kills, KT tool kills, AE attack errors, AB attacks blocked, TA attempts, SA aces, SE serve errors, R passes (R3/R2/R1 by grade, RS shanked), D digs, BS solo blocks, BA block assists, BT block touches, AST assists. Generated by Floorcall." };
+    note: "Stat codes: K kills, KT tool kills, AE attack errors, AB attacks blocked, TA attempts, SA aces, SE serve errors, R passes (R3/R2/R1 by grade, RS shanked), D digs, BS solo blocks, BA block assists, BT block touches, AST assists. Generated by FloorCall." };
 }
 
 function PlayerData({ id }: { id: string }) {
@@ -299,7 +299,7 @@ ${p.height || pr.reach || pr.approach || pr.block || pr.hand || pr.gpa ? `<h2>Me
 ${best.length ? `<h2>Best matches</h2><table><thead><tr><th>Date</th><th>Opponent</th><th>Kills</th><th>Digs</th><th>Assists</th><th>Aces</th></tr></thead><tbody>${best.map(({ r }) => `<tr><td>${esc(r.m.date)}</td><td>${esc(r.m.opp)}</td><td>${r.s?.K ?? 0}</td><td>${r.s?.D ?? 0}</td><td>${r.s?.AST ?? 0}</td><td>${r.s?.SA ?? 0}</td></tr>`).join("")}</tbody></table>` : ""}
 ${safeUrl(pr.video) ? `<h2>Highlights</h2><p><a href="${esc(safeUrl(pr.video))}">${esc(pr.video)}</a></p>` : ""}
 ${pr.email || pr.phone || pr.coachContact ? `<h2>Contact</h2><div class="g">${item("Player email", pr.email)}${item("Player phone", pr.phone)}${item("Coach", pr.coachContact)}</div>` : ""}
-<footer>${madeWith("Stats recorded with Floorcall")} · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
+<footer>${madeWith("Stats recorded with FloorCall")} · ${new Date().toLocaleDateString()} · Shared with the family's permission · <a href="${esc(new URL(LEGAL.privacy, location.href).href)}">Privacy</a></footer></main></body></html>`;
 }
 
 /** Where this player's attacks land, plus hitting and passing by rotation. */

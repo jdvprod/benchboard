@@ -7,7 +7,7 @@ export function Paywall() {
   const t = team()!;
   return <div className="page pw">
     <div className="pagehead"><h1>Your free trial is over</h1></div>
-    <p className="pw-lead">Everything you tracked for {t.name} is saved. Pick a plan to keep tracking, scouting and planning. Your players and families are included, and Floorcall Live stays free for fans.</p>
+    <p className="pw-lead">Everything you tracked for {t.name} is saved. Pick a plan to keep tracking, scouting and planning. Your players and families are included, and FloorCall Live stays free for fans.</p>
     <div className="pw-plans">{(["team", "club"] as Plan[]).map((k) => <div key={k} className="pw-plan">
       <b>{PLANS[k].name}</b><div className="pw-price">{PLANS[k].price}<small> {PLANS[k].per}</small></div>
       <button className="btn primary" disabled title="Payments open soon">Choose {PLANS[k].name}</button>

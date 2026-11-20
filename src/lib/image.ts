@@ -99,7 +99,7 @@ export async function isLogoPicture(url: string): Promise<boolean | null> {
   } catch { return null; } // the site didn't allow reading its pixels
 }
 
-/** The Floorcall mark (the spiker), for the signature on share graphics, recap videos and reels. Served from the
+/** The FloorCall mark (the spiker), for the signature on share graphics, recap videos and reels. Served from the
  * main address on every site (the worker falls back to shared files), so one absolute path works everywhere. */
 let markP: Promise<HTMLImageElement | null> | null = null;
 export const floorcallMark = () => (markP ||= canvasImage("/brand/mark-white.png"));

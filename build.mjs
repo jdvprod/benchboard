@@ -49,7 +49,7 @@ const options = {
 
 // Legal pages: owner, contact email, state and dates come from package.json "legal".
 const legalTokens = {
-  "%LEGAL_OWNER%": legal.owner || "the Floorcall team",
+  "%LEGAL_OWNER%": legal.owner || "the FloorCall team",
   "%LEGAL_EMAIL%": legal.email || "[add a contact email in package.json]",
   "%LEGAL_STATE%": legal.state || "California",
   "%LEGAL_EFFECTIVE%": legal.effective || "",
@@ -78,7 +78,7 @@ if (args.has("--watch")) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
   const { port } = await ctx.serve({ servedir: dist, port: 5173 });
-  console.log(`Floorcall running at http://localhost:${port}`);
+  console.log(`FloorCall running at http://localhost:${port}`);
 } else {
   const result = await esbuild.build({ ...options, metafile: !!process.env.META });
   if (process.env.META) writeFileSync(process.env.META, JSON.stringify(result.metafile));

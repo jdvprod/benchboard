@@ -1,4 +1,4 @@
-/** Floorcall Academy: what to teach and learn for each skill. One source for both views: players read the cues, the
+/** FloorCall Academy: what to teach and learn for each skill. One source for both views: players read the cues, the
  * self-check and drills they can do on their own; coaches read what to watch for, team concepts and team drills.
  * Plain data, so it's easy to review and extend. Categories match the practice planner's (DRILL_CATEGORIES). */
 
@@ -19,7 +19,7 @@ export interface Skill {
   intro: string;
   /** the practice planner category its drills go into */
   category: "Serving" | "Serve receive" | "Setting" | "Attacking" | "Defense";
-  /** how Floorcall measures it, and roughly what good looks like in high school */
+  /** how FloorCall measures it, and roughly what good looks like in high school */
   stat: { name: string; good: string };
   cues: { title: string; text: string }[];
   steps: { title: string; text: string }[];
@@ -113,7 +113,7 @@ export const SKILLS: Skill[] = [
       { what: "Communication", text: "Listen for an early call on every serve, and for seam balls especially." },
     ],
     concepts: [
-      { title: "Grading passes 0 to 3", text: "The scale Floorcall uses, and most programs do. Grade out loud in practice so players learn it.", points: ["3: perfect. The setter can run every option, including the quick middle.", "2: good. The setter has to move; the quick may be gone.", "1: poor. One option, usually a high ball to the outside.", "0: an ace, an overpass, or a ball the setter can't play."] },
+      { title: "Grading passes 0 to 3", text: "The scale FloorCall uses, and most programs do. Grade out loud in practice so players learn it.", points: ["3: perfect. The setter can run every option, including the quick middle.", "2: good. The setter has to move; the quick may be gone.", "1: poor. One option, usually a high ball to the outside.", "0: an ace, an overpass, or a ball the setter can't play."] },
       { title: "Receive formations", text: "Fewer passers means your best passers take more balls.", points: ["5-person W: for beginners; everyone covers a small area.", "4-person: common in middle school and JV.", "3-person: the standard at higher levels; the three best passers cover the court and hitters are free to approach."] },
       { title: "The passing target", text: "Aim a little right of the middle of the court and a step or two off the net, where the setter stands. A pass slightly off the net is better than one that's tight to it." },
     ],

@@ -1,4 +1,4 @@
-/** Floorcall Recruit: player profiles and team recruiting boards for college coaches. Separate from the coaching app.
+/** FloorCall Recruit: player profiles and team recruiting boards for college coaches. Separate from the coaching app.
  *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
  *   #/guide  #/emails  #/studio  for athletes: recruiting guide, emails to coaches, Reel Studio
  *   #/  what this is, enter a code */
@@ -29,9 +29,9 @@ const mail = (e?: string) => (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()) ?
 
 function Shell({ children, crumb }: { children: any; crumb?: string }) {
   return <div className="rc">
-    <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>Floorcall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
+    <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
     <main className="rc-main">{children}</main>
-    <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with Floorcall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("recruit")}>Help</a></footer>
+    <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with FloorCall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("recruit")}>Help</a></footer>
   </div>;
 }
 
@@ -49,7 +49,7 @@ const ord = (n: number) => n + (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd"
 /* ---------- a player's profile ---------- */
 function Profile({ code }: { code: string }) {
   const { d, err } = useRpc<{ html: string; data: RecruitData | null; updated_at: string }>("recruit_view", code, (r) => !!(r.html || r.data), "This profile isn't shared right now. Ask the player's coach for a current link.");
-  useEffect(() => { if (d?.data) document.title = `${d.data.player.first} ${d.data.player.last} · Class of ${d.data.player.grad || "—"} · Floorcall Recruit`; }, [d]);
+  useEffect(() => { if (d?.data) document.title = `${d.data.player.first} ${d.data.player.last} · Class of ${d.data.player.grad || "—"} · FloorCall Recruit`; }, [d]);
   // count the visit once per browser session, so the family and coach know when colleges look
   useEffect(() => { if (!d) return; const k = "rc-seen-" + code; try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1"); } catch { /* private window */ } rpc("recruit_seen", { share: code }, true).catch(() => {}); }, [!!d, code]);
   if (!d) return <Shell><p className="rc-empty">{err || "Loading the profile…"}</p></Shell>;
@@ -109,7 +109,7 @@ interface BoardRow { code: string; updated_at: string; player: RecruitData["play
 function Board({ code }: { code: string }) {
   const { d, err } = useRpc<{ team: { name: string; level: string } | null; players: BoardRow[] }>("recruit_board", code, (r) => !!r.team, "This recruiting board isn't shared right now. Ask the coach for a current link.");
   const [grad, setGrad] = useState(""), [pos, setPos] = useState("");
-  useEffect(() => { if (d?.team) document.title = `${d.team.name} recruiting · Floorcall Recruit`; }, [d]);
+  useEffect(() => { if (d?.team) document.title = `${d.team.name} recruiting · FloorCall Recruit`; }, [d]);
   if (!d) return <Shell><p className="rc-empty">{err || "Loading the board…"}</p></Shell>;
   const grads = [...new Set(d.players.map((x) => x.player.grad).filter(Boolean))].sort() as number[];
   const poss = [...new Set(d.players.map((x) => x.player.pos).filter(Boolean))].sort();
@@ -145,7 +145,7 @@ function Landing() {
   };
   return <Shell><section className="rc-landing">
     <h1>Verified stats and film for high school and club volleyball recruits.</h1>
-    <p>Every number on a Floorcall Recruit profile was recorded live by the player's own coaching staff, match by match, with clips of the plays behind them. Profiles are shared only with the family's permission.</p>
+    <p>Every number on a FloorCall Recruit profile was recorded live by the player's own coaching staff, match by match, with clips of the plays behind them. Profiles are shared only with the family's permission.</p>
     <form className="rc-code" onSubmit={(e) => { e.preventDefault(); go(); }}><label htmlFor="rc-code">Profile or board code</label>
       <div><input id="rc-code" value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} placeholder="K7Q2XM" maxLength={12} autoComplete="off" spellCheck={false} /><button className="btn primary" disabled={busy}>{busy ? "Finding…" : "Open"}</button></div>
       {err && <p className="rc-err" role="alert">{err}</p>}</form>
@@ -157,7 +157,7 @@ function Landing() {
       <a href="#/emails"><b>Emails to coaches</b><span>First emails, tournament schedules, follow-ups and thank-yous, written from your details.</span></a>
       <a href="#/studio"><b>Reel Studio</b><span>Drop in clips or a whole game and get a best-of plus a video for each skill, all at once.</span></a>
     </div>
-    <p className="rc-note">Part of your Floorcall account. Your film never leaves your device.</p>
+    <p className="rc-note">Part of your FloorCall account. Your film never leaves your device.</p>
     <CodeBox site="recruit" />
   </section>
   {COLLEGE_SEARCH && <p className="rc-note rg-college">College coach? <a href="#/college">Search players whose families chose to be found</a>, and write to their coaches.</p>}</Shell>;
@@ -169,7 +169,7 @@ function RecruitApp() {
   if (r[0] === "b" && r[1]) return <Board key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "college" && COLLEGE_SEARCH) return <College Shell={Shell} />;
   // a player's profile and a team's board stay open: the family shares them with college coaches
-  const gated = (el: any) => (!cloudAvailable() || currentUser() ? el : <Shell><SiteGate name="Floorcall Recruit" kind="athlete" what="Recruiting for volleyball players: a profile with stats your coach recorded live, a step-by-step recruiting guide, emails to college coaches, and highlight reels."
+  const gated = (el: any) => (!cloudAvailable() || currentUser() ? el : <Shell><SiteGate name="FloorCall Recruit" kind="athlete" what="Recruiting for volleyball players: a profile with stats your coach recorded live, a step-by-step recruiting guide, emails to college coaches, and highlight reels."
     points={["A recruiting profile your coach shares with one link", "Emails to college coaches, written from your stats", "Reel Studio: cut your own highlight video", "College coaches open your profile link without an account"]}>{null}</SiteGate></Shell>);
   if (r[0] === "guide") return gated(<GuidePage Shell={Shell} />);
   if (r[0] === "emails") return gated(<EmailsPage Shell={Shell} />);
