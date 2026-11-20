@@ -16,7 +16,8 @@ import { go } from "../../app/router";
 import { Clip, clipsFrom, clock, filmTiming, LOCAL, playName, videoKind, videoTime } from "../../film/clips";
 import { localFile, localVideo, setLocalVideo } from "../../film/localVideos";
 import { ClipQuery, matchQuery, parseQuery, aiQueryPrompt, cleanAiQuery, QueryPlayer } from "../../film/query";
-import { bestOf, crossedEnd, DECODE_LIMIT, findWhistles, Frame, frameFromAnalyser, loudMoments, Rally, rallyCheck, ralliesFrom, scanFile, withHype } from "../../film/rallies";
+import { bestOf, crossedEnd, DECODE_LIMIT, findWhistles, Frame, frameFromAnalyser, loudMoments, Rally, rallyCheck, ralliesFrom, scanFile, scanStream, withHype } from "../../film/rallies";
+import { canStreamAudio } from "../../film/mp4audio";
 import { ReelMaker } from "../../film/ReelMaker";
 import { aiAvailable, askJson } from "../../ai/client";
 import { addToSession, sessionsOf, SessionsPanel } from "./Sessions";
@@ -159,8 +160,14 @@ function FilmWork({ m }: { m: Match }) {
     const v = vid.current; if (!v || !src) return;
     let blob: Blob | null = localFile(m.id);
     if (!blob && !src.startsWith("blob:")) { try { const r = await fetch(src); if (r.ok) blob = await r.blob(); } catch { blob = null; } } // a linked file the site allows us to read
+    // fastest first: stream the sound out of an MP4/MOV (any length); then decode it whole (smaller files, other
+    // formats); last, play a hidden copy fast and listen
+    const ac = new AbortController(); stopScan.current = () => ac.abort();
+    if (blob && canStreamAudio()) {
+      try { const { whistles, duration, frames } = await scanStream(blob, (text, f) => setScan({ text, f }), ac.signal); saveRallies(whistles, duration, frames); return; }
+      catch (e: any) { if (e?.name === "AbortError") { setScan(null); return; } /* not an MP4 with AAC sound: try the next way */ }
+    }
     if (blob && blob.size <= DECODE_LIMIT) {
-      const ac = new AbortController(); stopScan.current = () => ac.abort();
       try {
         const { whistles, duration, frames } = await scanFile(blob, (text, f) => setScan({ text, f }), ac.signal);
         saveRallies(whistles, duration, frames); return;

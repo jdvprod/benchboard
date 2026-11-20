@@ -2,7 +2,7 @@
  * a quarter second or more (cheering is noisy, shoe squeaks are short). The first whistle is the serve, the next
  * one ends the rally. Pure: works on frames from a decoded file or from the live audio while the video plays. */
 
-export interface Frame { t: number; peak: number; band: number; level: number; loud?: number } // t seconds; peak = strongest band bin / all; band = band share; level = band power; loud = power outside the whistle band (crowd, bench)
+export interface Frame { t: number; peak: number; band: number; level: number; loud?: number; hz?: number } // t seconds; peak = strongest band bin / all; band = band share; level = band power; loud = power outside the whistle band (crowd, bench)
 /** h: how big the moment was, 0–1, from the crowd's reaction and the rally's length (see hypeScores). */
 export interface Rally { start: number; end: number; h?: number }
 
@@ -27,26 +27,43 @@ function fft(re: Float32Array, im: Float32Array) {
 
 /** Frame features from power per FFT bin (bin i is i*sr/size Hz). */
 export function frameFrom(t: number, power: ArrayLike<number>, sr: number, size: number): Frame {
-  let all = 0, band = 0, peak = 0;
+  let all = 0, band = 0, peak = 0, at = 0;
   const lo = Math.ceil((LO * size) / sr), hi = Math.min(power.length - 1, Math.floor((HI * size) / sr));
-  for (let i = 2; i < power.length; i++) { const p = power[i]; all += p; if (i >= lo && i <= hi) { band += p; if (i > lo && i < hi) { const p3 = power[i - 1] + p + power[i + 1]; if (p3 > peak) peak = p3; } } }
-  return { t, peak: all ? peak / all : 0, band: all ? band / all : 0, level: band, loud: all - band };
+  for (let i = 2; i < power.length; i++) { const p = power[i]; all += p; if (i >= lo && i <= hi) { band += p; if (i > lo && i < hi) { const p3 = power[i - 1] + p + power[i + 1]; if (p3 > peak) { peak = p3; at = i; } } } }
+  return { t, peak: all ? peak / all : 0, band: all ? band / all : 0, level: band, loud: all - band, hz: Math.round((at * sr) / size) };
 }
 
 /** Frames for mono samples (any sample rate ≥ 9 kHz). Hop ≈ 32 ms. */
 export function framesOf(samples: Float32Array, sr: number, onProgress?: (f: number) => void): Frame[] {
-  const size = sr > 24000 ? 2048 : sr > 12000 ? 512 : 256, hop = Math.round(sr * 0.032), out: Frame[] = [];
-  const re = new Float32Array(size), im = new Float32Array(size), pw = new Float32Array(size / 2), win = new Float32Array(size);
-  for (let i = 0; i < size; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (size - 1));
-  const total = Math.max(1, samples.length - size);
-  for (let s = 0, k = 0; s + size <= samples.length; s += hop, k++) {
-    for (let i = 0; i < size; i++) { re[i] = samples[s + i] * win[i]; im[i] = 0; }
-    fft(re, im);
-    for (let i = 0; i < size / 2; i++) pw[i] = re[i] * re[i] + im[i] * im[i];
-    out.push(frameFrom(s / sr, pw, sr, size));
-    if (onProgress && k % 4000 === 0) onProgress(s / total);
+  const f = new Framer(sr, onProgress && ((k) => onProgress(k / Math.max(1, samples.length))));
+  f.push(samples);
+  return f.frames;
+}
+
+/** The same frames, fed a piece at a time (a long film's sound arrives in slices; see mp4audio.ts). */
+export class Framer {
+  frames: Frame[] = [];
+  private size: number; private hop: number; private re: Float32Array; private im: Float32Array; private pw: Float32Array; private win: Float32Array;
+  private buf = new Float32Array(0); private at = 0; // samples consumed before buf[0]
+  constructor(private sr: number, private onProgress?: (samplesDone: number) => void) {
+    this.size = sr > 24000 ? 2048 : sr > 12000 ? 512 : 256; this.hop = Math.round(sr * 0.032);
+    this.re = new Float32Array(this.size); this.im = new Float32Array(this.size); this.pw = new Float32Array(this.size / 2); this.win = new Float32Array(this.size);
+    for (let i = 0; i < this.size; i++) this.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (this.size - 1));
   }
-  return out;
+  push(samples: Float32Array) {
+    const { size, hop, re, im, pw, win, sr } = this;
+    let buf = samples;
+    if (this.buf.length) { buf = new Float32Array(this.buf.length + samples.length); buf.set(this.buf); buf.set(samples, this.buf.length); }
+    let s = 0;
+    for (; s + size <= buf.length; s += hop) {
+      for (let i = 0; i < size; i++) { re[i] = buf[s + i] * win[i]; im[i] = 0; }
+      fft(re, im);
+      for (let i = 0; i < size / 2; i++) pw[i] = re[i] * re[i] + im[i] * im[i];
+      this.frames.push(frameFrom((this.at + s) / sr, pw, sr, size));
+      if (this.onProgress && this.frames.length % 4000 === 0) this.onProgress(this.at + s);
+    }
+    this.at += s; this.buf = buf.slice(s);
+  }
 }
 
 /** Whistle start times. A frame counts when the band is a clear, pure peak well above the usual band level;
@@ -59,29 +76,66 @@ export function findWhistles(frames: Frame[], o: { minDur?: number; gap?: number
   const med = levels.length ? levels[Math.floor(levels.length / 2)] : 0;
   const hot = (f: Frame) => f.peak > 0.18 && f.band > 0.45 && f.level > med * 3;
   const out: number[] = [];
-  let start = -1, last = -1;
-  const close = () => { if (start >= 0 && last - start + 0.032 >= minDur) { if (!out.length || start - out[out.length - 1] > gapS) out.push(+start.toFixed(2)); } start = -1; };
+  // A whistle holds one pitch; shoe squeaks are short and each one is a different pitch, so a run of hot frames
+  // whose pitch jumps is squeaks running together, not a whistle. Frames without a pitch (older data) skip the check.
+  let start = -1, last = -1, pitch = 0, jumps = 0, n = 0;
+  const close = () => { if (start >= 0 && last - start + 0.032 >= minDur && jumps <= Math.floor(n * 0.15)) { if (!out.length || start - out[out.length - 1] > gapS) out.push(+start.toFixed(2)); } start = -1; jumps = 0; n = 0; };
   for (const f of frames) {
-    if (hot(f)) { if (start < 0) start = f.t; last = f.t; }
+    if (hot(f)) {
+      const jump = start >= 0 && !!f.hz && !!pitch && Math.abs(f.hz - pitch) > Math.max(160, pitch * 0.06);
+      if (jump && f.t - last > 0.04) close(); // a new sound after a break, at another pitch: a new run
+      else if (jump) jumps++;
+      if (start < 0) start = f.t;
+      last = f.t; n++; if (f.hz) pitch = f.hz;
+    }
     else if (start >= 0 && f.t - last > 0.1) close();
   }
   close();
   return out;
 }
 
-/** Pair whistles into rallies: serve whistle → end whistle. A rally longer than `maxRally` means a whistle was missed,
- * so the pairing restarts at the second one. Padding gives a little before the serve and after the end. */
+/** Pair whistles into rallies: serve whistle → end whistle.
+ * Not greedily: one stray whistle (a squeak that got through, a second toot) would flip serve and end for every
+ * rally after it. Instead, pick the pairing for the whole film that best fits how matches run: a rally lasts a few
+ * seconds to half a minute, the next serve comes several seconds after the point ends, and a whistle can be left
+ * out as noise at a cost. `maxRally` caps a rally; padding gives a little before the serve and after the end. */
 export function ralliesFrom(whistles: number[], duration = Infinity, o: { maxRally?: number; minRally?: number; before?: number; after?: number } = {}): Rally[] {
   const maxR = o.maxRally ?? 45, minR = o.minRally ?? 2.5, before = o.before ?? 1, after = o.after ?? 2;
-  const out: Rally[] = [];
-  for (let i = 0; i + 1 < whistles.length; ) {
-    const a = whistles[i], b = whistles[i + 1], d = b - a;
-    if (d < minR) { i += 1; continue; } // a double toot
-    if (d > maxR) { i += 1; continue; }
-    out.push({ start: Math.max(0, +(a - before).toFixed(1)), end: Math.min(duration, +(b + after).toFixed(1)) });
-    i += 2;
+  const w = whistles, n = w.length;
+  if (n < 2) return [];
+  const NOISE = 4, REWARD = 12;
+  // Rallies usually run shorter than the time between points (players reset, the server gets the ball, the referee
+  // checks), so a long "rally" and a short "gap" each cost a little. A pairing flipped by one stray whistle makes
+  // every later rally look like a gap and every gap like a rally, and those little costs add up over a match.
+  const rallyCost = (d: number) => (d < minR || d > maxR ? Infinity : d < 3 ? (3 - d) * 4 : (d > 12 ? (d - 12) * 0.5 : 0) + (d > 25 ? (d - 25) * 0.4 : 0));
+  const gapCost = (g: number) => (g < 1.5 ? Infinity : (g < 6 ? (6 - g) * 1.5 : 0) + (g < 12 ? (12 - g) * 0.5 : 0));
+  // best[e] = lowest cost with whistle e ending a rally; from[e] = [serve index, previous end index]
+  const best = new Float64Array(n).fill(Infinity), from: [number, number][] = new Array(n);
+  for (let e = 1; e < n; e++) {
+    for (let st = e - 1; st >= 0 && w[e] - w[st] <= maxR; st--) {
+      const rc = rallyCost(w[e] - w[st]); if (rc === Infinity) continue;
+      const inside = (e - st - 1) * NOISE;
+      // the first rally: everything before it is noise
+      let bestHere = st * NOISE, prevE = -1;
+      for (let pe = st - 1; pe >= 0 && st - pe <= 8; pe--) {
+        if (best[pe] === Infinity) continue;
+        const c = best[pe] + (st - pe - 1) * NOISE + gapCost(w[st] - w[pe]);
+        if (c < bestHere) { bestHere = c; prevE = pe; }
+      }
+      const total = bestHere + inside + rc - REWARD;
+      if (total < best[e]) { best[e] = total; from[e] = [st, prevE]; }
+    }
   }
-  return out;
+  // the last rally: everything after it is noise
+  let last = -1, lastCost = 0;
+  for (let e = 0; e < n; e++) if (best[e] !== Infinity) { const c = best[e] + (n - e - 1) * NOISE; if (last < 0 || c < lastCost) { last = e; lastCost = c; } }
+  const out: Rally[] = [];
+  for (let e = last; e >= 0; ) {
+    const [st, pe] = from[e];
+    out.push({ start: Math.max(0, +(w[st] - before).toFixed(1)), end: Math.min(duration, +(w[e] + after).toFixed(1)) });
+    e = pe;
+  }
+  return out.reverse();
 }
 
 /** Mono samples from a decoded audio buffer. */
@@ -109,6 +163,16 @@ export async function scanFile(file: Blob, onProgress?: (text: string, f: number
   await new Promise((r) => setTimeout(r, 0));
   const frames = framesOf(monoOf(buf), buf.sampleRate, (f) => onProgress?.("Listening for whistles…", 0.4 + f * 0.55));
   return { whistles: findWhistles(frames), duration: buf.duration, frames };
+}
+
+/** Scan a long MP4/MOV film by streaming its sound (see mp4audio.ts): any length, small memory. */
+export async function scanStream(file: Blob, onProgress?: (text: string, f: number) => void, signal?: AbortSignal): Promise<{ whistles: number[]; duration: number; frames: Frame[] }> {
+  const { streamAudio } = await import("./mp4audio");
+  let framer: Framer | null = null;
+  onProgress?.("Reading the film's sound…", 0.01);
+  const { duration } = await streamAudio(file, (mono, sr) => { (framer ||= new Framer(sr)).push(mono); }, (f) => onProgress?.("Listening for whistles…", 0.02 + f * 0.95), signal);
+  const frames = framer ? (framer as Framer).frames : [];
+  return { whistles: findWhistles(frames), duration, frames };
 }
 
 /** Frame features from an AnalyserNode (dB per bin) while the video plays. */

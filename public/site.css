@@ -174,3 +174,5 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}footer a{color:var(--grey)}
 .ct-side a{color:var(--blue)}
 .faq p a{color:var(--blue)}
 @media (max-width:820px){.ct{grid-template-columns:1fr}.ct-row{grid-template-columns:1fr}}
+[hidden]{display:none!important}
+.ct{margin-top:clamp(32px,4vw,48px)}

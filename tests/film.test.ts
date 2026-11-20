@@ -231,3 +231,13 @@ test("season best: the top rallies across matches, a few per match, in date orde
   const b = seasonBest(ms, 5, 3);
   assert.deepEqual(b.map((x) => x.m.id + "@" + x.r.start), ["b@5", "a@10", "a@20", "a@50", "c@60"]);
 });
+
+test("rallies: one stray whistle inside a rally doesn't flip serve and end for the rest of the match", () => {
+  const rallies: [number, number][] = [];
+  for (let t = 10, i = 0; i < 20; i++) { const d = 6 + (i % 5) * 2; rallies.push([t, t + d]); t += d + 15 + (i % 3) * 3; }
+  const w = rallies.flat(); w.splice(9, 0, rallies[4][0] + 3); // a squeak 3 s into the fifth rally
+  const r = ralliesFrom(w.sort((a, b) => a - b), 10000);
+  assert.equal(r.length, 20);
+  // every rally keeps its own end; only the rally with the squeak may start at the squeak instead of the serve
+  rallies.forEach(([a, b], i) => { assert.equal(r[i].end, b + 2); if (i !== 4) assert.equal(r[i].start, a - 1); });
+});
