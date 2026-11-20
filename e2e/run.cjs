@@ -1558,7 +1558,7 @@ const scenarios = {
     ok("and so does the team's staff list", (await A.locator(".log li", { hasText: "(you)" }).locator(".vbadge", { hasText: "Verified coach" }).count()) === 1);
     // settings: no setup or background sections for coaches; admins see them
     await go(A, "settings"); await A.waitForTimeout(500);
-    ok("coaches' settings leave out setup and background tools", (await A.getByRole("heading", { name: "Setup check" }).count()) === 0 && (await A.getByRole("heading", { name: "AI features" }).count()) === 0 && (await A.getByRole("button", { name: "Light" }).count()) === 1 && (await A.getByRole("button", { name: "System" }).count()) === 0);
+    ok("coaches' settings leave out setup tools but let them hide AI or bring their own key", (await A.getByRole("heading", { name: "Setup check" }).count()) === 0 && (await A.getByRole("heading", { name: "AI features" }).count()) === 1 && (await A.getByRole("switch", { name: "Show AI buttons" }).or(A.getByLabel("Show AI buttons")).count()) >= 1 && (await A.getByRole("button", { name: "Light" }).count()) === 1 && (await A.getByRole("button", { name: "System" }).count()) === 0);
     await go(D, "settings"); await D.waitForTimeout(800);
     ok("admins see the setup check and admin tools in settings", (await D.getByRole("heading", { name: "Setup check" }).count()) === 1 && (await D.getByRole("button", { name: "Open admin" }).count()) === 1);
     ok("no errors verifying a coach", !A.errors.length && !D.errors.length, [...A.errors, ...D.errors].slice(0, 3).join("; "));
@@ -1821,6 +1821,41 @@ const scenarios = {
     ok("notes: the coach sees who has read the team note", /Read by 2/.test(await C.locator(".nt", { hasText: "Serve receive" }).innerText()));
     ok("no errors in notes", !C.errors.length && !M.errors.length && !S.errors.length, [...C.errors, ...M.errors, ...S.errors].slice(0, 3).join("; "));
     for (const x of [C, M, S]) await x.context().close();
+  },
+  async account(browser) {
+    // Account settings on every site: name, sign-in email, password, email news, sign out, delete
+    const A = await newPage(browser, { phone: true });
+    await A.goto(U + "academy/"); await A.waitForTimeout(500); await siteSignUp(A, "acct-kid@e2e.test", "athlete", "Ari Account");
+    await A.getByRole("button", { name: "Account settings" }).click(); await A.waitForTimeout(200);
+    const d = A.getByRole("dialog", { name: "Account" });
+    ok("account: the header's account button opens Account settings", (await d.count()) === 1 && /acct-kid@e2e\.test/.test(await d.innerText()) && /Athlete account/.test(await d.innerText()));
+    { const ax = await a11y(A); ok("account: controls all have names", !ax.length, ax.join(" | ")); }
+    ok("account: the dialog fits a phone", (await overflow(A)) <= 0);
+    await d.getByLabel("Your name").fill("Ari Accountant"); await d.getByRole("button", { name: "Save" }).click(); await A.waitForTimeout(300);
+    ok("account: the name is saved", /Name saved/.test(await d.innerText()) && /Ari Accountant/.test(await d.locator(".ap-who").innerText()));
+    await d.getByLabel("New password", { exact: true }).fill("short"); ok("account: a short password is caught before sending", /at least 8/.test(await d.innerText()));
+    await d.getByLabel("New password", { exact: true }).fill("brand-new-pass"); await d.getByLabel("New password again").fill("brand-new-pass");
+    await d.getByRole("button", { name: "Change password" }).click(); await A.waitForTimeout(300);
+    ok("account: the password changes", /Password changed/.test(await d.innerText()));
+    await d.getByLabel("New email").fill("ari-new@e2e.test"); await d.getByRole("button", { name: "Change email" }).click(); await A.waitForTimeout(300);
+    ok("account: changing the email sends a confirmation link", /Check ari-new@e2e\.test/.test(await d.innerText()));
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "account-dialog.png"), fullPage: true });
+    await d.getByRole("button", { name: "Sign out of this site" }).click(); await A.waitForTimeout(800);
+    ok("account: sign out returns to the sign-in", (await A.locator(".sg .ma").count()) === 1);
+    // the new password works
+    await A.locator(".ma").getByRole("button", { name: "Sign in" }).first().click(); await A.getByLabel("Email", { exact: true }).fill("acct-kid@e2e.test"); await A.getByLabel("Password", { exact: true }).fill("brand-new-pass");
+    await A.locator(".ma").getByRole("button", { name: "Sign in" }).last().click(); await A.waitForTimeout(600); if (await A.getByLabel(/code/i).count()) await deviceCode(A, "acct-kid@e2e.test"); await A.waitForTimeout(800);
+    ok("account: signs back in with the new password", (await A.locator(".sg .ma").count()) === 0, (await A.locator("body").innerText()).slice(0, 200));
+    // the coaching app's Account page uses the same panel
+    const C = await newPage(browser, { size: { width: 1280, height: 900 } });
+    await go(C, "account/signup"); { const ca = C.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await C.getByLabel("Email").fill("acct-coach@e2e.test"); await C.locator("#auth-pw").fill("secret-pass-1"); await C.locator("#auth-name").fill("Cam Coach"); await C.locator(".auth-agree input").first().check();
+    await C.getByRole("button", { name: "Create account" }).click(); await C.waitForTimeout(800);
+    await C.getByLabel("Team name").fill("Acct Team"); await C.getByRole("button", { name: "Create team" }).click(); await C.waitForTimeout(600);
+    await go(C, "account"); await C.waitForTimeout(300);
+    ok("account: the app's Account page has the same settings", (await C.getByRole("button", { name: "Change password" }).count()) === 1 && (await C.getByText("Delete your account").count()) === 1);
+    ok("no errors in account settings", !A.errors.length && !C.errors.length, [...A.errors, ...C.errors].slice(0, 3).join("; "));
+    for (const x of [A, C]) await x.context().close();
   },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site

@@ -2,6 +2,7 @@
  *   #/p/CODE  a player's profile     #/b/CODE  a team's recruiting board     #/college  search for approved college staff
  *   #/guide  #/emails  #/studio  for athletes: recruiting guide, emails to coaches, Reel Studio
  *   #/  what this is, enter a code */
+import { AccountButton } from "../cloud/AccountPanel";
 import { physOf } from "./physical";
 import { contactUrl } from "../cloud/links";
 import { CodeBox } from "../cloud/CodeBox";
@@ -30,7 +31,7 @@ const mail = (e?: string) => (e && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim()) ?
 
 function Shell({ children, crumb }: { children: any; crumb?: string }) {
   return <div className="rc">
-    <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /></header>
+    <header className="rc-top"><a className="rc-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Recruit</span></a>{crumb && <span className="rc-crumb">{crumb}</span>}<SiteSwitch here="recruit" /><AccountButton from="recruit" /></header>
     <main className="rc-main">{children}</main>
     <footer className="rc-foot">Profiles are shared by the player's coach with the family's permission. Stats are recorded live by the team's coaching staff with FloorCall. · <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("recruit")}>Help</a></footer>
   </div>;

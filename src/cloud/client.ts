@@ -149,6 +149,11 @@ const home = () => location.origin + location.pathname;
 export async function resendConfirmation(email: string) {
   await call("/auth/v1/resend?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ type: "signup", email }) });
 }
+/** Change the sign-in email: Supabase emails a confirmation link to the new address (and the old one); the change
+ * happens when it's clicked. */
+export async function updateEmail(email: string) {
+  await call("/auth/v1/user?redirect_to=" + encodeURIComponent(location.origin + location.pathname), { method: "PUT", body: JSON.stringify({ email }) });
+}
 export async function updatePassword(password: string) {
   await call("/auth/v1/user", { method: "PUT", body: JSON.stringify({ password }) });
 }

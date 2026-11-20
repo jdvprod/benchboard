@@ -3,6 +3,7 @@
  *   #/players, #/coaches   the skills, for players or for coaches
  *   #/players/serving      one skill; links can be sent to a team
  * Players can check off what they can do; that's kept on this device. Coaches can add any drill to their practice plans. */
+import { AccountButton } from "../cloud/AccountPanel";
 import "../styles/app.css";
 import "./academy.css";
 import { useEffect, useState } from "react";
@@ -45,7 +46,7 @@ function App() {
         <button aria-pressed={who === "player"} onClick={() => switchTo("player")}>For players</button>
         <button aria-pressed={who === "coach"} onClick={() => switchTo("coach")}>For coaches</button>
       </div>}
-      <SiteSwitch here="academy" />
+      <SiteSwitch here="academy" /><AccountButton from="academy" />
     </header>
     <main className="ac-main"><SiteGate name="FloorCall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>

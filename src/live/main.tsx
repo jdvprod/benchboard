@@ -3,6 +3,7 @@
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
  *   #/                  enter a code from the coach */
+import { AccountButton } from "../cloud/AccountPanel";
 import { contactUrl } from "../cloud/links";
 import "../styles/app.css";
 import "./live.css";
@@ -31,7 +32,7 @@ function useTick(ms = 1000) { const [, set] = useState(0); useEffect(() => { con
 
 function Shell({ team, children, home }: { team?: string; children: any; home?: string }) {
   return <div className="lv">
-    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="FloorCall Live home"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /></header>
+    <header className="lv-top"><a className="lv-brand" href={home || "#/"} aria-label="FloorCall Live home"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Live</span></a>{team && <span className="lv-top-team">{team}</span>}<SiteSwitch here="live" label={tr} /><AccountButton from="live" /></header>
     <main className="lv-main">{children}</main>
     <footer className="lv-foot">{tr("Stats recorded by the team's coaches with FloorCall")} · <a href="../legal/privacy.html">{tr("Privacy")}</a> · <a href="../legal/terms.html">{tr("Terms")}</a> · <a href={contactUrl("live")}>{tr("Help")}</a>
       <div className="lv-lang" role="group" aria-label="Language / Idioma">{([["en", "English"], ["es", "Español"]] as [Lang, string][]).map(([k, l]) => <button key={k} aria-pressed={getLang() === k} onClick={() => { setLang(k); location.reload(); }}>{l}</button>)}</div></footer>

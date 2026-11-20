@@ -2,6 +2,7 @@
  *   #/         your matches, start a new one
  *   #/m/ID     the match: scoreboard, sand court, one-tap stats, box score
  * Matches are kept on this device. */
+import { AccountButton } from "../cloud/AccountPanel";
 import { contactUrl } from "../cloud/links";
 import { CodeBox } from "../cloud/CodeBox";
 import "../styles/app.css";
@@ -30,7 +31,7 @@ function App() {
   const m = route[0] === "m" ? list.find((x) => x.id === route[1]) : null;
   const shared = route[0] === "v" ? unpack(route[1] || "") : null;
   return <div className="bv">
-    <header className="bv-top"><a className="bv-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Beach</span></a><SiteSwitch here="beach" /></header>
+    <header className="bv-top"><a className="bv-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Beach</span></a><SiteSwitch here="beach" /><AccountButton from="beach" /></header>
     <main className="bv-main">
       {route[0] === "live" ? <Watch code={route[1] || ""} render={(lm, fresh) => <Match m={lm} onChange={() => {}} readOnly live={fresh ? "on" : "stale"} />} />
         : route[0] === "v" ? (shared ? <Match m={shared} onChange={() => {}} readOnly /> : <section className="card"><h2>This link didn't open</h2><p>It may have been cut off when it was copied. Ask for it again, or <a href="#/">score a match of your own</a>.</p></section>)

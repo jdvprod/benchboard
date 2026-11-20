@@ -8,6 +8,7 @@
  *   #/mine             my lessons (for a coach who is also a parent)
  *   #/join[/CODE]      join with a code from a trainer
  *   #/c/CODE           a clinic's public sign-up page (no account needed) */
+import { AccountButton } from "../cloud/AccountPanel";
 import "../styles/app.css";
 import "./lessons.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -69,7 +70,7 @@ function App() {
   return <div className="ls">
     <header className="ls-top">
       <a className="ls-brand" href="#/"><img className="brandmark" src="../brand/mark-white.png" alt="" width="26" height="26" /><b>FloorCall</b><span>Lessons</span></a>
-      <SiteSwitch here="lessons" />
+      <SiteSwitch here="lessons" /><AccountButton from="lessons" />
     </header>
     {open ? <main className="ls-main"><ClinicPage code={route[1]} /></main>
       : <main className="ls-main"><SiteGate name="FloorCall Lessons" kind={route[0] === "join" ? "athlete" : "coach"}

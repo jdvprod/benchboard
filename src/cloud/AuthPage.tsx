@@ -1,4 +1,5 @@
 /** Sign in, create account, password reset, and the account screen. Shares a split "scoreboard" shell with first-run setup. */
+import { AccountPanel } from "./AccountPanel";
 import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { setPrefs, state, team, toast } from "../data/store";
@@ -195,28 +196,8 @@ export function AccountPage() {
         {!isLinked(t.id) && !t.sample && <button className="btn sm primary" onClick={() => linkTeam(t.id).then(() => toast("Team synced")).catch((e) => toast(errText(e)))}>Sync this team</button>}
         <button className="btn sm" onClick={() => go("team")}>Team & sharing</button></div>
     </Card>}
-    <EmailPrefs />
-    <Card>
-      <div className="row between"><div><b>Password</b><p className="small muted">Get a link by email to set a new one.</p></div>
-        <button className="btn sm" onClick={async () => { try { await sendPasswordReset(u.email); toast("Reset link sent to " + u.email); } catch (e) { toast(errText(e)); } }}>Send reset link</button></div>
-    </Card>
-    <Card>
-      <div className="row between"><div><b>Sign out</b><p className="small muted">Your teams stay on this device. Changes sync again when you sign back in.</p></div>
-        <button className="btn sm" onClick={() => { signOut(); toast("Signed out"); go("track"); }}>Sign out</button></div>
-    </Card>
+    <Card title="Account settings"><AccountPanel from="app" onSignedOut={() => { toast("Signed out"); go("track"); }} /></Card>
   </div>;
-}
-
-/** Name and email updates, kept with the account. */
-function EmailPrefs() {
-  const m = userMeta(), [name, setName] = useState(m.name || ""), [, bump] = useState(0);
-  const save = async (p: Parameters<typeof updateMeta>[0], done: string) => { try { await updateMeta(p); bump((x) => x + 1); toast(done); } catch (e) { toast(errText(e)); } };
-  return <Card>
-    <div className="stack">
-      <label className="field"><span className="label">Your name</span><input value={name} onChange={(e) => setName(e.target.value)} onBlur={() => { if (name.trim() && name.trim() !== (m.name || "")) save({ name: name.trim() }, "Name saved"); }} /></label>
-      <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={userMeta().email_ok !== false && userMeta().email_ok !== undefined} onChange={(e) => save({ email_ok: e.target.checked }, e.target.checked ? "You'll get FloorCall news by email" : "No more news emails")} /> Send FloorCall news and new features to my inbox</label>
-    </div>
-  </Card>;
 }
 
 /** Sidebar account chip. */
