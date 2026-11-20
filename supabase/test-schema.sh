@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "34" "schema version is reported"
+check "select schema_version();" "35" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -346,6 +346,18 @@ expect "$(asall $P "select team_note_delete('tb1', '$N1');" | grep -c "Only the 
 asall $TM "select team_note_delete('tb1', '$N1');" | grep ERROR || true
 expect "$(asall $P "select count(*) from jsonb_array_elements(my_notes()) x where x->>'id' = '$N1';" | tail -1)" "0" "a deleted note is gone for everyone"
 expect "$(asall $TM "select jsonb_array_length(team_member_links('tb1'));" | tail -1)" "2" "coaches list the player and parent accounts to link"
+# ---------- version 35: AI limits per account ----------
+ADM=cccccccc-cccc-cccc-cccc-cccccccccccc
+expect "$(asall $TM "select my_ai()->>'own_key';" | tail -1)" "false" "a coach can't use their own key until an admin allows it"
+expect "$(asall $TM "select admin_ai_grant('teamowner@example.com', 200, true);" | grep -c 'Admins only')" "1" "only admins change AI access"
+asall $ADM "select admin_ai_grant('teamowner@example.com', 200, true, 'asked by email');" | grep ERROR || true
+expect "$(asall $TM "select my_ai()->>'limit';" | tail -1)" "200" "an admin raises one account's daily AI limit"
+expect "$(asall $TM "select my_ai()->>'own_key';" | tail -1)" "true" "and lets it use its own key"
+expect "$(q -c "select ai_limit_for('$TM');" | tail -1 | tr -d ' ')" "200" "the ai function reads the account's limit"
+expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_limit_for(uuid)', 'execute');" | tail -1 | tr -d ' ')" "f" "nobody signed in can read another account's AI limit"
+expect "$(q -c "select has_function_privilege('authenticated', 'public.error_digest(int)', 'execute');" | tail -1 | tr -d ' ')" "f" "the error digest is server-only"
+asall $ADM "select admin_ai_grant('teamowner@example.com', null, false);" | grep ERROR || true
+expect "$(q -c "select ai_limit_for('$TM');" | tail -1 | tr -d ' ')" "-1" "reset back to the default"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

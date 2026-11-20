@@ -1,7 +1,8 @@
 // Supabase Edge Function: AI for signed-in coaches, so nobody needs their own Anthropic key.
 // Deploy: supabase functions deploy ai   (or paste into Dashboard → Edge Functions → New function "ai")
 // Secret:  supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
-// Optional: AI_DAILY_LIMIT (default 40 requests per coach per day).
+// Optional: AI_DAILY_LIMIT (default 40 requests per coach per day). An admin can give one account its own limit
+// (Admin → AI access), stored in public.ai_grants.
 // Supabase verifies the caller's JWT before this runs, and provides SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
 
 const MODELS = new Set(["claude-haiku-5-5", "claude-sonnet-5-5", "claude-opus-5-5"]);
@@ -32,10 +33,12 @@ Deno.serve(async (req) => {
 
   // daily limit per coach
   const url = Deno.env.get("SUPABASE_URL")!, service = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const limit = +(Deno.env.get("AI_DAILY_LIMIT") || 40);
   const h = { apikey: service, authorization: "Bearer " + service, "content-type": "application/json" };
+  const own = await fetch(`${url}/rest/v1/rpc/ai_limit_for`, { method: "POST", headers: h, body: JSON.stringify({ uid }) }).then((r) => (r.ok ? r.json() : -1)).catch(() => -1);
+  const limit = +own >= 0 ? +own : +(Deno.env.get("AI_DAILY_LIMIT") || 40);
+  if (limit === 0) return json(403, { error: "AI features are off for this account." });
   const used = await fetch(`${url}/rest/v1/rpc/ai_bump`, { method: "POST", headers: h, body: JSON.stringify({ uid }) }).then((r) => r.ok ? r.json() : 0).catch(() => 0);
-  if (+used > limit) return json(429, { error: `You've used today's ${limit} AI requests. They reset tomorrow.` });
+  if (+used > limit) return json(429, { error: `You've used today's ${limit} AI requests. They reset tomorrow. Need more? Ask us from the Help page.` });
 
   const res = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",

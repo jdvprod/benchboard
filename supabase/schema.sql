@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 34 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 35 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1654,6 +1654,57 @@ begin
   insert into team_note_reads (note_id, user_id) values (nid, auth.uid()) on conflict do nothing;
 end $$;
 
+-- ---------- AI limits per account, and error alerts (version 35) ----------
+-- Every coach gets the daily number of AI requests set by AI_DAILY_LIMIT in the ai function. An admin can give one
+-- account a different limit (more, for a coach who asked, or a future plan) or let it use its own Anthropic key.
+create table if not exists public.ai_grants (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  daily_limit int check (daily_limit is null or daily_limit between 0 and 10000),
+  own_key boolean not null default false, note text, granted_at timestamptz not null default now()
+);
+alter table public.ai_grants enable row level security;
+revoke all on public.ai_grants from anon, authenticated;
+-- The signed-in account's AI: requests used today, its own limit if an admin set one, and whether it may use its own key.
+create or replace function public.my_ai() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('used', coalesce((select n from ai_usage where user_id = auth.uid() and day = current_date), 0),
+    'limit', (select daily_limit from ai_grants where user_id = auth.uid()),
+    'own_key', coalesce((select own_key from ai_grants where user_id = auth.uid()), false) or public.is_admin())
+$$;
+-- For the ai function only (service role): this account's limit, or -1 for the default.
+create or replace function public.ai_limit_for(uid uuid) returns int
+language sql stable security definer set search_path = public as $$ select coalesce((select daily_limit from ai_grants where user_id = uid), -1) $$;
+revoke execute on function public.ai_limit_for(uuid) from public, anon, authenticated;
+create or replace function public.admin_ai_grant(em text, lim int, own boolean, why text default null) returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
+declare u uuid;
+begin
+  if not public.is_admin() then raise exception 'Admins only.'; end if;
+  select id into u from auth.users where lower(email) = lower(trim(em));
+  if u is null then raise exception 'No account with that email.'; end if;
+  if lim is null and not coalesce(own, false) then delete from ai_grants where user_id = u;
+  else insert into ai_grants (user_id, daily_limit, own_key, note) values (u, lim, coalesce(own, false), left(why, 300))
+    on conflict (user_id) do update set daily_limit = excluded.daily_limit, own_key = excluded.own_key, note = excluded.note, granted_at = now(); end if;
+  return public.admin_ai_list();
+end $$;
+create or replace function public.admin_ai_list() returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+begin
+  if not public.is_admin() then raise exception 'Admins only.'; end if;
+  return coalesce((select jsonb_agg(jsonb_build_object('email', u.email, 'limit', g.daily_limit, 'own_key', g.own_key, 'note', g.note, 'at', g.granted_at,
+    'today', coalesce((select n from ai_usage a where a.user_id = g.user_id and a.day = current_date), 0)) order by g.granted_at desc)
+    from ai_grants g join auth.users u on u.id = g.user_id), '[]'::jsonb);
+end $$;
+-- For the alerts function only (service role): crash reports in the last hour, grouped by message.
+create or replace function public.error_digest(mins int default 60) returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object('total', (select count(*) from app_errors where at > now() - make_interval(mins => mins)),
+    'people', (select count(distinct coalesce(uid::text, agent)) from app_errors where at > now() - make_interval(mins => mins)),
+    'top', coalesce((select jsonb_agg(x) from (select message, count(*) n, max(version) version, max(page) page from app_errors
+      where at > now() - make_interval(mins => mins) group by message order by count(*) desc limit 5) x), '[]'::jsonb))
+$$;
+revoke execute on function public.error_digest(int) from public, anon, authenticated;
+
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
 -- Row security already guards the tables; this takes the defaults away as well and gives back exactly what each role uses.
@@ -1664,7 +1715,7 @@ grant execute on function public.watch(text), public.season_view(text), public.r
   public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
-revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text) from authenticated;
+revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int) from authenticated;
 -- Functions added later start closed to anyone without an account.
 alter default privileges in schema public revoke execute on functions from public, anon;
 -- Tables: no account needed only to send a crash report; everything else goes through the functions above.

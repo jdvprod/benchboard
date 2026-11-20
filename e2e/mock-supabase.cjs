@@ -1,6 +1,6 @@
 // Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints FloorCall uses, mirroring schema.sql rules.
 const http = require("http");
-const notes = [], noteLinks = [];
+const notes = [], noteLinks = [], aiGrants = new Map();
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const fees = new Map(), teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
@@ -101,6 +101,14 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       if (p === "/rest/v1/rpc/team_link_member") { if (!staff(b.t)) return send(res, 400, { message: "Only the team's coaches link players." }); for (let i = noteLinks.length - 1; i >= 0; i--) if (noteLinks[i].team_id === b.t && noteLinks[i].user_id === b.u) noteLinks.splice(i, 1); (b.ps || []).forEach((x) => noteLinks.push({ team_id: b.t, user_id: b.u, player_id: x })); return send(res, 200, null); }
       if (p === "/rest/v1/rpc/team_member_links") { if (!staff(b.t)) return send(res, 200, []); return send(res, 200, members.filter((m) => m.team_id === b.t && m.role === "viewer" && m.status !== "pending").map((m) => ({ user_id: m.user_id, email: m.email, role: m.role, players: noteLinks.filter((x) => x.team_id === b.t && x.user_id === m.user_id).map((x) => x.player_id) }))); }
     }
+    // ---- AI limits (version 35) ----
+    if (p === "/rest/v1/rpc/my_ai") { const g = aiGrants.get(me); return send(res, 200, { used: 0, limit: g?.limit ?? null, own_key: !!g?.own_key || admins.has(me) }); }
+    if (p === "/rest/v1/rpc/admin_ai_list" || p === "/rest/v1/rpc/admin_ai_grant") {
+      if (!admins.has(me)) return send(res, 400, { message: "Admins only." });
+      if (p.endsWith("grant")) { const u = [...users.values()].find((x) => x.email === String(b.em).toLowerCase()); if (!u) return send(res, 400, { message: "No account with that email." });
+        if (b.lim == null && !b.own) aiGrants.delete(u.id); else aiGrants.set(u.id, { email: u.email, limit: b.lim, own_key: !!b.own, note: b.why || null, at: now() }); }
+      return send(res, 200, [...aiGrants.values()].map((g) => ({ ...g, today: 0 })));
+    }
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     // FloorCall Lessons (version 31): mirrors the lesson_* functions in schema.sql
@@ -156,7 +164,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 34);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 35);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

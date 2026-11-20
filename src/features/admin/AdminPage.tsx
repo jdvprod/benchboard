@@ -5,6 +5,7 @@ import { Card, ConfirmButton, download, Kpi } from "../../ui/kit";
 import { config, rpc } from "../../cloud/client";
 import { toast } from "../../data/store";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
+import { AI_DAILY_DEFAULT } from "../../app/flags";
 
 interface Overview { users: number; users7: number; teams: number; activeTeams7: number; matches: number; matches7: number; liveNow: number; teamPages: number; gamecasts: number; recruitProfiles: number; notifyPhones: number; errors?: { message: string; count: number; users: number; last: string; version: string; page: string; stack?: string }[];
   recentUsers: { email: string; at: string }[]; teamsList: { id: string; name: string; members: number; matches: number; last: string | null; created: string }[]; at: string }
@@ -45,6 +46,27 @@ function Messages({ list, onDone }: { list: Msg[]; onDone: (m: Msg, done: boolea
       <div className="row"><a className="btn sm primary" href={`mailto:${m.email}?subject=${encodeURIComponent("Re: your FloorCall message")}&body=${encodeURIComponent("\n\n> " + m.message.split("\n").slice(0, 8).join("\n> "))}`}>Reply by email</a>
         <button className="btn sm ghost" onClick={() => onDone(m, m.status === "open")}>{m.status === "open" ? "Mark done" : "Reopen"}</button></div>
     </li>)}</ul>}
+  </Card>;
+}
+
+/** AI access: give one account more (or fewer) AI requests a day, or let it use its own Anthropic key. */
+interface Grant { email: string; limit: number | null; own_key: boolean; note: string | null; at: string; today: number }
+function AiAccess() {
+  const [list, setList] = useState<Grant[] | null>(null), [email, setEmail] = useState(""), [lim, setLim] = useState(""), [own, setOwn] = useState(false), [note, setNote] = useState(""), [err, setErr] = useState("");
+  useEffect(() => { rpc("admin_ai_list", {}).then(setList).catch(() => setList([])); }, []);
+  const save = async (em: string, l: number | null, o: boolean, n: string | null) => { setErr(""); try { setList(await rpc("admin_ai_grant", { em, lim: l, own: o, why: n })); setEmail(""); setLim(""); setOwn(false); setNote(""); toast("AI access saved"); } catch (e: any) { setErr(e?.message || "Couldn't save."); } };
+  return <Card title="AI access" actions={<span className="small muted">Every coach gets {AI_DAILY_DEFAULT} AI requests a day. Change it for one account here, or let it use its own Anthropic key.</span>}>
+    <form className="row" style={{ alignItems: "flex-end" }} onSubmit={(e) => { e.preventDefault(); if (email.trim()) save(email.trim(), lim.trim() === "" ? null : Math.max(0, +lim | 0), own, note.trim() || null); }}>
+      <label className="field" style={{ flex: "2 1 220px" }}><span className="label">Account email</span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" /></label>
+      <label className="field" style={{ flex: "1 1 110px" }}><span className="label">Requests a day</span><input value={lim} onChange={(e) => setLim(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={String(AI_DAILY_DEFAULT)} /></label>
+      <label className="row small" style={{ gap: 6, paddingBottom: 10 }}><input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} /> May use own key</label>
+      <label className="field" style={{ flex: "2 1 200px" }}><span className="label">Note</span><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why (asked by email on …)" /></label>
+      <button className="btn primary" disabled={!email.trim()}>Save</button>
+    </form>
+    {err && <p className="hint warn" role="alert">{err}</p>}
+    {list && list.length > 0 && <div className="tbl" style={{ marginTop: 10 }}><table><thead><tr><th className="l">Account</th><th>Per day</th><th>Own key</th><th>Today</th><th className="l">Note</th><th /></tr></thead>
+      <tbody>{list.map((g) => <tr key={g.email}><td className="l small">{g.email}</td><td>{g.limit ?? AI_DAILY_DEFAULT}</td><td>{g.own_key ? "Yes" : "–"}</td><td>{g.today}</td><td className="l small muted">{g.note || ""}</td>
+        <td><button className="btn sm ghost" onClick={() => save(g.email, null, false, null)}>Reset</button></td></tr>)}</tbody></table></div>}
   </Card>;
 }
 
@@ -91,6 +113,7 @@ export function AdminPage() {
           <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{s.status !== "approved" && <button className="btn sm primary" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: true }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "approved" } : y))); }}>Approve</button>}
             {s.status !== "denied" && <button className="btn sm ghost" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: false }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "denied" } : y))); }}>{s.status === "approved" ? "Remove access" : "Turn down"}</button>}</div></td></tr>)}</tbody></table></div>}
     </Card>}
+    <AiAccess />
     <Card title="Problems in the last two weeks" actions={<span className="small muted">Crashes coaches hit, newest first. No team data is sent, only the error and the screen.</span>}>
       {!o.errors?.length ? <p className="empty">No problems reported.</p> : <ul className="log admin-errs">{o.errors.map((e) => <li key={e.message}>
         <details><summary><b>{e.message}</b><span className="small muted"> · {e.count}× · {e.users} {e.users === 1 ? "coach" : "coaches"} · {e.page} · v{e.version} · {ago(e.last)}</span></summary>{e.stack && <pre>{e.stack}</pre>}</details></li>)}</ul>}

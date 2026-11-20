@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
 import { all, setPrefs, setSettings, state, team, toast } from "../../data/store";
-import { AI_MODE } from "../../app/flags";
+import { AI_DAILY_DEFAULT, AI_MODE } from "../../app/flags";
 import { Card, ConfirmButton, copyText, Seg, SetRow, Switch } from "../../ui/kit";
 import { ask, AiError, getKey, setKey } from "../../ai/client";
 import { authSettings, cloudAvailable, config, currentUser, fn, rpc, setConfig, signOut, forgetDevices } from "../../cloud/client";
@@ -112,19 +112,23 @@ function AdminLink() {
  * the coach's own bill, straight from this browser; the key stays on this device). */
 function AiKey() {
   const [key, setK] = useState(getKey()), [show, setShow] = useState(false), [testing, setTesting] = useState(false), [msg, setMsg] = useState(""), [, bump] = useState(0);
+  const [me, setMe] = useState<{ used: number; limit: number | null; own_key: boolean } | null>(null);
+  useEffect(() => { if (cloudAvailable() && currentUser()) rpc("my_ai", {}).then(setMe).catch(() => setMe(null)); }, []);
   const test = async () => {
     setKey(key.trim()); setTesting(true); setMsg("");
     try { await ask("Reply with the single word: ready", { tier: "quick", maxTokens: 10 }); setMsg("Connected. AI features use your key now."); }
     catch (e) { setMsg(e instanceof AiError ? e.message : "Couldn't connect."); }
     setTesting(false);
   };
-  const off = !!state.prefs.noAi;
+  const off = !!state.prefs.noAi, limit = me?.limit ?? AI_DAILY_DEFAULT, mayKey = AI_MODE === "own-key" || !!me?.own_key || !!getKey();
   return <Card title="AI features">
         <div className="stack">
-          <SetRow title="Show AI buttons" sub="Match and practice reports, scouting reports, timeout talking points, player report cards, the film summary, and lineup and practice suggestions. Your stats, charts and clip searches never need AI. Saved on this device.">
+          <SetRow title="Show AI buttons" sub="Match, practice and season reports, scouting reports, timeout talking points, player report cards, the film summary, and lineup and practice suggestions. Your stats, charts and clip searches never need AI. Saved on this device.">
             <Switch checked={!off} onChange={(v) => { setPrefs({ noAi: !v }); bump((x) => x + 1); }} label="Show AI buttons" /></SetRow>
-          {!off && <>
-          <p className="small muted">{AI_MODE === "included" ? "Signed-in coaches can use them with no setup, up to a daily limit. To use your own Anthropic account instead (no daily limit, billed to you), paste an API key from console.anthropic.com." : "To use them, paste your own API key from console.anthropic.com. Calls are billed to your Anthropic account."} The key stays on this device only.</p>
+          {!off && AI_MODE === "included" && me && <p className="small">{getKey() ? "Using your own Anthropic key: no daily limit." : `${me.used} of ${limit} AI requests used today. The count resets each day.`}</p>}
+          {!off && !mayKey && <p className="small muted">Need more AI requests, or want to use your own Anthropic account with no limit? <a href={contactUrl("app", "billing", "AI: more requests or my own key")}>Ask us</a>.</p>}
+          {!off && mayKey && <>
+          <p className="small muted">{AI_MODE === "included" ? "Your account can use your own Anthropic API key (from console.anthropic.com): no daily limit, billed to your Anthropic account." : "To use AI, paste your own API key from console.anthropic.com. Calls are billed to your Anthropic account."} The key stays on this device only.</p>
           <div className="row">
             <input className="input grow" type={show ? "text" : "password"} value={key} onChange={(e) => setK(e.target.value)} placeholder="sk-ant-…" autoComplete="off" aria-label="API key" style={{ minWidth: 200 }} />
             <button className="btn sm" onClick={() => setShow(!show)}>{show ? "Hide" : "Show"}</button>
@@ -139,7 +143,7 @@ function AiKey() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 34;
+const SCHEMA_VERSION = 35;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);

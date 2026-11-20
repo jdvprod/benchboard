@@ -43,6 +43,9 @@ export function accessWith(t: { createdAt: number; plan?: Plan; paidUntil?: stri
  * per day), and a coach can add their own key in Settings instead. "own-key": only coaches who add their own Anthropic
  * key in Settings get AI, on their own bill; FloorCall's key is never used. "off": no AI anywhere. */
 export const AI_MODE: "included" | "own-key" | "off" = "included";
+/** The daily number of AI requests per coach, unless an admin set another for that account. Keep in step with the
+ * AI_DAILY_LIMIT secret on the ai function (40 when it isn't set). Higher plans can raise it later. */
+export const AI_DAILY_DEFAULT = 40;
 
 /** Which AI features are offered. Each one spends AI credits (the `ai` Supabase function, AI_DAILY_LIMIT calls per
  * coach per day). The open-ended "ask" chats are off: the stats and film already show the answers, and coaches decide.
