@@ -1,12 +1,20 @@
-/** A month or week calendar, shared by the coaching app (Calendar tab) and FloorCall Lessons.
+/** A month, week or day calendar, shared by the coaching app (Calendar tab) and FloorCall Lessons.
  * Items are plain: a date (YYYY-MM-DD, the viewer's own day), an optional start time (HH:MM), a title, a kind for
  * its colour, and where it goes when tapped. Keyboard: ←/→ move a month or week; T jumps to today. */
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import "./calendar.css";
 
-export interface CalItem { id: string; date: string; time?: string; end?: string; title: string; sub?: string; kind: string; href?: string; onClick?: () => void; done?: boolean }
-export type CalView = "month" | "week";
+export interface CalItem { id: string; date: string; time?: string; end?: string; title: string; sub?: string; kind: string; href?: string; onClick?: () => void; done?: boolean;
+  /** where: a gym name or address; the day view and a picked day link it to a map */
+  place?: string;
+  /** which team, when the calendar shows more than one */
+  team?: { name: string; color: string } }
+export type CalView = "month" | "week" | "day";
+/** Black or white text, whichever reads on a team colour. */
+export const inkOn = (hex: string) => { const m = hex.replace("#", "").match(/^([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i); if (!m) return "#fff"; const [r, g, b] = [m[1], m[2], m[3]].map((x) => parseInt(x, 16) / 255).map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)); return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.32 ? "#0B0C0E" : "#fff"; };
+/** A map search for a place (works on phones and computers). */
+export const mapUrl = (place: string) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(place);
 
 const pad = (n: number) => String(n).padStart(2, "0");
 export const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -38,7 +46,7 @@ export function Calendar({ items, legend, initial, empty, actions, storeKey }: {
     for (const list of m.values()) list.sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || a.title.localeCompare(b.title));
     return m;
   }, [items]);
-  const move = (n: number) => setAnchor((a) => (view === "month" ? new Date(a.getFullYear(), a.getMonth() + n, 1) : addDays(a, 7 * n)));
+  const move = (n: number) => setAnchor((a) => (view === "month" ? new Date(a.getFullYear(), a.getMonth() + n, 1) : addDays(a, (view === "week" ? 7 : 1) * n)));
   useEffect(() => {
     const f = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement; if (el && /input|textarea|select/i.test(el.tagName)) return;
@@ -46,22 +54,25 @@ export function Calendar({ items, legend, initial, empty, actions, storeKey }: {
     };
     addEventListener("keydown", f); return () => removeEventListener("keydown", f);
   }, [view]);
-  const days = view === "month" ? monthDays(anchor.getFullYear(), anchor.getMonth()) : Array.from({ length: 7 }, (_, i) => addDays(weekStart(anchor), i));
-  const title = view === "month" ? anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+  const days = view === "month" ? monthDays(anchor.getFullYear(), anchor.getMonth()) : view === "day" ? [anchor] : Array.from({ length: 7 }, (_, i) => addDays(weekStart(anchor), i));
+  const title = view === "month" ? anchor.toLocaleDateString(undefined, { month: "long", year: "numeric" }) : view === "day" ? anchor.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })
     : (() => { const a = days[0], b = days[6]; return a.getMonth() === b.getMonth() ? `${a.toLocaleDateString(undefined, { month: "long", day: "numeric" })} – ${b.getDate()}, ${b.getFullYear()}` : `${a.toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${b.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`; })();
   const inRange = days.some((d) => byDay.has(ymd(d)));
   const Item = ({ it, wide }: { it: CalItem; wide?: boolean }) => {
-    const body = <><span className="cal-dot" aria-hidden="true" />{it.time && <span className="cal-time">{fmtTime(it.time)}</span>}<span className="cal-t">{it.title}</span>{wide && it.sub && <span className="cal-sub">{it.sub}</span>}</>;
+    const body = <><span className="cal-dot" aria-hidden="true" />{it.time && <span className="cal-time">{fmtTime(it.time)}</span>}<span className="cal-t">{it.team && <span className="cal-tm" style={{ ["--tc" as any]: it.team.color, color: inkOn(it.team.color) }}>{it.team.name}</span>}{it.title}</span>{wide && (it.sub || it.place) && <span className="cal-sub">{[it.sub, it.place].filter(Boolean).join(" · ")}</span>}</>;
     const cls = `cal-item k-${it.kind}${it.done ? " done" : ""}`;
-    return it.href ? <a className={cls} href={it.href} title={[fmtTime(it.time), it.title, it.sub].filter(Boolean).join(" · ")}>{body}</a>
-      : it.onClick ? <button className={cls} onClick={it.onClick} title={[fmtTime(it.time), it.title, it.sub].filter(Boolean).join(" · ")}>{body}</button>
+    return it.href ? <a className={cls} href={it.href} title={[fmtTime(it.time), it.team?.name, it.title, it.sub, it.place].filter(Boolean).join(" · ")}>{body}</a>
+      : it.onClick ? <button className={cls} onClick={it.onClick} title={[fmtTime(it.time), it.team?.name, it.title, it.sub, it.place].filter(Boolean).join(" · ")}>{body}</button>
       : <span className={cls}>{body}</span>;
   };
-  return <div className={"cal cal-" + view}>
+  /** An item with its place as a map link (a link can't sit inside the item's own link or button). */
+  const Entry = ({ it }: { it: CalItem }) => <div className="cal-entry"><Item it={it} wide />{it.place && <a className="cal-map" href={mapUrl(it.place)} target="_blank" rel="noopener"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5s4.5-4.2 4.5-8a4.5 4.5 0 0 0-9 0c0 3.8 4.5 8 4.5 8z" /><circle cx="8" cy="6.5" r="1.6" /></svg>{it.place}</a>}</div>;
+  const dayList = view === "day" ? byDay.get(ymd(anchor)) || [] : [];
+  return <div className={"cal cal-" + (view === "day" ? "oneday" : view)}>
     <div className="cal-bar">
       <div className="cal-nav">
-        <button className="cal-arrow" onClick={() => move(-1)} aria-label={view === "month" ? "Previous month" : "Previous week"}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg></button>
-        <button className="cal-arrow" onClick={() => move(1)} aria-label={view === "month" ? "Next month" : "Next week"}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></button>
+        <button className="cal-arrow" onClick={() => move(-1)} aria-label={"Previous " + view}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5 5.5 8l4.5 4.5" /></svg></button>
+        <button className="cal-arrow" onClick={() => move(1)} aria-label={"Next " + view}><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></button>
         <h2 className="cal-title" aria-live="polite">{title}</h2>
         <button className="cal-today" onClick={() => setAnchor(new Date())}>Today</button>
       </div>
@@ -70,10 +81,12 @@ export function Calendar({ items, legend, initial, empty, actions, storeKey }: {
         <div className="cal-views" role="group" aria-label="Calendar view">
           <button aria-pressed={view === "month"} onClick={() => setView("month")}>Month</button>
           <button aria-pressed={view === "week"} onClick={() => setView("week")}>Week</button>
+          <button aria-pressed={view === "day"} onClick={() => setView("day")}>Day</button>
         </div>
       </div>
     </div>
     {legend && <ul className="cal-legend">{legend.map(([k, l]) => <li key={k} className={"k-" + k}><span className="cal-dot" aria-hidden="true" />{l}</li>)}</ul>}
+    {view === "day" ? <div className={"cal-dayview" + (ymd(anchor) === today ? " today" : "")}>{dayList.length ? dayList.map((it) => <Entry key={it.id} it={it} />) : <p className="cal-empty">Nothing on this day.</p>}</div> : <>
     <div className="cal-head" aria-hidden="true">{["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d, i) => <span key={d}>{view === "week" ? <>{d} <b>{days[i].getDate()}</b></> : d}</span>)}</div>
     <div className="cal-grid">
       {days.map((d) => {
@@ -83,15 +96,16 @@ export function Calendar({ items, legend, initial, empty, actions, storeKey }: {
           {view === "month" ? <button className={"cal-num" + (picked === k ? " picked" : "")} onClick={() => setPicked(picked === k ? null : k)} aria-label={"Show " + d.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}>{d.getDate()}</button>
             : <span className="cal-num">{d.toLocaleDateString(undefined, { weekday: "short" })} <b>{d.getDate()}</b></span>}
           <div className="cal-items">{shown.map((it) => <Item key={it.id} it={it} wide={view === "week"} />)}
-            {view === "month" && list.length > 3 && <button className="cal-more" onClick={() => { setAnchor(d); setView("week"); }}>+{list.length - 3} more</button>}</div>
+            {view === "month" && list.length > 3 && <button className="cal-more" onClick={() => { setAnchor(d); setView("day"); }}>+{list.length - 3} more</button>}</div>
         </div>;
       })}
     </div>
+    </>}
     {view === "month" && picked && <div className="cal-pick" aria-live="polite">
       <div className="cal-pick-hd"><b>{parse(picked).toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</b><button className="cal-x" onClick={() => setPicked(null)} aria-label="Close">×</button></div>
-      {(byDay.get(picked) || []).length ? <div className="cal-pick-list">{(byDay.get(picked) || []).map((it) => <Item key={it.id} it={it} wide />)}</div> : <p className="cal-empty">Nothing on this day.</p>}
+      {(byDay.get(picked) || []).length ? <div className="cal-pick-list">{(byDay.get(picked) || []).map((it) => <Entry key={it.id} it={it} />)}</div> : <p className="cal-empty">Nothing on this day.</p>}
     </div>}
-    {!inRange && empty && <div className="cal-empty">{empty}</div>}
+    {!inRange && empty && view !== "day" && <div className="cal-empty">{empty}</div>}
   </div>;
 }
 

@@ -50,6 +50,8 @@ export interface Team {
   /** Set by the billing function once a team pays (see BILLING in src/app/flags.ts). */
   plan?: "team" | "club"; paidUntil?: string;
   color: string;           // primary team color (hex)
+  /** Where the team practices and plays home matches (an address or a gym name); the calendar's default location. */
+  gym?: string;
   createdAt: number;
   activeSeasonId: string | null;
   currentMatchId: string | null;
@@ -119,6 +121,8 @@ export interface Match {
   kind: MatchKind;
   opp: string;             // opponent name, or session name for practice
   date: string;            // YYYY-MM-DD
+  /** where it was played (from the schedule) */
+  place?: string;
   bestOf: number;
   /** Scoring: points per set (default 25), optional cap. */
   setTo?: number; cap?: number | null;
@@ -169,7 +173,7 @@ export type OppRoster = Record<string, { name?: string; pos?: string }>;
 export interface ScoutEv { id: string; vt: number; n: string; t: "K" | "TA" | "AE" | "SA" | "SE" | "B" | "D" | "E" }
 export interface OppFilm { id: string; date: string; vs: string; video: string; evs: ScoutEv[]; at: number }
 export interface Opponent { logo?: string; logoTried?: number; id: string; teamId: string; name: string; notes: string; scout: string; scoutAt: number | null; plan?: PlanItem[]; roster?: OppRoster; films?: OppFilm[] }
-export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** volunteer jobs families can sign up for on FloorCall Live */ jobs?: Job[] }
+export interface ScheduleItem { id: string; date: string; time: string; opp: string; site: "home" | "away" | "neutral" | ""; event: string; /** address or gym; home matches default to the team's gym */ place?: string; /** volunteer jobs families can sign up for on FloorCall Live */ jobs?: Job[] }
 export interface Job { id: string; name: string; need: number }
 export interface TeamEvent { id: string; date: string; time: string; title: string; place: string; note: string }
 
@@ -186,6 +190,8 @@ export interface PlanBlock { id: string; title: string; category: string; minute
 export interface PracticePlan {
   id: string; teamId: string; seasonId: string | null;
   date: string; title: string; start: string;  // start time, e.g. 15:30
+  /** where practice is, when it isn't the team's usual gym */
+  place?: string;
   blocks: PlanBlock[]; notes: string; status: "planned" | "done"; createdAt: number;
   /** Who was at practice: present, late or absent (missing = not taken). */
   attendance?: Record<string, "in" | "late" | "out">;

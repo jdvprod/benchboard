@@ -150,7 +150,7 @@ function Schedule({ book }: { book: Book }) {
 /** A session as a calendar item, in the viewer's own time zone. */
 const hhmm = (iso: string) => { const d = new Date(iso); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); };
 function sessionItem(s: { id: string; starts: string; minutes: number; kind: string; title?: string | null; place?: string | null; status: string; open: boolean }, who: string, href?: string, open = false): CalItem {
-  return { id: s.id, date: ymd(new Date(s.starts)), time: hhmm(s.starts), title: sessionName(s) + (who ? " · " + who : ""), sub: [`${s.minutes} min`, s.place].filter(Boolean).join(" · "),
+  return { id: s.id, date: ymd(new Date(s.starts)), time: hhmm(s.starts), title: sessionName(s) + (who ? " · " + who : ""), sub: `${s.minutes} min`, place: s.place || undefined,
     kind: s.status === "canceled" ? "canceled" : open ? "open" : s.kind, href, done: s.status === "done" };
 }
 function TrainerCalendar({ book }: { book: Book }) {

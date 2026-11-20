@@ -239,7 +239,7 @@ export function newMatch(o: Partial<Match> & { serve?: "us" | "them"; events?: M
   if (prev && prev.status !== "done") save("matches", { ...prev, status: "done" }, true);
   const m: Match = {
     id: uid("m"), teamId: t.id, seasonId: t.activeSeasonId, kind: o.kind || "match", opp: o.opp || (o.kind === "match" || !o.kind ? "Opponent" : "Practice"),
-    date: o.date || todayISO(), bestOf: o.bestOf || t.settings.bestOf, setTo: o.setTo, cap: o.cap ?? null, status: "live", site: o.site || "", event: o.event || "", notes: o.notes || "",
+    date: o.date || todayISO(), bestOf: o.bestOf || t.settings.bestOf, setTo: o.setTo, cap: o.cap ?? null, status: "live", site: o.site || "", event: o.event || "", notes: o.notes || "", ...(o.place ? { place: o.place } : {}),
     oppPlayers: o.oppPlayers || [], scrim: o.scrim || null, filmStart: null, nextLu: null, report: "", reportAt: null, planId: o.planId || null, createdAt: Date.now(), sample: o.sample, ...(o.film ? { film: true, video: o.video } : {}),
   };
   if (m.kind === "match") {

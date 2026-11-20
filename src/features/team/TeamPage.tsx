@@ -53,6 +53,8 @@ function TeamInfo() {
         <label className="field"><span className="label">Team name</span><input defaultValue={t.name} onBlur={(e) => e.target.value.trim() && setTeamPatch({ name: e.target.value.trim() })} /></label>
         <label className="field"><span className="label">Level</span><input defaultValue={t.level} onBlur={(e) => setTeamPatch({ level: e.target.value.trim() })} /></label>
       </div>
+      <label className="field"><span className="label">Home gym <span className="muted">(address or gym name)</span></span><input defaultValue={t.gym || ""} placeholder="e.g. Clovis North HS Gym, 2770 E International Ave, Fresno" onBlur={(e) => setTeamPatch({ gym: e.target.value.trim() || undefined })} />
+        <span className="small muted">Practices and home matches use it on the calendar unless you set another place.</span></label>
       <div><div className="label">{genderQuestion(t.level)}</div><Seg value={(t.gender || "") as Gender} onChange={(v) => setTeamPatch({ gender: v as Gender })} options={gendersFor(t.level)} label={genderQuestion(t.level)} /></div>
       <div><div className="label">Team logo</div><p className="small muted" style={{ margin: "2px 0 8px" }}>Shows on the gamecast, play-by-play, your team page and share graphics.</p>
         <LogoPicker kind="team" id={t.id} name={t.name} value={t.logo} onPick={teamLogoPick} /></div>

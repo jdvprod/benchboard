@@ -135,6 +135,7 @@ function PlanEditor({ plan, onDelete }: { plan: PracticePlan; onDelete: () => vo
       <div className="row">
         <label className="field"><span className="label">Date</span><input type="date" value={plan.date} onChange={(e) => set({ date: e.target.value })} /></label>
         <label className="field"><span className="label">Start</span><input type="time" value={plan.start} onChange={(e) => set({ start: e.target.value })} /></label>
+        <label className="field" style={{ flex: "1 1 200px" }}><span className="label">Where</span><input value={plan.place || ""} onChange={(e) => set({ place: e.target.value || undefined })} placeholder={team()?.gym || "Gym name or address"} /></label>
         <div className="field"><span className="label">Total</span><b style={{ fontSize: 20, fontFamily: "var(--display)" }}>{total} min · ends {addMin(plan.start, total)}</b></div>
       </div>
       <label className="row small" style={{ gap: 8 }}><input type="checkbox" checked={!!plan.share} onChange={(e) => set({ share: e.target.checked })} /> Show this plan to the team on FloorCall Live <span className="muted">(block names and minutes; your notes stay private)</span></label>

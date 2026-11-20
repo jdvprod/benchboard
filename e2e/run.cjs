@@ -1657,8 +1657,31 @@ const scenarios = {
     const busy = ph.locator(".cal-day:has(.cal-item) button.cal-num").first();
     if (await busy.count()) { await busy.click(); ok("calendar: on a phone, tapping a day lists what's on it", (await ph.locator(".cal-pick .cal-item").count()) > 0); }
     if (process.env.SHOTS) await ph.screenshot({ path: path.join(process.env.SHOTS, "calendar-phone.png"), fullPage: true });
-    ok("no errors on the calendar", !p.errors.length && !ph.errors.length, [...p.errors, ...ph.errors].slice(0, 3).join("; "));
-    for (const x of [p, ph]) await x.context().close();
+    // a day view, places with a map link, and two teams on one calendar
+    const q = await newPage(browser, { size: { width: 1280, height: 900 } }); await go(q, "home"); await q.waitForTimeout(500);
+    { const w = q.getByRole("button", { name: "Use without an account" }); if (await w.count()) { await w.click(); await q.waitForTimeout(300); } }
+    await q.getByLabel("Team name").fill("North 16 Blue"); await q.getByLabel("Level").fill("16U").catch(() => {}); await q.getByRole("button", { name: "Create team" }).click(); await q.waitForTimeout(600);
+    await go(q, "team"); await q.getByLabel(/^Home gym/).fill("North High Gym, 100 Main St"); await q.getByLabel(/^Home gym/).blur();
+    await go(q, "calendar"); await q.waitForTimeout(300);
+    await q.getByRole("button", { name: "Add event" }).click(); await q.getByLabel("What").fill("Film session"); await q.getByLabel("Where (optional)").fill("Room 12, North High"); await q.getByLabel("Time (optional)").fill("16:00");
+    await q.getByRole("button", { name: "Add event", exact: true }).last().click(); await q.waitForTimeout(200);
+    await go(q, "team/new"); await q.waitForTimeout(300); await q.locator("#nt-name").fill("North 14 White"); await q.locator("#nt-level").fill("14U"); await q.getByRole("button", { name: "Create team" }).click(); await q.waitForTimeout(600);
+    await go(q, "calendar"); await q.waitForTimeout(300);
+    await q.getByRole("button", { name: "Add event" }).click(); await q.getByLabel("What").fill("Team photos"); await q.getByRole("button", { name: "Add event", exact: true }).last().click(); await q.waitForTimeout(200);
+    ok("calendar: one team at a time by default", (await q.locator(".cal-day.today .cal-item").count()) === 1);
+    await q.getByLabel("Teams on the calendar").selectOption("all"); await q.waitForTimeout(200);
+    ok("calendar: 'All my teams' shows both teams, each item tagged with its team", (await q.locator(".cal-day.today .cal-item").count()) === 2 && (await q.locator(".cal-day.today .cal-tm").allInnerTexts()).sort().join(",") === "14U,16U");
+    await q.getByRole("button", { name: "Day", exact: true }).click(); await q.waitForTimeout(200);
+    ok("calendar: a day view lists today's items", (await q.locator(".cal-dayview .cal-entry").count()) === 2);
+    const map = q.locator(".cal-dayview a.cal-map");
+    ok("calendar: a place links to a map", (await map.count()) === 1 && /google\.com\/maps\/search/.test(await map.getAttribute("href")) && /Room 12/.test(await map.innerText()));
+    await q.getByLabel("Teams on the calendar").selectOption("pick"); await q.waitForTimeout(200);
+    await q.locator(".cal-teamchk", { hasText: "North 14 White" }).locator("input").uncheck().catch(() => {}); await q.waitForTimeout(200);
+    ok("calendar: or pick which teams", (await q.locator(".cal-dayview .cal-entry").count()) >= 1);
+    { const ax = await a11y(q); ok("calendar controls all have names", !ax.length, ax.join(" | ")); }
+    if (process.env.SHOTS) await q.screenshot({ path: path.join(process.env.SHOTS, "calendar-day.png"), fullPage: true });
+    ok("no errors on the calendar", !p.errors.length && !ph.errors.length && !q.errors.length, [...p.errors, ...ph.errors, ...q.errors].slice(0, 3).join("; "));
+    for (const x of [p, ph, q]) await x.context().close();
   },
   async trends(browser) {
     // a player's key numbers for their position, each with a trend line and last 3 / 5 / 10 / season

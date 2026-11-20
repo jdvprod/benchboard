@@ -85,3 +85,18 @@ button.cal-num.picked{box-shadow:0 0 0 2px var(--us)}
 .cal-nav{flex-wrap:wrap}
 .cal-title{min-width:0;white-space:normal}
 @media (max-width:420px){.cal-title{font-size:18px;margin:0 4px}.cal-today{padding:0 10px}.cal-arrow{width:34px;height:34px}}
+/* day view, places and teams */
+.cal-dayview{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.cal-entry{display:grid;gap:2px;min-width:0}
+.cal-dayview .cal-item,.cal-pick .cal-item{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:8px;padding:10px 12px;font-size:14.5px}
+.cal-dayview .cal-t,.cal-pick .cal-t{white-space:normal;font-weight:600}
+.cal-dayview .cal-sub{display:block;flex-basis:100%;padding-left:16px;color:var(--muted);font-size:13px}
+.cal-map{display:inline-flex;align-items:center;gap:5px;margin-left:16px;font-size:13px;color:var(--us);text-decoration:none;overflow-wrap:anywhere;min-width:0}
+.cal-map:hover{text-decoration:underline}
+.cal-map svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:1.5}
+.cal-tm{display:inline-block;font-size:11px;font-weight:700;line-height:1.3;padding:0 5px;margin-right:5px;border-radius:4px;color:#fff;background:var(--tc,var(--ink));vertical-align:1px;max-width:9em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cal-month .cal-tm{max-width:4.5em}
+.cal-teams select{width:auto;height:36px;padding:0 30px 0 10px;font-size:14px}
+.cal-teamchk{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer}
+.cal-teamchk.on{border-color:var(--ink)}
+.cal-teamchk .cal-tm{margin-right:0}

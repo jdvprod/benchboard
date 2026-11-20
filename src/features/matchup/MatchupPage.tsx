@@ -60,7 +60,7 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
   const save = (list: ScheduleItem[]) => setTeamPatch({ schedule: list });
   const avail = useAvailability(), signups = useSignups();
   const today = todayISO(), upcoming = items.filter((s) => s.date >= today), past = items.filter((s) => s.date < today);
-  const start = (s: ScheduleItem) => { newMatch({ kind: "match", opp: s.opp, date: todayISO(), site: s.site, event: s.event, bestOf: t.settings.bestOf, serve: "us" }); save(items.filter((x) => x.id !== s.id)); setUi({ sel: null, panel: null, follow: null }); go("track"); };
+  const start = (s: ScheduleItem) => { newMatch({ kind: "match", opp: s.opp, date: todayISO(), site: s.site, event: s.event, place: s.place, bestOf: t.settings.bestOf, serve: "us" }); save(items.filter((x) => x.id !== s.id)); setUi({ sel: null, panel: null, follow: null }); go("track"); };
   return <Card title="Schedule" actions={!adding && !pasting ? <div className="row" style={{ gap: 6 }}>{upcoming.length > 0 && <button className="btn sm ghost" onClick={() => { download(`${t.name} schedule.ics`.replace(/[^\w\- .]+/g, ""), scheduleIcs(upcoming, t.name), "text/calendar"); toast("Calendar file saved. Open it to add the games to your calendar, or send it to parents."); }}>Calendar</button>}<button className="btn sm" onClick={() => { setPasting(true); setAdding(false); }}>Paste schedule</button><button className="btn sm" onClick={() => { setAdding(true); setPasting(false); }}>Add match</button></div> : undefined}>
     <div className="stack">
       {pasting && <div className="stack">
@@ -78,7 +78,7 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
           toast(add.length ? `Added ${add.length} ${add.length === 1 ? "match" : "matches"}${parsed.length > add.length ? ` (${parsed.length - add.length} already on the schedule)` : ""}` : "Those are already on the schedule");
         }}>Add {parsed.length || ""} to schedule</button><button className="btn" onClick={() => { setPasting(false); setPaste(""); }}>Cancel</button></div>
       </div>}
-      {adding && <form className="stack" onSubmit={(e) => { e.preventDefault(); if (!f.opp.trim()) return; ensureOpponent(f.opp.trim()); save(items.concat({ ...f, id: uid("sc"), opp: f.opp.trim() })); setF({ ...f, opp: "", event: "" }); setAdding(false); toast("Added to schedule"); }}>
+      {adding && <form className="stack" onSubmit={(e) => { e.preventDefault(); if (!f.opp.trim()) return; ensureOpponent(f.opp.trim()); save(items.concat({ ...f, id: uid("sc"), opp: f.opp.trim() })); setF({ ...f, opp: "", event: "", place: "" }); setAdding(false); toast("Added to schedule"); }}>
         <label className="field"><span className="label">Opponent</span><input list="mu-opps" value={f.opp} onChange={(e) => setF({ ...f, opp: e.target.value })} placeholder="e.g. Buchanan" autoFocus /><datalist id="mu-opps">{opps.map((x) => <option key={x.id} value={x.name} />)}</datalist></label>
         <div className="two">
           <label className="field"><span className="label">Date</span><input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></label>
@@ -86,11 +86,12 @@ function Schedule({ items, onOpen, current }: { items: ScheduleItem[]; onOpen: (
         </div>
         <Seg value={f.site} onChange={(v) => setF({ ...f, site: v })} options={[["home", "Home"], ["away", "Away"], ["neutral", "Neutral"]]} label="Site" />
         <label className="field"><span className="label">Tournament or league (optional)</span><input value={f.event} onChange={(e) => setF({ ...f, event: e.target.value })} /></label>
+        <label className="field"><span className="label">Location (optional)</span><input value={f.place || ""} onChange={(e) => setF({ ...f, place: e.target.value })} placeholder={f.site === "home" && t.gym ? t.gym : "Gym name or address"} /></label>
         <div className="row"><button className="btn primary" disabled={!f.opp.trim()}>Add to schedule</button><button type="button" className="btn" onClick={() => { setAdding(false); setPasting(true); }}>Paste a whole schedule</button>{items.length > 0 && <button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button>}</div>
       </form>}
       {upcoming.length ? <ul className="mu-sched">{upcoming.map((s) => { const sel = current && oppKey(current) === oppKey(s.opp); return <li key={s.id} className={sel ? "sel" : ""}>
         <button className="mu-sched-main" onClick={() => onOpen(s.opp)}><span className="d"><b>{new Date(s.date + "T12:00").toLocaleDateString([], { month: "short", day: "numeric" })}</b>{new Date(s.date + "T12:00").toLocaleDateString([], { weekday: "short" })}</span>
-          <span className="o"><b>{s.site === "away" ? "at " : "vs "}{s.opp}</b><small>{[s.time && fmtTime(s.time), s.event].filter(Boolean).join(" · ") || (s.site ? s.site[0].toUpperCase() + s.site.slice(1) : "")}</small></span></button>
+          <span className="o"><b>{s.site === "away" ? "at " : "vs "}{s.opp}</b><small>{[s.time && fmtTime(s.time), s.event, s.place].filter(Boolean).join(" · ") || (s.site ? s.site[0].toUpperCase() + s.site.slice(1) : "")}</small></span></button>
         <span className="row" style={{ flexWrap: "nowrap", gap: 4 }}>{s.date === today && <button className="btn sm primary" onClick={() => start(s)}>Start</button>}<ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => save(items.filter((x) => x.id !== s.id))}>✕</ConfirmButton></span>
         <AvailabilityLine item={s.id} all={avail} />
         <JobsEditor s={s} signups={signups} onSave={(jobs) => save(items.map((x) => (x.id === s.id ? { ...x, jobs } : x)))} />
