@@ -2,7 +2,7 @@
  * practices, tournament days, and the team's own events (team dinner, photo day, film session), which are added here.
  * Players and families see it too (read-only), without practice notes. */
 import { useState } from "react";
-import { all, matchesOf, plansOf, replayOf, setPrefs, setTeamPatch, team, toast, uid } from "../../data/store";
+import { all, matchesOf, plansOf, replayOf, setPrefs, setTeamPatch, team, toast, todayISO, uid } from "../../data/store";
 import { Calendar, CalItem, fmtTime, inkOn } from "../../ui/Calendar";
 import { Card, download } from "../../ui/kit";
 import { setUi } from "../../app/ui";
@@ -59,7 +59,7 @@ const short = (x: Team) => (x.level && x.level.length <= 12 ? x.level : x.name.l
 
 export function CalendarPage() {
   const t = team()!, viewer = isViewer(t.id);
-  const [adding, setAdding] = useState(false), [f, setF] = useState<Omit<TeamEvent, "id">>({ date: new Date().toISOString().slice(0, 10), time: "", title: "", place: "", note: "" });
+  const [adding, setAdding] = useState(false), [f, setF] = useState<Omit<TeamEvent, "id">>({ date: todayISO(), time: "", title: "", place: "", note: "" });
   // which teams to show: this one (default), all of them, or the ones picked; remembered on this device
   const mine = all("teams").filter((x) => !x.sample).sort((a, b) => a.createdAt - b.createdAt);
   const [which, setWhich] = useState<string>(() => { try { return localStorage.getItem("fc-cal-teams") || "this"; } catch { return "this"; } });

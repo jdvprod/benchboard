@@ -1,5 +1,6 @@
 /** FloorCall Live demo (#/demo): a whole sample match that plays itself, point by point, on the real gamecast.
  * No account, no cloud: the events are generated here and revealed on a timer, so anyone can see Live working. */
+import { localISO } from "../lib/dates";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { replay } from "../sports/volleyball/engine";
 import { SAMPLE_OPP_ROSTER, SAMPLE_ROSTER, sampleMatch } from "../sports/volleyball/sample";
@@ -29,7 +30,7 @@ export function DemoGame({ Shell }: { Shell: any }) {
   useEffect(() => { document.title = tr("Demo game") + " · FloorCall Live"; }, []);
 
   const players: LPlayer[] = SAMPLE_ROSTER.map((p) => ({ id: p.id, num: p.num, first: p.first, last: p.last[0], pos: p.pos, photo: null }));
-  const m: LMatch = { id: "demo", opp: "Ridgeview", date: new Date().toISOString().slice(0, 10), bestOf: 5, status: done ? "done" : "live", event: tr("Demo game"), site: "home", kind: "match", oppLogo: null, oppRoster: SAMPLE_OPP_ROSTER };
+  const m: LMatch = { id: "demo", opp: "Ridgeview", date: localISO(new Date()), bestOf: 5, status: done ? "done" : "live", event: tr("Demo game"), site: "home", kind: "match", oppLogo: null, oppRoster: SAMPLE_OPP_ROSTER };
   const g: Game = { m, R: replay(events.slice(0, n) as any, { id: "demo", bestOf: 5 }) };
   const curSet = setStarts.filter((i) => i < n).length;
   const jumpSet = (k: number) => { const i = setStarts[k]; if (i != null) setN(i + 1); };

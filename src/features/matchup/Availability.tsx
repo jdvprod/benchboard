@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
 import { siteUrl } from "../../cloud/links";
-import { player, team, toast } from "../../data/store";
+import { player, team, todayISO, toast } from "../../data/store";
 import type { Job, ScheduleItem } from "../../data/model";
 
 export interface Rsvp { item: string; name: string; status: "yes" | "no" | "maybe"; player?: string | null; at: string }
@@ -81,7 +81,7 @@ export function JobsEditor({ s, onSave, signups }: { s: ScheduleItem; onSave: (j
 
 /** The next scheduled match and the players whose families said they may miss it (shown on the lineup page). */
 export function NextMatchOuts({ inLineup }: { inLineup: string[] }) {
-  const t = team()!, all = useAvailability(), today = new Date().toISOString().slice(0, 10);
+  const t = team()!, all = useAvailability(), today = todayISO();
   const next = (t.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
   if (!all || !next) return null;
   const out = all.filter((r) => r.item === next.id && r.player && r.status !== "yes").map((r) => ({ p: player(r.player!), s: r.status })).filter((x) => x.p);

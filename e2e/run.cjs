@@ -505,7 +505,7 @@ const scenarios = {
     await p.getByLabel("Email", { exact: true }).fill("legal@e2e.test"); await p.locator("#auth-pw").fill("secret123"); await p.locator("#auth-name").fill("Legal Coach");
     { const ax = await a11y(p); ok("sign-up form controls all have names", !ax.length, ax.join(" | ")); }
     await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(300);
-    ok("sign-up asks for agreement first", (await p.getByText("Please confirm you're 13 or older").count()) === 1);
+    ok("sign-up asks for agreement first", (await p.getByText("Please agree to the Terms and Privacy Policy.").count()) === 1);
     await p.locator("#auth-name").fill("Test Coach"); await p.locator(".auth-agree input").first().check(); await p.getByRole("button", { name: "Create account" }).click(); await p.waitForTimeout(600);
     const users = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json();
     const me = users.find((u) => u.email === "legal@e2e.test");
@@ -689,7 +689,7 @@ const scenarios = {
     ok("notifications ask for a free account first", (await P.locator(".lv-notify .ma").count()) === 1 && !(await P.getByRole("button", { name: "Turn on notifications" }).count()));
     await P.locator(".lv-notify").getByLabel("Your name").fill("Dana Lopez"); await P.locator(".lv-notify").getByLabel("Email", { exact: true }).fill("dana@example.com"); await P.locator(".lv-notify").getByLabel("Password", { exact: true }).fill("family-pass-1");
     await P.locator(".lv-notify").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(300);
-    ok("the account form says what's missing", /13 or older/.test(await P.locator(".lv-notify .ma-err").innerText().catch(() => "")));
+    ok("the account form says what's missing", /agree to the Terms/i.test(await P.locator(".lv-notify .ma-err").innerText().catch(() => "")));
     await P.locator(".lv-notify .ma-check input").first().check(); await P.locator(".lv-notify").getByRole("button", { name: "Create free account" }).last().click(); await P.waitForTimeout(800);
     { const us = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`)).json(); const d = us.find((u) => u.email === "dana@example.com");
       ok("a family account keeps their name, that they're a parent, and the news email choice", d && d.meta.name === "Dana Lopez" && d.meta.kind === "parent" && d.meta.email_ok === true, JSON.stringify(d)); }
@@ -1868,7 +1868,7 @@ const scenarios = {
     const p = await newPage(browser, { phone: true });
     await p.goto(U + "academy/#/players"); await p.waitForTimeout(500);
     if (await p.locator(".sg .ma").count()) await siteSignUp(p, "strength-kid@e2e.test", "athlete", "Sam Strong");
-    await p.locator(".ac-strcard").click(); await p.waitForTimeout(400);
+    await p.locator(".ac-strcard:not(.ac-mindcard)").click(); await p.waitForTimeout(400);
     ok("strength: Academy has a strength and jumping section", (await p.getByRole("heading", { name: "Strength and jumping", level: 1 }).count()) === 1);
     ok("strength: it opens with how to train safely", /doctor/.test(await p.locator(".ac-str-safe").innerText()));
     const n = await p.locator(".ac-str .ac-drill").count();
