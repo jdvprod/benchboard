@@ -3,7 +3,7 @@
  * and situation questions to test yourself, each with the best answer and why. Plain data, easy to review. */
 import type { Drill, Level } from "./content";
 
-export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates" | "talk" | "prepare" | "role" | "coachable";
+export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates" | "talk" | "prepare" | "role" | "coachable" | "better-ball" | "setter-iq" | "growth";
 export interface Question { q: string; options: string[]; answer: number; why: string; level: Level }
 export interface MentalTopic { id: MentalId; name: string; kind: "Game IQ" | "Mindset" | "Team"; tagline: string; intro: string; ideas: { title: string; text: string }[]; drills: Drill[]; questions: Question[] }
 
@@ -381,6 +381,82 @@ export const MENTAL: MentalTopic[] = [
       q(I, "You don't understand a correction. What should you do?", ["Pretend you understand", "Ask a short question to clarify, at a good moment", "Ignore it", "Ask a teammate to tell the coach they're wrong"], 1, "A clarifying question helps you make the change correctly."),
       q(I, "A new arm swing feels worse after one practice. What now?", ["Go back to the old one", "Keep giving it reps; new technique usually feels worse before it gets better", "Quit hitting", "Change something else too"], 1, "Skill changes take repetition. Check with your coach and give it time."),
       q(A, "The coach hasn't given you feedback in a while. What's a coachable move?", ["Assume you're perfect", "Ask what one thing would help you most right now", "Ask why others get more attention", "Stop working hard"], 1, "Asking for feedback shows ownership and tells you what to work on."),
+    ],
+  },
+  {
+    id: "better-ball", name: "Out of system: better the ball", kind: "Game IQ", tagline: "Make every bad ball a little better.",
+    intro: "Most rallies aren't perfect. Passes go off the net, digs fly to the wrong spot, the setter gets the first ball. Teams that win close matches 'better the ball': every touch after a bad one makes the next one easier. That means high, hittable balls to the pins, smart choices about when to swing and when to play it safe, and everyone knowing who takes the second ball.",
+    ideas: [
+      { title: "High and to the pins", text: "When out of system, a high set to the outside or right side gives the hitter time and the team a chance." },
+      { title: "Who takes the second ball", text: "If the setter digs or passes, the libero or right side usually sets. Decide this as a team before matches, and call it." },
+      { title: "Swing or play it safe", text: "A great set: swing. A tough set: hit high off the block, a deep roll shot, or a controlled ball to a hard spot. Giving the other team a free ball is better than a hitting error." },
+      { title: "Three touches", text: "Use all three contacts to get a better attack instead of sending a weak ball over on the second." },
+      { title: "Hustle", text: "Chasing a shank off the court and getting it back in play wins points and lifts a team." },
+    ],
+    drills: [
+      d("bb-second-ball", "Who takes the second ball", "coach", I, 12, "Team, a coach",
+        ["Coach hits or tosses the first ball to the setter, so the setter has to dig.", "The assigned second-ball player (libero or right side) calls 'Got it!' and bump sets or hand sets high to a pin.", "Rotate through every rotation."],
+        ["Decide the rule as a team and practice it.", "A high, hittable set beats a fast one.", "The call happens before the ball arrives."]),
+      d("bb-chaos-to-kill", "Chaos to kill", "coach", A, 15, "Team, 6 v 6, a coach adding balls",
+        ["The coach sends a bad pass or shanked dig to one team to start each rally.", "That team must turn it into an attack; score double for a kill out of system."],
+        ["Teaches calm decisions in chaos.", "Hitters stay patient for a high set.", "Celebrate the 'better the ball' plays."]),
+    ],
+    questions: [
+      q(B, "The pass goes way off the net and the setter can't get there. What's the best play?", ["Send a free ball over on the second touch", "Another player sets a high ball to a pin so the team can still attack", "Let it drop", "Hit it over as hard as you can"], 1, "Using the second touch to set a high ball keeps your team in the rally with an attack."),
+      q(B, "The setter dug the first ball. Who usually takes the second?", ["The setter again", "The libero or right side, as the team agreed", "Nobody", "Whoever is closest to the bench"], 1, "Teams plan who sets when the setter digs. Calling it early avoids confusion."),
+      q(I, "You're hitting a low, tight set that you can't swing at well. What's smart?", ["Swing as hard as you can into the block", "Play a controlled shot: high off the block, a deep roll, or a tip to an open spot", "Catch it", "Let it go"], 1, "A smart shot keeps the ball in play or scores; a forced swing often becomes an error or a block."),
+      q(I, "Your teammate shanks a pass toward the bleachers. What should you do?", ["Watch it go", "Chase it and play a high ball back into the court", "Wait for the rally to end", "Yell at your teammate"], 1, "Pursuing every ball is a habit of great teams; even a high bump back gives your team a chance."),
+      q(A, "Late in a set, you get an out-of-system set in your weakest rotation. What's the best mindset?", ["Force a kill no matter what", "Make the best play available: keep it in, make them work, and win the next ball", "Give up the point", "Ask for a sub"], 1, "Out of system, keeping the ball in play and making the opponent work is usually the higher-percentage choice."),
+    ],
+  },
+  {
+    id: "setter-iq", name: "Setter decisions", kind: "Game IQ", tagline: "Run the offense like a quarterback.",
+    intro: "Setters touch the second ball on almost every rally, so their decisions shape the whole offense. Great setters know their hitters' strengths, read the other team's block, use the quick attack to hold the middle blocker, and choose the high-percentage set when the pass is bad.",
+    ideas: [
+      { title: "Know your hitters", text: "Who's hot, who's tired, who hits well against a big block? FloorCall's stats show who's efficient tonight." },
+      { title: "Read the middle blocker", text: "If the middle blocker commits on the quick, set the pins. If they drift outside early, set the quick." },
+      { title: "Use the quick to hold the block", text: "A middle attack, even if it's not set, keeps the middle blocker home." },
+      { title: "Match the set to the pass", text: "Perfect pass: run the fast plays. Off pass: high ball to the best out-of-system hitter." },
+      { title: "Spread it, then go to your best", text: "Early in sets, use everyone. At 22–22, go to your most reliable option." },
+    ],
+    drills: [
+      d("set-read-middle-blocker", "Read the middle blocker", "coach", A, 15, "Setter, three hitters, a middle blocker",
+        ["The middle blocker chooses whether to commit on the quick or read.", "The setter watches the blocker during the pass and sets away from them.", "Score kills and how often the setter beat the block."],
+        ["Setters see the middle blocker in their eye line before contact.", "Hitters keep running their approach every time.", "Talk after each rep: what did you see?"]),
+      d("set-hot-hand", "Hot hand", "coach", I, 12, "Setter, hitters, a coach keeping a quick stat",
+        ["During a scrimmage, the coach calls out hitters' efficiency every few rallies.", "The setter must use that information when choosing sets."],
+        ["Setters learn to use real-time information.", "Share stats in a timeout too.", "Balance using the hot hand with keeping the defense honest."]),
+    ],
+    questions: [
+      q(B, "The pass is perfect and the middle blocker has drifted toward your outside hitter. Where should you set?", ["The outside hitter", "The quick to the middle", "A free ball over", "A back set out of bounds"], 1, "If the middle blocker leaves early, the quick attack is open."),
+      q(I, "Your outside hitter has 3 errors and no kills; your right side has 4 kills. It's 22–22. Who gets the set?", ["The outside, to get them going", "The right side, the most reliable option right now", "The libero", "Nobody: dump every time"], 1, "Late in a close set, go to the hitter who's producing. Help the struggling hitter early in the next set."),
+      q(I, "The pass is off the net to the 10-foot line. What's the best set?", ["A fast quick to the middle", "A high set to a pin", "A slide", "A back set to the right side at speed"], 1, "From a pass off the net, high sets to the pins are safest and give the hitter time."),
+      q(A, "Their middle blocker jumps with your quick hitter every time. What does that open?", ["Nothing", "The pins, especially the side away from the middle", "Only setter dumps", "Free balls"], 1, "If the middle commits to the quick, your outside or right side faces a single block."),
+    ],
+  },
+  {
+    id: "growth", name: "Growth mindset and practice habits", kind: "Mindset", tagline: "Better, not perfect.",
+    intro: "Players improve fastest when they see errors as part of learning, practice with purpose, and focus on what they control: attitude, effort, communication, conditioning and how they learn. Talent helps, but daily habits decide how good you get.",
+    ideas: [
+      { title: "Better, not perfect", text: "Errors are information. The goal is to be a little better than yesterday." },
+      { title: "Practice with purpose", text: "Pick one thing to improve each practice and focus on it in every drill." },
+      { title: "Game-like reps", text: "Practice that looks like the game (reading, deciding, competing) transfers to matches best." },
+      { title: "Hustle is a skill", text: "Effort, chasing balls and talking are choices you can make every day." },
+      { title: "Track your progress", text: "Write it down and check your numbers (FloorCall's trends) every few weeks." },
+    ],
+    drills: [
+      d("growth-one-percent", "One percent better", "player", B, 5, "Alone, a notebook",
+        ["Before practice, write one small thing to get better at (for example, 'pass every serve to target with my feet set').", "After practice, write how it went and one thing for tomorrow."],
+        ["Small, specific goals add up fast.", "Celebrate progress.", "Look back each month."]),
+      d("growth-hustle-points", "Hustle points", "coach", B, 10, "Team, scrimmage",
+        ["Award a bonus point for every hustle play: a pursuit, a dive, a big call, covering a hitter.", "Teammates can nominate plays."],
+        ["Makes effort visible and valued.", "Builds a team culture of hustle.", "Keep it fun."]),
+    ],
+    questions: [
+      q(B, "You keep missing a new jump serve in practice. What's the best attitude?", ["'I'm just bad at it'", "'Misses are part of learning; I'll focus on my toss and keep practicing'", "'I'll never use it'", "'The ball is bad'"], 1, "A growth mindset treats errors as part of getting better and focuses on the next small step."),
+      q(B, "Which of these can you control every day?", ["The referee's calls", "Your effort, attitude and communication", "The other team's serving", "Who starts"], 1, "Effort, attitude, communication, conditioning and learning are always in your control."),
+      q(I, "What makes practice transfer best to matches?", ["Only long, repetitive drills", "Game-like drills with reading, decisions and competition", "Only conditioning", "Only scrimmages with no feedback"], 1, "Game-like practice trains the reading and decisions that matches demand."),
+      q(A, "You've been stuck at the same pass average for a month. What's the best next step?", ["Practice the same way, more", "Watch film, ask the coach for one change, and track the result", "Quit passing", "Blame the servers"], 1, "Feedback, a specific change and measuring it break plateaus."),
     ],
   },
 ];

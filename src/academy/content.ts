@@ -289,9 +289,10 @@ import { PASSING, SERVING, SETTING } from "./library-a";
 import { BLOCKING, DEFENSE, HITTING, TEAM } from "./library-b";
 import { MORE } from "./library-c";
 import { MORE2 } from "./library-d";
+import { MORE3 } from "./library-e";
 import { STRENGTH } from "./strengthData";
 import { MENTAL_DRILLS } from "./mentalData";
-const EXTRA: Record<string, Drill[]> = { serving: [...SERVING, ...MORE.serving, ...(MORE2.serving || [])], passing: [...PASSING, ...MORE.passing, ...(MORE2.passing || [])], setting: [...SETTING, ...MORE.setting, ...(MORE2.setting || [])], hitting: [...HITTING, ...MORE.hitting, ...(MORE2.hitting || [])], defense: [...DEFENSE, ...MORE.defense, ...(MORE2.defense || [])] };
+const EXTRA: Record<string, Drill[]> = { serving: [...SERVING, ...MORE.serving, ...(MORE2.serving || []), ...(MORE3.serving || [])], passing: [...PASSING, ...MORE.passing, ...(MORE2.passing || []), ...(MORE3.passing || [])], setting: [...SETTING, ...MORE.setting, ...(MORE2.setting || []), ...(MORE3.setting || [])], hitting: [...HITTING, ...MORE.hitting, ...(MORE2.hitting || []), ...(MORE3.hitting || [])], defense: [...DEFENSE, ...MORE.defense, ...(MORE2.defense || []), ...(MORE3.defense || [])] };
 for (const s of SKILLS) for (const x of EXTRA[s.id] || []) if (!s.drills.some((y) => y.id === x.id)) s.drills.push(x);
 const LEVEL_ORDER: Record<Level, number> = { Beginner: 0, Intermediate: 1, Advanced: 2 };
 for (const s of SKILLS) s.drills.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
@@ -300,8 +301,8 @@ for (const s of SKILLS) s.drills.sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORD
 export interface Area { id: string; name: string; category: string; drills: Drill[]; skill?: Skill }
 export const AREAS: Area[] = [
   ...SKILLS.map((s) => ({ id: s.id, name: s.name, category: s.category, drills: s.drills, skill: s })),
-  { id: "blocking", name: "Blocking", category: "Blocking", drills: [...BLOCKING, ...MORE.blocking, ...MORE2.blocking].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
-  { id: "team", name: "Team and game play", category: "Game play", drills: [...TEAM, ...MORE.team, ...MORE2.team].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
+  { id: "blocking", name: "Blocking", category: "Blocking", drills: [...BLOCKING, ...MORE.blocking, ...MORE2.blocking, ...MORE3.blocking].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
+  { id: "team", name: "Team and game play", category: "Game play", drills: [...TEAM, ...MORE.team, ...MORE2.team, ...MORE3.team].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
   { id: "mental", name: "The mental game", category: "Team talk", drills: [...MENTAL_DRILLS].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
   { id: "strength", name: "Strength and jumping", category: "Conditioning", drills: [...STRENGTH].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
 ];
