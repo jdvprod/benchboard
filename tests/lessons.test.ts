@@ -123,3 +123,8 @@ test("academy library: every drill has a unique id, steps and coaching points", 
   for (const x of LIBRARY) { assert.ok(x.how.length >= 1 && x.points.length >= 1, x.id); assert.ok(x.minutes > 0, x.id); }
   assert.ok(LIBRARY.length >= 300, String(LIBRARY.length));
 });
+test("academy quiz: a difficulty picks only that level, with enough hard situations for a full test", () => {
+  const hard = quizFor("all", 10, 3, "Advanced"); assert.equal(hard.length, 10); assert.ok(hard.every((x) => x.level === "Advanced"));
+  assert.ok(ALL_QUESTIONS.filter((x) => x.level === "Advanced").length >= 40);
+  for (const t of MENTAL) { const q = quizFor(t.id, 10, 1, "Advanced"); assert.ok(q.length >= 1, t.id); }
+});

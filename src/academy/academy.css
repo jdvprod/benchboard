@@ -233,3 +233,8 @@ body{padding-left:0;background:var(--surface)}
 .ac-form-err{color:#C8372B;margin:0;font-weight:600}
 @media (prefers-color-scheme:dark){.ac-star.on{color:#F2C14E}}
 .ac-own{display:grid;gap:10px;margin-top:14px}.ac-own-h{margin:0;font:700 18px var(--display);flex:1}.ac-own-h small{color:var(--muted);font-weight:500}.ac-own .ac-libtools{align-items:center}
+.ac-quizwrap{display:grid;gap:10px;max-width:760px}
+.ac-quiz-set{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.ac-timed{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-size:14px}
+.ac-quiz-time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);margin-left:auto;margin-right:10px}
+.ac-quiz-time.low{color:#C8372B}

@@ -1922,6 +1922,8 @@ const scenarios = {
     ok("mental: finishing shows a score", /of \d+/.test(await p.locator(".ac-quiz-score").innerText()));
     await p.goto(U + "academy/#/players/mental/test"); await p.waitForTimeout(300);
     ok("mental: the Game IQ test has 10 mixed situations", /of 10/.test(await p.locator(".ac-quiz-hd").innerText()));
+    await p.getByRole("group", { name: "Difficulty" }).getByRole("button", { name: "Advanced (hard)" }).click(); await p.waitForTimeout(300);
+    ok("mental: Advanced turns on the timer and asks only hard situations", (await p.locator(".ac-timed input").isChecked()) && /\d+s/.test(await p.locator(".ac-quiz-time").innerText()) && /Advanced/.test(await p.locator(".ac-quiz-hd .ac-lvl").innerText()));
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "mental.png"), fullPage: true });
     ok("no errors in the mental game", !p.errors.length, p.errors.slice(0, 3).join("; "));
     await p.context().close();

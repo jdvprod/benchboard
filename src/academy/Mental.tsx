@@ -1,9 +1,9 @@
 /** Academy → The mental game: topics (reading the game, reading the block, blocking reads, faster decisions,
  * pressure, bouncing back, focus, leadership, teammates), each with ideas, drills and a "Test yourself" quiz of real
  * situations. A mixed Game IQ test draws from every topic. Best scores are kept on this device. */
-import { useMemo, useState } from "react";
-import { Who } from "./content";
-import { MENTAL, MentalId, MentalTopic, quizFor, quizVerdict, shuffled } from "./mentalData";
+import { useEffect, useMemo, useState } from "react";
+import { Level, LEVELS, Who } from "./content";
+import { MENTAL, MentalId, MentalTopic, quizFor, quizVerdict, shuffled, TIME_FOR } from "./mentalData";
 import { DrillRow, OwnSection, usePicks } from "./Library";
 import { rpc } from "../cloud/client";
 
@@ -54,23 +54,39 @@ function TopicPage({ t, who, coach, base, best, onScore }: { t: MentalTopic; who
 }
 
 function Quiz({ topic, onDone, best }: { topic: MentalId | "all"; onDone: (pct: number) => void; best?: number }) {
+  const [level, setLevel] = useState<Level | "">(() => read<Level | "">("fc-academy-iq-level", "")), [timed, setTimed] = useState(() => read("fc-academy-iq-timed", false));
+  const setL = (l: Level | "") => { setLevel(l); write("fc-academy-iq-level", l); if (l === "Advanced" && !timed) { setTimed(true); write("fc-academy-iq-timed", true); } };
+  return <div className="ac-quizwrap">
+    <div className="ac-quiz-set">
+      <div className="ac-seg" role="group" aria-label="Difficulty"><button aria-pressed={!level} onClick={() => setL("")}>Mixed</button>{LEVELS.map((l) => <button key={l} aria-pressed={level === l} onClick={() => setL(l)}>{l === "Advanced" ? "Advanced (hard)" : l}</button>)}</div>
+      <label className="ac-timed"><input type="checkbox" checked={timed} onChange={(e) => { setTimed(e.target.checked); write("fc-academy-iq-timed", e.target.checked); }} /> Timed{level ? ` (${TIME_FOR[level]} seconds)` : ""}</label>
+    </div>
+    <QuizRun key={topic + level + timed} topic={topic} level={level} timed={timed} onDone={(p) => onDone(p)} best={best} />
+  </div>;
+}
+
+function QuizRun({ topic, level, timed, onDone, best }: { topic: MentalId | "all"; level: Level | ""; timed: boolean; onDone: (pct: number) => void; best?: number }) {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
-  const qs = useMemo(() => quizFor(topic, 10, seed), [topic, seed]);
-  const [at, setAt] = useState(0), [pick, setPick] = useState<number | null>(null), [right, setRight] = useState(0);
+  const qs = useMemo(() => quizFor(topic, 10, seed, level), [topic, seed, level]);
+  const [at, setAt] = useState(0), [pick, setPick] = useState<number | null>(null), [right, setRight] = useState(0), [left, setLeft] = useState<number | null>(null), [late, setLate] = useState(false);
   const done = at >= qs.length, Q0 = qs[at], S = Q0 ? shuffled(Q0, seed + at) : null, Q = Q0 && S ? { ...Q0, ...S } : Q0;
+  const secs = Q0 ? TIME_FOR[Q0.level] : 0;
+  useEffect(() => { if (!timed || done || pick != null) { setLeft(null); return; } setLeft(secs); setLate(false);
+    const t0 = Date.now(), iv = setInterval(() => { const l = Math.max(0, secs - Math.floor((Date.now() - t0) / 1000)); setLeft(l); if (l <= 0) { clearInterval(iv); setLate(true); setPick(-1); } }, 250);
+    return () => clearInterval(iv); }, [at, timed, done, pick == null]);
   const choose = (k: number) => { if (pick != null) return; setPick(k); if (k === Q.answer) setRight((r) => r + 1); };
-  const next = () => { const n = at + 1; setAt(n); setPick(null); if (n >= qs.length) onDone(Math.round((100 * right) / qs.length)); };
-  const restart = () => { setAt(0); setPick(null); setRight(0); setSeed(Math.floor(Math.random() * 1e9)); };
+  const next = () => { const n = at + 1; setAt(n); setPick(null); setLate(false); if (n >= qs.length) onDone(Math.round((100 * right) / qs.length)); };
+  const restart = () => { setAt(0); setPick(null); setRight(0); setLate(false); setSeed(Math.floor(Math.random() * 1e9)); };
   if (done) { const pct = Math.round((100 * right) / qs.length); return <div className="ac-quiz ac-quiz-done" aria-live="polite">
-    <b className="ac-quiz-score">{right} of {qs.length}</b><span>{quizVerdict(right, qs.length)}</span>
+    <b className="ac-quiz-score">{right} of {qs.length}</b><span>{quizVerdict(right, qs.length)}{level ? ` · ${level}` : ""}{timed ? " · timed" : ""}</span>
     {best != null && <small>{pct > best ? "New best!" : `Your best: ${Math.max(best, pct)}%`}</small>}
     <button className="btn primary" onClick={restart}>Try again</button></div>; }
   return <div className="ac-quiz">
-    <div className="ac-quiz-hd"><span>Situation {at + 1} of {qs.length}</span><span className={"ac-lvl " + Q.level.toLowerCase()}>{Q.level}</span></div>
+    <div className="ac-quiz-hd"><span>Situation {at + 1} of {qs.length}</span>{left != null && <span className={"ac-quiz-time" + (left <= 5 ? " low" : "")} aria-label={`${left} seconds left`}>{left}s</span>}<span className={"ac-lvl " + Q.level.toLowerCase()}>{Q.level}</span></div>
     <p className="ac-quiz-q">{Q.q}</p>
     <div className="ac-quiz-opts" role="group" aria-label="Your answer">{Q.options.map((o, k) => <button key={k} disabled={pick != null && k !== pick && k !== Q.answer}
       className={pick == null ? "" : k === Q.answer ? "right" : k === pick ? "wrong" : ""} aria-pressed={pick === k} onClick={() => choose(k)}>{o}</button>)}</div>
-    {pick != null && <div className={"ac-quiz-why " + (pick === Q.answer ? "right" : "wrong")} role="status"><b>{pick === Q.answer ? "Right." : "Not quite."}</b> {Q.why}
+    {pick != null && <div className={"ac-quiz-why " + (pick === Q.answer ? "right" : "wrong")} role="status"><b>{pick === Q.answer ? "Right." : late ? "Time's up." : "Not quite."}</b> {Q.why}
       <div><button className="btn primary sm" onClick={next} autoFocus>{at + 1 < qs.length ? "Next situation" : "See your score"}</button></div></div>}
   </div>;
 }
