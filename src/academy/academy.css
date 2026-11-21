@@ -216,3 +216,20 @@ body{padding-left:0;background:var(--surface)}
 .ac-quiz-why.right b{color:#177A3E}.ac-quiz-why.wrong b{color:#C8372B}
 .ac-quiz-done{justify-items:start}.ac-quiz-score{font:700 34px var(--display)}
 @media (prefers-color-scheme:dark){.ac-quiz-why.right b{color:#5CC98A}.ac-quiz-why.wrong b{color:#F08A80}}
+/* favorites and your own drills */
+.ac-drill-top{display:flex;align-items:stretch;min-width:0}
+.ac-drill-top .ac-drill-hd{flex:1;min-width:0}
+.ac-star{flex:none;width:44px;border:0;background:none;cursor:pointer;display:grid;place-items:center;color:var(--muted);border-left:1px solid var(--line)}
+.ac-star svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}
+.ac-star.on{color:#C98A00}.ac-star.on svg{fill:currentColor}
+.ac-star:hover{color:var(--ink)}
+.ac-ownchip{display:inline-block;margin-left:8px;font-size:11.5px;font-weight:700;padding:1px 7px;border-radius:999px;background:var(--ink);color:var(--surface);vertical-align:2px}
+.ac-libtools{display:flex;flex-wrap:wrap;gap:8px}
+.ac-form{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 18px;display:grid;gap:12px}
+.ac-form h2{margin:0;font:700 20px var(--display)}
+.ac-form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.ac-form-grid label{display:grid;gap:4px;font-size:14px;font-weight:600;min-width:0}.ac-form-grid label.wide{grid-column:1/-1}
+.ac-form-grid .input{width:100%;min-width:0}
+.ac-form-err{color:#C8372B;margin:0;font-weight:600}
+@media (prefers-color-scheme:dark){.ac-star.on{color:#F2C14E}}
+.ac-own{display:grid;gap:10px;margin-top:14px}.ac-own-h{margin:0;font:700 18px var(--display);flex:1}.ac-own-h small{color:var(--muted);font-weight:500}.ac-own .ac-libtools{align-items:center}

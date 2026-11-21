@@ -1751,6 +1751,23 @@ const scenarios = {
     await C.locator(".ac-drill", { hasText: "Platform and freeze" }).locator(".ac-drill-hd").click();
     await C.getByRole("button", { name: "Send to your players" }).click(); await C.waitForTimeout(600);
     ok("drills: the coach sends a drill to their players", (await C.locator(".ac-drill", { hasText: "Platform and freeze" }).locator(".ac-sentchip").count()) === 1);
+    // favorites and the coach's own drill
+    await C.getByRole("button", { name: "Add to favorites: Platform and freeze" }).click(); await C.waitForTimeout(400);
+    await C.getByRole("button", { name: /★ Favorites/ }).click(); await C.waitForTimeout(200);
+    ok("drills: a starred drill shows under Favorites", (await C.locator(".ac-drill").count()) === 1 && /Platform and freeze/.test(await C.locator(".ac-drill").innerText()));
+    await C.getByRole("button", { name: /★ Favorites/ }).click();
+    await C.getByRole("button", { name: "+ Add your own drill" }).click();
+    const fm = C.locator(".ac-form");
+    await fm.getByLabel("Name").fill("Seam serve battle"); await fm.getByLabel("Section").selectOption("serving"); await fm.getByLabel("Steps (one per line)").fill("Servers aim at the seams.\nPassers call every ball.");
+    await fm.getByRole("button", { name: "Save drill" }).click(); await C.waitForTimeout(700);
+    ok("drills: the coach adds their own drill to a section", (await C.locator(".ac-drill", { hasText: "Seam serve battle" }).locator(".ac-ownchip").count()) === 1);
+    await C.locator(".ac-drill", { hasText: "Seam serve battle" }).locator(".ac-drill-hd").click();
+    await C.locator(".ac-drill", { hasText: "Seam serve battle" }).getByRole("button", { name: "Send to your players" }).click(); await C.waitForTimeout(600);
+    await C.goto(U + "academy/#/coaches/serving"); await C.waitForTimeout(600);
+    ok("drills: it shows on that skill's page too", (await C.locator(".ac-own .ac-drill", { hasText: "Seam serve battle" }).count()) === 1);
+    { const ax = await a11y(C); ok("drills: favorites and own-drill controls all have names", !ax.length, ax.join(" | ")); }
+    await C.goto(U + "academy/#/coaches"); await C.waitForTimeout(500);
+    ok("drills: favorites show on the Academy home", (await C.locator(".ac-favs .ac-drill", { hasText: "Platform and freeze" }).count()) === 1);
     if (process.env.SHOTS) await C.screenshot({ path: path.join(process.env.SHOTS, "library-coach.png"), fullPage: false });
     // a player joins the team with the code in Academy, and sees it
     const P = await newPage(browser, { phone: true });
@@ -1760,6 +1777,7 @@ const scenarios = {
     ok("drills: a team code in Academy joins the team", (await P.locator(".cb-cov").innerText()).includes("Drill Prep"));
     await P.reload(); await P.waitForTimeout(900);
     ok("drills: the player sees what their coach sent on Academy's home page", (await P.locator(".ac-home-fc .ac-drill", { hasText: "Platform and freeze" }).count()) === 1);
+    ok("drills: including the coach's own drill", (await P.locator(".ac-home-fc .ac-drill", { hasText: "Seam serve battle" }).count()) === 1);
     await P.goto(U + "academy/#/players/drills"); await P.waitForTimeout(700);
     ok("drills: and at the top of the library", (await P.locator(".ac-fromcoach .ac-drill", { hasText: "Platform and freeze" }).count()) === 1 && (await overflow(P)) <= 0);
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "library-player.png"), fullPage: true });

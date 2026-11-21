@@ -18,8 +18,9 @@ import { contactUrl, placeUrl } from "../cloud/links";
 import { CodeBox } from "../cloud/CodeBox";
 import { cloudAvailable, rpc, userMeta } from "../cloud/client";
 import { SiteGate } from "../cloud/SiteGate";
-import { checks, Level, LIBRARY, LEVELS, Skill, skill, SKILLS, Who } from "./content";
-import { DrillRow, Library, usePicks } from "./Library";
+import { checks, Level, LibDrill, LIBRARY, LEVELS, Skill, skill, SKILLS, Who } from "./content";
+import { DrillRow, Library, OwnSection, usePicks } from "./Library";
+import { useFavs, useOwn } from "./mine";
 import { Diagram } from "./Diagram";
 
 const read = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -65,12 +66,22 @@ function Missing({ who }: { who: Who }) {
 
 /** Drills a player's coach sent them, on the Academy home page. */
 function FromCoach() {
-  const { picks } = usePicks(false);
-  const list = (picks || []).map((p) => ({ p, d: LIBRARY.find((x) => x.id === p.drill) })).filter((x) => x.d);
+  const { picks } = usePicks(false), { lib } = useOwn();
+  const list = (picks || []).map((p) => ({ p, d: LIBRARY.find((x) => x.id === p.drill) || lib.find((x) => x.id === p.drill) })).filter((x) => x.d);
   if (!list.length) return null;
   return <section className="ac-sec ac-fromcoach ac-home-fc" aria-labelledby="ac-fc-h"><h2 id="ac-fc-h">From your coach</h2>
     <ul className="ac-drills">{list.slice(0, 6).map(({ p, d }) => <DrillRow key={p.team + d!.id} d={d!} category={d!.category} who="player" />)}</ul>
     {list.length > 6 && <p className="ac-more"><a href="#/players/drills">All {list.length} in the library</a></p>}</section>;
+}
+
+/** Your starred drills, right on the Academy home. */
+function Favorites({ who }: { who: Who }) {
+  const { favs } = useFavs(), { lib } = useOwn();
+  const list = favs.map((id) => LIBRARY.find((x) => x.id === id) || lib.find((x) => x.id === id)).filter(Boolean).slice(0, 6) as LibDrill[];
+  if (!list.length) return null;
+  return <section className="ac-sec ac-favs" aria-labelledby="ac-fav-h"><h2 id="ac-fav-h">Your favorites</h2>
+    <ul className="ac-drills">{list.map((d) => <DrillRow key={d.id} d={d} category={d.category} who={who} />)}</ul>
+    {favs.length > 6 && <p className="ac-more"><a href={"#/" + seg(who) + "/drills/favorites"}>All {favs.length} favorites</a></p>}</section>;
 }
 
 function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }) {
@@ -92,6 +103,7 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
           : <small>{teamDrills} team drills · measured by {s.stat.name.split(" (")[0].toLowerCase()}</small>}</span>
         <svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
       </a></li>; })}</ol>
+    <Favorites who={who} />
     <a className="ac-libcard ac-strcard ac-mindcard" href={"#/" + seg(who) + "/mental"}>
       <span><b>The mental game</b><span>Read the game and the block, decide faster, handle pressure and bad days, and lead your team. Drills and real situations to test your Game IQ.</span></span>
       <span className="ac-libcount"><span><b>{MENTAL.length}</b> topics</span><span><b>{MENTAL.reduce((a, t) => a + t.questions.length, 0)}</b> situations</span></span>
@@ -150,6 +162,7 @@ function SkillPage({ s, who, done, toggle, coach }: { s: Skill; who: Who; done: 
           <div className="ac-seg ac-lvlpick" role="group" aria-label="Level"><button aria-pressed={!lvl} onClick={() => setLvl("")}>All levels</button>{LEVELS.map((l) => <button key={l} aria-pressed={lvl === l} onClick={() => setLvl(lvl === l ? "" : l)}>{l} <small>{s.drills.filter((d) => d.who === who && d.level === l).length}</small></button>)}</div>
           <ul className="ac-drills">{drills.map((d) => <DrillRow key={d.id} d={{ ...d, area: s.id, areaName: "", category: s.category }} category={s.category} who={who}
             send={coach && who === "coach" && teams.length ? { teams, picked: (t) => (teamPicks[t] || []).includes(d.id), toggle: async (t, on) => { await rpc("team_pick_drill", { t, drill: d.id, pick: on, note: null }); await loadTeam(t); } } : undefined} />)}</ul>
+          <OwnSection area={s.id} who={who} category={s.category} />
           <p className="ac-more"><a href={"#/" + seg(who) + "/drills"}>All {LIBRARY.length} drills in the library</a></p></section>
         {who === "player" && <section id="ac-check" className="ac-sec"><h2>Check yourself</h2>
           <p className="ac-note">Check off what you can do. It's saved on this device. {n ? `${n} of ${all.length} so far.` : ""}</p>

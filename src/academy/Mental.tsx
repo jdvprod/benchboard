@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { Who } from "./content";
 import { MENTAL, MentalId, MentalTopic, quizFor, quizVerdict, shuffled } from "./mentalData";
-import { DrillRow, usePicks } from "./Library";
+import { DrillRow, OwnSection, usePicks } from "./Library";
 import { rpc } from "../cloud/client";
 
 const read = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
@@ -31,6 +31,7 @@ export function MentalPage({ who, coach, topic }: { who: Who; coach: boolean; to
       <ul className="ac-mind-topics">{MENTAL.filter((x) => x.kind === k).map((x) => <li key={x.id}><a href={base + "/" + x.id}>
         <b>{x.name}</b><span>{x.tagline}</span>
         <small>{x.drills.length} drills · {x.questions.length} situations{best[x.id] != null ? ` · best ${best[x.id]}%` : ""}</small></a></li>)}</ul></section>)}
+    <section className="ac-sec"><OwnSection area="mental" who={who} category="Team talk" title="Your own mental drills" /></section>
   </article>;
 }
 

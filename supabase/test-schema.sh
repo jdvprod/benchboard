@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "36" "schema version is reported"
+check "select schema_version();" "37" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -373,6 +373,16 @@ expect "$(q -c "select role from members where team_id = 'tb1' and user_id = '$T
 asall $ADM "select admin_transfer_team('tb1', 'teamowner@example.com');" | grep ERROR || true
 expect "$(q -c "select owner = '$TM' from teams_cloud where id = 'tb1';" | tail -1 | tr -d ' ')" "t" "an admin can move a team to another account"
 expect "$(q -c "select has_function_privilege('authenticated', 'public.transfer_team_to(text, uuid)', 'execute');" | tail -1 | tr -d ' ')" "f" "the transfer helper is server-only"
+# ---------- version 37: own Academy drills ----------
+CD=$(asall $TM "select custom_drill_save(null, 'serving', '{\"name\":\"Coach serve game\",\"level\":\"Beginner\",\"how\":[\"Serve\"],\"points\":[\"Aim\"]}'::jsonb);" | tail -1 | tr -d ' ')
+expect "$(asall $TM "select my_custom_drills()->0->'data'->>'name';" | tail -1)" "Coach serve game" "a coach saves their own drill"
+expect "$(asall $B "select jsonb_array_length(my_custom_drills());" | tail -1)" "0" "nobody else sees it"
+expect "$(asall $B "select custom_drill_save('$CD', 'serving', '{\"name\":\"hijack\"}'::jsonb);" | grep -c 'gone')" "1" "nobody else can change it"
+asall $TM "select team_pick_drill('tb1', 'c:$CD', true);" | grep ERROR || true
+expect "$(asall $P "select picked_custom_drills()->0->'data'->>'name';" | tail -1)" "Coach serve game" "players on the team can open a custom drill their coach sent"
+expect "$(asall $E "select jsonb_array_length(picked_custom_drills());" | tail -1)" "0" "people off the team can't"
+asall $TM "select custom_drill_delete('$CD');" | grep ERROR || true
+expect "$(q -c "select count(*) from team_drill_picks where drill_id = 'c:$CD';" | tail -1 | tr -d ' ')" "0" "deleting it takes it off the team's list"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

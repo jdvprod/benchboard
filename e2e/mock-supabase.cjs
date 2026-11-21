@@ -1,6 +1,6 @@
 // Used by the end-to-end tests. Minimal in-memory stand-in for the Supabase endpoints FloorCall uses, mirroring schema.sql rules.
 const http = require("http");
-const notes = [], noteLinks = [], aiGrants = new Map();
+const notes = [], noteLinks = [], aiGrants = new Map(), customDrills = [];
 const users = new Map(); // email -> {id,email,pw}
 const tokens = new Map(); // token -> userId
 const fees = new Map(), teams = new Map(), members = [], records = new Map(), invites = new Map(), shares = new Map(), seasonShares = new Map(), recruits = new Map(), boards = new Map();
@@ -122,6 +122,14 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       const nm = members.find((m) => m.team_id === b.t && m.user_id === nu); if (nm) { nm.role = "owner"; nm.status = "active"; } else members.push({ team_id: b.t, user_id: nu, role: "owner", email: [...users.values()].find((x) => x.id === nu)?.email, joined_at: now(), status: "active" });
       return send(res, 200, null);
     }
+    // ---- own Academy drills (version 37) ----
+    if (p === "/rest/v1/rpc/custom_drill_save") { if (!me) return send(res, 400, { message: "Sign in to save drills." }); if (!String(b.dat?.name || "").trim()) return send(res, 400, { message: "Give the drill a name." });
+      if (b.did) { const r = customDrills.find((x) => x.id === b.did && x.owner === me); if (!r) return send(res, 400, { message: "That drill is gone." }); r.area = b.ar; r.data = b.dat; r.at = Date.now(); return send(res, 200, r.id); }
+      const r = { id: "cd" + Math.random().toString(36).slice(2, 10), owner: me, area: b.ar, data: b.dat, at: Date.now() }; customDrills.push(r); return send(res, 200, r.id); }
+    if (p === "/rest/v1/rpc/custom_drill_delete") { const i = customDrills.findIndex((x) => x.id === b.did && x.owner === me); if (i >= 0) { customDrills.splice(i, 1); for (let j = drillPicks.length - 1; j >= 0; j--) if (drillPicks[j].drill_id === "c:" + b.did) drillPicks.splice(j, 1); } return send(res, 200, null); }
+    if (p === "/rest/v1/rpc/my_custom_drills") return send(res, 200, customDrills.filter((x) => x.owner === me).sort((a2, b2) => b2.at - a2.at).map((x) => ({ id: x.id, area: x.area, data: x.data })));
+    if (p === "/rest/v1/rpc/picked_custom_drills") { const myTeams = members.filter((m) => m.user_id === me).map((m) => m.team_id);
+      return send(res, 200, customDrills.filter((c) => c.owner !== me && drillPicks.some((pk) => myTeams.includes(pk.team_id) && pk.drill_id === "c:" + c.id)).map((x) => ({ id: x.id, area: x.area, data: x.data }))); }
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     // FloorCall Lessons (version 31): mirrors the lesson_* functions in schema.sql
@@ -177,7 +185,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 36);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 37);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

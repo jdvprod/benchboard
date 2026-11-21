@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Level, LEVELS, Who } from "./content";
 import { STRENGTH, STRENGTH_GROUPS, STRENGTH_GUIDE, StrengthGroup } from "./strengthData";
-import { DrillRow, usePicks } from "./Library";
+import { DrillRow, OwnSection, usePicks } from "./Library";
 import { rpc } from "../cloud/client";
 
 export function StrengthPage({ who, coach }: { who: Who; coach: boolean }) {
@@ -44,6 +44,7 @@ export function StrengthPage({ who, coach }: { who: Who; coach: boolean }) {
         <ul className="ac-drills">{list.filter((x) => x.group === g).map((x) => <DrillRow key={x.id} d={{ ...x, areaName: "" } as any} category="Conditioning" who={who} send={sendFor(x.id)} />)}</ul>
       </div>)}
     </section>
+    <section className="ac-sec"><OwnSection area="strength" who={who} category="Conditioning" title="Your own exercises" /></section>
     <p className="ac-str-foot">These exercises are general guidance for healthy athletes, not medical advice or a personal program. See the <a href="../legal/terms.html#training">training and safety terms</a>.</p>
   </article>;
 }

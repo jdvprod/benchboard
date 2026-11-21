@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 36 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 37 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1783,6 +1783,52 @@ begin
   perform public.transfer_team_to(t, u);
   return jsonb_build_object('team', t, 'owner', em);
 end $$;
+
+-- ---------- coaches' own Academy drills (version 37) ----------
+-- A coach (or player) can add their own drills to any Academy section. They're private to the account, except that a
+-- coach can send one to their team like any library drill (team_drill_picks stores it as 'c:<id>').
+create table if not exists public.academy_custom (
+  id uuid primary key default gen_random_uuid(),
+  owner uuid not null references auth.users(id) on delete cascade,
+  area text not null, data jsonb not null, updated_at timestamptz not null default now()
+);
+create index if not exists academy_custom_owner on public.academy_custom (owner);
+alter table public.academy_custom enable row level security;
+revoke all on public.academy_custom from anon, authenticated;
+create or replace function public.custom_drill_save(did uuid, ar text, dat jsonb) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare r uuid;
+begin
+  if auth.uid() is null then raise exception 'Sign in to save drills.'; end if;
+  if length(coalesce(trim(dat->>'name'), '')) = 0 then raise exception 'Give the drill a name.'; end if;
+  if length(dat::text) > 8000 or length(coalesce(ar, '')) not between 1 and 30 then raise exception 'That drill is too long.'; end if;
+  if did is null then
+    if (select count(*) from academy_custom where owner = auth.uid()) >= 300 then raise exception 'You''ve saved 300 drills: delete some first.'; end if;
+    insert into academy_custom (owner, area, data) values (auth.uid(), ar, dat) returning id into r;
+  else
+    update academy_custom set area = ar, data = dat, updated_at = now() where id = did and owner = auth.uid() returning id into r;
+    if r is null then raise exception 'That drill is gone.'; end if;
+  end if;
+  return r;
+end $$;
+create or replace function public.custom_drill_delete(did uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  delete from team_drill_picks where drill_id = 'c:' || did::text and exists (select 1 from academy_custom c where c.id = did and c.owner = auth.uid());
+  delete from academy_custom where id = did and owner = auth.uid();
+end $$;
+create or replace function public.my_custom_drills() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_agg(jsonb_build_object('id', id, 'area', area, 'data', data) order by updated_at desc) from academy_custom where owner = auth.uid()), '[]'::jsonb)
+$$;
+-- Custom drills a coach sent to a team the signed-in account is on (so players can open them).
+create or replace function public.picked_custom_drills() returns jsonb
+language sql stable security definer set search_path = public as $$
+  select coalesce((select jsonb_agg(distinct jsonb_build_object('id', c.id, 'area', c.area, 'data', c.data))
+    from team_drill_picks p join members m on m.team_id = p.team_id and m.user_id = auth.uid() and m.status = 'active'
+    join academy_custom c on p.drill_id = 'c:' || c.id::text
+    where exists (select 1 from members s where s.team_id = p.team_id and s.user_id = c.owner and s.role in ('owner', 'coach'))), '[]'::jsonb)
+$$;
 
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
