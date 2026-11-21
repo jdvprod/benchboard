@@ -2615,6 +2615,35 @@ const scenarios = {
     for (const pg of [A, B, P, V]) await pg.context().close();
   },
   /** New-user walkthroughs as a coach, a player and a parent, on a phone (SHOTS=dir node e2e/run.cjs _walk). Not in the regular run. */
+  async _matrix(browser) {
+    // Every main page on every common screen: small Android, iPhone SE, iPhone, phone held sideways, iPad both ways,
+    // laptop and big monitor. Flags sideways scrolling, unlabeled controls, odd text (undefined, NaN) and page errors.
+    const OUT = process.env.SHOTS || "/tmp/matrix"; fs.mkdirSync(OUT, { recursive: true });
+    const SIZES = [["android-small", 360, 740], ["iphone-se", 375, 667], ["iphone", 390, 844], ["phone-sideways", 844, 390], ["ipad", 768, 1024], ["ipad-sideways", 1024, 768], ["laptop", 1280, 800], ["monitor", 1920, 1080]];
+    const only = process.env.MATRIX ? process.env.MATRIX.split(",") : null;
+    const APP = ["home", "track", "stats", "team", "lineup", "calendar", "practice", "film", "matchup", "club", "settings", "help"];
+    const SITES = [["live", "live/#/demo"], ["recruit", "recruit/"], ["beach", "beach/"], ["academy", "academy/#/players"], ["academy-coach", "academy/#/coaches"], ["drills", "academy/#/coaches/drills"], ["strength", "academy/#/players/strength"], ["mental", "academy/#/players/mental"], ["iq-test", "academy/#/players/mental/test"], ["serving", "academy/#/players/serving"], ["lessons", "lessons/"], ["product", "about.html"], ["pricing", "pricing.html"], ["contact", "contact.html"], ["privacy", "legal/privacy.html"]];
+    const problems = [];
+    for (const [name, w, h] of SIZES) {
+      if (only && !only.includes(name)) continue;
+      const p = await newPage(browser, { size: { width: w, height: h }, cloud: false });
+      const check = async (label) => {
+        await p.waitForTimeout(500);
+        const ov = await overflow(p), ax = await a11y(p).catch(() => []), text = await p.locator("body").innerText().catch(() => "");
+        const odd = [...new Set(text.match(/\bundefined\b|\bNaN\b|\[object|Infinity/g) || [])];
+        const issues = [ov > 0 && `scrolls sideways ${ov}px`, ax.length && `unlabeled: ${ax.slice(0, 3).join(", ")}`, odd.length && `shows ${odd.join(", ")}`, p.errors.length && `errors: ${p.errors.slice(0, 2).join(" | ")}`].filter(Boolean);
+        p.errors.length = 0;
+        if (issues.length) { problems.push(`${name} · ${label}: ${issues.join("; ")}`); await p.screenshot({ path: path.join(OUT, `${name}-${label.replace(/\W+/g, "_")}.png`), fullPage: true }); }
+      };
+      await go(p, "sample"); await p.waitForTimeout(900);
+      for (const r of APP) { await go(p, r); await check("app-" + r); }
+      await go(p, "team"); await p.waitForTimeout(300); { const pl = p.locator("a[href*='#/player/']").first(); if (await pl.count()) { await pl.click(); await check("app-player"); } }
+      for (const [label, url] of SITES) { await p.goto(U + url); await check(label); }
+      ok(`matrix ${name} (${w}×${h}): every page fits and works`, !problems.some((x) => x.startsWith(name + " ·")), problems.filter((x) => x.startsWith(name + " ·")).slice(0, 6).join(" || "));
+      await p.context().close();
+    }
+    if (problems.length) console.log("\n" + problems.join("\n"));
+  },
   async _walk(browser) {
     const OUT = process.env.SHOTS || "/tmp/walk"; fs.mkdirSync(OUT, { recursive: true });
     const found = [];

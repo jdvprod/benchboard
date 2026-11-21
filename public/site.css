@@ -23,7 +23,8 @@ img{display:block;max-width:100%;height:auto}
 .nav ul a{color:var(--ink)}
 .nav .open{font-size:15px;font-weight:600;background:var(--black);color:var(--white);border-radius:980px;padding:6px 16px}
 .nav .open:hover{text-decoration:none;background:#333}
-@media (max-width:720px){.nav ul{display:none}.nav .open{margin-left:auto}}
+@media (max-width:980px){.nav .wrap{gap:20px}.nav ul{gap:18px}}
+@media (max-width:860px){.nav ul{display:none}.nav .open{margin-left:auto}}
 
 /* type */
 h1,h2{font-family:var(--display);font-weight:700;color:var(--black);margin:0;text-wrap:balance}
@@ -98,7 +99,7 @@ footer nav{display:flex;gap:20px;flex-wrap:wrap}footer a{color:var(--grey)}
 /* nav: pages and sign in */
 .nav .signin{font-size:15px;color:var(--ink)}
 .nav a[aria-current=page]{color:var(--black);font-weight:600}
-@media (max-width:720px){.nav .signin{display:none}}
+@media (max-width:540px){.nav .signin{display:none}}
 
 /* page heads (pricing, about) */
 .pagetop{text-align:center;padding-top:clamp(64px,9vw,112px)}
