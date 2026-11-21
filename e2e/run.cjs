@@ -2506,6 +2506,9 @@ const scenarios = {
     { const lasts = fs.readFileSync(path.join(__dirname, "roster.csv"), "utf8").split("\n").slice(1).map((l) => l.split(",")[2]).filter(Boolean);
       ok("AI requests carry first names only, never last names", sent.length > 0 && sent.join("").includes("Nia") && !lasts.some((n) => sent.join("").includes(n)), lasts.filter((n) => sent.join("").includes(n)).join(", ")); }
     await fetch(`http://localhost:${MOCK_PORT}/__mock/make-admin?email=head%40e2e.test`, { headers: { apikey: "anon" } }); await A.reload(); await A.waitForTimeout(800);
+    await go(A, "admin"); await A.waitForTimeout(800);
+    await A.getByLabel("Account email").fill("assistant@e2e.test"); await A.getByRole("button", { name: "Look up" }).click(); await A.waitForTimeout(500);
+    ok("admin: find an account shows its teams and roles, with support buttons", /Cloud Club/.test(await A.locator(".admin-acct").locator("..").innerText()) && (await A.getByRole("button", { name: "Send password reset" }).count()) === 1, (await A.locator(".card", { hasText: "Find an account" }).innerText()).slice(0, 300));
     await go(A, "settings"); await A.waitForTimeout(600); await A.getByRole("button", { name: "Run check" }).click(); await A.waitForTimeout(1000);
     const notOk = await A.locator(".check-list li:not(.sc-ok) b").allInnerTexts();
     ok("setup check: the cloud, account, sync and AI are all ✓", (await A.locator(".check-list li.sc-ok").count()) >= 5 && notOk.every((x) => ["Installed on this device", "Privacy contact", "Sign-up emails"].includes(x)) && notOk.includes("Sign-up emails"), notOk.join(", "));

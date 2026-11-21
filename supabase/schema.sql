@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 35 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 36 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1730,6 +1730,60 @@ begin
 end $$;
 revoke execute on function public.ops_cleanup() from public, anon, authenticated;
 
+-- ---------- support tools (version 36) ----------
+-- Hand a team to another coach: the new owner must already have an account; the old owner stays on as a coach.
+create or replace function public.transfer_team_to(t text, u uuid) returns void
+language plpgsql security definer set search_path = public as $$
+declare old uuid;
+begin
+  select owner into old from teams_cloud where id = t;
+  if old is null then raise exception 'No such team.'; end if;
+  if old = u then return; end if;
+  update teams_cloud set owner = u where id = t;
+  update members set role = 'coach' where team_id = t and user_id = old;
+  insert into members (team_id, user_id, role, email, status) values (t, u, 'owner', (select email from auth.users where id = u), 'active')
+    on conflict (team_id, user_id) do update set role = 'owner', status = 'active';
+end $$;
+revoke execute on function public.transfer_team_to(text, uuid) from public, anon, authenticated;
+-- A team's owner hands it to one of the team's coaches (for example, a head coach who's leaving).
+create or replace function public.team_transfer(t text, u uuid) returns void
+language plpgsql security definer set search_path = public as $$
+begin
+  if not exists (select 1 from teams_cloud where id = t and owner = auth.uid()) then raise exception 'Only the team''s owner can hand it over.'; end if;
+  if not exists (select 1 from members where team_id = t and user_id = u and role = 'coach' and status = 'active') then raise exception 'Pick a coach who is already on this team.'; end if;
+  perform public.transfer_team_to(t, u);
+end $$;
+-- Admin: everything support needs about one account, by email.
+create or replace function public.admin_account(em text) returns jsonb
+language plpgsql stable security definer set search_path = public, auth as $$
+declare u record; j jsonb;
+begin
+  if not public.is_admin() then raise exception 'Admins only.'; end if;
+  select * into u from auth.users where lower(email) = lower(trim(em));
+  if u.id is null then return null; end if;
+  j := to_jsonb(u);
+  return jsonb_build_object('id', u.id, 'email', u.email, 'created', j->>'created_at', 'confirmed', j->>'email_confirmed_at', 'last_sign_in', j->>'last_sign_in_at',
+    'name', j->'raw_user_meta_data'->>'name', 'kind', j->'raw_user_meta_data'->>'kind', 'terms', j->'raw_user_meta_data'->>'terms_version',
+    'admin', exists (select 1 from admins a where a.user_id = u.id),
+    'verify', (select status from coach_verify v where v.user_id = u.id),
+    'teams', coalesce((select jsonb_agg(jsonb_build_object('id', tc.id, 'name', tc.name, 'role', m.role, 'status', m.status, 'owner', (select email from auth.users o where o.id = tc.owner),
+        'members', (select count(*) from members x where x.team_id = tc.id)) order by tc.name)
+      from members m join teams_cloud tc on tc.id = m.team_id where m.user_id = u.id), '[]'::jsonb),
+    'lessons', (select count(*) from lesson_athletes la where la.trainer = u.id),
+    'ai', (select jsonb_build_object('limit', daily_limit, 'own_key', own_key) from ai_grants g where g.user_id = u.id),
+    'ai_today', coalesce((select n from ai_usage a where a.user_id = u.id and a.day = current_date), 0));
+end $$;
+create or replace function public.admin_transfer_team(t text, em text) returns jsonb
+language plpgsql security definer set search_path = public, auth as $$
+declare u uuid;
+begin
+  if not public.is_admin() then raise exception 'Admins only.'; end if;
+  select id into u from auth.users where lower(email) = lower(trim(em));
+  if u is null then raise exception 'No account with that email. They need to sign up first.'; end if;
+  perform public.transfer_team_to(t, u);
+  return jsonb_build_object('team', t, 'owner', em);
+end $$;
+
 -- ---------- hardening (version 28): least privilege, re-applied every time this file runs ----------
 -- Postgres lets everyone run every function, and Supabase hands anon and authenticated every table, by default.
 -- Row security already guards the tables; this takes the defaults away as well and gives back exactly what each role uses.
@@ -1740,7 +1794,7 @@ grant execute on function public.watch(text), public.season_view(text), public.r
   public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
-revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest(), public.ops_cleanup() from authenticated;
+revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest(), public.ops_cleanup(), public.transfer_team_to(text, uuid) from authenticated;
 -- Functions added later start closed to anyone without an account.
 alter default privileges in schema public revoke execute on functions from public, anon;
 -- Tables: no account needed only to send a crash report; everything else goes through the functions above.

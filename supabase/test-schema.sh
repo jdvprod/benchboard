@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "35" "schema version is reported"
+check "select schema_version();" "36" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -361,6 +361,18 @@ expect "$(q -c "select ai_limit_for('$TM');" | tail -1 | tr -d ' ')" "-1" "reset
 q -c "insert into app_errors (at, message) values (now() - interval '100 days', 'old crash'), (now(), 'new crash');" >/dev/null
 q -c "select ops_cleanup();" >/dev/null
 expect "$(q -c "select count(*) from app_errors where message in ('old crash', 'new crash');" | tail -1 | tr -d ' ')" "1" "crash reports older than 90 days are deleted"
+# ---------- version 36: support tools ----------
+expect "$(asall $TM "select admin_account('teamowner@example.com');" | grep -c 'Admins only')" "1" "only admins look up accounts"
+expect "$(asall $ADM "select admin_account('teamowner@example.com')->'teams'->0->>'role';" | tail -1)" "owner" "an admin sees an account's teams and roles"
+expect "$(asall $ADM "select admin_account('nobody@example.com') is null;" | tail -1)" "t" "an unknown email finds nothing"
+expect "$(asall $P "select team_transfer('tb1', '$B');" | grep -c "Only the team")" "1" "only the owner can hand a team over"
+expect "$(asall $TM "select team_transfer('tb1', '$P');" | grep -c "Pick a coach")" "1" "a team can only go to one of its coaches"
+asall $TM "select team_transfer('tb1', '$B');" | grep ERROR || true
+expect "$(q -c "select owner = '$B' from teams_cloud where id = 'tb1';" | tail -1 | tr -d ' ')" "t" "the owner hands the team to a coach"
+expect "$(q -c "select role from members where team_id = 'tb1' and user_id = '$TM';" | tail -1 | tr -d ' ')" "coach" "and stays on as a coach"
+asall $ADM "select admin_transfer_team('tb1', 'teamowner@example.com');" | grep ERROR || true
+expect "$(q -c "select owner = '$TM' from teams_cloud where id = 'tb1';" | tail -1 | tr -d ' ')" "t" "an admin can move a team to another account"
+expect "$(q -c "select has_function_privilege('authenticated', 'public.transfer_team_to(text, uuid)', 'execute');" | tail -1 | tr -d ' ')" "f" "the transfer helper is server-only"
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"

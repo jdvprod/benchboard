@@ -2,7 +2,7 @@
  * photo and logo with a one-tap take-down. Only accounts listed in the admins table can open it (the database checks). */
 import { useEffect, useState } from "react";
 import { Card, ConfirmButton, download, Kpi } from "../../ui/kit";
-import { config, rpc } from "../../cloud/client";
+import { config, resendConfirmation, rpc, sendPasswordReset } from "../../cloud/client";
 import { toast } from "../../data/store";
 import { COLLEGE_SEARCH } from "../../recruit/flags";
 import { AI_DAILY_DEFAULT } from "../../app/flags";
@@ -49,6 +49,35 @@ function Messages({ list, onDone }: { list: Msg[]; onDone: (m: Msg, done: boolea
   </Card>;
 }
 
+/** Support: find an account by email, see its teams and status, resend its emails, and move a team to another coach. */
+interface Acct { id: string; email: string; created: string | null; confirmed: string | null; last_sign_in: string | null; name: string | null; kind: string | null; terms: string | null; admin: boolean; verify: string | null;
+  teams: { id: string; name: string; role: string; status: string; owner: string; members: number }[]; lessons: number; ai: { limit: number | null; own_key: boolean } | null; ai_today: number }
+function FindAccount() {
+  const [email, setEmail] = useState(""), [a, setA] = useState<Acct | null | undefined>(undefined), [err, setErr] = useState(""), [to, setTo] = useState<Record<string, string>>({});
+  const look = async (em = email) => { setErr(""); try { setA(await rpc("admin_account", { em: em.trim() })); } catch (e: any) { setErr(e?.message || "Couldn't look that up."); } };
+  const day = (x: string | null) => (x ? new Date(x).toLocaleDateString([], { month: "short", day: "numeric", year: "numeric" }) : "never");
+  const send = async (f: () => Promise<unknown>, done: string) => { try { await f(); toast(done); } catch (e: any) { toast(e?.message || "Couldn't send it."); } };
+  return <Card title="Find an account" actions={<span className="small muted">For support emails: check an account, resend its emails, or move a team to another coach.</span>}>
+    <form className="row" onSubmit={(e) => { e.preventDefault(); if (email.trim()) look(); }}>
+      <input className="input grow" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="their@email.com" aria-label="Account email" />
+      <button className="btn primary" disabled={!email.trim()}>Look up</button></form>
+    {err && <p className="hint warn" role="alert">{err}</p>}
+    {a === null && <p className="empty">No account with that email. They may have used another address, or never finished signing up.</p>}
+    {a && <div className="stack" style={{ marginTop: 10 }}>
+      <div className="admin-acct"><b>{a.name || a.email}</b> <span className="muted small">{a.email} · {a.kind || "coach"}{a.admin ? " · admin" : ""}{a.verify ? ` · verification ${a.verify}` : ""}</span>
+        <p className="small">Joined {day(a.created)} · email {a.confirmed ? "confirmed" : <b>not confirmed</b>} · last sign-in {day(a.last_sign_in)} · terms v{a.terms || "?"} · {a.lessons} Lessons athletes · AI today {a.ai_today}{a.ai ? ` (limit ${a.ai.limit ?? "default"}${a.ai.own_key ? ", own key" : ""})` : ""}</p></div>
+      <div className="row">{!a.confirmed && <button className="btn sm" onClick={() => send(() => resendConfirmation(a.email), "Confirmation email sent again")}>Resend confirmation</button>}
+        <button className="btn sm" onClick={() => send(() => sendPasswordReset(a.email), "Password reset link sent")}>Send password reset</button>
+        <a className="btn sm ghost" href={`mailto:${a.email}`}>Email them</a></div>
+      {a.teams.length ? <div className="tbl"><table><thead><tr><th className="l">Team</th><th>Role</th><th>People</th><th className="l">Owner</th><th className="l">Move to</th></tr></thead>
+        <tbody>{a.teams.map((t) => <tr key={t.id}><td className="l">{t.name || t.id}</td><td>{t.role}{t.status === "pending" ? " (waiting)" : ""}</td><td>{t.members}</td><td className="l small">{t.owner}</td>
+          <td className="l"><div className="row" style={{ flexWrap: "nowrap", gap: 6 }}><input className="input" style={{ minWidth: 150 }} type="email" placeholder="new owner's email" aria-label={"New owner for " + (t.name || t.id)} value={to[t.id] || ""} onChange={(e) => setTo({ ...to, [t.id]: e.target.value })} />
+            <ConfirmButton className="btn sm" confirmText="Move it?" onConfirm={async () => { try { await rpc("admin_transfer_team", { t: t.id, em: (to[t.id] || "").trim() }); toast("Team moved"); look(a.email); } catch (e: any) { toast(e?.message || "Couldn't move it."); } }}>Move</ConfirmButton></div></td></tr>)}</tbody></table></div>
+        : <p className="small muted">Not on any synced team.</p>}
+    </div>}
+  </Card>;
+}
+
 /** AI access: give one account more (or fewer) AI requests a day, or let it use its own Anthropic key. */
 interface Grant { email: string; limit: number | null; own_key: boolean; note: string | null; at: string; today: number }
 function AiAccess() {
@@ -57,7 +86,7 @@ function AiAccess() {
   const save = async (em: string, l: number | null, o: boolean, n: string | null) => { setErr(""); try { setList(await rpc("admin_ai_grant", { em, lim: l, own: o, why: n })); setEmail(""); setLim(""); setOwn(false); setNote(""); toast("AI access saved"); } catch (e: any) { setErr(e?.message || "Couldn't save."); } };
   return <Card title="AI access" actions={<span className="small muted">Every coach gets {AI_DAILY_DEFAULT} AI requests a day. Change it for one account here, or let it use its own Anthropic key.</span>}>
     <form className="row" style={{ alignItems: "flex-end" }} onSubmit={(e) => { e.preventDefault(); if (email.trim()) save(email.trim(), lim.trim() === "" ? null : Math.max(0, +lim | 0), own, note.trim() || null); }}>
-      <label className="field" style={{ flex: "2 1 220px" }}><span className="label">Account email</span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" /></label>
+      <label className="field" style={{ flex: "2 1 220px" }}><span className="label">Account email</span><input value={email} onChange={(e) => setEmail(e.target.value)} type="email" aria-label="Email to change AI access for" /></label>
       <label className="field" style={{ flex: "1 1 110px" }}><span className="label">Requests a day</span><input value={lim} onChange={(e) => setLim(e.target.value.replace(/\D/g, ""))} inputMode="numeric" placeholder={String(AI_DAILY_DEFAULT)} /></label>
       <label className="row small" style={{ gap: 6, paddingBottom: 10 }}><input type="checkbox" checked={own} onChange={(e) => setOwn(e.target.checked)} /> May use own key</label>
       <label className="field" style={{ flex: "2 1 200px" }}><span className="label">Note</span><input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Why (asked by email on …)" /></label>
@@ -113,6 +142,7 @@ export function AdminPage() {
           <td><div className="row" style={{ flexWrap: "nowrap", justifyContent: "flex-end" }}>{s.status !== "approved" && <button className="btn sm primary" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: true }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "approved" } : y))); }}>Approve</button>}
             {s.status !== "denied" && <button className="btn sm ghost" onClick={async () => { await rpc("admin_decide_college", { uid: s.user_id, approve: false }); setStaff((x) => x.map((y) => (y.user_id === s.user_id ? { ...y, status: "denied" } : y))); }}>{s.status === "approved" ? "Remove access" : "Turn down"}</button>}</div></td></tr>)}</tbody></table></div>}
     </Card>}
+    <FindAccount />
     <AiAccess />
     <Card title="Problems in the last two weeks" actions={<span className="small muted">Crashes coaches hit, newest first. No team data is sent, only the error and the screen.</span>}>
       {!o.errors?.length ? <p className="empty">No problems reported.</p> : <ul className="log admin-errs">{o.errors.map((e) => <li key={e.message}>

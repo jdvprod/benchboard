@@ -109,6 +109,19 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
         if (b.lim == null && !b.own) aiGrants.delete(u.id); else aiGrants.set(u.id, { email: u.email, limit: b.lim, own_key: !!b.own, note: b.why || null, at: now() }); }
       return send(res, 200, [...aiGrants.values()].map((g) => ({ ...g, today: 0 })));
     }
+    // ---- support tools (version 36) ----
+    if (p === "/rest/v1/rpc/admin_account") { if (!admins.has(me)) return send(res, 400, { message: "Admins only." }); const u = [...users.values()].find((x) => x.email === String(b.em).trim().toLowerCase()); if (!u) return send(res, 200, null);
+      return send(res, 200, { id: u.id, email: u.email, created: now(), confirmed: now(), last_sign_in: now(), name: u.meta?.name || null, kind: u.meta?.kind || null, terms: u.meta?.terms_version || null, admin: admins.has(u.id), verify: coachVerify.get(u.id)?.status || null,
+        teams: members.filter((m) => m.user_id === u.id).map((m) => ({ id: m.team_id, name: teams.get(m.team_id)?.name || "", role: m.role, status: m.status || "active", owner: [...users.values()].find((x) => x.id === teams.get(m.team_id)?.owner)?.email || "", members: members.filter((x) => x.team_id === m.team_id).length })), lessons: 0, ai: null, ai_today: 0 }); }
+    if (p === "/rest/v1/rpc/admin_transfer_team" || p === "/rest/v1/rpc/team_transfer") {
+      const t = teams.get(b.t); if (!t) return send(res, 400, { message: "No such team." });
+      let nu;
+      if (p.endsWith("admin_transfer_team")) { if (!admins.has(me)) return send(res, 400, { message: "Admins only." }); nu = [...users.values()].find((x) => x.email === String(b.em).trim().toLowerCase())?.id; if (!nu) return send(res, 400, { message: "No account with that email. They need to sign up first." }); }
+      else { if (t.owner !== me) return send(res, 400, { message: "Only the team's owner can hand it over." }); if (!members.some((m) => m.team_id === b.t && m.user_id === b.u && m.role === "coach")) return send(res, 400, { message: "Pick a coach who is already on this team." }); nu = b.u; }
+      const old = t.owner; t.owner = nu; members.forEach((m) => { if (m.team_id === b.t && m.user_id === old) m.role = "coach"; });
+      const nm = members.find((m) => m.team_id === b.t && m.user_id === nu); if (nm) { nm.role = "owner"; nm.status = "active"; } else members.push({ team_id: b.t, user_id: nu, role: "owner", email: [...users.values()].find((x) => x.id === nu)?.email, joined_at: now(), status: "active" });
+      return send(res, 200, null);
+    }
     if (p === "/rest/v1/rpc/coach_status") { if (admins.has(me)) return send(res, 200, { status: "approved", admin: true }); const c = coachVerify.get(me); return send(res, 200, c ? { status: c.status, name: c.name, org: c.org } : { status: coachOk(me) ? "approved" : "none" }); }
     if (p === "/rest/v1/rpc/coach_request") { if (String(b.name || "").trim().length < 2 || String(b.org || "").trim().length < 2) return send(res, 400, { message: "Add your name and your school or club." }); const cur = coachVerify.get(me); if (cur?.status !== "approved") coachVerify.set(me, { user_id: me, email: users.get(me).email, name: b.name, org: b.org, title: b.title, phone: b.phone, status: "pending", at: now() }); return send(res, 200, coachVerify.get(me).status); }
     // FloorCall Lessons (version 31): mirrors the lesson_* functions in schema.sql
@@ -164,7 +177,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 35);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 36);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);
