@@ -1569,12 +1569,12 @@ const scenarios = {
   async site(browser) {
     // getfloorcall.com: product, pricing and about pages share one nav and fit a phone
     const p = await newPage(browser, { phone: true });
-    for (const [file, h1] of [["about.html", null], ["pricing.html", "One price per team."], ["about-us.html", "Built from the bench."]]) {
+    for (const [file, h1] of [["about.html", null], ["pricing.html", "Free during early access."], ["about-us.html", "Built from the bench."]]) {
       await p.goto(U + file); await p.waitForTimeout(300);
       ok(`${file}: loads and fits a phone`, (await overflow(p)) <= 0 && (!h1 || (await p.locator("h1").innerText()) === h1) && !/%[A-Z_]+%/.test(await p.content()), file);
     }
     await p.goto(U + "pricing.html");
-    ok("pricing shows the trial, Team, Player, Club and Trainer", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Free trial,Team,Player,Club,Trainer" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
+    ok("pricing shows early access, Team, Player, Club and Trainer", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Early access,Team,Player,Club,Trainer" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
     await p.locator(".faq summary", { hasText: "When does the trial end?" }).click();
     ok("pricing questions open", (await p.locator(".faq details[open]").count()) === 1);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "site-pricing-phone.png"), fullPage: true });
