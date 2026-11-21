@@ -1191,3 +1191,9 @@ body.nav-mini .sm-btn span{display:none}
 :root[data-theme=dark] .kpi .dl.up{color:#4CC27A}:root[data-theme=dark] .kpi .dl.down{color:#F06A5D}
 .pf-phys{border-top:1px solid var(--line);padding-top:10px}.pf-phys summary{cursor:pointer;font-weight:600}
 .pf-phys-h{margin:12px 0 6px;font-size:13px;color:var(--muted)}
+/* sign-up age screen (src/cloud/age.tsx) */
+.auth-age{border:0;margin:0;padding:0;min-width:0;display:grid;gap:6px}
+.auth-age legend{font-weight:600;font-size:14px;padding:0;margin-bottom:6px}
+.auth-age .age-row{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
+.auth-age select{height:48px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:0 10px;font-size:16px;width:100%;min-width:0}
+.auth-agree-inline{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:14.5px;color:var(--muted);margin-top:6px;font-weight:400!important}

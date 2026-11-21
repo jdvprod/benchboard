@@ -2,6 +2,7 @@
  * One account works everywhere: the coach app, Live and Recruit. */
 import "./miniauth.css";
 import { FormEvent, useState } from "react";
+import { ageBand, ageBlocked, BirthFields, blockAge, testBirth, UNDER13 } from "./age";
 import { AccountKind, acceptTerms, cloudAvailable, currentUser, needsTermsAgreement, sendDeviceCode, sendPasswordReset, signIn, signOut, signUp, userMeta, verifyDeviceCode } from "./client";
 
 const KINDS: [AccountKind, string][] = [["athlete", "An athlete"], ["parent", "A parent or family member"], ["fan", "A fan"], ["coach", "A coach"]];
@@ -10,6 +11,8 @@ export function MiniAuth({ kind = "fan", title, sub, onIn, legalBase = "../legal
   const [mode, setMode] = useState<"up" | "in" | "forgot" | "check" | "sent" | "code">("up"), [code, setCode] = useState("");
   const [name, setName] = useState(""), [who, setWho] = useState<AccountKind>(kind), [email, setEmail] = useState(""), [pw, setPw] = useState("");
   const [agree, setAgree] = useState(false), [news, setNews] = useState(kind !== "athlete"), [busy, setBusy] = useState(false), [msg, setMsg] = useState("");
+  const [bm, setBm] = useState(testBirth().m), [by, setBy] = useState(testBirth().y), [parentOk, setParentOk] = useState(false), [blocked, setBlocked] = useState(ageBlocked());
+  const band = ageBand(+bm, +by);
   if (!cloudAvailable()) return null;
   const submit = async (e: FormEvent) => {
     e.preventDefault(); setMsg("");
@@ -17,10 +20,14 @@ export function MiniAuth({ kind = "fan", title, sub, onIn, legalBase = "../legal
     if (mode === "forgot") { setBusy(true); try { await sendPasswordReset(email.trim()); setMode("sent"); } catch (x: any) { setMsg(x?.message || t("Couldn't send the link.")); } setBusy(false); return; }
     if (mode === "up" && name.trim().length < 2) { setMsg(t("Enter your name.")); return; }
     if (pw.length < (mode === "up" ? 8 : 1)) { setMsg(mode === "up" ? t("Use a password with at least 8 characters.") : t("Enter your password.")); return; }
-    if (mode === "up" && !agree) { setMsg(t("Confirm you're 13 or older and agree to the Terms and Privacy Policy.")); return; }
+    if (mode === "up" && blocked) { setMsg(t(UNDER13)); return; }
+    if (mode === "up" && !band) { setMsg(t("Enter your birth month and year.")); return; }
+    if (mode === "up" && band === "under13") { blockAge(); setBlocked(true); setMsg(t(UNDER13)); return; }
+    if (mode === "up" && band === "13-17" && !parentOk) { setMsg(t("A parent or guardian needs to agree too. Check the box once they have.")); return; }
+    if (mode === "up" && !agree) { setMsg(t("Agree to the Terms and Privacy Policy to create your account.")); return; }
     setBusy(true);
     try {
-      if (mode === "up") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: who, email_ok: news }); if (r === "confirm-email") { setMode("check"); setBusy(false); return; } }
+      if (mode === "up") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: who, email_ok: news, age: band as "13-17" | "18+" }); if (r === "confirm-email") { setMode("check"); setBusy(false); return; } }
       else { if (await signIn(email.trim(), pw) === "check-device") { setPw(""); setCode(""); setMode("code"); setBusy(false); return; } if (needsTermsAgreement()) await acceptTerms(); }
       onIn();
     } catch (x: any) { setMsg(x?.message || t("Couldn't sign in. Try again.")); }
@@ -53,7 +60,9 @@ export function MiniAuth({ kind = "fan", title, sub, onIn, legalBase = "../legal
     <label>{t("Email")}<input type="email" inputMode="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
     {mode !== "forgot" && <label>{t("Password")}<input type="password" autoComplete={mode === "up" ? "new-password" : "current-password"} value={pw} onChange={(e) => setPw(e.target.value)} placeholder={mode === "up" ? t("At least 8 characters") : ""} /></label>}
     {mode === "up" && <>
-      <label className="ma-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>{t("I'm 13 or older and agree to the")} <a href={legalBase + "terms.html"} target="_blank" rel="noopener">{t("Terms")}</a> {t("and")} <a href={legalBase + "privacy.html"} target="_blank" rel="noopener">{t("Privacy Policy")}</a>{t(", including individual arbitration (you can opt out).")} {t("If I'm under 18, a parent or guardian agrees too.")}</span></label>
+      <BirthFields m={bm} y={by} onChange={(m, y) => { setBm(m); setBy(y); }} />
+      {band === "13-17" && <label className="ma-check"><input type="checkbox" checked={parentOk} onChange={(e) => setParentOk(e.target.checked)} /><span>{t("My parent or guardian has read the Terms and Privacy Policy and agrees to me using FloorCall.")}</span></label>}
+      <label className="ma-check"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} /><span>{t("I agree to the")} <a href={legalBase + "terms.html"} target="_blank" rel="noopener">{t("Terms")}</a> {t("and")} <a href={legalBase + "privacy.html"} target="_blank" rel="noopener">{t("Privacy Policy")}</a>{t(", including individual arbitration (you can opt out).")} {t("If I'm under 18, a parent or guardian agrees too.")}</span></label>
       <label className="ma-check"><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>{t("Send FloorCall news and new features to my inbox.")}</span></label>
     </>}
     {msg && <p className="ma-err" role="alert">{msg}</p>}

@@ -1,4 +1,5 @@
 /** Sign in, create account, password reset, and the account screen. Shares a split "scoreboard" shell with first-run setup. */
+import { ageBand, ageBlocked, BirthFields, blockAge, testBirth, UNDER13 } from "./age";
 import { AccountPanel } from "./AccountPanel";
 import { LEGAL } from "../app/legal";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
@@ -65,8 +66,9 @@ type Mode = "signin" | "signup" | "check" | "forgot" | "sent" | "newpw" | "devic
 export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSkip?: () => void }) {
   const [mode, setMode] = useState<Mode>(initial);
   const [email, setEmail] = useState(""), [pw, setPw] = useState(""), [show, setShow] = useState(false);
-  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree" | "name"; text: string } | null>(null);
+  const [busy, setBusy] = useState(false), [err, setErr] = useState<{ field?: "email" | "pw" | "agree" | "name" | "age"; text: string } | null>(null);
   const [agree, setAgree] = useState(false), [name, setName] = useState(""), [news, setNews] = useState(true), [code, setCode] = useState("");
+  const [bm, setBm] = useState(testBirth().m), [by, setBy] = useState(testBirth().y), [parentOk, setParentOk] = useState(false), band = ageBand(+bm, +by);
   const emailRef = useRef<HTMLInputElement>(null);
   useEffect(() => { setErr(null); if (mode !== "newpw" && mode !== "device") emailRef.current?.focus(); }, [mode]);
 
@@ -82,11 +84,15 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
     if (mode !== "newpw" && !/^\S+@\S+\.\S+$/.test(email.trim())) return setErr({ field: "email", text: "Enter your email address." });
     if ((mode === "signin" || mode === "signup" || mode === "newpw") && pw.length < (mode === "signin" ? 1 : 8)) return setErr({ field: "pw", text: mode === "signin" ? "Enter your password." : "Use at least 8 characters." });
     if (mode === "signup" && name.trim().length < 2) return setErr({ field: "name", text: "Enter your name." });
-    if (mode === "signup" && !agree) return setErr({ field: "agree", text: "Please confirm you're 13 or older and agree to the Terms and Privacy Policy." });
+    if (mode === "signup" && ageBlocked()) return setErr({ field: "age", text: UNDER13 });
+    if (mode === "signup" && !band) return setErr({ field: "age", text: "Enter your birth month and year." });
+    if (mode === "signup" && band === "under13") { blockAge(); return setErr({ field: "age", text: UNDER13 }); }
+    if (mode === "signup" && band === "13-17" && !parentOk) return setErr({ field: "age", text: "A parent or guardian needs to agree too. Check the box once they have." });
+    if (mode === "signup" && !agree) return setErr({ field: "agree", text: "Please agree to the Terms and Privacy Policy." });
     setBusy(true);
     try {
       if (mode === "signin") { if (await signIn(email.trim(), pw) === "check-device") { setPw(""); setCode(""); setMode("device"); } else await afterSignIn(); }
-      else if (mode === "signup") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: "coach", email_ok: news }); if (r === "confirm-email") setMode("check"); else await afterSignIn(); }
+      else if (mode === "signup") { const r = await signUp(email.trim(), pw, { name: name.trim(), kind: "coach", email_ok: news, age: band as "13-17" | "18+" }); if (r === "confirm-email") setMode("check"); else await afterSignIn(); }
       else if (mode === "forgot") { await sendPasswordReset(email.trim()); setMode("sent"); }
       else if (mode === "newpw") { await updatePassword(pw); toast("Password updated"); go(team() ? "track" : "team"); }
     } catch (e2) {
@@ -158,9 +164,14 @@ export function AuthPage({ initial = "signin", onSkip }: { initial?: Mode; onSki
         </div>
         {err?.field === "pw" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
+      {mode === "signup" && <div className={"auth-field" + (err?.field === "age" ? " bad" : "")}>
+        <BirthFields m={bm} y={by} onChange={(m, y) => { setBm(m); setBy(y); }} cls="auth-age" />
+        {band === "13-17" && <label className="auth-agree-inline"><input type="checkbox" checked={parentOk} onChange={(e) => setParentOk(e.target.checked)} /> <span>My parent or guardian has read the Terms and Privacy Policy and agrees to me using FloorCall.</span></label>}
+        {err?.field === "age" && <p className="auth-err" role="alert">{err.text}</p>}
+      </div>}
       {mode === "signup" && <div className={"auth-agree" + (err?.field === "agree" ? " bad" : "")}>
         <label><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
-          <span>I'm 13 or older and agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>, including resolving disputes by individual arbitration (you can opt out). If I'm under 18, a parent or guardian agrees too.</span></label>
+          <span>I agree to the <a href={LEGAL.terms} target="_blank" rel="noopener">Terms of Service</a> and <a href={LEGAL.privacy} target="_blank" rel="noopener">Privacy Policy</a>, including resolving disputes by individual arbitration (you can opt out). If I'm under 18, a parent or guardian agrees too.</span></label>
         {err?.field === "agree" && <p className="auth-err" role="alert">{err.text}</p>}
       </div>}
       {mode === "signup" && <div className="auth-agree"><label><input type="checkbox" checked={news} onChange={(e) => setNews(e.target.checked)} /><span>Send FloorCall news and new features to my inbox. Turn it off any time in Account.</span></label></div>}

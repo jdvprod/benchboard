@@ -8,7 +8,7 @@ import { LEGAL_VERSION } from "../app/legal";
 const SESSION_KEY = "bs-session", CONFIG_KEY = "bs-cloud-config";
 
 export type AccountKind = "coach" | "athlete" | "parent" | "fan";
-export interface UserMeta { name?: string; kind?: AccountKind; email_ok?: boolean; teams?: string[]; athlete?: Record<string, unknown> }
+export interface UserMeta { name?: string; kind?: AccountKind; email_ok?: boolean; /** age band from sign-up (never the birth date) */ age?: "13-17" | "18+"; teams?: string[]; athlete?: Record<string, unknown> }
 export interface Session { access_token: string; refresh_token: string; expires_at: number; user: { id: string; email: string; terms?: string; meta?: UserMeta } }
 export class CloudError extends Error { constructor(public status: number, message: string) { super(message); } }
 /** The server turns a network away for a few minutes after many share codes that didn't match (so nobody can guess codes). */
@@ -69,14 +69,14 @@ async function call(path: string, init: RequestInit & { auth?: boolean } = {}): 
 function fromAuth(b: any): Session {
   return { access_token: b.access_token, refresh_token: b.refresh_token, expires_at: b.expires_at || Math.floor(Date.now() / 1000) + (b.expires_in || 3600), user: { id: b.user.id, email: b.user.email, terms: b.user.user_metadata?.terms_version, meta: pickMeta(b.user.user_metadata) } };
 }
-const pickMeta = (m: any): UserMeta => ({ name: m?.name, kind: m?.kind, email_ok: m?.email_ok, teams: Array.isArray(m?.teams) ? m.teams : undefined, athlete: m?.athlete && typeof m.athlete === "object" ? m.athlete : undefined });
+const pickMeta = (m: any): UserMeta => ({ name: m?.name, kind: m?.kind, email_ok: m?.email_ok, age: m?.age, teams: Array.isArray(m?.teams) ? m.teams : undefined, athlete: m?.athlete && typeof m.athlete === "object" ? m.athlete : undefined });
 /** Account details kept with the login (Supabase user metadata): name, who they are, email updates, followed teams, athlete details. */
 export const userMeta = (): UserMeta => session?.user.meta || {};
 export async function updateMeta(p: Partial<UserMeta>) {
   const b = await call("/auth/v1/user", { method: "PUT", body: JSON.stringify({ data: p }) });
   if (session) setSession({ ...session, user: { ...session.user, meta: pickMeta(b?.user_metadata || { ...session.user.meta, ...p }) } });
 }
-export async function signUp(email: string, password: string, about: { name?: string; kind?: AccountKind; email_ok?: boolean } = {}): Promise<"signed-in" | "confirm-email"> {
+export async function signUp(email: string, password: string, about: { name?: string; kind?: AccountKind; email_ok?: boolean; age?: "13-17" | "18+" } = {}): Promise<"signed-in" | "confirm-email"> {
   // the agreement is recorded with the account: which version of the terms, and when
   const b = await call("/auth/v1/signup?redirect_to=" + encodeURIComponent(home()), { method: "POST", auth: false, body: JSON.stringify({ email, password, data: { terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString(), ...about } }) });
   await trustDevice(email); // the device that made the account; with Confirm email on, the account still can't sign in until the inbox is proven

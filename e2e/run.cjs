@@ -49,11 +49,13 @@ function serveDist() {
   });
 }
 
-async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0, strict = false, scale = 1, size = null } = {}) {
+async function newPage(browser, { phone = false, tablet = false, dark = false, cloud = true, skew = 0, strict = false, scale = 1, size = null, birth = "1990-5" } = {}) {
   const ctx = await browser.newContext({ viewport: size || (phone ? { width: 390, height: 844 } : tablet ? { width: 820, height: 1180 } : { width: 1360, height: 900 }), deviceScaleFactor: scale, colorScheme: dark ? "dark" : "light", acceptDownloads: true, hasTouch: phone });
   if (cloud) await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch { /* sandboxed frame */ } }, `http://localhost:${MOCK_PORT}`);
   if (!strict) await ctx.addInitScript(() => { try { localStorage.setItem("bs-allow-offline", "1"); } catch { /* sandboxed frame */ } }); // tests may use the app without an account; real visitors can't
   if (skew) await ctx.addInitScript((ms) => { const real = Date.now; Date.now = () => real() + ms; }, skew);
+  // sign-up asks for a birth month and year; most tests are adults who don't need to fill it in (the age scenario does)
+  if (birth) await ctx.addInitScript((b) => { globalThis.__FC_TEST_BIRTH = b; }, birth);
   // WIDE_FONTS=1: a wide fallback font, like CI machines without the web fonts, to catch layouts that only just fit
   if (process.env.WIDE_FONTS) await ctx.addInitScript(() => addEventListener("DOMContentLoaded", () => { const st = document.createElement("style"); st.textContent = "*{font-family:Verdana,'DejaVu Sans',sans-serif!important}"; document.head.append(st); }));
   const page = await ctx.newPage(); page.errors = []; OPEN.add(page); page.on("close", () => OPEN.delete(page));
@@ -122,7 +124,7 @@ const FEES_ON = /FEES = true/.test(fs.readFileSync(path.join(__dirname, "..", "s
 async function siteSignUp(p, email, kind = "athlete", name = "Test Person") {
   const box = p.locator(".sg .ma");
   ok(`${email}: the site asks for an account before showing anything`, (await box.count()) === 1);
-  await box.getByLabel("Your name").fill(name); await box.locator("select").selectOption(kind);
+  await box.getByLabel("Your name").fill(name); await box.locator("select").first().selectOption(kind);
   await box.getByLabel("Email", { exact: true }).fill(email); await box.getByLabel("Password", { exact: true }).fill("secret-pass-1");
   await box.locator(".ma-check input").first().check(); await box.getByRole("button", { name: "Create free account" }).last().click();
   await p.waitForTimeout(1500);
@@ -1610,6 +1612,7 @@ const scenarios = {
     const b = await chromium.launch({ args: ["--host-resolver-rules=MAP *.getfloorcall.com 127.0.0.1"] });
     const ctx = await b.newContext({ viewport: { width: 1200, height: 860 } });
     await ctx.addInitScript((url) => { try { localStorage.setItem("bs-cloud-config", JSON.stringify({ url, key: "anon" })); } catch {} }, `http://localhost:${MOCK_PORT}`);
+    await ctx.addInitScript(() => { globalThis.__FC_TEST_BIRTH = "1990-5"; });
     const at = (site) => `http://${site}.getfloorcall.com:${PORT}/`;
     const L = await ctx.newPage();
     await L.goto(at("lessons")); await L.waitForTimeout(800);
@@ -1904,6 +1907,40 @@ const scenarios = {
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "mental.png"), fullPage: true });
     ok("no errors in the mental game", !p.errors.length, p.errors.slice(0, 3).join("; "));
     await p.context().close();
+  },
+  async age(browser) {
+    // Sign-up asks for birth month and year without hinting at a cutoff; under 13 can't make an account (and can't just
+    // change the answer); 13 to 17 need a parent or guardian to agree; only the age band is kept
+    const y = new Date().getFullYear();
+    const K = await newPage(browser, { phone: true, birth: "" });
+    await K.goto(U + "academy/"); await K.waitForTimeout(500);
+    const box = K.locator(".sg .ma");
+    ok("age: sign-up asks for birth month and year", (await box.getByLabel("Birth month").count()) === 1 && (await box.getByLabel("Birth year").count()) === 1);
+    ok("age: the year list doesn't hint at a cutoff", (await box.getByLabel("Birth year").locator("option").count()) > 90);
+    await box.getByLabel("Your name").fill("Kid Young"); await box.getByLabel("Email", { exact: true }).fill("kid10@e2e.test"); await box.getByLabel("Password", { exact: true }).fill("secret-pass-1");
+    await box.getByLabel("Birth month").selectOption("1"); await box.getByLabel("Birth year").selectOption(String(y - 10));
+    await box.locator(".ma-check input").last().check().catch(() => {}); await box.locator(".ma-check input").first().check();
+    await box.getByRole("button", { name: "Create free account" }).last().click(); await K.waitForTimeout(500);
+    ok("age: a 10-year-old can't make an account and is pointed to a parent", /can't create a FloorCall account/.test(await box.innerText()) && (await K.locator(".sg .ma").count()) === 1);
+    await box.getByLabel("Birth year").selectOption(String(y - 30)); await box.getByRole("button", { name: "Create free account" }).last().click(); await K.waitForTimeout(500);
+    ok("age: changing the answer right after doesn't get around it", /can't create a FloorCall account/.test(await box.innerText()));
+    const T = await newPage(browser, { phone: true, birth: "" });
+    await T.goto(U + "academy/"); await T.waitForTimeout(500);
+    const tb = T.locator(".sg .ma");
+    await tb.getByLabel("Your name").fill("Teen Player"); await tb.getByLabel("Email", { exact: true }).fill("teen15@e2e.test"); await tb.getByLabel("Password", { exact: true }).fill("secret-pass-1");
+    await tb.getByLabel("Birth month").selectOption("1"); await tb.getByLabel("Birth year").selectOption(String(y - 15));
+    ok("age: 13 to 17 see the parent or guardian box", /parent or guardian has read/.test(await tb.innerText()));
+    await tb.locator(".ma-check", { hasText: "I agree to the" }).locator("input").check();
+    await tb.getByRole("button", { name: "Create free account" }).last().click(); await T.waitForTimeout(400);
+    ok("age: and can't sign up until it's checked", /parent or guardian needs to agree/.test(await tb.innerText()));
+    await tb.locator(".ma-check", { hasText: "parent or guardian has read" }).locator("input").check();
+    await tb.getByRole("button", { name: "Create free account" }).last().click(); await T.waitForTimeout(1200);
+    const us = await (await fetch(`http://localhost:${MOCK_PORT}/__mock/users`, { headers: { apikey: "anon" } })).json();
+    const teen = us.find((u) => u.email === "teen15@e2e.test");
+    ok("age: a teen signs up; only the age band is kept, not the birth date", teen && teen.meta?.age === "13-17" && !JSON.stringify(teen.meta).includes(String(y - 15)), JSON.stringify(teen?.meta || {}));
+    { const ax = await a11y(K); ok("age: sign-up controls all have names", !ax.length, ax.join(" | ")); }
+    ok("no errors on the age screen", !K.errors.length && !T.errors.length, [...K.errors, ...T.errors].slice(0, 3).join("; "));
+    for (const x of [K, T]) await x.context().close();
   },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
