@@ -1880,6 +1880,28 @@ const scenarios = {
     ok("no errors on strength", !p.errors.length, p.errors.slice(0, 3).join("; "));
     await p.context().close();
   },
+  async mental(browser) {
+    // Academy → The mental game: topics, drills, and situation quizzes with explanations and a best score
+    const p = await newPage(browser, { phone: true });
+    await p.goto(U + "academy/#/players"); await p.waitForTimeout(500);
+    if (await p.locator(".sg .ma").count()) await siteSignUp(p, "mind-kid@e2e.test", "athlete", "Mo Mind");
+    await p.locator(".ac-mindcard").click(); await p.waitForTimeout(300);
+    ok("mental: Academy has a mental game section with topics", (await p.locator(".ac-mind-topics li").count()) >= 8);
+    await p.getByRole("link", { name: /Reading the block/ }).click(); await p.waitForTimeout(300);
+    ok("mental: a topic has ideas, drills and a quiz", (await p.locator(".ac-str-pr li").count()) >= 4 && (await p.locator(".ac-drill").count()) >= 2 && (await p.locator(".ac-quiz").count()) === 1);
+    const opts = p.getByRole("group", { name: "Your answer" }).getByRole("button");
+    await opts.nth(1).click(); await p.waitForTimeout(100);
+    ok("mental: answering shows the best choice and why", /Right\.|Not quite\./.test(await p.locator(".ac-quiz-why").innerText()) && (await p.locator(".ac-quiz-opts button.right").count()) === 1);
+    { const ax = await a11y(p); ok("mental: quiz controls all have names", !ax.length, ax.join(" | ")); }
+    ok("mental fits a phone", (await overflow(p)) <= 0);
+    let guard = 0; while (!(await p.locator(".ac-quiz-done").count()) && guard++ < 20) { const g = p.getByRole("group", { name: "Your answer" }).getByRole("button"); if (!(await p.locator(".ac-quiz-why").count())) await g.first().click(); await p.getByRole("button", { name: /Next situation|See your score/ }).click(); await p.waitForTimeout(60); }
+    ok("mental: finishing shows a score", /of \d+/.test(await p.locator(".ac-quiz-score").innerText()));
+    await p.goto(U + "academy/#/players/mental/test"); await p.waitForTimeout(300);
+    ok("mental: the Game IQ test has 10 mixed situations", /of 10/.test(await p.locator(".ac-quiz-hd").innerText()));
+    if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "mental.png"), fullPage: true });
+    ok("no errors in the mental game", !p.errors.length, p.errors.slice(0, 3).join("; "));
+    await p.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });

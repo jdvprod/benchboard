@@ -4,6 +4,8 @@
  *   #/players/serving      one skill; links can be sent to a team
  * Players can check off what they can do; that's kept on this device. Coaches can add any drill to their practice plans. */
 import { StrengthPage } from "./Strength";
+import { MentalPage } from "./Mental";
+import { MENTAL } from "./mentalData";
 import { STRENGTH } from "./strengthData";
 import { AccountButton } from "../cloud/AccountPanel";
 import "../styles/app.css";
@@ -52,7 +54,7 @@ function App() {
     </header>
     <main className="ac-main"><SiteGate name="FloorCall Academy" kind="athlete" art={<div className="ac-gate-art">{SKILLS.map((x) => <img key={x.id} src={`../brand/skill-${x.id}.png`} alt={x.name} title={x.name} width="96" height="96" />)}</div>} what="How to serve, pass, set, hit and play defense: what good looks like, the mistakes that cost points and how to fix them, and drills for every level."
       points={["Court diagrams for every skill", "Players: step-by-step guides, drills you can do on your own, and a checklist", "Coaches: what to watch for, team concepts, and drills that go straight into your practice plans"]}>
-      {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} coach={coach} /> : id === "drills" ? <Library who={who} coach={coach} /> : id === "strength" ? <StrengthPage who={who} coach={coach} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
+      {sk ? <SkillPage s={sk} who={who} done={done} toggle={toggle} coach={coach} /> : id === "drills" ? <Library who={who} coach={coach} /> : id === "strength" ? <StrengthPage who={who} coach={coach} /> : id === "mental" ? <MentalPage who={who} coach={coach} topic={roleOf(route[0]) ? route[2] : route[1]} /> : id ? <Missing who={who} /> : <Home who={who} done={done} coach={coach} />}</SiteGate></main>
     <footer className="ac-foot">Your checklist is saved on this device. <a href="../legal/privacy.html">Privacy</a> · <a href="../legal/terms.html">Terms</a> · <a href={contactUrl("academy")}>Help</a></footer>
   </div>;
 }
@@ -90,6 +92,10 @@ function Home({ who, done, coach }: { who: Who; done: string[]; coach: boolean }
           : <small>{teamDrills} team drills · measured by {s.stat.name.split(" (")[0].toLowerCase()}</small>}</span>
         <svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg>
       </a></li>; })}</ol>
+    <a className="ac-libcard ac-strcard ac-mindcard" href={"#/" + seg(who) + "/mental"}>
+      <span><b>The mental game</b><span>Read the game and the block, decide faster, handle pressure and bad days, and lead your team. Drills and real situations to test your Game IQ.</span></span>
+      <span className="ac-libcount"><span><b>{MENTAL.length}</b> topics</span><span><b>{MENTAL.reduce((a, t) => a + t.questions.length, 0)}</b> situations</span></span>
+    </a>
     <a className="ac-libcard ac-strcard" href={"#/" + seg(who) + "/strength"}>
       <span><b>Strength and jumping</b><span>Lifting, plyometrics and injury prevention for a higher vertical, a harder swing and healthier knees, ankles and shoulders. {STRENGTH.length} exercises with sample weeks for every level.</span></span>
       <span className="ac-libcount"><span><b>{STRENGTH.filter((x) => x.group === "plyo" || x.group === "landing").length}</b> jumps</span><span><b>{STRENGTH.filter((x) => ["lower", "posterior", "upper", "core"].includes(x.group)).length}</b> lifts</span><span><b>{STRENGTH.filter((x) => x.group === "prevent").length}</b> prevention</span></span>

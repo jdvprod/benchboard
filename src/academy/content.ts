@@ -289,6 +289,7 @@ import { PASSING, SERVING, SETTING } from "./library-a";
 import { BLOCKING, DEFENSE, HITTING, TEAM } from "./library-b";
 import { MORE } from "./library-c";
 import { STRENGTH } from "./strengthData";
+import { MENTAL_DRILLS } from "./mentalData";
 const EXTRA: Record<string, Drill[]> = { serving: [...SERVING, ...MORE.serving], passing: [...PASSING, ...MORE.passing], setting: [...SETTING, ...MORE.setting], hitting: [...HITTING, ...MORE.hitting], defense: [...DEFENSE, ...MORE.defense] };
 for (const s of SKILLS) for (const x of EXTRA[s.id] || []) if (!s.drills.some((y) => y.id === x.id)) s.drills.push(x);
 const LEVEL_ORDER: Record<Level, number> = { Beginner: 0, Intermediate: 1, Advanced: 2 };
@@ -300,6 +301,7 @@ export const AREAS: Area[] = [
   ...SKILLS.map((s) => ({ id: s.id, name: s.name, category: s.category, drills: s.drills, skill: s })),
   { id: "blocking", name: "Blocking", category: "Blocking", drills: [...BLOCKING, ...MORE.blocking].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
   { id: "team", name: "Team and game play", category: "Game play", drills: [...TEAM, ...MORE.team].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
+  { id: "mental", name: "The mental game", category: "Team talk", drills: [...MENTAL_DRILLS].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
   { id: "strength", name: "Strength and jumping", category: "Conditioning", drills: [...STRENGTH].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]) },
 ];
 export type LibDrill = Drill & { area: string; areaName: string; category: string };

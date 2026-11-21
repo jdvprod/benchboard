@@ -102,3 +102,18 @@ test("notes: a picked set of players is named for its position group", () => {
   assert.equal(groupOf(P, ["c"]), null, "one player is just that player");
   assert.equal(groupOf(P, ["a", "c"]), null);
 });
+
+import { ALL_QUESTIONS, MENTAL, quizFor } from "../src/academy/mentalData";
+test("academy mental game: every situation has a valid best answer and an explanation; the mixed test draws 10 different ones", () => {
+  assert.ok(MENTAL.length >= 8 && ALL_QUESTIONS.length >= 40, String(ALL_QUESTIONS.length));
+  for (const x of ALL_QUESTIONS) { assert.ok(x.answer >= 0 && x.answer < x.options.length, x.q); assert.ok(x.why.length > 30, x.q); assert.equal(new Set(x.options).size, x.options.length, x.q); }
+  const t = quizFor("all", 10, 42); assert.equal(t.length, 10); assert.equal(new Set(t.map((x) => x.q)).size, 10);
+  assert.deepEqual(quizFor("all", 10, 42).map((x) => x.q), t.map((x) => x.q), "same seed, same test");
+  assert.equal(quizFor("pressure").length, MENTAL.find((m) => m.id === "pressure")!.questions.length);
+});
+import { shuffled } from "../src/academy/mentalData";
+test("academy quiz: options are shuffled but the best answer follows", () => {
+  const places = new Set<number>();
+  for (const [i, x] of ALL_QUESTIONS.entries()) { const s = shuffled(x, 7 + i); assert.equal(s.options[s.answer], x.options[x.answer]); places.add(s.answer); }
+  assert.ok(places.size >= 3, "the answer isn't always in one spot");
+});

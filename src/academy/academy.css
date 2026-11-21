@@ -194,3 +194,25 @@ body{padding-left:0;background:var(--surface)}
 .ac-str-sub{color:var(--muted);margin:2px 0 8px}
 .ac-str-foot{color:var(--muted);font-size:14px}
 .ac-str .ac-filters{position:static}
+/* The mental game */
+.ac-mind-test{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-radius:14px;background:var(--bar);color:var(--bar-ink);text-decoration:none}
+.ac-mind-test>span{display:grid;gap:3px}.ac-mind-test b{font:700 22px var(--display)}.ac-mind-test>span>span{color:#C9CED5}
+.ac-mind-test .ac-chev{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8}
+.ac-mind-topics{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.ac-mind-topics a{display:grid;gap:4px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);text-decoration:none;height:100%}
+.ac-mind-topics a:hover{border-color:var(--ink)}.ac-mind-topics b{font:700 19px var(--display)}.ac-mind-topics span{color:var(--muted)}.ac-mind-topics small{color:var(--muted);font-size:13px}
+.ac-mind-kind{font-weight:700;color:var(--us);font-size:14px}
+.ac-mind-next{justify-self:start;font-weight:700;color:var(--us)}
+.ac-quiz{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:16px 18px;display:grid;gap:12px;max-width:760px}
+.ac-quiz-hd{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:14px;font-weight:600}
+.ac-quiz-q{margin:0;font-size:18px;line-height:1.45;font-weight:600}
+.ac-quiz-opts{display:grid;gap:8px}
+.ac-quiz-opts button{text-align:left;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);border-radius:10px;padding:11px 14px;font:inherit;font-size:16px;line-height:1.4;cursor:pointer}
+.ac-quiz-opts button:hover:not(:disabled){border-color:var(--ink)}
+.ac-quiz-opts button.right{border-color:#177A3E;background:color-mix(in srgb,#177A3E 10%,var(--surface))}
+.ac-quiz-opts button.wrong{border-color:#C8372B;background:color-mix(in srgb,#C8372B 9%,var(--surface))}
+.ac-quiz-opts button:disabled{opacity:.55;cursor:default}
+.ac-quiz-why{border-radius:10px;padding:12px 14px;line-height:1.5;display:grid;gap:10px;background:var(--surface-2)}
+.ac-quiz-why.right b{color:#177A3E}.ac-quiz-why.wrong b{color:#C8372B}
+.ac-quiz-done{justify-items:start}.ac-quiz-score{font:700 34px var(--display)}
+@media (prefers-color-scheme:dark){.ac-quiz-why.right b{color:#5CC98A}.ac-quiz-why.wrong b{color:#F08A80}}
