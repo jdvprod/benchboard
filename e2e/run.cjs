@@ -1575,7 +1575,7 @@ const scenarios = {
     }
     await p.goto(U + "pricing.html");
     ok("pricing shows early access, Team, Player, Club and Trainer", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Early access,Team,Player,Club,Trainer" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
-    await p.locator(".faq summary", { hasText: "When does the trial end?" }).click();
+    await p.locator(".faq summary", { hasText: "How long is early access free?" }).click();
     ok("pricing questions open", (await p.locator(".faq details[open]").count()) === 1);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "site-pricing-phone.png"), fullPage: true });
     await p.context().close();
