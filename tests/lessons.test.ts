@@ -117,3 +117,9 @@ test("academy quiz: options are shuffled but the best answer follows", () => {
   for (const [i, x] of ALL_QUESTIONS.entries()) { const s = shuffled(x, 7 + i); assert.equal(s.options[s.answer], x.options[x.answer]); places.add(s.answer); }
   assert.ok(places.size >= 3, "the answer isn't always in one spot");
 });
+import { LIBRARY } from "../src/academy/content";
+test("academy library: every drill has a unique id, steps and coaching points", () => {
+  const ids = LIBRARY.map((x) => x.id); assert.equal(new Set(ids).size, ids.length, ids.filter((x, i) => ids.indexOf(x) !== i).join(", "));
+  for (const x of LIBRARY) { assert.ok(x.how.length >= 1 && x.points.length >= 1, x.id); assert.ok(x.minutes > 0, x.id); }
+  assert.ok(LIBRARY.length >= 300, String(LIBRARY.length));
+});

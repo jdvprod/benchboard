@@ -3,7 +3,7 @@
  * and situation questions to test yourself, each with the best answer and why. Plain data, easy to review. */
 import type { Drill, Level } from "./content";
 
-export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates";
+export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates" | "talk" | "prepare" | "role" | "coachable";
 export interface Question { q: string; options: string[]; answer: number; why: string; level: Level }
 export interface MentalTopic { id: MentalId; name: string; kind: "Game IQ" | "Mindset" | "Team"; tagline: string; intro: string; ideas: { title: string; text: string }[]; drills: Drill[]; questions: Question[] }
 
@@ -35,6 +35,8 @@ export const MENTAL: MentalTopic[] = [
         ["Saying it forces you to commit to a read early.", "Loud and early beats quiet and right.", "Use FloorCall's Track to see if defense improves as reads get earlier."]),
     ],
     questions: [
+      q(I, "Their setter is in the back row and the pass is perfect. How many front-row attackers should blockers expect?", ["One", "Three", "None", "Two"], 1, "With the setter in the back row, all three front-row players can attack. Call 'Three up!'."),
+      q(A, "Their outside hitter approaches from wide outside the court, very square to the net. Which shot is most likely?", ["Sharp angle", "Line", "A tip to the middle", "A back-row attack"], 1, "A wide, square approach sets up the line. An approach from inside the court usually goes cross-court."),
       q(B, "The pass goes to the 10-foot line, far from the net. What set is most likely?", ["A quick set to the middle", "A high set to the outside or right side", "A setter dump", "A back-row pipe off a fast tempo"], 1, "From a pass off the net, quicks and dumps are hard. Most setters go high to a pin. Defenders and blockers can lean that way."),
       q(B, "In what order should you watch a rally from the defense?", ["Ball the whole time", "Ball → passer → setter → hitter", "Hitter the whole time", "Setter the whole time"], 1, "Watch the player about to touch the ball. Staring only at the ball means you start moving late."),
       q(I, "The setter contacts the ball well behind their head with their back arched. What should blockers expect?", ["A set forward to the outside", "A back set to the right side", "A setter dump", "A free ball"], 1, "Contact behind the head usually goes backward. Your right-side blocker and middle should be ready to go that way."),
@@ -66,6 +68,8 @@ export const MENTAL: MentalTopic[] = [
         ["Aim at the outside edge of the hand, not the middle.", "Swing high: a high contact sends the ball off and out, not down onto your side.", "This turns a big block into your point."]),
     ],
     questions: [
+      q(B, "The set is tight to the net and you can't swing. What's the best choice?", ["Swing anyway into the block", "Tool the block with a controlled push or tip it high off the hands", "Let it drop", "Hit it out on purpose"], 1, "A tight set is a joust or a tool opportunity; a full swing into the net or block loses the point."),
+      q(I, "Only one blocker gets up against you. What's open?", ["Nothing", "More court: hit around the single block, high and deep", "Only the tip", "Only the line"], 1, "A single block leaves big parts of the court. Swing hard around it."),
       q(B, "As you plant to hit, you see a gap between the two blockers' hands. What's the best shot?", ["Hit into the outside blocker", "Swing through the seam between them", "Tip it short", "Hit as hard as you can down the line"], 1, "An open seam is the easiest kill. Swing high through the gap."),
       q(B, "The outside blocker has their hands set on the line. Where is the open court?", ["The line", "The angle (cross-court)", "Behind the blocker", "Nowhere: tip it"], 1, "A blocker taking line leaves the angle. Hit cross-court."),
       q(I, "You're hitting against a big, well-formed double block. What's usually smartest?", ["Hit straight down into the middle of the block", "Tool the outside hand or play a high, smart shot", "Hit out of bounds on purpose", "Set the ball over"], 1, "Hitting into a set block gets stuffed. Using the outside hand or a placed shot keeps you in system and often scores."),
@@ -96,6 +100,7 @@ export const MENTAL: MentalTopic[] = [
         ["Hands up at shoulder height before you move.", "Square to the net when you jump.", "Land on two feet and turn to see the play."]),
     ],
     questions: [
+      q(B, "After a block attempt, what's your first job?", ["Celebrate", "Land, turn and find the ball, ready to play it or transition", "Walk back to the end line", "Argue the call"], 1, "Many rallies continue after a block touch. Landing ready keeps you in the play."),
       q(B, "When should a read blocker start moving toward the set?", ["When the server tosses", "When the setter contacts the ball", "When the hitter jumps", "When the pass is in the air"], 1, "Read blockers wait for the setter's contact so they aren't fooled, then move fast."),
       q(I, "Their outside hitter gets most of their kills cross-court. What should your block take away?", ["The line", "The angle", "Nothing: just jump", "The tip"], 1, "Take away their best shot and make them win with their weaker one. Your defense covers the line."),
       q(I, "The pass is perfect and their middle is their best attacker. What blocking choice makes sense for your middle?", ["Read and drift outside", "Commit-block the quick hitter", "Don't block at all", "Back off the net"], 1, "On a perfect pass with a dangerous middle, committing on the quick takes away their best option."),
@@ -124,6 +129,7 @@ export const MENTAL: MentalTopic[] = [
         ["Knowing the rotation lets you think about the ball, not where to stand.", "Use your team's real lineup.", "Coaches: quiz players during water breaks."]),
     ],
     questions: [
+      q(I, "You're a passer and see the server look at the seam on your right. What should you do?", ["Nothing", "Shift slightly and tell your teammate 'Seam!' so you're both ready", "Move far away from the seam", "Call timeout"], 1, "Servers often look where they serve. Small, early adjustments and a call win seam battles."),
       q(B, "The ball is on the other side and not coming to you yet. What should you be doing?", ["Watching only the ball", "Scanning: who's front row, where the setter is, where the holes are", "Fixing your knee pads", "Talking to the bench"], 1, "Between touches is when good players gather information so they can decide early."),
       q(B, "A ball drops between two passers who both stopped. What would most likely have prevented it?", ["Passing harder", "An early, loud 'Mine!' call", "Standing closer together", "A timeout"], 1, "Calling early decides who takes it. Silence causes hesitation."),
       q(I, "You're a hitter and the pass goes off the net. What's your best if-then plan?", ["Approach for a quick anyway", "Open up and call for a high ball to your pin", "Stop and watch", "Run to the setter's spot"], 1, "An off-net pass means a high set. Get outside and give the setter an easy target."),
@@ -152,6 +158,7 @@ export const MENTAL: MentalTopic[] = [
         ["Short enough to fit in 8 seconds.", "The same every time, good serve or bad.", "Use it in practice so it's automatic in a match."]),
     ],
     questions: [
+      q(B, "Which cue word is most helpful before passing a tough server?", ["'Don't shank it'", "'Early platform'", "'Please'", "'Oh no'"], 1, "Short, positive cue words point at what to do."),
       q(B, "It's match point and you're serving. Which thought helps most?", ["'Don't miss, don't miss'", "Your cue word, like 'Toss and hit through'", "'What if we lose?'", "'Everyone is watching me'"], 1, "Telling yourself what to do works better than what not to do. A cue word points your focus at the skill."),
       q(B, "Your heart is pounding before a big game. What is that?", ["A sign you'll play badly", "Your body getting ready to compete", "A reason to sit out", "Something to hide from the coach"], 1, "Nerves are energy. Naming them 'excitement' and using a routine helps you use them."),
       q(I, "You've missed two serves in a row. What's the best thing to do before the next one?", ["Serve harder to make up for it", "Take a breath, do your full routine, pick a safe target", "Serve underhand", "Ask to sub out"], 1, "Your routine resets you. A safe, aimed serve breaks the streak."),
@@ -181,6 +188,7 @@ export const MENTAL: MentalTopic[] = [
         ["Teaches players to respond to errors with action.", "Keeps the gym positive.", "Debrief: how did it feel to have teammates help?"]),
     ],
     questions: [
+      q(I, "You lost the first set badly. What should the team do in the break?", ["Blame each other", "Name one thing that worked, one adjustment, and start fresh", "Stay silent", "Change everything"], 1, "A short, specific reset gives the team a plan and leaves the last set behind."),
       q(B, "You just got blocked. What's the best next move?", ["Look at the ground and walk slowly back", "Do your quick reset, cover your next job, and call for the next ball", "Complain about the set", "Stop swinging hard"], 1, "A fast reset and a clear next job stop one error from becoming three."),
       q(B, "A teammate shanks a pass and looks upset. What helps most?", ["Say nothing", "'Next ball, I've got your back'", "'You have to pass that'", "Roll your eyes"], 1, "Short, positive talk helps teammates reset. Correcting technique can wait for practice."),
       q(I, "You played your worst game of the season. What's the best plan for tonight?", ["Watch the film over and over", "Write three things you did well and one thing to work on, then rest", "Decide you're not good enough", "Skip the next practice"], 1, "Reflection with balance helps you learn without spiraling. Look at stats and film the next day with fresh eyes."),
@@ -235,6 +243,7 @@ export const MENTAL: MentalTopic[] = [
         ["Talking is a skill and a leadership habit.", "Coaches listen for helpful information, not just noise.", "Make it the norm in every drill."]),
     ],
     questions: [
+      q(B, "A new player joined the team and doesn't know anyone. What can a leader do?", ["Wait for them to fit in", "Introduce yourself, partner with them in drills, include them", "Let the coach handle it", "Test them first"], 1, "Leaders make everyone feel part of the team, quickly."),
       q(B, "You're not a starter. How can you lead?", ["You can't lead from the bench", "Bring energy, cheer specific plays, work hard in practice and be ready when called", "Stay quiet so you don't bother anyone", "Tell the starters what they're doing wrong"], 1, "Leadership is about behavior. Energy, preparation and support from the bench matter to the whole team."),
       q(I, "A teammate keeps showing up late to practice. As a captain, what's the best first step?", ["Call them out in front of the team", "Talk to them privately, ask what's going on, and remind them why it matters", "Tell the coach right away without talking to them", "Ignore it"], 1, "Praise in public, correct in private. Understanding the reason first often solves it; involve the coach if it continues."),
       q(I, "The team is down and quiet. What should a leader do?", ["Wait for the coach to say something", "Start talking: specific encouragement and a simple plan for the next point", "Yell at teammates to try harder", "Stay quiet and focus on yourself"], 1, "Leaders set the tone. Specific, positive talk and a clear plan bring a team back."),
@@ -265,6 +274,113 @@ export const MENTAL: MentalTopic[] = [
       q(I, "Two friends on the team are being left out by a group. What helps the team most?", ["Stay out of it", "Include them, and tell a captain or coach if it continues", "Join the group leaving them out", "Talk about it on social media"], 1, "Cliques hurt team chemistry. Including people and getting help if it keeps happening protects the team."),
       q(I, "A teammate says something mean about your play during a match. What's best in the moment?", ["Say something mean back", "Stay focused on the next point, and talk to them calmly after the match", "Stop calling the ball", "Walk off the court"], 1, "In the moment, the next point matters most. Address it calmly later, with a coach if needed."),
       q(A, "Someone on the team is being bullied or hazed. What should you do?", ["Nothing: it's not your business", "Tell a coach, parent or school staff member right away", "Handle it by yourself with threats", "Record it and post it online"], 1, "Bullying and hazing need an adult to step in. Reporting protects a teammate and the team."),
+    ],
+  },
+  {
+    id: "talk", name: "Talking on the court", kind: "Team", tagline: "Loud, early and useful.",
+    intro: "Most dropped balls between two players are communication errors, not skill errors. Great teams talk constantly: before the serve (who's front row, where the setter is), during the rally (calls for every ball), and between points (encouragement and adjustments). Short, loud, early calls win.",
+    ideas: [
+      { title: "Before the serve", text: "Call the opponent's front-row hitters ('Three up!' or 'Setter front, two hitters!'), your own rotation job, and who takes the seams." },
+      { title: "On every ball", text: "'Mine!' or 'Me!' for the passer, 'Free!' for an easy ball over, 'Down!' for a standing hit, 'Tip!' for a tip, 'Out!' and 'Line!' to help passers and diggers." },
+      { title: "Help the hitter", text: "Tell the hitter what the block is doing: 'One!' (one blocker), 'Line open!', 'Short!'." },
+      { title: "Between points", text: "One positive thing and one adjustment: 'Good swing. Their middle's late, hit the seam.'" },
+      { title: "Use names", text: "'Mia, yours!' is clearer than 'yours!' when the gym is loud." },
+    ],
+    drills: [
+      d("silent-then-loud", "Silent rally, loud rally", "coach", B, 10, "Team, 6 v 6",
+        ["Play three rallies with no talking at all. Then three where every touch needs a call.", "Ask: which felt easier? Which won more points?"],
+        ["Players feel the difference talking makes.", "Keep calls short.", "Do it early in the season."]),
+      d("info-calls", "Information calls", "coach", I, 12, "Team, scrimmage",
+        ["Before every serve, one assigned player calls the opponent's front-row hitters and the setter's spot.", "After each attack, a teammate tells the hitter what the block did.", "Coach rewards a point for great information."],
+        ["Information is a skill, like passing.", "Rotate who makes the calls.", "Make it automatic before matches."]),
+      d("names-only", "Names only", "coach", B, 8, "Team, any drill",
+        ["In passing or defensive drills, players must call the name of who takes the ball ('Ava!') instead of 'mine'.", "Lost point for any ball nobody named."],
+        ["Builds clear calls in loud gyms.", "Makes players think about who's best placed.", "Fun with new teams to learn names."]),
+    ],
+    questions: [
+      q(B, "A serve is coming right between you and a teammate. When should the call happen?", ["After the ball crosses the net and lands", "As early as possible, before the ball gets to you", "Only if you're the libero", "Never: just go for it"], 1, "Early calls give the other player time to get out of the way and let the passer focus."),
+      q(B, "What does 'Free!' tell your team?", ["A substitution is coming", "The other team is sending an easy ball over, so transition to free-ball positions", "Take a break", "Their setter is front row"], 1, "A free-ball call moves blockers off the net and passers into position to run a play."),
+      q(I, "You see their outside blocker set up on the line before your teammate's swing. What should you call?", ["Nothing", "'Angle open!' or 'Line closed!'", "'Mine!'", "'Out!'"], 1, "Telling the hitter what the block is doing helps them pick the right shot."),
+      q(I, "Your team keeps letting tips drop. What call helps most?", ["'Out!'", "'Tip!' as soon as the hitter slows their arm", "'Free!'", "'Down!'"], 1, "An early 'Tip!' gets the assigned player moving forward before the ball drops."),
+      q(A, "Before the serve, what's the most useful information to say?", ["The score", "How many front-row hitters they have and where the setter is", "Who you're playing next week", "What you had for lunch"], 1, "Knowing the number of attackers and the setter's spot tells blockers and defenders what to expect."),
+    ],
+  },
+  {
+    id: "prepare", name: "Preparing to compete", kind: "Mindset", tagline: "Show up ready, every match.",
+    intro: "Confident players have a plan before the first whistle: sleep, food and water the day before, a pre-match routine, a few things to focus on, and knowledge of the opponent. Preparation turns nerves into readiness.",
+    ideas: [
+      { title: "The day before", text: "Sleep 8–10 hours (teens need more), eat normal meals with carbohydrates, and drink water through the day." },
+      { title: "A pre-match routine", text: "Same warm-up, same music, same cues. A routine tells your body it's time to play." },
+      { title: "Know the opponent", text: "Two or three things from the scouting report: their best hitter, their weakest passer, their best rotation." },
+      { title: "Two process goals", text: "Things you control, like 'call every ball' and 'serve my target'." },
+      { title: "Between matches at tournaments", text: "Eat small snacks, drink, stay off your feet, and reset your focus before the next match." },
+    ],
+    drills: [
+      d("pre-match-card", "Pre-match card", "player", B, 10, "Alone, an index card",
+        ["On a card, write: your warm-up steps, two process goals, your cue words, and your reset after mistakes.", "Read it before every match."],
+        ["Simple enough to read in a minute.", "Update it as you learn what works.", "Keep it in your bag."]),
+      d("scouting-quiz", "Scouting quiz", "coach", I, 10, "Team, the opponent's scouting page",
+        ["Before a match, quiz players: their best hitter's number and favorite shot, their weakest passer, the rotation where they score most.", "Prizes for right answers."],
+        ["Players remember a few facts better than a long report.", "Pull it from FloorCall's Matchup page.", "Check after the match whether it held up."]),
+      d("tournament-plan", "Tournament day plan", "player", B, 10, "Alone, the schedule",
+        ["Write your day: arrival, warm-ups, matches, work assignments (reffing), and when you'll eat and drink.", "Pack snacks and water before you leave."],
+        ["Long days are won by players who stay fueled.", "Plan small snacks between matches.", "Rest your legs between matches."]),
+    ],
+    questions: [
+      q(B, "You have a tournament tomorrow at 8 a.m. What's the best plan tonight?", ["Stay up late watching film", "Normal dinner, water, pack snacks and gear, and get a full night's sleep", "Skip dinner to feel light", "Do a hard workout"], 1, "Sleep, fuel and being packed are the simplest performance boosters there are."),
+      q(I, "There are two hours between your matches. What should you do?", ["Eat a big fast-food meal", "Small snack, water, rest your legs, quick mental reset before warm-up", "Play pick-up on another court", "Sit in the sun"], 1, "Light fuel, hydration and rest keep energy up for the next match."),
+      q(I, "What should you take from a scouting report?", ["Every number in it", "Two or three key facts you can use", "Nothing: just play", "Only your own stats"], 1, "A few clear facts are easy to remember and act on during play."),
+      q(A, "Warm-ups felt bad and you're nervous. What helps most before the first serve?", ["Decide it's going to be a bad day", "Box breathing, your cue words, and focusing on your first job (pass to target)", "Change your whole routine", "Skip the rest of warm-up"], 1, "Warm-up doesn't predict the match. Breathing and a simple first job bring your focus to the present."),
+    ],
+  },
+  {
+    id: "role", name: "Playing your role", kind: "Team", tagline: "Every role wins matches.",
+    intro: "Not everyone can be the go-to hitter, and that's how great teams work. Defensive specialists, servers, the bench, the practice player who pushes the starters: every role matters. Knowing and owning your role, and preparing for the moment you're called, makes the team better and gets you more chances.",
+    ideas: [
+      { title: "Know your job", text: "Ask the coach what your role is and what success looks like in it." },
+      { title: "Be ready", text: "On the bench, follow the rotation, watch the opponent, stay warm. When you go in, your first contact should be your best." },
+      { title: "Practice like a starter", text: "Great practice players make starters better and earn trust." },
+      { title: "Celebrate others", text: "Energy from the bench is real. Teams with engaged benches play better." },
+      { title: "Earn more", text: "Ask what you can improve to earn a bigger role, then show it every day." },
+    ],
+    drills: [
+      d("sub-ready", "Sub-ready reps", "coach", B, 10, "Team, scrimmage",
+        ["During scrimmage, the coach subs players in without warning for one serve or one rotation.", "Subs must be warm and know the rotation."],
+        ["Prepares players to make an impact right away.", "Bench players stay engaged.", "Talk about what 'ready' looks like."]),
+      d("role-cards", "Role cards", "coach", B, 15, "Team, index cards",
+        ["Each player writes their role on the team and one way they help win.", "Coaches add one thing for each player. Share them in a team meeting."],
+        ["Clarity about roles reduces frustration.", "Every role is named and valued.", "Revisit mid-season."]),
+    ],
+    questions: [
+      q(B, "You're on the bench in a close match. What's your job?", ["Relax until you're called", "Follow the rotation, cheer specific plays and stay warm so you're ready", "Text your friends", "Tell the coach who to sub out"], 1, "Being ready and engaged makes your first contact count when you go in."),
+      q(I, "The coach brings you in just to serve at 23–23. What's the best approach?", ["Try a new serve you saw online", "Your usual routine and a tough but in serve to your target", "Serve as soft as possible", "Ask to sit back down"], 1, "Your routine and a safe, aimed serve are what the coach trusts you to do."),
+      q(I, "You want more playing time. What should you do?", ["Complain to teammates", "Ask the coach what to improve, then show it in practice every day", "Play harder only in matches", "Have a parent ask for you"], 1, "Direct questions and visible improvement are how roles change."),
+      q(A, "You're the second setter and practice against the starters every day. How can you help the team most?", ["Go easy so the starters look good", "Compete hard and run the plays well so the starters face match-level pressure", "Skip some reps", "Only focus on your own stats"], 1, "Strong practice players make the starting lineup better and show the coach you're ready."),
+    ],
+  },
+  {
+    id: "coachable", name: "Being coachable", kind: "Mindset", tagline: "Turn feedback into improvement.",
+    intro: "Coachable players improve fastest. They listen without getting defensive, ask questions to understand, try the change even when it feels strange, and look for feedback instead of avoiding it. Being coached hard usually means a coach believes you can do more.",
+    ideas: [
+      { title: "Listen to understand", text: "Eye contact, nod, and repeat the main point back. Don't argue in the moment." },
+      { title: "Ask good questions", text: "'Do you mean earlier on my approach, or faster?' clears things up." },
+      { title: "Try it, even when it feels worse", text: "New technique often gets worse before it gets better. Give it enough reps." },
+      { title: "Use video and stats", text: "Film and numbers (like FloorCall's player trends) show what you can't feel." },
+      { title: "Feedback isn't personal", text: "Coaching is about the skill, not about who you are." },
+    ],
+    drills: [
+      d("one-thing", "One thing", "coach", B, 5, "Team, end of practice",
+        ["Each player says the one piece of coaching they worked on today and how it went.", "Coaches write it down and check the next day."],
+        ["Players learn to turn feedback into focus.", "Keeps practice purposeful.", "Short and quick."]),
+      d("film-self-review", "Self-review on film", "player", I, 15, "Alone, match film (FloorCall Film Room)",
+        ["Pick one skill. Watch 10 of your own reps on film.", "Write what you see, compared to what your coach has told you.", "Bring one question to your next practice."],
+        ["Seeing yourself makes coaching click.", "Be honest, not harsh.", "Compare a month later to see the change."]),
+    ],
+    questions: [
+      q(B, "Your coach corrects your passing in front of the team. What's the best response?", ["Argue that you were right", "Listen, nod, and try the correction on the next rep", "Roll your eyes", "Stop trying"], 1, "Listening and trying the change shows coachability and helps you improve."),
+      q(I, "You don't understand a correction. What should you do?", ["Pretend you understand", "Ask a short question to clarify, at a good moment", "Ignore it", "Ask a teammate to tell the coach they're wrong"], 1, "A clarifying question helps you make the change correctly."),
+      q(I, "A new arm swing feels worse after one practice. What now?", ["Go back to the old one", "Keep giving it reps; new technique usually feels worse before it gets better", "Quit hitting", "Change something else too"], 1, "Skill changes take repetition. Check with your coach and give it time."),
+      q(A, "The coach hasn't given you feedback in a while. What's a coachable move?", ["Assume you're perfect", "Ask what one thing would help you most right now", "Ask why others get more attention", "Stop working hard"], 1, "Asking for feedback shows ownership and tells you what to work on."),
     ],
   },
 ];
