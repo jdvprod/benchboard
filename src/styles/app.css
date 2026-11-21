@@ -1197,3 +1197,4 @@ body.nav-mini .sm-btn span{display:none}
 .auth-age .age-row{display:grid;grid-template-columns:1.4fr 1fr;gap:8px}
 .auth-age select{height:48px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);padding:0 10px;font-size:16px;width:100%;min-width:0}
 .auth-agree-inline{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:14.5px;color:var(--muted);margin-top:6px;font-weight:400!important}
+.wrap-notes{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:8px}.wrap-notes textarea{width:100%}

@@ -1942,6 +1942,28 @@ const scenarios = {
     ok("no errors on the age screen", !K.errors.length && !T.errors.length, [...K.errors, ...T.errors].slice(0, 3).join("; "));
     for (const x of [K, T]) await x.context().close();
   },
+  async wrapup(browser) {
+    // Season wrap-up booklet, a printable practice plan, and the club director's overview
+    const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);
+    await go(p, "team"); await p.waitForTimeout(400);
+    const card = p.locator(".card", { hasText: "Season wrap-up" });
+    ok("wrap-up: the Team tab offers a season wrap-up", (await card.count()) === 1);
+    await card.getByRole("button", { name: /Write player notes/ }).click();
+    await card.locator("textarea").first().fill("Great leadership in serve receive. Off-season: approach footwork."); await card.locator("textarea").first().blur(); await p.waitForTimeout(200);
+    const [dl] = await Promise.all([p.waitForEvent("download"), card.getByRole("button", { name: "Download" }).click()]);
+    const html = fs.readFileSync(await dl.path(), "utf8");
+    ok("wrap-up: a cover page and a page per player, with the coach's note", /season wrap-up/.test(html) && (html.match(/class="page"/g) || []).length >= 5 && /Great leadership in serve receive/.test(html), String((html.match(/class="page"/g) || []).length));
+    ok("wrap-up: best match and biggest improvement where there's one", /Best match/.test(html));
+    await card.getByRole("button", { name: "Print or save PDF" }).click(); await p.waitForTimeout(400);
+    ok("wrap-up: print opens the booklet for printing", (await p.locator("iframe[aria-hidden=true]").count()) >= 1);
+    await go(p, "practice"); await p.waitForTimeout(400);
+    { const pr = p.getByRole("button", { name: "Print", exact: true }); if (await pr.count()) { await pr.first().click(); await p.waitForTimeout(300); ok("practice plans print", (await p.locator("iframe[aria-hidden=true]").count()) >= 1); } }
+    await go(p, "club"); await p.waitForTimeout(400);
+    ok("club: an overview table of every team", (await p.locator(".club-over tbody tr").count()) >= 1 && /Setup/.test(await p.locator(".club-over").innerText()));
+    { const ax = await a11y(p); ok("wrap-up and club controls all have names", !ax.length, ax.join(" | ")); }
+    ok("no errors in wrap-up, print and club", !p.errors.length, p.errors.slice(0, 3).join("; "));
+    await p.context().close();
+  },
   async contact(browser) {
     // the Contact page: FAQ, a form that reaches the admin inbox, the email address, and links from every site
     const p = await newPage(browser, { phone: true, cloud: true });

@@ -1,4 +1,6 @@
 /** Practice: plan builder with drill library, stat-based focus, scrimmages and drill tracking. */
+import { printHtml } from "../../ui/print";
+import { planSheetHtml } from "./planSheet";
 import { aiOn } from "../../ai/on";
 import { useWakeLock } from "../../ui/wakeLock";
 import { useEffect, useState } from "react";
@@ -130,7 +132,7 @@ function PlanEditor({ plan, onDelete }: { plan: PracticePlan; onDelete: () => vo
   const text = () => [`${plan.title} — ${fmtDate(plan.date)}, starts ${addMin(plan.start, 0)} (${total} min)`, "", ...(() => { let c = 0; return plan.blocks.map((b) => { const s = addMin(plan.start, c); c += b.minutes; return `${s}  ${b.title} (${b.minutes} min, ${b.category})${b.notes ? "\n       " + b.notes : ""}`; }); })(), plan.notes ? "\nNotes: " + plan.notes : ""].join("\n");
   const startScrim = () => go("practice");
   return <Card title={<input className="input" style={{ fontWeight: 700, fontSize: 18, border: 0, padding: 0, background: "none" }} value={plan.title} onChange={(e) => set({ title: e.target.value })} aria-label="Plan title" />}
-    actions={<div className="row"><button className="btn sm" onClick={() => copyText(text()).then((ok) => toast(ok ? "Plan copied" : "Couldn't copy"))}>Copy</button><button className="btn sm" onClick={() => download(`${plan.title} ${plan.date}.txt`, text(), "text/plain")}>Download</button><ConfirmButton onConfirm={onDelete}>Delete</ConfirmButton></div>}>
+    actions={<div className="row"><button className="btn sm" onClick={() => copyText(text()).then((ok) => toast(ok ? "Plan copied" : "Couldn't copy"))}>Copy</button><button className="btn sm" onClick={() => printHtml(planSheetHtml(plan, team()!))}>Print</button><button className="btn sm" onClick={() => download(`${plan.title} ${plan.date}.txt`, text(), "text/plain")}>Download</button><ConfirmButton onConfirm={onDelete}>Delete</ConfirmButton></div>}>
     <div className="stack">
       <div className="row">
         <label className="field"><span className="label">Date</span><input type="date" value={plan.date} onChange={(e) => set({ date: e.target.value })} /></label>

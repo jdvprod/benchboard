@@ -72,6 +72,8 @@ export interface Team {
   setupDone?: boolean;
   /** getting-started steps the app can't see for itself: when each was done (ms) */
   onboard?: { shared?: number; form?: number; linked?: number };
+  /** end-of-season notes to each player, by season id then player id */
+  wrapNotes?: Record<string, Record<string, string>>;
   /** An invite code has been made for this team (Home's "Get set up" list). */
   invited?: boolean;
   /** Player fees ledger (src/features/club/fees.ts). Coaches only; never published. */

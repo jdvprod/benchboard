@@ -43,9 +43,29 @@ export function ClubPage() {
   </div>;
 }
 
+/** The director's view: every team's roster size, staff access, setup and activity in one table, with a CSV. */
+function Overview({ teams }: { teams: Team[] }) {
+  const today = todayISO();
+  const rows = teams.map((t) => {
+    const ms = matchesOf(t.id).filter((m) => m.kind === "match" && !m.imported?.season), last = ms[0]?.date || null;
+    const plans = plansOf(t.id).filter((p) => p.date <= today).length, players = teamPlayers(t.id).filter((p) => p.active).length;
+    const steps = [players >= 6, !!t.defLineup, !!(t.schedule?.length), !!t.invited, ms.length > 0].filter(Boolean).length;
+    return { t, players, ms: ms.length, plans, last, synced: isLinked(t.id), invited: !!t.invited, role: roleOn(t.id), setup: `${steps} of 5`, quiet: !last || (Date.now() - new Date(last + "T12:00").getTime()) / 86400e3 > 21 };
+  });
+  const csv = () => [["Team", "Level", "Players", "Matches tracked", "Practices", "Last match", "Synced", "Staff invited", "Setup"], ...rows.map((r) => [r.t.name, r.t.level || "", r.players, r.ms, r.plans, r.last || "", r.synced ? "yes" : "no", r.invited ? "yes" : "no", r.setup])]
+    .map((x) => x.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  return <section className="card club-over" aria-label="Club overview">
+    <div className="row between"><h3 style={{ margin: 0 }}>Overview</h3><button className="btn sm" onClick={() => download("Club overview.csv", csv(), "text/csv")}>Download CSV</button></div>
+    <div className="tbl" style={{ marginTop: 8 }}><table><thead><tr><th className="l">Team</th><th>Players</th><th>Matches</th><th>Practices</th><th className="l">Last match</th><th>Synced</th><th>Staff</th><th>Setup</th></tr></thead>
+      <tbody>{rows.map((r) => <tr key={r.t.id}><td className="l"><b>{r.t.name}</b>{r.t.level ? <div className="small muted">{r.t.level}</div> : null}</td><td>{r.players}{r.players < 6 ? <span className="small muted"> (short)</span> : null}</td><td>{r.ms}</td><td>{r.plans}</td>
+        <td className="l">{r.last ? fmtDate(r.last) : "–"}{r.quiet && r.ms ? <div className="small muted">quiet 3+ weeks</div> : null}</td><td>{r.synced ? "✓" : "–"}</td><td>{r.invited ? "✓" : "–"}</td><td>{r.setup}</td></tr>)}</tbody></table></div>
+    <p className="small muted" style={{ marginBottom: 0 }}>Teams that aren't synced only exist on the device that made them; staff can't share or back them up. "Setup" counts roster, lineup, schedule, staff invited and a tracked match.</p>
+  </section>;
+}
+
 function Teams({ teams }: { teams: Team[] }) {
   const today = todayISO();
-  return <div className="club-grid">{teams.map((t) => {
+  return <><Overview teams={teams} /><div className="club-grid" style={{ marginTop: 14 }}>{teams.map((t) => {
     const g = gamesOf(t), rec = recordOf(g.map((x) => x.R)), M = teamMetrics(aggregate(g.flatMap((x) => x.R.sets)));
     const last = g.find((x) => x.R.matchOver), live = g.find((x) => x.m.status === "live");
     const next = (t.schedule || []).filter((x) => x.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
@@ -57,7 +77,7 @@ function Teams({ teams }: { teams: Team[] }) {
       <p className="small muted" style={{ margin: 0 }}>{next ? `Next: ${next.site === "away" ? "at" : "vs"} ${next.opp}, ${next.date === today ? "today" : fmtDate(next.date)}` : "Nothing scheduled."}</p>
       <div className="row"><button className="btn sm primary" onClick={() => open(t.id)}>Open</button><button className="btn sm" onClick={() => open(t.id, "stats")}>Stats</button><button className="btn sm" onClick={() => open(t.id, "matchup")}>Schedule</button></div>
     </section>;
-  })}</div>;
+  })}</div></>;
 }
 
 const KIND: Record<ClubEvent["kind"], string> = { match: "Match", tournament: "Tournament", practice: "Practice" };

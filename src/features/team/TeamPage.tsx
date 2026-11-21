@@ -1,4 +1,5 @@
 import { recordOf } from "../../sports/volleyball/engine";
+import { SeasonWrapCard } from "./SeasonWrapCard";
 import { aiOn } from "../../ai/on";
 import { Gender, genderQuestion, gendersFor, isAdultLevel } from "../../data/model";
 import { CollegeInterest } from "./CollegeInterest";
@@ -38,7 +39,7 @@ export function TeamPage({ sub }: { sub?: string }) {
       <Roster />
       <div className="grid2" style={{ alignItems: "start" }}>
         <div className="stack"><TeamInfo /><History /></div>
-        <div className="stack"><CloudCard /><Announcements />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard />{FEES && <FeesCard />}<ImportStats /><Backup /></div>
+        <div className="stack"><CloudCard /><Announcements /><SeasonWrapCard />{COLLEGE_SEARCH && <CollegeInterest />}<Opponents /><TryoutsCard />{FEES && <FeesCard />}<ImportStats /><Backup /></div>
       </div>
     </div>
   </div>;
