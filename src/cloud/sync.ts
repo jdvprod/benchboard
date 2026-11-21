@@ -264,6 +264,7 @@ export async function shareSeason(teamId: string, seasonId: string) {
   const existing: any[] = await rest(`season_shares?select=code&team_id=eq.${encodeURIComponent(teamId)}&season_id=eq.${encodeURIComponent(seasonId)}&limit=1`);
   const c = existing[0]?.code || code(6);
   if (!existing[0]) await rest("season_shares", { method: "POST", headers: { prefer: "return=minimal" } as any, body: JSON.stringify({ code: c, team_id: teamId, season_id: seasonId }) });
+  const tm = get("teams", teamId); if (tm && !tm.onboard?.shared) patch("teams", teamId, { onboard: { ...(tm.onboard || {}), shared: Date.now() } });
   await syncNow();
   return { code: c, url: siteUrl("live", "t/" + c) };
 }

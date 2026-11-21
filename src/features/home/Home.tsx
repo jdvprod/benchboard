@@ -5,7 +5,8 @@ import { all, currentMatch, ensureOpponent, matchesOf, newMatch, oppKey, opponen
 import { Icon } from "../../ui/icons";
 import { feePlayers, summary as feeSummary } from "../club/fees";
 import { FEES } from "../../app/flags";
-import { currentUser } from "../../cloud/client";
+import { cloudAvailable, currentUser } from "../../cloud/client";
+import { LEGAL } from "../../app/legal";
 import { aggregate, resultOf } from "../../sports/volleyball/engine";
 import { fmtAvg, fmtHit, fmtPct, teamMetrics } from "../../sports/volleyball/metrics";
 import { Card, copyText, fmtDate, plural } from "../../ui/kit";
@@ -215,13 +216,20 @@ async function shareRecap(m: import("../../data/model").Match, R: import("../../
 function Setup() {
   const t = team()!;
   if (t.sample || t.setupDone) return null;
-  const players = teamPlayers().filter((p) => p.active).length;
+  const players = teamPlayers().filter((p) => p.active).length, cloud = cloudAvailable() && !!currentUser(), ob = t.onboard || {};
+  const mark = (k: "form") => setTeamPatch({ onboard: { ...ob, [k]: Date.now() } });
   const steps: [string, string, boolean, () => void][] = [
     ["Add your roster", players ? `${plural(players, "player")} so far` : "Type them in, paste a list, or import a CSV", players >= 6, () => go("team")],
+    ["Add your home gym", "So practices and home matches show where they are on the calendar", !!t.gym, () => go("team")],
     ["Set your starting lineup", "So the app tracks rotations and who's serving", !!t.defLineup, () => go("lineup")],
     ["Add your schedule", "Get a scouting page before every game", !!(t.schedule?.length || t.tournaments?.length), () => go("matchup")],
-    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
     ["Invite your staff and players", "Share an invite code from the Team tab", !!t.invited, () => go(currentUser() ? "team" : "account")],
+    ...(cloud ? [
+      ["Send families the permission form", "Print or email the parent and guardian form before you share anything", !!ob.form, () => { mark("form"); window.open(LEGAL.consent, "_blank", "noopener"); }] as [string, string, boolean, () => void],
+      ["Share your team page", "Families follow scores and the schedule on FloorCall Live", !!ob.shared, () => go("team")] as [string, string, boolean, () => void],
+      ["Link families for notes", "Say which account is which player so notes reach the right family", !!ob.linked, () => go("notes")] as [string, string, boolean, () => void],
+    ] : []),
+    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
   ];
   const done = steps.filter((x) => x[2]).length;
   if (done === steps.length) return null;

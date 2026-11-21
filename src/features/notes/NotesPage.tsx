@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cloudAvailable, CloudError, currentUser, rpc } from "../../cloud/client";
 import { isLinked, roleOn } from "../../cloud/sync";
 import { isViewer } from "../../app/viewAs";
-import { matchesOf, plansOf, team, teamPlayers, toast } from "../../data/store";
+import { matchesOf, plansOf, setTeamPatch, team, teamPlayers, toast } from "../../data/store";
 import type { Player } from "../../data/model";
 import { Card, ConfirmButton, Seg } from "../../ui/kit";
 import { when } from "../team/Announcements";
@@ -119,7 +119,11 @@ function Compose({ players, edit, to, onDone }: { players: Player[]; edit: Note 
 function WhoIsWho({ players }: { players: Player[] }) {
   const t = team()!;
   const [rows, setRows] = useState<{ user_id: string; email: string | null; players: string[] }[] | null>(null), [err, setErr] = useState(""), [open, setOpen] = useState(false);
-  const load = () => rpc("team_member_links", { t: t.id }).then(setRows).catch((e) => setErr(errText(e)));
+  const load = () => rpc("team_member_links", { t: t.id }).then((r: { user_id: string; email: string | null; players: string[] }[]) => {
+    setRows(r);
+    // getting started: families are linked once every player and parent account is
+    const tm = team(); if (tm && r.length && r.every((x) => x.players.length) && !tm.onboard?.linked) setTeamPatch({ onboard: { ...(tm.onboard || {}), linked: Date.now() } });
+  }).catch((e) => setErr(errText(e)));
   useEffect(() => { load(); }, [t.id]);
   if (!rows) return null;
   const unlinked = rows.filter((r) => !r.players.length).length;

@@ -1785,6 +1785,9 @@ const scenarios = {
     await C.getByLabel("Player for maya-note@e2e.test").selectOption({ label: "#7 Maya Chen" }); await C.waitForTimeout(400);
     await C.getByLabel("Player for sofia-note@e2e.test").selectOption({ label: "#12 Sofia Nguyen" }); await C.waitForTimeout(400);
     ok("notes: the coach links each account to a player", /All 2 player and parent accounts are linked/.test(await C.locator(".nt-who").innerText()));
+    await C.reload(); await C.waitForTimeout(600); await go(C, "home"); await C.waitForTimeout(400);
+    ok("getting started: linking families ticks off its step, and the permission form and team page are steps too", (await C.locator(".setup-list li.ok", { hasText: "Link families for notes" }).count()) === 1 && (await C.locator(".setup-list li", { hasText: "permission form" }).count()) === 1 && (await C.locator(".setup-list li", { hasText: "Share your team page" }).count()) === 1);
+    await go(C, "notes"); await C.waitForTimeout(600);
     // 1. a practice note to the team
     const comp = C.locator(".nt-compose");
     await comp.getByRole("radio", { name: "Practice" }).click().catch(async () => comp.getByRole("button", { name: "Practice" }).click());
