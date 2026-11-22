@@ -2,6 +2,17 @@
 
 Do these in order. Each step says how to know it worked. About an hour the first time.
 
+**Still to do (as of November 2026):**
+
+- [ ] Run `supabase/schema.sql` again (version 37), step 1.
+- [ ] Deploy the `alerts` function and schedule it (Error alerts, below).
+- [ ] Upgrade Supabase to Pro for backups and no pausing, then test one restore.
+- [ ] Set up an uptime monitor.
+- [ ] Run the two-phone smoke test (step 4) on the live sites.
+- [ ] Business: file the LLC between December 17 and 31 (California's 15-day rule means no 2026 franchise tax; the first $800 is due April 15, 2027), get the EIN, open the business bank account, then put the LLC's name in `legal.owner` and rebuild.
+- [ ] Have a lawyer read the Terms' arbitration, minors and training-injury sections before taking payments in 2027.
+- [ ] Print flyers for clinics and tournaments: open getfloorcall.com/flyer.html → **Print** (US Letter, one page, with a QR code to the site).
+
 ## 0. Fill in the blanks (5 minutes)
 
 In `package.json`:
