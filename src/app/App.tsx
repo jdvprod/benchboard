@@ -17,7 +17,10 @@ import { TermsGate } from "../cloud/AuthPage";
 import { JoinPage } from "../cloud/CloudCard";
 import { COACH_ONLY, isViewer } from "./viewAs";
 import { setUi, ui } from "./ui";
-import { access, BILLING } from "./flags";
+import { Feature } from "./flags";
+import { can } from "./plan";
+/** Pages that are part of the Team plan once billing is on (the free tier keeps the rest). */
+const PAID_PAGES: Record<string, Feature | undefined> = { matchup: "scouting", film: "film", practice: "practice", club: "club" };
 import { Paywall } from "./Paywall";
 import { AppAccess } from "../cloud/AccessNote";
 import { NotesPage } from "../features/notes/NotesPage";
@@ -133,7 +136,7 @@ export function App() {
       {showBoard && page !== "live" && <Scoreboard />}
       {!state.persistent && <div className="banner warn" style={{ marginTop: 12 }}><p>This browser isn't letting FloorCall save. Stats will be lost when you close it. Try a regular (not private) window.</p></div>}
       {ui.previewPlayer && <div className="preview-bar" role="status"><span><b>Players' view.</b> This is what your players and families see when they join {t?.name || "the team"} with a view-only code.</span><button className="btn sm" onClick={() => { setUi({ previewPlayer: false }); go("settings"); }}>Exit preview</button></div>}
-      <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{BILLING && t && !viewer && !["settings", "team", "home", "stats", "player", "admin"].includes(page) && !access(t, matchesOf().filter((m) => m.status === "done" && m.kind === "match").length).ok ? <Paywall /> : body}</Suspense></ErrorBoundary>
+      <ErrorBoundary resetKey={page + (route.id || "")}><Suspense fallback={<Wait />}>{t && !viewer && PAID_PAGES[page] && !can(PAID_PAGES[page]!) ? <Paywall f={PAID_PAGES[page]!} /> : body}</Suspense></ErrorBoundary>
     </div>
     <Toast />
   </>;

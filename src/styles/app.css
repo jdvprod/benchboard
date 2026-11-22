@@ -1208,3 +1208,11 @@ body.nav-mini .sm-btn span{display:none}
 .quick-t th{border-top:1px solid var(--line)}
 .quick-t td .small{display:block}
 
+/* Stats helper hand-off (Tracking panel) */
+.helper-card{display:flex;flex-direction:column;gap:8px;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:6px;background:var(--surface)}
+.helper-card.on{border-color:var(--us);background:var(--us-soft)}
+.helper-card .field{max-width:360px}
+.helper-url{overflow-wrap:anywhere}
+/* Team plan edges (billing on only) */
+.card.locked{border-style:dashed;display:grid;gap:6px}
+.card.locked p{margin:0}

@@ -2,6 +2,7 @@
  * (notifications, Your teams on every device) and team film sessions need a free account.
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
+ *   #/h/CODE            a stats helper link (a parent tracks one match)
  *   #/                  enter a code from the coach */
 import { AccountButton } from "../cloud/AccountPanel";
 import { contactUrl } from "../cloud/links";
@@ -20,6 +21,7 @@ import { TeamHub } from "./TeamHub";
 import { TeamLogo } from "../ui/Logo";
 import { DemoGame } from "./Demo";
 const FilmSessionView = lazy(() => import("./FilmSession").then((m) => ({ default: m.FilmSessionView })));
+const HelperRoute = lazy(() => import("./Helper").then((m) => ({ default: m.HelperRoute })));
 import { Followed, forgetTeam, myTeams, rememberTeam, syncFollowed } from "./follow";
 import { MiniAuth, SignedIn } from "../cloud/MiniAuth";
 import { SiteSwitch } from "../ui/SiteSwitch";
@@ -74,6 +76,7 @@ function Landing() {
     if (!cloudAvailable()) { setErr(tr("This site isn't connected yet.")); return; }
     setBusy(true); setErr("");
     try {
+      if (/^H[A-Z0-9]{9}$/.test(c)) { const h: any = await rpc("helper_open", { c }, true); if (h?.match) { location.hash = `#/h/${c}`; return; } }
       const s: any = await rpc("season_view", { share: c }, true); if (s?.team) { location.hash = `#/t/${c}`; return; }
       const w: any = await rpc("watch", { share: c }, true); if (w?.match) { location.hash = `#/g/${c}`; return; }
       setErr(tr("No team or game uses that code. Check it with the coach."));
@@ -104,6 +107,7 @@ function LiveApp() {
   if ((r[0] === "t" || r[0] === "g") && r[1] && r[2] === "overlay") return r[0] === "t" ? <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={[]} /> : <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
+  if (r[0] === "h" && r[1]) return <Suspense fallback={null}><HelperRoute key={r[1]} code={r[1].toUpperCase()} Shell={Shell} /></Suspense>;
   if (r[0] === "demo") return <DemoGame Shell={Shell} />;
   if (r[0] === "film" && r[1]) return <Suspense fallback={null}><FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} /></Suspense>;
   return <Landing />;

@@ -23,6 +23,10 @@ import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
 import { QuickAnswers } from "./QuickAnswers";
+import { can } from "../../app/plan";
+import { Locked } from "../../app/Paywall";
+/** Views past the box score: part of the Team plan once billing is on. */
+const DEEP = new Set(["pick", "offense", "servepass", "rotations", "situations", "opponent"]);
 import { CustomView } from "./Custom";
 import { rotateLineup } from "../../sports/volleyball/engine";
 import { BASE, RECEIVE, SERVE_SPOT } from "../../ui/Court3D";
@@ -51,14 +55,15 @@ export function StatsPage() {
     {seasonRecap && S.kind === "games" && <RecapVideo season={{ items: S.items.filter(({ m }) => !m.imported?.season).slice().sort((a, b) => b.m.date.localeCompare(a.m.date)), name: seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "Season" }} onClose={() => setSeasonRecap(false)} />}
     <div className="pagehead"><h1>Stats</h1>
       <div className="row">
-        <button className="btn sm" onClick={() => exportSheet(S, A)}>Download spreadsheet</button>
-        {!single && S.kind === "games" && S.items.length > 0 && <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === ui.statsSeason); download(`${t.name} ${se?.name || "season"} report.html`.replace(/[^\w\- .]+/g, ""), seasonReportHtml(S.items, se), "text/html"); toast("Season report saved. Open it to print or share."); }}>Season report</button>}
-        {!single && S.kind === "games" && S.items.filter(({ R }) => R.matchOver).length >= 2 && <button className="btn sm" onClick={() => shareSeasonGraphic(S.items.filter(({ m }) => !m.imported?.season), seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "Season")}>Season graphic</button>}
-        {!single && S.kind === "games" && S.items.filter(({ R }) => R.matchOver).length >= 2 && <button className="btn sm" onClick={() => setSeasonRecap(true)}>Season video</button>}
-        {single && !isScrim && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(single.m, single.R), "text/html"); toast("Match report saved. Open it to print or share."); }}>Match report</button>}
-        {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => shareFinalGraphic(single.m, single.R)}>Share graphic</button>}
-        {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => setRecap(true)}>Recap video</button>}
-        {single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps.html`.replace(/[^\w\- .]+/g, ""), maxprepsHtml(single.m, single.R), "text/html"); toast("MaxPreps sheet saved. Open it next to MaxPreps' stat entry."); }}>MaxPreps sheet</button>}
+        {!can("exports") && <span className="small muted">Downloads, graphics and videos: Team plan</span>}
+        {can("exports") && <button className="btn sm" onClick={() => exportSheet(S, A)}>Download spreadsheet</button>}
+        {can("exports") && !single && S.kind === "games" && S.items.length > 0 && <button className="btn sm" onClick={() => { const se = seasonsOf().find((x) => x.id === ui.statsSeason); download(`${t.name} ${se?.name || "season"} report.html`.replace(/[^\w\- .]+/g, ""), seasonReportHtml(S.items, se), "text/html"); toast("Season report saved. Open it to print or share."); }}>Season report</button>}
+        {can("exports") && !single && S.kind === "games" && S.items.filter(({ R }) => R.matchOver).length >= 2 && <button className="btn sm" onClick={() => shareSeasonGraphic(S.items.filter(({ m }) => !m.imported?.season), seasonsOf().find((x) => x.id === ui.statsSeason)?.name || "Season")}>Season graphic</button>}
+        {can("exports") && !single && S.kind === "games" && S.items.filter(({ R }) => R.matchOver).length >= 2 && <button className="btn sm" onClick={() => setSeasonRecap(true)}>Season video</button>}
+        {can("exports") && single && !isScrim && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} report.html`.replace(/[^\w\- .]+/g, ""), matchReportHtml(single.m, single.R), "text/html"); toast("Match report saved. Open it to print or share."); }}>Match report</button>}
+        {can("exports") && single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => shareFinalGraphic(single.m, single.R)}>Share graphic</button>}
+        {can("exports") && single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => setRecap(true)}>Recap video</button>}
+        {can("exports") && single && !isScrim && single.m.kind === "match" && <button className="btn sm" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps.html`.replace(/[^\w\- .]+/g, ""), maxprepsHtml(single.m, single.R), "text/html"); toast("MaxPreps sheet saved. Open it next to MaxPreps' stat entry."); }}>MaxPreps sheet</button>}
         {single && !isScrim && single.m.kind === "match" && maxprepsReady() && <button className="btn sm" title="In MaxPreps: Team Admin, Schedule, the pencil on this game, Enter Stats, Import Stats, then choose this file" onClick={() => { download(`${t.name} vs ${single.m.opp} ${single.m.date} MaxPreps import.txt`.replace(/[^\w\- .]+/g, ""), maxprepsTxt(single.R), "text/plain"); toast("Import file saved. In MaxPreps: Schedule, the pencil on this game, Enter Stats, Import Stats."); }}>MaxPreps import file</button>}
         {single && <button className="btn sm" onClick={() => copyText(snapshot(single.m)).then((ok) => toast(ok ? "Summary copied" : "Couldn't copy here"))}>Copy summary</button>}
       </div>
@@ -81,9 +86,10 @@ export function StatsPage() {
       {vw === "overview" && S.event && <EventCard S={S} />}
       {vw === "overview" && <Overview S={S} A={A} />}
       {vw === "overview" && S.key === "season" && !S.event && ui.statsSeason !== "all" && <SeasonVsSeason seasonId={ui.statsSeason} />}
-      {vw === "overview" && S.kind !== "practice" && <QuickAnswers key={"q" + S.key} S={S} />}
+      {vw === "overview" && S.kind !== "practice" && (can("quickAnswers") ? <QuickAnswers key={"q" + S.key} S={S} /> : <Locked f="quickAnswers" compact />)}
       {aiOn("askStats") && vw === "overview" && S.kind !== "practice" && <AskCard key={S.key} S={S} />}
       {vw === "players" && <Players A={A} />}
+      {DEEP.has(vw) && !can("deepStats") ? <Locked f="deepStats" /> : <>
       {vw === "pick" && <CustomView S={S} A={A} />}
       {vw === "errors" && <ErrorsView S={S} A={A} />}
       {vw === "offense" && <Offense A={A} />}
@@ -91,7 +97,8 @@ export function StatsPage() {
       {vw === "rotations" && <><Rotations A={A} S={S} /><Units A={A} /></>}
       {vw === "situations" && <SituationsView S={S} />}
       {vw === "opponent" && <><Opponent A={A} /><TheirRotations A={A} /></>}
-      {vw === "film" && single && <FilmCard key={single.m.id} m={single.m} R={single.R} />}
+      </>}
+      {vw === "film" && single && (!can("film") ? <Locked f="film" /> : null)}{vw === "film" && single && can("film") && <FilmCard key={single.m.id} m={single.m} R={single.R} />}
       {vw === "fix" && single && <PlayEditor key={single.m.id} m={single.m} R={single.R} />}
     </>}
   </div>;

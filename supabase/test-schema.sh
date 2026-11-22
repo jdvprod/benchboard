@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "37" "schema version is reported"
+check "select schema_version();" "38" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -383,10 +383,33 @@ expect "$(asall $P "select picked_custom_drills()->0->'data'->>'name';" | tail -
 expect "$(asall $E "select jsonb_array_length(picked_custom_drills());" | tail -1)" "0" "people off the team can't"
 asall $TM "select custom_drill_delete('$CD');" | grep ERROR || true
 expect "$(q -c "select count(*) from team_drill_picks where drill_id = 'c:$CD';" | tail -1 | tr -d ' ')" "0" "deleting it takes it off the team's list"
+# ---------- version 38: stats helper links ----------
+q -c "insert into records (store, id, team_id, data, u) values ('matches', 'hm1', 'tb1', '{\"id\":\"hm1\",\"opp\":\"Rivals\",\"status\":\"live\",\"kind\":\"match\",\"notes\":\"secret plan\"}', 1),
+  ('players', 'hp1', 'tb1', '{\"id\":\"hp1\",\"num\":\"7\",\"first\":\"Maya\",\"last\":\"Chen\",\"active\":true,\"phone\":\"555\"}', 1),
+  ('players', 'hp2', 'tb1', '{\"id\":\"hp2\",\"num\":\"9\",\"first\":\"Gone\",\"last\":\"Player\",\"active\":false}', 1);" > /dev/null
+expect "$(asall $P "select helper_create('tb1', 'hm1', 'basic', 'Dana');" | grep -c 'Only the team')" "1" "view-only members can't make a helper link"
+HC=$(asall $TM "select helper_create('tb1', 'hm1', 'basic', 'Dana')->>'code';" | tail -1 | tr -d ' ')
+expect "$(echo "$HC" | grep -cE '^H[A-Z2-9]{9}$')" "1" "a coach makes a helper link"
+expect "$(q -c "set role anon; select helper_open('$HC')->'match'->>'opp';" | tail -1)" "Rivals" "the helper opens the match without an account"
+expect "$(q -c "set role anon; select helper_open('$HC')::text ~ 'secret plan|555';" | tail -1)" "f" "the helper never sees match notes or contact details"
+expect "$(q -c "set role anon; select jsonb_array_length(helper_open('$HC')->'players');" | tail -1)" "1" "only active players, as Live shows them"
+q -c "set role anon; select helper_push('$HC', 'dev123456', '[{\"id\":\"e1\",\"ts\":1000,\"t\":\"NS\",\"serve\":\"us\"},{\"id\":\"e2\",\"ts\":1001,\"t\":\"K\",\"p\":\"hp1\",\"junk\":\"x\"}]'::jsonb);" > /dev/null
+expect "$(q -c "select jsonb_array_length(data->'events') || ':' || (data->>'by') || ':' || (data->'events'->1 ? 'junk')::text from records where id = 'hm1|helper-dev123456';" | tail -1)" "2:Dana (helper):false" "plays are saved to the helper's own log, cleaned"
+expect "$(asall $TM "select count(*) from records where store = 'logs' and data->>'matchId' = 'hm1';" | tail -1 | tr -d ' ')" "1" "the coaches see the helper's plays"
+expect "$(q -c "set role anon; select helper_push('$HC', 'dev123456', '[{\"id\":\"e3\",\"ts\":1002,\"t\":\"P3\",\"p\":\"hp1\"}]'::jsonb);" 2>&1 | grep -c "couldn't be saved")" "1" "only the helper's buttons are accepted"
+expect "$(q -c "set role anon; select helper_push('$HC', 'dev123456', '[{\"id\":\"e3\",\"ts\":1002,\"t\":\"K\",\"p\":\"someone-else\"}]'::jsonb);" 2>&1 | grep -c "couldn't be saved")" "1" "only players on this team"
+expect "$(q -c "set role anon; select helper_push('$HC', '../x', '[]'::jsonb);" 2>&1 | grep -c 'Bad device')" "1" "device names are checked"
+q -c "update records set data = data || '{\"status\":\"done\"}' where id = 'hm1';" > /dev/null
+expect "$(q -c "set role anon; select helper_push('$HC', 'dev123456', '[]'::jsonb);" 2>&1 | grep -c 'ended this match')" "1" "nothing is added after the coach ends the match"
+expect "$(asall $TM "select helper_status('tb1', 'hm1')->>'name';" | tail -1)" "Dana" "the coach sees who has the link"
+expect "$(asall $P "select helper_status('tb1', 'hm1') is null;" | tail -1 | tr -d ' ')" "t" "view-only members don't"
+asall $TM "select helper_stop('tb1', 'hm1');" | grep ERROR || true
+expect "$(q -c "set role anon; select helper_open('$HC') is null;" | tail -1)" "t" "a stopped link stops working"
+q -c "delete from code_misses;" > /dev/null
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"
 expect "$(q -c "select coalesce(string_agg(proname, ','), '') from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and prosecdef and (proconfig is null or not exists (select 1 from unnest(proconfig) x where x like 'search_path=%'));")" "" "every security definer function pins its search_path"
-expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,lesson_public,lesson_signup,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,support_send,watch" "without an account only the public page functions run"
+expect "$(q -c "select string_agg(proname, ',' order by proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute');")" "beach_view,helper_open,helper_push,lesson_public,lesson_signup,recruit_board,recruit_seen,recruit_view,schema_version,season_view,server_time,support_send,watch" "without an account only the public page functions run"
 expect "$(q -c "select coalesce(string_agg(table_name || ':' || privilege_type, ','), '') from information_schema.role_table_grants where grantee = 'anon' and table_schema = 'public';")" "app_errors:INSERT" "without an account no table can be read or changed"
 expect "$(q -c "select has_function_privilege('authenticated', 'public.ai_bump(uuid)', 'execute');")" "f" "the AI counter is server-only"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read team data directly"

@@ -34,7 +34,7 @@ export function AvailabilityLine({ item, all }: { item: string; all: Rsvp[] | nu
 
 /* ---------- volunteer jobs for a match ---------- */
 export interface Signup { item: string; job: string; name: string; at: string }
-const PRESETS: [string, number][] = [["Line judge", 2], ["Scorebook", 1], ["Libero tracker", 1], ["Snacks", 1], ["Admissions table", 2], ["Video", 1]];
+const PRESETS: [string, number][] = [["Stats helper", 1], ["Line judge", 2], ["Scorebook", 1], ["Libero tracker", 1], ["Snacks", 1], ["Admissions table", 2], ["Video", 1]];
 
 export function useSignups(): Signup[] | null {
   const t = team()!, [list, setList] = useState<Signup[] | null>(null), ok = cloudAvailable() && !!currentUser() && isLinked(t.id), back = useComeBack();

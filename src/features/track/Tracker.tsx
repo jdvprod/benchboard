@@ -25,12 +25,15 @@ import { parseQuick, QUICK_HELP, spokenToCodes } from "../../sports/volleyball/q
 /** The match plan opens from the bench; it lives with Matchup and loads when first opened. */
 const PlanPanel = lazy(() => import("../matchup/MatchupPage").then((m) => ({ default: m.PlanPanel })));
 import { KEYMAP, useStatKeys } from "./keys";
+import { HelperCard } from "./HelperCard";
+import { can } from "../../app/plan";
 
 /** This device's job for a real match (scrimmages and drills always track everything). */
 export const jobOf = (m: Match): "all" | "score" | "stats" => (m.kind === "match" && !m.scrim ? state.prefs.job || "all" : "all");
 const SCORE_GROUPS: [string, ActionCode[]][] = [["Score", ["UP", "TP"]], ["How they scored or erred", ["OK", "OA", "OE"]]];
 const STAT_GROUP_NAMES = GROUPS.map((g) => g[0]).filter((g) => g !== "Opponent");
-export const trackMode = (m: Match) => (m.scrim ? "full" : team()?.settings.trackMode || "full");
+/** Full stats is part of the Team plan once billing is on; the free tier tracks basic stats or points. */
+export const trackMode = (m: Match) => { const want = m.scrim ? "full" : team()?.settings.trackMode || "full"; return want === "full" && !can("fullStats") ? "basic" : want; };
 const POINT_GROUPS: [string, ActionCode[]][] = [["Who won the point", ["UP", "TP"]]];
 const jobGroups = (m: Match): [string, ActionCode[]][] => {
   const j = jobOf(m), mode = trackMode(m);
@@ -616,8 +619,9 @@ function JobPanel({ m }: { m: Match }) {
   const toggle = (g: string) => { const next = picked.includes(g) ? picked.filter((x) => x !== g) : picked.concat(g); set({ jobGroups: next.length ? next : [g] }); };
   const t = team()!, mode = t.settings.trackMode || "full";
   return <div className="editor">
+    <HelperCard m={m} />
     <b>What to track</b>
-    <div className="pick">{TRACK_MODES.map(([k, l, d]) => <button key={k} aria-pressed={mode === k} onClick={() => { setSettings({ trackMode: k }); stampLog(m.id); }}>{l}<small style={{ display: "block", fontWeight: 400 }}>{d}</small></button>)}</div>
+    <div className="pick">{TRACK_MODES.map(([k, l, d]) => { const off = k === "full" && !can("fullStats"); return <button key={k} disabled={off} aria-pressed={trackMode(m) === k} onClick={() => { setSettings({ trackMode: k }); stampLog(m.id); }}>{l}<small style={{ display: "block", fontWeight: 400 }}>{off ? "Team plan" : d}</small></button>; })}</div>
     <span className="small muted">For {t.name}, on every device. Change the default in Settings.</span>
     <b style={{ marginTop: 8 }}>My job on this device</b>
     <span className="small muted">When several coaches track the same match, split the work. Only one device should keep score.</span>

@@ -2,6 +2,7 @@ import { TRACK_MODES } from "../../sports/volleyball/actions";
 import { isViewer } from "../../app/viewAs";
 import { setUi } from "../../app/ui";
 import { contactUrl, placeUrl } from "../../cloud/links";
+import { can } from "../../app/plan";
 import { useEffect, useState } from "react";
 import { FORMATS, SCORING } from "../track/TrackPage";
 import { canPrompt, installed, isIOS, onInstallChange, promptInstall } from "../../app/install";
@@ -29,7 +30,7 @@ export function SettingsPage() {
       {!isViewer(t.id) && <SetRow title="Team color" sub="Change it on the Team tab."><button className="btn sm" onClick={() => go("team")}>Team tab</button></SetRow>}
     </Card>
     {!isViewer(t.id) && <Card title={`Tracking · ${t.name}`}>
-      <SetRow title="What to track" sub="Full stats has every button. Basic stats is the box score: kills, attempts, errors, aces, serve errors, assists, blocks and digs. Points only just keeps score, rally by rally. You can also switch on the Track screen."><Seg value={s.trackMode || "full"} onChange={(v) => setSettings({ trackMode: v })} options={TRACK_MODES.map(([k, l]) => [k, l] as [typeof k, string])} label="What to track" /></SetRow>
+      <SetRow title="What to track" sub="Full stats has every button. Basic stats is the box score: kills, attempts, errors, aces, serve errors, assists, blocks and digs. Points only just keeps score, rally by rally. You can also switch on the Track screen."><Seg value={can("fullStats") ? s.trackMode || "full" : s.trackMode === "points" ? "points" : "basic"} onChange={(v) => setSettings({ trackMode: v })} options={TRACK_MODES.filter(([k]) => k !== "full" || can("fullStats")).map(([k, l]) => [k, l] as [typeof k, string])} label="What to track" /></SetRow>
       <div className="setgroup">
         <div className="setgroup-hd"><b>Ask where the ball landed</b><span>After the play, tap the court. Feeds the tendency court and the Live court. Choose for each kind of play.</span></div>
         {LOC_KINDS.map((k) => <SetRow key={k.kind} title={k.title} sub={k.sub}>
@@ -143,7 +144,7 @@ function AiKey() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 37;
+const SCHEMA_VERSION = 38;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);

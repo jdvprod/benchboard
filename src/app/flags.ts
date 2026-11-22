@@ -23,11 +23,33 @@ export const TRIAL_HOURS = 24, TRIAL_MAX_DAYS = 14;
 export const ROSTER_INCLUDED = 20;
 export const rosterOver = (players: number) => (BILLING ? Math.max(0, players - ROSTER_INCLUDED) : 0);
 
+/** Tests can turn billing on in the browser (globalThis.__FC_TEST_BILLING) to check the free tier without a build. */
+export const billingOn = () => BILLING || !!(globalThis as any).__FC_TEST_BILLING;
+
+/** Free forever vs. the Team plan (once billing is on). A team without a plan, after its trial, keeps the free tier:
+ * points-only and basic-stats tracking, FloorCall Live, stats helper links, schedule and calendar, roster and lineups,
+ * announcements and notes, and the box score with each player's numbers. The Team (or Club) plan adds the rest. */
+export type Feature = "fullStats" | "deepStats" | "quickAnswers" | "ai" | "scouting" | "film" | "practice" | "exports" | "club";
+export const PAID: Record<Feature, string> = {
+  fullStats: "Full stats tracking: passing grades, every button, rotations and serve receive",
+  deepStats: "Rotations, serve and pass, situations, opponent and trend stats",
+  quickAnswers: "Quick answers",
+  ai: "AI match reports, timeout cards and scouting reports",
+  scouting: "Scouting and matchup pages",
+  film: "Film Room",
+  practice: "Practice plans and drills",
+  exports: "Spreadsheets, season reports, graphics and videos",
+  club: "Club tools for several teams",
+};
+export const FREE_LIST = ["Points only and basic stats tracking", "FloorCall Live for families", "Stats helper links for parents", "Schedule, calendar, roster and lineups", "Announcements and notes", "Box score and each player's numbers"];
+/** Whether a team may use a feature: everything while billing is off, during the trial and on a plan; afterwards only the free tier. */
+export const featureOk = (_f: Feature, a: Access) => a.ok;
+
 export type Access = { ok: true; why: "billing off" | "paid" | "trial"; endsAt?: number; note?: string } | { ok: false; why: "trial over" };
 /** The free trial covers a team's first match or its first 24 hours, whichever gives more:
  * it ends 24 hours after the team was made once a match is finished, and in any case after 14 days. */
 export function access(t: { createdAt: number; plan?: Plan; paidUntil?: string } | null | undefined, finishedMatches: number, now = Date.now(), today = new Date(now).toISOString().slice(0, 10)): Access {
-  if (!BILLING) return { ok: true, why: "billing off" };
+  if (!billingOn()) return { ok: true, why: "billing off" };
   return accessWith(t, finishedMatches, now, today);
 }
 export function accessWith(t: { createdAt: number; plan?: Plan; paidUntil?: string } | null | undefined, finishedMatches: number, now: number, today: string): Access {

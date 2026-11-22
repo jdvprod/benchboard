@@ -32,13 +32,14 @@ export function StartMatch({ formOnly }: { formOnly?: boolean } = {}) {
   const [opp, setOpp] = useState(""), [date, setDate] = useState(todayISO()), [site, setSite] = useState<"home" | "away" | "neutral">("home");
   const [ro, setRo] = useState<OppRoster | null>(null), [showRo, setShowRo] = useState(false);
   const known = opps.find((o) => opp.trim() && oppKey(o.name) === oppKey(opp)), roster = ro ?? known?.roster ?? {};
+  const [helper, setHelper] = useState(false);
   const [event, setEvent] = useState(""), [bestOf, setBestOf] = useState(t.settings.bestOf), [scoring, setScoring] = useState(t.settings.scoring || "25");
   const upcoming = (t.schedule || []).filter((x) => x.date >= todayISO()).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)).slice(0, 3);
   const recent = matchesOf().filter((x) => x.kind === "match" && x.status === "done").slice(0, 3);
   const start = (serve: "us" | "them") => {
     if (ro && opp.trim()) setOppRoster(opp.trim(), ro);
     newMatch({ kind: "match", opp: opp.trim() || "Opponent", date, site, event: event.trim(), bestOf, serve, ...parseScoring(scoring) });
-    setUi({ sel: null, panel: null, follow: null });
+    setUi({ sel: null, panel: helper ? "job" : null, follow: null });
   };
   const form = <Card title="Start a match" id="start-match">
       <div className="stack">
@@ -55,6 +56,7 @@ export function StartMatch({ formOnly }: { formOnly?: boolean } = {}) {
           {showRo && <OppRosterEditor roster={roster} onChange={setRo} team={opp.trim() || "the other team"} />}
         </div>
         <p className="small muted">{t.defLineup ? "Your default lineup starts the first set. Change it on the Lineup tab." : "Tip: set a default lineup on the Lineup tab to track rotations and servers automatically."}</p>
+        <label className="row" style={{ gap: 8, alignItems: "flex-start" }}><input type="checkbox" style={{ marginTop: 4 }} checked={helper} onChange={(e) => setHelper(e.target.checked)} /> <span>A parent will track this match on their phone <span className="small muted">(you get a link to send them)</span></span></label>
         <div className="row"><button className="btn primary" onClick={() => start("us")}>Start · we serve first</button><button className="btn" onClick={() => start("them")}>Start · they serve first</button></div>
       </div>
     </Card>;

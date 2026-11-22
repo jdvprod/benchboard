@@ -1574,7 +1574,7 @@ const scenarios = {
       ok(`${file}: loads and fits a phone`, (await overflow(p)) <= 0 && (!h1 || (await p.locator("h1").innerText()) === h1) && !/%[A-Z_]+%/.test(await p.content()), file);
     }
     await p.goto(U + "pricing.html");
-    ok("pricing shows early access, Team, Player, Club and Trainer", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Early access,Team,Player,Club,Trainer" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
+    ok("pricing shows Free, Team, Player, Club and Trainer", (await p.locator(".plan h3").allInnerTexts()).join(",") === "Free,Team,Player,Club,Trainer" && (await p.locator(".plan.main .price").innerText()).startsWith("$149"));
     await p.locator(".faq summary", { hasText: "How long is early access free?" }).click();
     ok("pricing questions open", (await p.locator(".faq details[open]").count()) === 1);
     if (process.env.SHOTS) await p.screenshot({ path: path.join(process.env.SHOTS, "site-pricing-phone.png"), fullPage: true });
@@ -1806,6 +1806,96 @@ const scenarios = {
     ok("no errors in the drill library", !C.errors.length && !P.errors.length, [...C.errors, ...P.errors].slice(0, 3).join("; "));
     for (const x of [C, P]) await x.context().close();
   },
+  async helper(browser) {
+    // Stats helper: the coach hands tracking to a parent by a link; the parent taps points on their phone with no account
+    const C = await newPage(browser, { size: { width: 1366, height: 900 } });
+    await go(C, "account/signup"); { const ca = C.getByRole("button", { name: "Create an account" }); if (await ca.count()) await ca.click(); }
+    await C.getByLabel("Email").fill("helper-coach@e2e.test"); await C.locator("#auth-pw").fill("secret-pass-1"); await C.locator("#auth-name").fill("Hal Coach"); await C.locator(".auth-agree input").first().check();
+    await C.getByRole("button", { name: "Create account" }).click(); await C.waitForTimeout(800);
+    await C.getByLabel("Team name").fill("Helper Hawks"); await C.getByRole("button", { name: "Create team" }).click(); await C.waitForTimeout(800);
+    await go(C, "team"); await C.getByRole("button", { name: "Paste list" }).click(); await C.locator("textarea").first().fill("7 Maya Chen OH\n9 Riley Park OH\n12 Sofia Nguyen MB"); await C.getByRole("button", { name: "Add players" }).click(); await C.waitForTimeout(300);
+    { const sy = C.getByRole("button", { name: "Sync this team" }); if (await sy.count()) { await sy.click(); await C.waitForTimeout(1500); } }
+    // start a match, saying a parent will track it: the Tracking panel opens on the hand-off
+    await go(C, "track"); await C.getByLabel("Opponent").fill("Rivals");
+    await C.getByLabel(/A parent will track this match/).check(); await C.getByRole("button", { name: /we serve first/ }).click(); await C.waitForTimeout(600);
+    ok("helper: starting a match for a parent opens the hand-off", (await C.locator(".helper-card").count()) === 1 && /Hand off to a parent/.test(await C.locator(".helper-card").innerText()));
+    await C.getByLabel(/Who's helping/).fill("Dana"); await C.locator(".helper-card").getByRole("button", { name: /Points only/ }).click();
+    await C.getByRole("button", { name: "Make helper link" }).click(); await C.waitForTimeout(1500);
+    const card = C.locator(".helper-card.on");
+    ok("helper: the link is made and shown", (await card.count()) === 1 && /Dana is tracking: points only/.test(await card.innerText()), await C.locator(".helper-card").innerText());
+    const url = (await card.locator(".helper-url").innerText()).trim(), code = /h\/(H[A-Z0-9]{9})/.exec(url)?.[1];
+    ok("helper: a helper link for FloorCall Live", !!code, url);
+    ok("helper: this device switches to stats only so points don't count twice", /stats only/.test(await C.locator(".ctrlbar").innerText()));
+    // the parent's phone: no account
+    const H = await newPage(browser, { phone: true }); await H.goto(U + "live/#/h/" + code); await H.waitForTimeout(1500);
+    ok("helper: the link opens a tracker with two big buttons", (await H.locator(".hp-big").count()) === 2 && /Helper Hawks/.test(await H.locator(".hp-score").innerText()), await H.locator("main").innerText());
+    for (let i = 0; i < 3; i++) { await H.locator(".hp-big.us").click(); await H.waitForTimeout(120); }
+    await H.locator(".hp-big.them").click(); await H.waitForTimeout(1500);
+    ok("helper: points add up on the phone", /3/.test(await H.locator(".hp-score > div").first().innerText()) && /1/.test(await H.locator(".hp-score > div").last().innerText()));
+    ok("helper: plays are saved", /All plays saved/.test(await H.locator(".hp-save").innerText()), await H.locator(".hp-save").innerText());
+    await H.getByRole("button", { name: /^Undo/ }).click(); await H.waitForTimeout(1500);
+    ok("helper: undo takes back the last point", /0/.test(await H.locator(".hp-score > div").last().innerText()));
+    ok("helper: fits a phone", (await H.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+    // the coach's device gets the points
+    await C.waitForTimeout(9000);
+    ok("helper: the coach's scoreboard shows the helper's points", /\b3\b/.test(await C.locator(".scoreboard, .sb, header").first().innerText()), await C.locator(".scoreboard, .sb, header").first().innerText());
+    ok("helper: the coach sees the helper in the crew", /Dana \(helper\)/.test(await C.locator("body").innerText()));
+    await H.screenshot({ path: "/tmp/helper-points.png" });
+    // basic stats: a new link replaces the old one; the parent taps a player, then what they did
+    await C.locator(".helper-card").getByRole("button", { name: /Stop link/ }).click(); await C.locator(".helper-card").getByRole("button", { name: /Tap again/ }).click(); await C.waitForTimeout(1200);
+    await C.locator(".helper-card").getByRole("button", { name: /Basic stats and score/ }).click(); await C.getByRole("button", { name: "Make helper link" }).click(); await C.waitForTimeout(1500);
+    const code2 = /h\/(H[A-Z0-9]{9})/.exec(await C.locator(".helper-url").innerText())?.[1];
+    ok("helper: a stopped link is replaced by a new one", !!code2 && code2 !== code);
+    await H.reload(); await H.waitForTimeout(1200);
+    ok("helper: the old link stops working", /isn't active/.test(await H.locator("main").innerText()));
+    const B = await newPage(browser, { phone: true }); await B.goto(U + "live/#/h/" + code2); await B.waitForTimeout(1500);
+    ok("helper: basic stats shows the roster", (await B.locator(".hp-players button").count()) === 3);
+    ok("helper: actions wait for a player", await B.locator(".hp-acts button").first().isDisabled());
+    await B.locator(".hp-players button", { hasText: "7" }).click(); await B.locator(".hp-acts").getByRole("button", { name: "Kill" }).click(); await B.waitForTimeout(1500);
+    ok("helper: a kill counts as a point and names the player", /4/.test(await B.locator(".hp-score > div").first().innerText()) && /#7 Maya C\.: Kill/.test(await B.locator(".hp-log").innerText()), await B.locator(".hp-log").innerText());
+    ok("helper: basic stats fits a phone", (await B.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+    await B.screenshot({ path: "/tmp/helper-basic.png", fullPage: true }); await B.context().close();
+    await C.getByRole("button", { name: "Done" }).click().catch(() => {});
+    // ending the match closes the link
+    await C.getByRole("button", { name: /End match/ }).click(); await C.getByRole("button", { name: /Tap again/ }).click(); await C.waitForTimeout(2500);
+    await H.goto(U + "live/#/h/" + code2); await H.waitForTimeout(1500);
+    ok("helper: after the coach ends the match, the phone thanks them and stops taking plays", /Thanks for tracking/.test(await H.locator("main").innerText()) && (await H.locator(".hp-acts, .hp-big").count()) === 0, await H.locator("main").innerText());
+    // a wrong code
+    const X = await newPage(browser, { phone: true }); await X.goto(U + "live/#/h/HZZZZZZZZZ"); await X.waitForTimeout(1200);
+    ok("helper: a wrong link says to ask the coach", /isn't active/.test(await X.locator("main").innerText()));
+    ok("helper: no page errors", !C.errors.length && !H.errors.length, [...C.errors, ...H.errors].slice(0, 3).join(" | "));
+    for (const x of [C, H, X]) await x.context().close();
+  },
+
+  async freetier(browser) {
+    // Once billing is on (2027), a team past its trial keeps the free tier; the paid parts say what they are instead of breaking
+    for (const opt of [{ size: { width: 1366, height: 900 } }, { phone: true }]) {
+      const tag = opt.phone ? "phone" : "laptop", p = await newPage(browser, { ...opt, cloud: false });
+      await p.context().addInitScript(() => { globalThis.__FC_TEST_BILLING = "free"; });
+      await go(p, "track"); await p.getByRole("button", { name: "Use without an account" }).click(); await p.getByLabel("Team name").fill("Free Falcons"); await p.getByRole("button", { name: "Create team" }).click(); await p.waitForTimeout(500);
+      await go(p, "team"); await p.getByRole("button", { name: "Paste list" }).click(); await p.locator("textarea").first().fill("7 Maya Chen OH\n9 Riley Park OH\n12 Sofia Nguyen MB"); await p.getByRole("button", { name: "Add players" }).click(); await p.waitForTimeout(300);
+      await go(p, "track"); await p.getByLabel("Opponent").fill("Rivals"); await p.getByRole("button", { name: /we serve first/ }).click(); await p.waitForTimeout(500);
+      ok(`free tier (${tag}): tracking works`, (await p.getByRole("button", { name: "Kill", exact: true }).count()) > 0);
+      await p.locator(".ctrlbar").getByRole("button", { name: /Tracking/ }).click(); await p.waitForTimeout(200);
+      ok(`free tier (${tag}): it tracks basic stats`, (await p.locator(".editor .pick").first().getByRole("button", { name: /Basic stats/ }).getAttribute("aria-pressed")) === "true");
+      ok(`free tier (${tag}): full stats says Team plan`, await p.locator(".editor .pick").first().getByRole("button", { name: /Full stats/ }).isDisabled() && /Team plan/.test(await p.locator(".editor .pick").first().innerText()));
+      for (const [pg, h] of [["matchup", "Scouting and matchup pages"], ["practice", "Practice plans and drills"], ["film", "Film Room"]]) {
+        await go(p, pg); await p.waitForTimeout(300);
+        ok(`free tier (${tag}): ${pg} shows the plan page`, (await p.getByRole("heading", { name: h, level: 1 }).count()) === 1 && (await p.locator(".pw-plan").count()) === 2);
+      }
+      for (const pg of ["home", "calendar", "lineup", "team", "notes", "stats"]) { await go(p, pg); await p.waitForTimeout(250); ok(`free tier (${tag}): ${pg} stays free`, (await p.locator(".pw").count()) === 0); }
+      await go(p, "stats"); await p.waitForTimeout(300);
+      ok(`free tier (${tag}): quick answers and exports say Team plan`, (await p.locator(".card.locked", { hasText: "Quick answers" }).count()) === 1 && /Team plan/.test(await p.locator(".pagehead").innerText()) && (await p.getByRole("button", { name: "Download spreadsheet" }).count()) === 0);
+      await p.getByRole("button", { name: "Rotations" }).first().click(); await p.waitForTimeout(200);
+      ok(`free tier (${tag}): deeper stats say Team plan`, (await p.locator(".card.locked").count()) === 1);
+      await p.getByRole("button", { name: "Players" }).first().click(); await p.waitForTimeout(200);
+      ok(`free tier (${tag}): the box score stays free`, (await p.locator(".card.locked").count()) === 0);
+      ok(`free tier (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+      ok(`free tier (${tag}): no page errors`, !p.errors.length, p.errors.slice(0, 3).join(" | "));
+      await p.context().close();
+    }
+  },
+
   async notes(browser) {
     // Notes: a coach writes to the team, to a position group and to one player; players read only what's theirs
     const C = await newPage(browser, { size: { width: 1366, height: 900 } });
