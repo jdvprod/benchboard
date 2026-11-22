@@ -1686,6 +1686,28 @@ const scenarios = {
     ok("no errors on the calendar", !p.errors.length && !ph.errors.length && !q.errors.length, [...p.errors, ...ph.errors, ...q.errors].slice(0, 3).join("; "));
     for (const x of [p, ph, q]) await x.context().close();
   },
+  async quick(browser) {
+    // Quick answers on the Stats overview: the most-asked questions answered from the numbers, no AI
+    for (const opt of [{ size: { width: 1366, height: 900 } }, { phone: true }]) {
+      const p = await newPage(browser, opt), tag = opt.phone ? "phone" : "laptop"; await go(p, "sample"); await p.waitForTimeout(900);
+      await go(p, "stats"); await p.waitForTimeout(500); await p.getByRole("button", { name: /^Season/ }).first().click(); await p.waitForTimeout(300);
+      const card = p.locator(".card.qa-card");
+      ok(`quick answers (${tag}): card on the season overview`, (await card.count()) === 1);
+      const qs = await card.locator(".pick button").allInnerTexts();
+      ok(`quick answers (${tag}): five questions`, qs.length === 5, qs.join(" | "));
+      for (const q of qs) {
+        const b = card.getByRole("button", { name: q }); await b.evaluate((e) => e.scrollIntoView({ block: "center" })); await b.click(); await p.waitForTimeout(150);
+        const a = await card.locator(".quick-lead").innerText();
+        ok(`quick answers (${tag}): "${q}" has a real answer`, a.length > 20 && !/NaN|undefined|null|Infinity/.test(await card.innerText()), a);
+      }
+      ok(`quick answers (${tag}): start rotation names one`, await (async () => { const b = card.getByRole("button", { name: /start in/ }); await b.evaluate((e) => e.scrollIntoView({ block: "center" })); await b.click(); await p.waitForTimeout(150); return /^Start in rotation [1-6]/.test(await card.locator(".quick-lead").innerText()); })());
+      ok(`quick answers (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+      await p.getByRole("button", { name: "Practice", exact: false }).first().click().catch(() => {}); await p.waitForTimeout(200);
+      ok(`quick answers (${tag}): no page errors`, !p.errors.length, p.errors.slice(0, 3).join(" | "));
+      await p.context().close();
+    }
+  },
+
   async trends(browser) {
     // a player's key numbers for their position, each with a trend line and last 3 / 5 / 10 / season
     const p = await newPage(browser, { size: { width: 1366, height: 900 } }); await go(p, "sample"); await p.waitForTimeout(900);

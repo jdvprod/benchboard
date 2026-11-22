@@ -22,6 +22,7 @@ import { shareSeasonGraphic } from "./seasonGraphic";
 import { FilmCard } from "./FilmCard";
 import { PlayEditor } from "./PlayEditor";
 import { AskCard } from "./AskCard";
+import { QuickAnswers } from "./QuickAnswers";
 import { CustomView } from "./Custom";
 import { rotateLineup } from "../../sports/volleyball/engine";
 import { BASE, RECEIVE, SERVE_SPOT } from "../../ui/Court3D";
@@ -80,6 +81,7 @@ export function StatsPage() {
       {vw === "overview" && S.event && <EventCard S={S} />}
       {vw === "overview" && <Overview S={S} A={A} />}
       {vw === "overview" && S.key === "season" && !S.event && ui.statsSeason !== "all" && <SeasonVsSeason seasonId={ui.statsSeason} />}
+      {vw === "overview" && S.kind !== "practice" && <QuickAnswers key={"q" + S.key} S={S} />}
       {aiOn("askStats") && vw === "overview" && S.kind !== "practice" && <AskCard key={S.key} S={S} />}
       {vw === "players" && <Players A={A} />}
       {vw === "pick" && <CustomView S={S} A={A} />}
