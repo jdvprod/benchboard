@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flyer · FloorCall</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Source+Sans+3:wght@400;600;700&display=swap">
+<style>
+/* A one-page handout for conventions and clinics: prints on US Letter, also fine on screen. */
+*{box-sizing:border-box}
+html{background:#E9ECEF}
+body{margin:0;font:15px/1.45 "Source Sans 3",system-ui,sans-serif;color:#0B0C0E}
+.sheet{width:8.5in;min-height:11in;margin:24px auto;background:#fff;padding:.55in .6in;display:grid;grid-template-rows:auto auto 1fr auto;gap:22px;box-shadow:0 10px 30px rgba(0,0,0,.12)}
+.top{display:flex;align-items:center;gap:12px}
+.top img{width:40px;height:40px}
+.top b{font:700 30px "Barlow Semi Condensed",sans-serif;letter-spacing:.01em}
+.top span{margin-left:auto;font-weight:700;color:#fff;background:#2A78AE;border-radius:999px;padding:6px 14px;font-size:14px}
+h1{font:700 46px/1.02 "Barlow Semi Condensed",sans-serif;margin:0}
+.lead{font-size:18px;color:#3A3F46;margin:8px 0 0;max-width:6.2in}
+.cols{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-content:start}
+.col{border-top:4px solid #0B0C0E;padding-top:10px}
+.col.us{border-color:#2A78AE}
+.col h2{font:700 22px "Barlow Semi Condensed",sans-serif;margin:0 0 6px}
+.col ul{margin:0;padding-left:18px;display:grid;gap:5px}
+.more{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px}
+.more div{background:#F2F4F6;border-radius:10px;padding:10px 12px}
+.more b{display:block;font:700 17px "Barlow Semi Condensed",sans-serif}
+.more span{font-size:13.5px;color:#3A3F46}
+.foot{display:grid;grid-template-columns:auto 1fr auto;gap:22px;align-items:center;border-top:1px solid #D5D9DE;padding-top:18px}
+.qr{width:1.35in;height:1.35in}
+.qr svg{width:100%;height:100%;display:block}
+.cta b{font:700 26px "Barlow Semi Condensed",sans-serif;display:block}
+.cta p{margin:4px 0 0;color:#3A3F46}
+.url{font:700 20px "Barlow Semi Condensed",sans-serif}
+.print{position:fixed;right:16px;bottom:16px;border:0;border-radius:999px;background:#0B0C0E;color:#fff;font:600 15px "Source Sans 3",sans-serif;padding:10px 18px;cursor:pointer}
+@media (max-width:860px){.sheet{width:auto;min-height:0;margin:0;padding:24px 16px;box-shadow:none}.cols,.more{grid-template-columns:1fr}.foot{grid-template-columns:1fr}h1{font-size:36px}}
+@media print{html{background:#fff}.sheet{margin:0;box-shadow:none;width:auto;min-height:0;height:10.3in;overflow:hidden;padding:.3in .4in}.print{display:none}@page{size:letter;margin:.25in}}
+</style>
+</head>
+<body>
+<main class="sheet">
+  <div class="top"><img src="brand/mark-black.png" alt=""><b>FloorCall</b><span>Free during early access</span></div>
+  <div>
+    <h1>Live stats, film, scouting and training, for every volleyball team.</h1>
+    <p class="lead">Track every touch on your phone, know what's working at a timeout, let families follow every point, and train players with hundreds of drills.</p>
+  </div>
+  <div class="cols">
+    <div class="col us"><h2>Coaches</h2><ul><li>Live stats on a phone: full, basic or points only</li><li>Rotation, serve-receive and hitting numbers at every timeout</li><li>Scouting pages for every opponent</li><li>Film Room: clips by player and skill</li><li>Lineups, practice plans and a shared calendar</li></ul></div>
+    <div class="col"><h2>Families</h2><ul><li>FloorCall Live: every point, free, no app to install</li><li>Schedules, availability and volunteer sign-ups</li><li>Notes from coaches, one way</li><li>A season wrap-up for every player</li></ul></div>
+    <div class="col"><h2>Players</h2><ul><li>Trend graphs for your position</li><li>Recruiting profiles college coaches trust</li><li>Emails to college coaches and highlight reels</li><li>Academy: skills, strength and the mental game</li></ul></div>
+    <div class="more">
+      <div><b>Clubs</b><span>Every team, one calendar, tryouts and leaders</span></div>
+      <div><b>Lessons</b><span>Private lessons and clinics with booking and reps</span></div>
+      <div><b>Beach</b><span>Score and stat doubles with a live link</span></div>
+      <div><b>Academy</b><span>Drills, lifting, plyometrics and Game IQ tests</span></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="qr" data-qr="https://getfloorcall.com/?ref=flyer" role="img" aria-label="QR code to getfloorcall.com"></div>
+    <div class="cta"><b>Scan to start free.</b><p>Set up a roster in two minutes, or look around a full sample season first. No card needed.</p></div>
+    <div class="url">getfloorcall.com</div>
+  </div>
+</main>
+<button class="print" type="button">Print</button>
+<script type="module" src="flyer.js?v=%VERSION%"></script>
+</body>
+</html>
