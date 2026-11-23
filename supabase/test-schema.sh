@@ -60,7 +60,7 @@ check "select recruit_board('b1b1b1')->'players'->0->>'clips';" "1" "recruiting 
 expect "$(q -c "set role anon; select count(*) from recruit_boards;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read boards directly"
 expect "$(q -c "set role anon; select count(*) from push_subs;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read notification subscriptions"
 expect "$(q -c "set role anon; select count(*) from records;" 2>&1 | grep -c 'permission denied')" "1" "anon can't read records directly"
-check "select schema_version();" "38" "schema version is reported"
+check "select schema_version();" "39" "schema version is reported"
 check "select abs(server_time() - (extract(epoch from now()) * 1000)::bigint) < 5000;" "t" "server time is in milliseconds"
 # row level security as signed-in coaches: A owns a team, B is a stranger until invited as a viewer
 A=aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa; B=bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
@@ -405,6 +405,21 @@ expect "$(asall $TM "select helper_status('tb1', 'hm1')->>'name';" | tail -1)" "
 expect "$(asall $P "select helper_status('tb1', 'hm1') is null;" | tail -1 | tr -d ' ')" "t" "view-only members don't"
 asall $TM "select helper_stop('tb1', 'hm1');" | grep ERROR || true
 expect "$(q -c "set role anon; select helper_open('$HC') is null;" | tail -1)" "t" "a stopped link stops working"
+q -c "delete from code_misses;" > /dev/null
+# all-day links (version 39): one link follows every match the coach starts
+q -c "insert into records (store, id, team_id, data, u) values ('matches', 'hd1', 'tb1', '{\"id\":\"hd1\",\"opp\":\"Morning\",\"status\":\"live\",\"kind\":\"match\"}', 1);" > /dev/null
+HD=$(asall $TM "select helper_create('tb1', 'hd1', 'points', 'Sam', true)->>'code';" | tail -1 | tr -d ' ')
+expect "$(q -c "set role anon; select helper_open('$HD')->'match'->>'opp';" | tail -1)" "Morning" "an all-day link starts on the match it was made from"
+q -c "update records set data = data || '{\"status\":\"done\"}' where id = 'hd1';" > /dev/null
+expect "$(q -c "set role anon; select helper_open('$HD')->'match'->>'status';" | tail -1)" "done" "between matches it shows the one that just ended"
+q -c "insert into records (store, id, team_id, data, u) values ('matches', 'hd2', 'tb1', '{\"id\":\"hd2\",\"opp\":\"Noon\",\"status\":\"live\",\"kind\":\"match\"}', 1);" > /dev/null
+expect "$(q -c "set role anon; select helper_open('$HD')->'match'->>'opp';" | tail -1)" "Noon" "it moves to the next match the coach starts"
+q -c "set role anon; select helper_push('$HD', 'dev777777', '[{\"id\":\"d1\",\"ts\":5,\"t\":\"UP\"}]'::jsonb, 'hd2');" > /dev/null
+expect "$(q -c "select data->>'matchId' from records where id = 'hd2|helper-dev777777';" | tail -1)" "hd2" "plays go to the match it's on"
+expect "$(q -c "set role anon; select helper_push('$HD', 'dev777777', '[]'::jsonb, 'hm1');" 2>&1 | grep -c 'different match')" "1" "not to an older match"
+expect "$(asall $TM "select helper_status('tb1', 'hd2')->>'day';" | tail -1 | tr -d ' ')" "true" "the coach sees the all-day link on the next match too"
+HS=$(asall $TM "select helper_create('tb1', 'hd2', 'basic', 'Lee')->>'code';" | tail -1 | tr -d ' ')
+expect "$(q -c "set role anon; select helper_open('$HD') is null;" | tail -1)" "t" "a new link replaces the all-day one"
 q -c "delete from code_misses;" > /dev/null
 # ---------- security invariants: these hold for every table and function, including ones added later ----------
 expect "$(q -c "select coalesce(string_agg(relname, ','), '') from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity;")" "" "every table has row level security"

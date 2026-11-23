@@ -7,16 +7,20 @@ import { useWakeLock } from "../ui/wakeLock";
 import { tr } from "../lib/i18n";
 
 type Mode = "points" | "basic" | "stats";
-interface HelperData { mode: Mode; name: string; team: { name: string; color?: string } | null; match: LMatch | null; logs: { device: string; events: any[] }[]; players: LPlayer[]; ended?: string }
-interface Mine { dev: string; events: any[]; dirty: boolean }
+interface HelperData { mode: Mode; name: string; day?: boolean; team: { name: string; color?: string } | null; match: LMatch | null; logs: { device: string; events: any[] }[]; players: LPlayer[]; ended?: string }
+interface Plays { events: any[]; dirty: boolean }
+/** This phone's plays, match by match (an all-day link covers several), and its device name. */
+interface Store { dev: string; by: Record<string, Plays> }
 
 const KEY = (c: string) => "fc-helper-" + c;
 const rid = (n: number) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => "abcdefghijkmnpqrstuvwxyz23456789"[b % 32]).join("");
-function loadMine(code: string): Mine {
-  try { const m = JSON.parse(localStorage.getItem(KEY(code)) || "null"); if (m && Array.isArray(m.events) && typeof m.dev === "string") return m; } catch { /* private mode */ }
-  return { dev: rid(12), events: [], dirty: false };
+const NONE: Plays = { events: [], dirty: false };
+function loadStore(code: string): Store {
+  try { const m = JSON.parse(localStorage.getItem(KEY(code)) || "null"); if (m && typeof m.dev === "string") return { dev: m.dev, by: m.by && typeof m.by === "object" ? m.by : {} }; } catch { /* private mode */ }
+  return { dev: rid(12), by: {} };
 }
-const keep = (code: string, m: Mine) => { try { localStorage.setItem(KEY(code), JSON.stringify(m)); } catch { /* private mode: still works until the tab closes */ } };
+const keep = (code: string, m: Store) => { try { localStorage.setItem(KEY(code), JSON.stringify(m)); } catch { /* private mode: still works until the tab closes */ } };
+const STOP = /ended this match|expired|isn't active|deleted this match|different match/;
 
 /** Player actions, in the order a parent sees them happen. */
 const PLAYER_ACTIONS: [string, string, boolean?][] = [["K", "Kill", true], ["AE", "Hit error"], ["TA", "Hit (in play)"], ["SA", "Ace", true], ["SE", "Serve error"], ["BS", "Block", true], ["BA", "Block assist", true], ["D", "Dig"], ["AST", "Assist"]];
@@ -24,17 +28,18 @@ const THEIR: [string, string][] = [["OE", "Their error"], ["OK", "Their kill"], 
 const LABEL: Record<string, string> = { UP: "Point us", TP: "Point them", NS: "New set", OE: "Their error", OK: "Their kill", OA: "Their ace", ...Object.fromEntries(PLAYER_ACTIONS.map(([k, l]) => [k, l])) };
 
 export function HelperRoute({ code, Shell }: { code: string; Shell: (p: { team?: string; children: any }) => any }) {
-  const [d, setD] = useState<HelperData | null>(null), [err, setErr] = useState(""), [mine, setMine] = useState<Mine>(() => loadMine(code));
-  const [save, setSave] = useState<"saved" | "saving" | "waiting" | "stopped">("saved"), [stopMsg, setStopMsg] = useState(""), [sel, setSel] = useState<string | null>(null);
-  const mineRef = useRef(mine); mineRef.current = mine;
+  const [d, setD] = useState<HelperData | null>(null), [err, setErr] = useState(""), [store, setStore] = useState<Store>(() => loadStore(code));
+  const [save, setSave] = useState<"saved" | "saving" | "waiting">("saved"), [stopped, setStopped] = useState<Record<string, string>>({}), [sel, setSel] = useState<string | null>(null);
+  const ref = useRef(store); ref.current = store;
   const pushing = useRef(false), again = useRef(false);
+  const mid = d?.match?.id || "", mine = store.by[mid] || NONE, stopMsg = stopped[mid];
 
   const load = async () => {
     try {
       const r: HelperData | null = await rpc("helper_open", { c: code }, true);
       if (!r) { setErr(tr("This helper link isn't active. Ask the coach for a new one.")); return; }
       if (r.ended) { setErr(tr("This helper link has expired. Ask the coach for a new one.")); return; }
-      setD(r); setErr("");
+      setD((old) => { if (old?.match?.id && r.match?.id !== old.match.id) setSel(null); return r; }); setErr("");
     } catch (e) { setErr((x) => (tooMany(e) ? tr("Too many tries. Wait a few minutes.") : x || tr("Reconnecting…"))); }
   };
   useEffect(() => {
@@ -43,47 +48,49 @@ export function HelperRoute({ code, Shell }: { code: string; Shell: (p: { team?:
     return () => clearInterval(t);
   }, [code]);
 
-  /** Send the whole list of my plays; if more come in while sending, send again after. */
+  const put = (m: string, p: Plays) => { const next = { ...ref.current, by: { ...ref.current.by, [m]: p } }; ref.current = next; keep(code, next); setStore(next); };
+  /** Send each match's plays that haven't been saved (the whole list each time); keep going while more come in. */
   const push = async () => {
     if (pushing.current) { again.current = true; return; }
     pushing.current = true; setSave("saving");
     try {
       do {
         again.current = false;
-        const m = mineRef.current;
-        await rpc("helper_push", { c: code, dev: m.dev, ev: m.events }, true);
-        if (mineRef.current.events === m.events) { const next = { ...m, dirty: false }; mineRef.current = next; keep(code, next); setMine(next); }
+        for (const [m, p] of Object.entries(ref.current.by)) {
+          if (!p.dirty) continue;
+          try { await rpc("helper_push", { c: code, dev: ref.current.dev, ev: p.events, m }, true); }
+          catch (e: any) { const msg = String(e?.message || e); if (!STOP.test(msg)) throw e; setStopped((x) => ({ ...x, [m]: msg.replace(/^.*?:\s*/, "") })); }
+          if (ref.current.by[m]?.events === p.events) put(m, { ...p, dirty: false });
+        }
       } while (again.current);
       setSave("saved");
-    } catch (e: any) {
-      const msg = String(e?.message || e);
-      if (/ended this match|expired|isn't active|deleted this match/.test(msg)) { setSave("stopped"); setStopMsg(msg.replace(/^.*?:\s*/, "")); }
-      else { setSave("waiting"); setTimeout(() => { pushing.current = false; push(); }, 5000); return; }
+    } catch {
+      setSave("waiting"); setTimeout(() => { pushing.current = false; push(); }, 5000); return;
     }
     pushing.current = false;
   };
-  useEffect(() => { if (mine.dirty) push(); const on = () => push(); addEventListener("online", on); return () => removeEventListener("online", on); }, []);
+  useEffect(() => { if (Object.values(store.by).some((p) => p.dirty)) push(); const on = () => push(); addEventListener("online", on); return () => removeEventListener("online", on); }, []);
 
   const add = (e: Record<string, unknown>) => {
-    if (save === "stopped") return;
-    const last = mineRef.current.events[mineRef.current.events.length - 1]?.ts || 0;
-    const ev = { id: "h" + rid(10), ts: Math.max(Date.now(), last + 1), ...e };
-    const next = { ...mineRef.current, events: mineRef.current.events.concat(ev), dirty: true }; mineRef.current = next; keep(code, next); setMine(next);
+    if (!mid || stopMsg) return;
+    const cur = ref.current.by[mid] || NONE, last = cur.events[cur.events.length - 1]?.ts || 0;
+    put(mid, { events: cur.events.concat({ id: "h" + rid(10), ts: Math.max(Date.now(), last + 1), ...e }), dirty: true });
     if (navigator.vibrate) try { navigator.vibrate(15); } catch { /* not allowed */ }
     push();
   };
   const undo = () => {
-    if (!mineRef.current.events.length || save === "stopped") return;
-    const next = { ...mineRef.current, events: mineRef.current.events.slice(0, -1), dirty: true }; mineRef.current = next; keep(code, next); setMine(next); push();
+    const cur = ref.current.by[mid] || NONE;
+    if (!cur.events.length || stopMsg) return;
+    put(mid, { events: cur.events.slice(0, -1), dirty: true }); push();
   };
 
-  const live = !!d?.match && d.match.status === "live" && save !== "stopped";
-  useWakeLock(live);
+  const live = !!d?.match && d.match.status === "live" && !stopMsg;
+  useWakeLock(live || !!d?.day);
   useEffect(() => { if (d?.team) document.title = `${tr("Stats helper")} · ${d.team.name} vs ${d.match?.opp || ""}`; }, [d?.team?.name, d?.match?.opp]);
 
   const R = useMemo(() => {
     if (!d?.match) return null;
-    const others = d.logs.filter((l) => l.device !== "helper-" + mine.dev).map((l) => l.events);
+    const others = d.logs.filter((l) => l.device !== "helper-" + store.dev).map((l) => l.events);
     return replayOf(d.match, [...others, mine.events]);
   }, [d, mine.events]);
 
@@ -92,7 +99,7 @@ export function HelperRoute({ code, Shell }: { code: string; Shell: (p: { team?:
   const us = d.team?.name || tr("Us"), them = d.match.opp || tr("Them"), c = R.cur, mode = d.mode;
   const P = new Map(d.players.map((p) => [p.id, p]));
   const who = (p: LPlayer) => `#${p.num}${p.first ? " " + p.first : ""}${p.last ? " " + p.last + "." : ""}`;
-  const done = R.matchOver || d.match.status === "done" || save === "stopped";
+  const done = R.matchOver || d.match.status === "done" || !!stopMsg;
   const needSet = mode !== "stats" && !done && (!c || c.over);
   const last = mine.events.slice(-4).reverse();
 
@@ -105,9 +112,9 @@ export function HelperRoute({ code, Shell }: { code: string; Shell: (p: { team?:
       </div>
       {c && !c.over && <p className="hp-serve">{c.serve === "us" ? `${us} ${tr("serving")}` : `${them} ${tr("serving")}`}</p>}
 
-      <p className={"hp-save " + save} role="status">{save === "stopped" ? stopMsg || tr("This match is closed.") : save === "waiting" ? tr("No signal. Your plays are kept on this phone and will send when you're back online.") : save === "saving" ? tr("Saving…") : mine.events.length ? tr("All plays saved.") : `${tr("You're tracking for")} ${us}${d.name ? ` · ${d.name}` : ""}.`}</p>
+      <p className={"hp-save " + (stopMsg && !(d.day && done) ? "stopped" : save)} role="status">{d.day && done ? tr("Waiting for the coach to start the next match.") : stopMsg ? stopMsg : save === "waiting" ? tr("No signal. Your plays are kept on this phone and will send when you're back online.") : save === "saving" ? tr("Saving…") : mine.events.length ? tr("All plays saved.") : `${tr("You're tracking for")} ${us}${d.name ? ` · ${d.name}` : ""}.`}</p>
 
-      {done ? <div className="lv-card hp-done"><b>{R.matchOver ? `${tr("Match over")}: ${R.wonUs > R.wonThem ? us : them} ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.` : tr("This match is closed.")}</b><p>{tr("Thanks for tracking! The coach has every play. You can close this page.")}</p></div>
+      {done ? <div className="lv-card hp-done"><b>{R.matchOver ? `${tr("Match over")}: ${R.wonUs > R.wonThem ? us : them} ${Math.max(R.wonUs, R.wonThem)}–${Math.min(R.wonUs, R.wonThem)}.` : tr("This match is closed.")}</b><p>{d.day ? tr("Thanks! Keep this page open: when the coach starts the next match, it shows up here by itself.") : tr("Thanks for tracking! The coach has every play. You can close this page.")}</p></div>
         : needSet ? <div className="lv-card hp-set"><b>{c ? `${tr("Set")} ${c.n} ${tr("over")}, ${c.us}–${c.them}. ${tr("Who serves first in set")} ${c.n + 1}?` : tr("Who serves first?")}</b>
             <div className="hp-two"><button className="hp-big us" onClick={() => add({ t: "NS", serve: "us" })}>{us}</button><button className="hp-big them" onClick={() => add({ t: "NS", serve: "them" })}>{them}</button></div></div>
         : <>

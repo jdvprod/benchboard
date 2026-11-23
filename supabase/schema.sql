@@ -1027,7 +1027,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 38 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 39 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------
@@ -1830,13 +1830,13 @@ language sql stable security definer set search_path = public as $$
     where exists (select 1 from members s where s.team_id = p.team_id and s.user_id = c.owner and s.role in ('owner', 'coach'))), '[]'::jsonb)
 $$;
 
--- ---------- stats helpers (version 38): a parent tracks one match from a link, no account ----------
--- The coach makes a link for one match. Whoever has it can add plays to that match only: who won each point,
--- or the basic box score. They see what FloorCall Live shows (names and numbers) and nothing else.
+-- ---------- stats helpers (version 38; all-day links in 39): a parent tracks from a link, no account ----------
+-- The coach makes a link for one match, or for every match they start that day. Whoever has it can add plays to
+-- those matches only: who won each point, or the basic box score. They see what FloorCall Live shows and nothing else.
 create table if not exists public.helper_links (
   code text primary key,
   team_id text not null references public.teams_cloud(id) on delete cascade,
-  match_id text not null,
+  match_id text not null,                                                    -- the match it was made from
   mode text not null default 'points' check (mode in ('points', 'basic', 'stats')),  -- stats = box score only, the coach keeps score
   name text not null default '',
   created_by uuid default auth.uid(),
@@ -1844,11 +1844,24 @@ create table if not exists public.helper_links (
   expires_at timestamptz not null default now() + interval '36 hours',
   last_at timestamptz
 );
+alter table public.helper_links add column if not exists day boolean not null default false;  -- follows every match the coach starts
 create index if not exists helper_links_match on public.helper_links (team_id, match_id);
 alter table public.helper_links enable row level security;
 revoke all on public.helper_links from anon, authenticated;
 
-create or replace function public.helper_create(t text, m text, md text, who text) returns jsonb
+-- Which match a link is on right now: its own match, or for an all-day link the team's newest live match since it was made.
+create or replace function public.helper_match(h public.helper_links) returns text
+language sql stable security definer set search_path = public as $$
+  select case when not h.day then h.match_id else coalesce(
+    (select id from records where store = 'matches' and team_id = h.team_id and not deleted and data->>'status' = 'live'
+       and (id = h.match_id or updated_at >= h.created_at) order by updated_at desc limit 1),
+    (select id from records where store = 'matches' and team_id = h.team_id and not deleted and (id = h.match_id or updated_at >= h.created_at)
+       order by updated_at desc limit 1), h.match_id) end
+$$;
+revoke all on function public.helper_match(public.helper_links) from public, anon, authenticated;
+
+drop function if exists public.helper_create(text, text, text, text);
+create or replace function public.helper_create(t text, m text, md text, who text, all_day boolean default false) returns jsonb
 language plpgsql security definer set search_path = public as $$
 declare c text; abc text := 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 begin
@@ -1857,59 +1870,67 @@ begin
   if not exists (select 1 from records where store = 'matches' and id = m and team_id = t and not deleted) then
     raise exception 'Sync the match first, then send the link.';
   end if;
-  delete from helper_links where team_id = t and match_id = m;  -- one helper link per match, so points aren't kept twice by accident
+  -- one helper link per match (and one all-day link per team), so points aren't kept twice by accident
+  delete from helper_links where team_id = t and (match_id = m or day or coalesce(all_day, false));
   c := 'H' || (select string_agg(substr(abc, 1 + floor(random() * length(abc))::int, 1), '') from generate_series(1, 9));
-  insert into helper_links (code, team_id, match_id, mode, name) values (c, t, m, md, left(trim(coalesce(who, '')), 40));
-  return jsonb_build_object('code', c, 'mode', md, 'name', left(trim(coalesce(who, '')), 40), 'expires_at', now() + interval '36 hours');
+  insert into helper_links (code, team_id, match_id, mode, name, day) values (c, t, m, md, left(trim(coalesce(who, '')), 40), coalesce(all_day, false));
+  return jsonb_build_object('code', c, 'mode', md, 'name', left(trim(coalesce(who, '')), 40), 'day', coalesce(all_day, false), 'expires_at', now() + interval '36 hours');
 end $$;
 
 create or replace function public.helper_status(t text, m text) returns jsonb
 language plpgsql stable security definer set search_path = public as $$
 begin
   if not can_edit(t) then return null; end if;
-  return (select jsonb_build_object('code', code, 'mode', mode, 'name', name, 'expires_at', expires_at, 'last_at', last_at)
-    from helper_links where team_id = t and match_id = m and expires_at > now() limit 1);
+  return (select jsonb_build_object('code', code, 'mode', mode, 'name', name, 'day', day, 'expires_at', expires_at, 'last_at', last_at)
+    from helper_links where team_id = t and (match_id = m or day) and expires_at > now() order by day limit 1);
 end $$;
 
 create or replace function public.helper_stop(t text, m text) returns void
 language plpgsql security definer set search_path = public as $$
 begin
   if not can_edit(t) then raise exception 'Only the team''s coaches can stop a helper link.'; end if;
-  delete from helper_links where team_id = t and match_id = m;
+  delete from helper_links where team_id = t and (match_id = m or day);
 end $$;
 
--- The helper's screen: the match, the roster as Live shows it, and every device's plays so the score is right.
+-- The helper's screen: the match it's on now, the roster as Live shows it, and every device's plays so the score is right.
 create or replace function public.helper_open(c text) returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
-declare h helper_links;
+declare h helper_links; mid text;
 begin
   perform code_gate();
   select * into h from helper_links where code = upper(trim(c));
   if h.code is null then perform code_miss(c); return null; end if;
   if h.expires_at < now() then return jsonb_build_object('ended', 'expired'); end if;
+  mid := helper_match(h);
   return jsonb_build_object(
-    'mode', h.mode, 'name', h.name,
+    'mode', h.mode, 'name', h.name, 'day', h.day,
     'team', (select jsonb_build_object('name', data->>'name', 'color', data->>'color', 'logo', public_url(data->>'logo')) from records where store = 'teams' and id = h.team_id and not deleted),
     'match', (select jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'status', data->>'status', 'kind', data->>'kind',
                                         'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap')
-              from records where store = 'matches' and id = h.match_id and not deleted),
+              from records where store = 'matches' and id = mid and not deleted),
     'logs', coalesce((select jsonb_agg(jsonb_build_object('device', data->>'device', 'events', public_events(data->'events'))) from records
-                      where store = 'logs' and team_id = h.team_id and data->>'matchId' = h.match_id and not deleted), '[]'::jsonb),
+                      where store = 'logs' and team_id = h.team_id and data->>'matchId' = mid and not deleted), '[]'::jsonb),
     'players', coalesce((select jsonb_agg(public_player(data) order by data->>'num') from records
                          where store = 'players' and team_id = h.team_id and not deleted and coalesce((data->>'active')::boolean, true)), '[]'::jsonb),
     'at', now());
 end $$;
 
--- Save the helper's plays: their own log for this match (whole list each time), checked play by play.
-create or replace function public.helper_push(c text, dev text, ev jsonb) returns jsonb
+-- Save the helper's plays for one match: their own log for it (whole list each time), checked play by play.
+drop function if exists public.helper_push(text, text, jsonb);
+create or replace function public.helper_push(c text, dev text, ev jsonb, m text default null) returns jsonb
 language plpgsql volatile security definer set search_path = public as $$
-declare h helper_links; st text; ok_t text[]; ids text[]; clean jsonb; bad int; ms bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
+declare h helper_links; mid text; st text; ok_t text[]; ids text[]; clean jsonb; bad int; ms bigint := (extract(epoch from clock_timestamp()) * 1000)::bigint;
 begin
   perform code_gate();
   select * into h from helper_links where code = upper(trim(c));
   if h.code is null then perform code_miss(c); raise exception 'This helper link isn''t active. Ask the coach for a new one.'; end if;
   if h.expires_at < now() then raise exception 'This helper link has expired. Ask the coach for a new one.'; end if;
-  select data->>'status' into st from records where store = 'matches' and id = h.match_id and not deleted;
+  mid := coalesce(m, h.match_id);
+  -- a one-match link only adds to its match; an all-day link to the team's matches since it was made
+  if mid <> h.match_id and not (h.day and exists (select 1 from records where store = 'matches' and id = mid and team_id = h.team_id and updated_at >= h.created_at)) then
+    raise exception 'This helper link is for a different match. Reload the page.';
+  end if;
+  select data->>'status' into st from records where store = 'matches' and id = mid and team_id = h.team_id and not deleted;
   if st is null then raise exception 'The coach deleted this match.'; end if;
   if st = 'done' then raise exception 'The coach ended this match, so it''s saved. Thanks for tracking!'; end if;
   if dev !~ '^[A-Za-z0-9_-]{6,40}$' then raise exception 'Bad device.'; end if;
@@ -1927,8 +1948,8 @@ begin
   select coalesce(jsonb_agg(jsonb_strip_nulls(jsonb_build_object('id', e->>'id', 'ts', (e->>'ts')::bigint, 't', e->>'t', 'p', e->>'p',
            'op', left(e->>'op', 4), 'serve', e->>'serve', 'ns', case when h.mode = 'stats' then true end))), '[]'::jsonb) into clean
     from jsonb_array_elements(ev) e;
-  insert into records (store, id, team_id, data, u) values ('logs', h.match_id || '|helper-' || dev, h.team_id,
-    jsonb_build_object('id', h.match_id || '|helper-' || dev, 'matchId', h.match_id, 'device', 'helper-' || dev, 'events', clean,
+  insert into records (store, id, team_id, data, u) values ('logs', mid || '|helper-' || dev, h.team_id,
+    jsonb_build_object('id', mid || '|helper-' || dev, 'matchId', mid, 'device', 'helper-' || dev, 'events', clean,
       'by', coalesce(nullif(h.name, ''), 'Stats helper') || ' (helper)', 'job', case h.mode when 'stats' then 'stats' else 'all' end, 'seen', ms), ms)
   on conflict (store, id) do update set data = excluded.data, u = excluded.u, deleted = false where records.team_id = excluded.team_id;
   update helper_links set last_at = now() where code = h.code;
@@ -1943,7 +1964,7 @@ revoke execute on all functions in schema public from public, anon;
 grant execute on function public.watch(text), public.season_view(text), public.recruit_view(text), public.recruit_seen(text),
   public.recruit_board(text), public.beach_view(text), public.schema_version(), public.server_time(),
   public.lesson_public(text), public.lesson_signup(text, text, text, text), public.support_send(text, text, text, text, text, text),
-  public.helper_open(text), public.helper_push(text, text, jsonb) to anon;
+  public.helper_open(text), public.helper_push(text, text, jsonb, text) to anon;
 -- Signed in: every function (each checks who is calling), except the server-only AI counter.
 grant execute on all functions in schema public to authenticated;
 revoke execute on function public.ai_bump(uuid), public.code_key(), public.code_gate(), public.code_miss(text), public.ai_limit_for(uuid), public.error_digest(int), public.ops_digest(), public.ops_cleanup(), public.transfer_team_to(text, uuid) from authenticated;

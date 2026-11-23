@@ -171,26 +171,30 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
     const pubPlayer = (d) => ({ id: d.id, num: d.num, pos: d.pos, first: d.hidePublic ? "" : d.first || "", last: d.hidePublic ? "" : (d.last || "").slice(0, 1), photo: d.hidePublic ? null : pubUrl(d.photo) });
     const pubMatch = (m) => m && ({ id: m.id, opp: m.opp, date: m.date, event: m.event, status: m.status, kind: m.kind, bestOf: m.bestOf, setTo: m.setTo, cap: m.cap, scrim: m.scrim, oppLogo: pubUrl(m.oppLogo), oppRoster: m.oppRoster });
     if (p === "/rest/v1/rpc/recruit_seen") { const r = recruits.get(String(b.share).toUpperCase()); if (r) { r.views = (r.views || 0) + 1; r.last_viewed = new Date().toISOString(); } return send(res, 200, null); }
-    // stats helper links (version 38)
+    // stats helper links (version 38; all-day in 39)
+    const helperMatch = (h, R) => { const ms = R.filter((r) => r.store === "matches" && (r.id === h.match_id || (h.day && r.u >= h.created))).sort((a, b) => b.u - a.u);
+      return h.day ? ms.find((r) => r.data.status === "live") || ms[0] : ms.find((r) => r.id === h.match_id); };
     if (p === "/rest/v1/rpc/helper_create") { if (!canEdit(b.t, me)) return send(res, 400, { message: "Only the team's coaches can send a helper link." }); if (!records.get("matches|" + b.m)) return send(res, 400, { message: "Sync the match first, then send the link." });
-      for (const [k, h] of helpers) if (h.team_id === b.t && h.match_id === b.m) helpers.delete(k);
-      const c = "H" + Math.random().toString(36).slice(2, 11).toUpperCase().padEnd(9, "X").replace(/[01IO]/g, "Z"); helpers.set(c, { code: c, team_id: b.t, match_id: b.m, mode: b.md, name: String(b.who || "").slice(0, 40), last_at: null, expires_at: new Date(Date.now() + 36e5 * 36).toISOString() });
-      return send(res, 200, { code: c, mode: b.md, name: String(b.who || "").slice(0, 40) }); }
-    if (p === "/rest/v1/rpc/helper_status") { if (!canEdit(b.t, me)) return send(res, 200, null); const h = [...helpers.values()].find((x) => x.team_id === b.t && x.match_id === b.m); return send(res, 200, h || null); }
-    if (p === "/rest/v1/rpc/helper_stop") { for (const [k, h] of helpers) if (h.team_id === b.t && h.match_id === b.m) helpers.delete(k); return send(res, 200, null); }
+      for (const [k, h] of helpers) if (h.team_id === b.t && (h.match_id === b.m || h.day || b.all_day)) helpers.delete(k);
+      const c = "H" + Math.random().toString(36).slice(2, 11).toUpperCase().padEnd(9, "X").replace(/[01IO]/g, "Z"); helpers.set(c, { code: c, team_id: b.t, match_id: b.m, mode: b.md, name: String(b.who || "").slice(0, 40), day: !!b.all_day, created: Date.now(), last_at: null, expires_at: new Date(Date.now() + 36e5 * 36).toISOString() });
+      return send(res, 200, { code: c, mode: b.md, day: !!b.all_day, name: String(b.who || "").slice(0, 40) }); }
+    if (p === "/rest/v1/rpc/helper_status") { if (!canEdit(b.t, me)) return send(res, 200, null); const h = [...helpers.values()].find((x) => x.team_id === b.t && (x.match_id === b.m || x.day)); return send(res, 200, h || null); }
+    if (p === "/rest/v1/rpc/helper_stop") { for (const [k, h] of helpers) if (h.team_id === b.t && (h.match_id === b.m || h.day)) helpers.delete(k); return send(res, 200, null); }
     if (p === "/rest/v1/rpc/helper_open") {
       const h = helpers.get(String(b.c).toUpperCase()); if (!h) return send(res, 200, null);
-      const R = [...records.values()].filter((r) => r.team_id === h.team_id && !r.deleted), tr = R.find((r) => r.store === "teams" && r.id === h.team_id), mr = R.find((r) => r.store === "matches" && r.id === h.match_id);
-      return send(res, 200, { mode: h.mode, name: h.name, team: tr && { name: tr.data.name, color: tr.data.color }, match: mr ? pubMatch(mr.data) : null,
-        logs: R.filter((r) => r.store === "logs" && r.data.matchId === h.match_id).map((r) => ({ device: r.data.device, events: pubEvents(r.data.events) })), players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), at: new Date().toISOString() });
+      const R = [...records.values()].filter((r) => r.team_id === h.team_id && !r.deleted), tr = R.find((r) => r.store === "teams" && r.id === h.team_id), mr = helperMatch(h, R);
+      return send(res, 200, { mode: h.mode, name: h.name, day: !!h.day, team: tr && { name: tr.data.name, color: tr.data.color }, match: mr ? pubMatch(mr.data) : null,
+        logs: R.filter((r) => r.store === "logs" && r.data.matchId === mr?.id).map((r) => ({ device: r.data.device, events: pubEvents(r.data.events) })), players: R.filter((r) => r.store === "players" && r.data.active !== false).map((r) => pubPlayer(r.data)), at: new Date().toISOString() });
     }
     if (p === "/rest/v1/rpc/helper_push") {
       const h = helpers.get(String(b.c).toUpperCase()); if (!h) return send(res, 400, { message: "This helper link isn't active. Ask the coach for a new one." });
-      const mr = records.get("matches|" + h.match_id); if (mr?.data.status === "done") return send(res, 400, { message: "The coach ended this match, so it's saved. Thanks for tracking!" });
+      const mid = b.m || h.match_id, mr = records.get("matches|" + mid);
+      if (mid !== h.match_id && !(h.day && mr && mr.team_id === h.team_id && mr.u >= h.created)) return send(res, 400, { message: "This helper link is for a different match. Reload the page." });
+      if (mr?.data.status === "done") return send(res, 400, { message: "The coach ended this match, so it's saved. Thanks for tracking!" });
       const ok = { points: ["NS", "UP", "TP"], basic: ["NS", "UP", "TP", "OE", "OK", "OA", "K", "TA", "AE", "SA", "SE", "AST", "BS", "BA", "D"], stats: ["K", "TA", "AE", "SA", "SE", "AST", "BS", "BA", "D"] }[h.mode];
       if (!Array.isArray(b.ev) || b.ev.some((e) => !ok.includes(e.t))) return send(res, 400, { message: "Some plays couldn't be saved. Reload the page and try again." });
-      const ev = b.ev.map((e) => ({ id: e.id, ts: e.ts, t: e.t, ...(e.p ? { p: e.p } : {}), ...(e.serve ? { serve: e.serve } : {}), ...(h.mode === "stats" ? { ns: true } : {}) })), id = h.match_id + "|helper-" + b.dev, u = Date.now();
-      records.set("logs|" + id, { store: "logs", id, team_id: h.team_id, u, deleted: false, updated_at: new Date().toISOString(), data: { id, matchId: h.match_id, device: "helper-" + b.dev, events: ev, by: (h.name || "Stats helper") + " (helper)", job: h.mode === "stats" ? "stats" : "all", seen: u } });
+      const ev = b.ev.map((e) => ({ id: e.id, ts: e.ts, t: e.t, ...(e.p ? { p: e.p } : {}), ...(e.serve ? { serve: e.serve } : {}), ...(h.mode === "stats" ? { ns: true } : {}) })), id = mid + "|helper-" + b.dev, u = Date.now();
+      records.set("logs|" + id, { store: "logs", id, team_id: h.team_id, u, deleted: false, updated_at: new Date().toISOString(), data: { id, matchId: mid, device: "helper-" + b.dev, events: ev, by: (h.name || "Stats helper") + " (helper)", job: h.mode === "stats" ? "stats" : "all", seen: u } });
       h.last_at = new Date().toISOString(); return send(res, 200, { saved: ev.length });
     }
     if (p === "/rest/v1/rpc/watch") {
@@ -207,7 +211,7 @@ module.exports = (port) => new Promise((ok) => { const srv = http.createServer((
       users.delete(me); for (const [k, v] of tokens) if (v === me) tokens.delete(k); return send(res, 204);
     }
     if (p === "/auth/v1/settings") return send(res, 200, { mailer_autoconfirm: true, disable_signup: false });
-    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 38);
+    if (p === "/rest/v1/rpc/schema_version") return send(res, 200, 39);
     if (p === "/rest/v1/rpc/server_time") return send(res, 200, Date.now() + (+process.env.MOCK_CLOCK_SKEW || 0));
     if (p === "/rest/v1/rpc/recruit_view") { const r = recruits.get(String(b.share).toUpperCase()); return send(res, 200, r ? { html: r.html, data: r.data || null, updated_at: r.updated_at } : null); }
     if (p === "/rest/v1/rpc/recruit_board") { const bd = boards.get(String(b.share).toUpperCase()); if (!bd) return send(res, 200, null); const tr = [...records.values()].find((r) => r.store === "teams" && r.id === bd.team_id && !r.deleted);

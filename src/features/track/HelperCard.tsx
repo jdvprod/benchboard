@@ -12,7 +12,7 @@ import { useSignups } from "../matchup/Availability";
 import { oppKey } from "../../data/store";
 
 type Mode = "points" | "basic" | "stats";
-interface Status { code: string; mode: Mode; name: string; expires_at: string; last_at: string | null }
+interface Status { code: string; mode: Mode; name: string; day?: boolean; expires_at: string; last_at: string | null }
 const MODES: [Mode, string, string][] = [
   ["points", "Points only", "who won each point: easy for anyone"],
   ["basic", "Basic stats and score", "kills, aces, errors, blocks, digs"],
@@ -25,7 +25,7 @@ const ago = (iso: string | null) => { if (!iso) return "no plays yet"; const s =
 
 export function HelperCard({ m }: { m: Match }) {
   const t = team()!, role = roleOn(t.id);
-  const [st, setSt] = useState<Status | null | undefined>(undefined), [name, setName] = useState(""), [mode, setMode] = useState<Mode>("points"), [busy, setBusy] = useState(false), [err, setErr] = useState("");
+  const [st, setSt] = useState<Status | null | undefined>(undefined), [name, setName] = useState(""), [mode, setMode] = useState<Mode>("points"), [busy, setBusy] = useState(false), [err, setErr] = useState(""), [day, setDay] = useState(!!(m.tournamentId || m.event));
   // whoever signed up for "Stats helper" on this match's schedule entry
   const signups = useSignups(), item = (t.schedule || []).find((x) => x.date === m.date && oppKey(x.opp) === oppKey(m.opp));
   const job = item?.jobs?.find((j) => /stat/i.test(j.name)), volunteer = job ? (signups || []).find((x) => x.item === item!.id && x.job === job.id)?.name || "" : "";
@@ -41,7 +41,7 @@ export function HelperCard({ m }: { m: Match }) {
     setBusy(true); setErr("");
     try {
       await syncNow();
-      const r: Status = await rpc("helper_create", { t: t.id, m: m.id, md: mode, who: name.trim() });
+      const r: Status = await rpc("helper_create", { t: t.id, m: m.id, md: mode, who: name.trim(), all_day: day });
       setSt({ ...r, last_at: null });
       if (mode !== "stats" && (state.prefs.job || "all") !== "stats") { setPrefs({ job: "stats" }); stampLog(m.id); }
       const ok = await copyText(helperUrl(r.code));
@@ -53,10 +53,10 @@ export function HelperCard({ m }: { m: Match }) {
 
   if (st === undefined) return <div className="helper-card"><b>Hand off to a parent</b><span className="small muted">Checking…</span></div>;
   if (st) {
-    const url = helperUrl(st.code), sms = `sms:?&body=${encodeURIComponent(`Can you track our match on your phone? Open ${url} and tap who wins each point. Thanks!`)}`;
+    const url = helperUrl(st.code), sms = `sms:?&body=${encodeURIComponent(`${st.day ? "Can you track our matches today on your phone?" : "Can you track our match on your phone?"} Open ${url}. No app or account needed. Thanks!`)}`;
     return <div className="helper-card on">
-      <b>{st.name || "A helper"} is tracking: {MODE_LABEL[st.mode]}</b>
-      <span className="small muted">{ago(st.last_at)}. The link works for this match only{st.mode !== "stats" ? "; their points count, so don't tap points here" : "; you keep the score here"}.</span>
+      <b>{st.name || "A helper"} is tracking: {MODE_LABEL[st.mode]}{st.day ? ", every match today" : ""}</b>
+      <span className="small muted">{ago(st.last_at)}. {st.day ? "The link follows each match you start until tomorrow" : "The link works for this match only"}{st.mode !== "stats" ? "; their points count, so don't tap points here" : "; you keep the score here"}.</span>
       <div className="row">
         <button className="btn sm primary" onClick={() => copyText(url).then((ok) => toast(ok ? "Link copied" : url))}>Copy link</button>
         <a className="btn sm" href={sms}>Text it</a>
@@ -72,6 +72,8 @@ export function HelperCard({ m }: { m: Match }) {
     <span className="small muted">Send a parent a link and they track this match on their phone: no account, no app. You get every play here and families see it on Live.</span>
     <label className="field"><span className="label">Who's helping? (optional)</span><input value={name} maxLength={40} onChange={(e) => setName(e.target.value)} placeholder="e.g. Dana (Maya's mom)" /></label>
     <div className="pick" role="group" aria-label="What the helper tracks">{MODES.map(([k, l, d]) => <button key={k} aria-pressed={mode === k} onClick={() => setMode(k)}>{l}<small style={{ display: "block", fontWeight: 400 }}>{d}</small></button>)}</div>
+    <div className="pick" role="group" aria-label="Which matches">{([[false, "This match"], [true, "Every match today"]] as const).map(([k, l]) => <button key={l} aria-pressed={day === k} onClick={() => setDay(k)}>{l}</button>)}</div>
+    {day && <span className="small muted">One link for the whole day: when you start the next match, it shows up on their phone by itself.</span>}
     <div className="row"><button className="btn sm primary" disabled={busy} onClick={make}>{busy ? "Making…" : "Make helper link"}</button></div>
     {mode !== "stats" && <span className="small muted">This device switches to stats only, so points aren't counted twice.</span>}
     {err && <span className="hint warn">{err}</span>}

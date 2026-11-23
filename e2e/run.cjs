@@ -1860,6 +1860,28 @@ const scenarios = {
     await C.getByRole("button", { name: /End match/ }).click(); await C.getByRole("button", { name: /Tap again/ }).click(); await C.waitForTimeout(2500);
     await H.goto(U + "live/#/h/" + code2); await H.waitForTimeout(1500);
     ok("helper: after the coach ends the match, the phone thanks them and stops taking plays", /Thanks for tracking/.test(await H.locator("main").innerText()) && (await H.locator(".hp-acts, .hp-big").count()) === 0, await H.locator("main").innerText());
+    // an all-day link: one link, and the parent's phone moves to each match the coach starts
+    await go(C, "track"); await C.getByLabel("Opponent").fill("Morning Match"); await C.getByLabel(/A parent will track this match/).check(); await C.getByRole("button", { name: /we serve first/ }).click(); await C.waitForTimeout(600);
+    await C.locator(".helper-card").getByRole("button", { name: "Every match today" }).click(); await C.getByRole("button", { name: "Make helper link" }).click(); await C.waitForTimeout(1500);
+    ok("helper: an all-day link says so", /every match today/.test(await C.locator(".helper-card.on").innerText()), await C.locator(".helper-card").innerText());
+    const code3 = /h\/(H[A-Z0-9]{9})/.exec(await C.locator(".helper-url").innerText())?.[1];
+    const D = await newPage(browser, { phone: true }); await D.goto(U + "live/#/h/" + code3); await D.waitForTimeout(1500);
+    ok("helper: the all-day link opens the first match", /Morning Match/.test(await D.locator(".hp-score").innerText()));
+    await D.locator(".hp-big.us").click(); await D.waitForTimeout(1200);
+    await C.getByRole("button", { name: "Done" }).click().catch(() => {});
+    await C.getByRole("button", { name: /End match/ }).click(); await C.getByRole("button", { name: /Tap again/ }).click(); await C.waitForTimeout(2500);
+    await D.waitForTimeout(7000);
+    ok("helper: between matches the phone waits for the next one", /Waiting for the coach to start the next match/.test(await D.locator(".hp-save").innerText()), await D.locator("main").innerText());
+    await go(C, "track"); await C.getByLabel("Opponent").fill("Noon Match"); await C.getByRole("button", { name: /we serve first/ }).click(); await C.waitForTimeout(2500);
+    await D.waitForTimeout(8000);
+    ok("helper: the next match shows up on the phone by itself", /Noon Match/.test(await D.locator(".hp-score").innerText()) && (await D.locator(".hp-big").count()) === 2, await D.locator("main").innerText());
+    await D.locator(".hp-big.us").click(); await D.locator(".hp-big.us").click(); await D.waitForTimeout(1500);
+    ok("helper: points go to the new match", /All plays saved/.test(await D.locator(".hp-save").innerText()) && /\b2\b/.test(await D.locator(".hp-score > div").first().innerText()));
+    await C.locator(".ctrlbar").getByRole("button", { name: /Tracking/ }).click(); await C.waitForTimeout(800);
+    ok("helper: the coach sees the all-day helper on the new match", /every match today/.test(await C.locator(".helper-card").innerText()));
+    await C.waitForTimeout(8000);
+    ok("helper: the coach's scoreboard has the new match's helper points", /\b2\b/.test(await C.locator(".scoreboard, .sb, header").first().innerText()), await C.locator(".scoreboard, .sb, header").first().innerText());
+    await D.context().close();
     // a wrong code
     const X = await newPage(browser, { phone: true }); await X.goto(U + "live/#/h/HZZZZZZZZZ"); await X.waitForTimeout(1200);
     ok("helper: a wrong link says to ask the coach", /isn't active/.test(await X.locator("main").innerText()));
