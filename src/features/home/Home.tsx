@@ -229,7 +229,7 @@ function Setup() {
       ["Share your team page", "Families follow scores and the schedule on FloorCall Live", !!ob.shared, () => go("team")] as [string, string, boolean, () => void],
       ["Link families for notes", "Say which account is which player so notes reach the right family", !!ob.linked, () => go("notes")] as [string, string, boolean, () => void],
     ] : []),
-    ["Track your first match", "Tap a player, then what they did", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
+    ["Track your first match", "Tap a player, then what they did, or send a parent a helper link to track it", matchesOf().some((m) => m.kind === "match" && !m.imported), () => go("track")],
   ];
   const done = steps.filter((x) => x[2]).length;
   if (done === steps.length) return null;
