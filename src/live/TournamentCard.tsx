@@ -35,5 +35,6 @@ export function TournamentCard({ t, team, games, code, players = [] }: { t: Tour
         <tbody>{S.map((r) => <tr key={r.team + (r.us ? "-us" : "")} className={r.us ? "mine" : undefined}><td className="l">{r.team}</td><td>{r.w}–{r.l}</td><td>{r.sw}–{r.sl}</td><td>{r.pf - r.pa > 0 ? "+" : ""}{r.pf - r.pa}</td></tr>)}</tbody></table></div></>}
     {bracket.length > 0 && <><h3 className="lv-sub">{t.bracketName ? t.bracketName + " · " + tr("Bracket") : tr("Bracket")}</h3>
       <ol className="lv-path">{bracket.map((g) => { const s = st(g); return <li key={g.id} className={s?.live ? "live" : s?.res === "W" ? "w" : s?.res === "L" ? "l" : ""}><span><small>{g.round || tr("Bracket")}</small><b>vs {g.opp}</b></span><small>{s ? (s.live ? tr("Live now") : `${tr(s.res)} ${s.x.R.wonUs}–${s.x.R.wonThem}`) : [clock(g.time), g.court ? tr("Court {n}", { n: g.court }) : ""].filter(Boolean).join(" · ")}</small></li>; })}</ol></>}
+    <p className="lv-note lv-tn-guide"><a href={`#/t/${code}/guide`}>{tr("First club tournament? Read the family guide")}</a></p>
   </section>;
 }

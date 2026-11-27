@@ -12,6 +12,7 @@ import { GameView, playText } from "./GameView";
 import { TeamLeaders } from "./Leaders";
 import { TeamNews } from "./News";
 import { TournamentCard } from "./TournamentCard";
+import { FamilyGuide, GuideCard } from "./Guide";
 import { Avatar, TeamLogo } from "../ui/Logo";
 import { NotifyCard } from "./Notify";
 import { tr } from "../lib/i18n";
@@ -29,6 +30,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
     const g = games.find((x) => x.m.id === view.match);
     if (g) return <GameView g={g} team={team} players={d.players} fresh={fresh} back={{ href: href(), label: team }} logo={d.team?.logo} />;
   }
+  if (view.tab === "guide") return <FamilyGuide team={team} waitRule={d.team?.waitRule} back={{ href: href(), label: team }} />;
   if (view.player && P.has(view.player)) return <PlayerSeason p={P.get(view.player)!} games={games} team={team} season={d.season} back={href("roster")} />;
   const tab = (["home", "schedule", "stats", "roster", "news", "plays"].includes(view.tab || "") ? view.tab : "home") as Tab;
   const rec = recordOf(games.filter(isResult).map((g) => g.R));
@@ -68,6 +70,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
     <SeasonReview games={games.filter(isResult)} P={P} code={code} />
     <NotifyCard code={code} team={team} players={d.players} />
+    <GuideCard code={code} team={team} waitRule={d.team?.waitRule} />
     <TeamLeaders A={A} P={P} href={(id) => `#/t/${code}/p/${id}`} title={tr("Season leaders")} />
     {leaders.length > 0 && <p className="lv-more-row"><a href={`#/t/${code}/stats`}>{tr("All stats ›")}</a></p>}
   </>;

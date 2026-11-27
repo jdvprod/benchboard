@@ -232,7 +232,8 @@ begin
   select * into s from season_shares where code = upper(trim(share));
   if s.code is null then perform code_miss(share); return null; end if;
   select jsonb_build_object(
-    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'logo', public_url(data->>'logo'), 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb)) from records where store = 'teams' and id = s.team_id and not deleted),
+    'team', (select jsonb_build_object('name', data->>'name', 'level', data->>'level', 'color', data->>'color', 'logo', public_url(data->>'logo'), 'schedule', coalesce(data->'schedule', '[]'::jsonb), 'tournaments', coalesce(data->'tournaments', '[]'::jsonb),
+                                       'waitRule', data->'settings'->'waitRule') from records where store = 'teams' and id = s.team_id and not deleted),  -- v40: the team's 24/48-hour rule
     'season', (select data->>'name' from records where store = 'seasons' and id = s.season_id and not deleted),
     'matches', coalesce((select jsonb_agg(jsonb_build_object('id', data->>'id', 'opp', data->>'opp', 'date', data->>'date', 'bestOf', data->'bestOf', 'setTo', data->'setTo', 'cap', data->'cap', 'status', data->>'status', 'event', data->>'event', 'site', data->>'site', 'imported', case when data ? 'imported' then jsonb_build_object('season', data->'imported'->'season') end, 'tournamentId', data->>'tournamentId', 'oppLogo', public_url(data->>'oppLogo'), 'oppRoster', data->'oppRoster'))
                          from records where store = 'matches' and team_id = s.team_id and data->>'seasonId' = s.season_id and data->>'kind' = 'match' and not deleted), '[]'::jsonb),
@@ -1027,7 +1028,7 @@ revoke all on function public.tryout_publish(text, jsonb), public.tryout_open(te
 grant execute on function public.tryout_publish(text, jsonb), public.tryout_open(text), public.tryout_rate(text, text, jsonb), public.tryout_all(text), public.tryout_unshare(text) to authenticated;
 
 -- 25: the team page also lists upcoming practices (see season_view). 26: tryouts shared with evaluators. 27: a practice plan the coach chose to show.
-create or replace function public.schema_version() returns int language sql immutable as $$ select 39 $$;
+create or replace function public.schema_version() returns int language sql immutable as $$ select 40 $$;
 grant execute on function public.schema_version() to anon, authenticated;
 
 -- ---------- server clock: devices correct their clocks so plays from several phones merge in order ----------

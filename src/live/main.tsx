@@ -2,6 +2,7 @@
  * (notifications, Your teams on every device) and team film sessions need a free account.
  *   #/t/CODE            team hub (season link)       #/t/CODE/m/MATCH  a game from the team hub
  *   #/t/CODE/p/PLAYER   a player's season            #/g/CODE          a single game link
+ *   #/guide             the family guide (also #/t/CODE/guide, with the team's wait rule)
  *   #/h/CODE            a stats helper link (a parent tracks one match)
  *   #/                  enter a code from the coach */
 import { AccountButton } from "../cloud/AccountPanel";
@@ -18,6 +19,7 @@ import { useWakeLock } from "../ui/wakeLock";
 import { Game, replayOf, useSeason, useWatch } from "./data";
 import { GameView } from "./GameView";
 import { TeamHub } from "./TeamHub";
+import { FamilyGuide } from "./Guide";
 import { TeamLogo } from "../ui/Logo";
 import { DemoGame } from "./Demo";
 const FilmSessionView = lazy(() => import("./FilmSession").then((m) => ({ default: m.FilmSessionView })));
@@ -92,6 +94,7 @@ function Landing() {
       {err && <p className="lv-err" role="alert">{err}</p>}
     </form>
     <p className="lv-demo-link"><a href="#/demo">{tr("No code? Watch a demo game")}</a></p>
+    <p className="lv-demo-link"><a href="#/guide">{tr("New to club volleyball? Read the family guide")}</a></p>
     {cloudAvailable() && (currentUser() ? <SignedIn t={tr} onOut={() => location.reload()} />
       : signin ? <MiniAuth kind="parent" title={tr("Sign in to see your teams on this phone")} sub={tr("Your teams follow your account to every phone.")} t={tr} onIn={() => location.reload()} />
       : <button className="ma-link lv-signin" onClick={() => setSignin(true)}>{tr("Sign in to see your teams on this phone")}</button>)}
@@ -108,6 +111,7 @@ function LiveApp() {
   if (r[0] === "t" && r[1]) return <TeamRoute key={r[1]} code={r[1].toUpperCase()} rest={r.slice(2)} />;
   if (r[0] === "g" && r[1]) return <GameRoute key={r[1]} code={r[1].toUpperCase()} />;
   if (r[0] === "h" && r[1]) return <Suspense fallback={null}><HelperRoute key={r[1]} code={r[1].toUpperCase()} Shell={Shell} /></Suspense>;
+  if (r[0] === "guide") return <Shell><FamilyGuide back={{ href: "#/", label: tr("FloorCall Live") }} /></Shell>;
   if (r[0] === "demo") return <DemoGame Shell={Shell} />;
   if (r[0] === "film" && r[1]) return <Suspense fallback={null}><FilmSessionView key={r[1]} code={r[1].toUpperCase()} Shell={Shell} /></Suspense>;
   return <Landing />;

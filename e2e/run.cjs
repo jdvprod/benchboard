@@ -653,6 +653,8 @@ const scenarios = {
     ok("the update lists what's next, the crew and the jersey", /vs Central at 10:00 AM, Court 3/.test(upd) && /Work: Buchanan vs Central at 11:00 AM, Court 3 \(Down ref:/.test(upd) && /Jersey: White/.test(upd), upd);
     ok("unsynced teams can still copy the update", (await A.getByRole("button", { name: "Copy", exact: true }).count()) === 1);
     await A.getByRole("button", { name: "Cancel", exact: true }).last().click();
+    // the team's wait rule for playing-time talks
+    await go(A, "settings"); await A.locator(".card", { hasText: "Wait rule for playing-time talks" }).getByRole("button", { name: "24 hours" }).click(); await A.waitForTimeout(200);
     // families see it on FloorCall Live
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
     await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
@@ -665,6 +667,16 @@ const scenarios = {
     ok("Live shows who's working which job", /Scorekeeper: \w+/.test(await card.locator(".lv-crew").innerText()), await card.locator(".lv-crew").innerText().catch(() => ""));
     ok("Live shows pool standings and the bracket path", (await card.locator("tbody tr").count()) === 4 && /Semifinal/.test(await card.innerText()));
     ok("Live tournament fits a phone", (await overflow(P)) <= 1);
+    // the family guide, with the team's 24-hour rule
+    ok("the team page points new families to the guide and the wait rule", /24-hour rule/.test(await P.locator(".lv-guidecard").innerText()));
+    await P.locator(".lv-guidecard").getByRole("link", { name: "Family guide" }).click(); await P.waitForTimeout(500);
+    ok("the guide explains a tournament day, work duty and what to bring", (await P.locator(".lv-guide h1").innerText()) === "Club volleyball: a guide for families" && (await P.locator(".lv-guide .lv-card").count()) === 7 && /Libero tracker/.test(await P.locator(".lv-guide").innerText()));
+    ok("the guide shows the team's rule", /TN Club has a 24-hour rule/.test(await P.locator(".lv-guide-rule").innerText()));
+    ok("the guide fits a phone", (await overflow(P)) <= 1);
+    { const cx = await contrast(P); ok("the guide has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
+    if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "guide.png"), fullPage: true });
+    await P.getByRole("link", { name: /TN Club/ }).first().click(); await P.waitForTimeout(400);
+    ok("back from the guide to the team page", (await P.locator(".lv-guidecard").count()) === 1);
     if (process.env.SHOTS) { await card.screenshot({ path: path.join(process.env.SHOTS, "live-gameday.png") }); }
     { const cx = await contrast(P); ok("Live tournament text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     // a Spanish-speaking family: the phone's language picks Spanish; the footer switches back
@@ -680,7 +692,11 @@ const scenarios = {
       if (process.env.SHOTS) await E.screenshot({ path: path.join(process.env.SHOTS, "live-es.png"), fullPage: true });
       await E.getByRole("button", { name: "English" }).click(); await E.waitForTimeout(1200);
       ok("the footer switches back to English", /Play-by-play/i.test(await E.locator("body").innerText()));
+      await E.getByRole("button", { name: "Español" }).click(); await E.waitForTimeout(600); await E.goto(teamUrl + "/guide"); await E.waitForTimeout(800);
+      ok("the family guide in Spanish, with the rule", /Voleibol de club: guía para familias/.test(await E.locator(".lv-guide h1").innerText()) && /regla de 24 horas/.test(await E.locator(".lv-guide-rule").innerText()));
       ok("Spanish pages: no errors", !errs.length, errs.join(" | ")); await ctx.close(); }
+    { const G = await newPage(browser, { phone: true }); await G.goto(U + "live/#/guide"); await G.waitForTimeout(800);
+      ok("the family guide works without a team link", (await G.locator(".lv-guide .lv-card").count()) === 7 && (await G.locator(".lv-guide-rule").count()) === 0); await G.context().close(); }
     for (const [n, pg] of [["coach", A], ["parent", P]]) ok(`tournament: no page errors (${n})`, !pg.errors.length, pg.errors.slice(0, 3).join(" | "));
     for (const pg of [A, P]) await pg.context().close();
   },

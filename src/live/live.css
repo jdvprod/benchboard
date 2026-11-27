@@ -402,3 +402,19 @@ p.lv-demo-link{margin:14px 0 6px;font-weight:600;font-size:14px}.lv-demo-link a{
 .lv-gd dt{font-weight:600;color:var(--muted)}.lv-gd dd{margin:0;overflow-wrap:anywhere;white-space:pre-line}
 .lv-crew{grid-column:1/-1;font-size:13px;color:var(--ink);padding-left:88px}
 @media (max-width:480px){.lv-crew{padding-left:0}}
+/* family guide */
+.lv-guide{max-width:720px;margin:0 auto}
+.lv-guide h1{font-size:30px;line-height:1.1;margin:8px 0 10px}
+.lv-guide-lead{font-size:17px;color:var(--muted);margin:0 0 14px;max-width:62ch}
+.lv-guide-rule{border-left:4px solid var(--us);background:var(--surface);padding:12px 14px;border-radius:0 10px 10px 0;margin:0 0 14px;font-weight:600}
+.lv-guide-toc{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 14px}
+.lv-guide-toc a{font-size:14px;padding:6px 12px;border:1px solid var(--line);border-radius:999px;color:var(--ink);text-decoration:none;background:var(--surface)}
+.lv-guide .lv-card h2{font-size:20px;margin:0 0 8px}
+.lv-guide .lv-card ul{margin:0;padding-left:20px;display:grid;gap:8px;line-height:1.5}
+.lv-guide .lv-card p{line-height:1.5;margin:0 0 10px}
+.lv-guide-dl{margin:0;display:grid;gap:10px}
+.lv-guide-dl dt{font-weight:700}.lv-guide-dl dd{margin:2px 0 0;line-height:1.5;color:var(--ink)}
+.lv-guidecard{display:flex;align-items:center;gap:14px;justify-content:space-between}
+.lv-guidecard div{display:flex;flex-direction:column;gap:2px}.lv-guidecard span{color:var(--muted);font-size:14px}
+@media (max-width:480px){.lv-guidecard{flex-direction:column;align-items:stretch}}
+.lv-tn-guide{margin:12px 0 0}

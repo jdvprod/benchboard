@@ -16,6 +16,31 @@ export function initLang(): Lang {
 export function setLang(l: Lang) { lang = l; try { localStorage.setItem(KEY, l); } catch { /* private window */ } document.documentElement.lang = l; }
 
 const ES: Record<string, string> = {
+  // tournament game day, work crews, the family guide
+  "Arrive by": "Llegar a las", "Jersey": "Uniforme", "Address": "Dirección", "Meet at": "Punto de encuentro", "Bring": "Llevar", "Also": "Además",
+  "Down ref": "Segundo árbitro", "Scorekeeper": "Anotador", "Libero tracker": "Control del líbero", "Line judges": "Jueces de línea", "Scoreboard": "Marcador",
+  "First club tournament? Read the family guide": "¿Primer torneo de club? Lean la guía para familias", "Family guide": "Guía para familias", "New to club volleyball?": "¿Nuevos en el voleibol de club?",
+  "Read the family guide, and {team}'s {h}-hour rule for talking with coaches.": "Lean la guía para familias y la regla de {h} horas de {team} para hablar con los entrenadores.",
+  "Read the family guide: how a tournament day works, work duty, and what to bring.": "Lean la guía para familias: cómo es un día de torneo, el arbitraje y qué llevar.",
+  "In this guide": "En esta guía", "New to club volleyball? Read the family guide": "¿Nuevos en el voleibol de club? Lean la guía para familias", "Every event has its own rules. When in doubt, ask your coach or the tournament desk.": "Cada torneo tiene sus propias reglas. Si tienen dudas, pregunten al entrenador o en la mesa del torneo.",
+  "FloorCall Live": "FloorCall Live",
+  // stats helper (a parent tracking from the coach's link)
+  "Stats helper": "Ayudante de estadísticas", "This helper link isn't active. Ask the coach for a new one.": "Este enlace de ayudante no está activo. Pidan uno nuevo al entrenador.",
+  "This helper link has expired. Ask the coach for a new one.": "Este enlace de ayudante venció. Pidan uno nuevo al entrenador.",  "Too many tries. Wait a few minutes.": "Demasiados intentos. Esperen unos minutos.", "The coach deleted this match.": "El entrenador borró este partido.", "Us": "Nosotros", "Them": "Ellos", "sets": "sets",
+  "No signal. Your plays are kept on this phone and will send when you're back online.": "Sin señal. Sus jugadas quedan en este teléfono y se enviarán cuando vuelva la conexión.",
+  "Saving…": "Guardando…", "All plays saved.": "Todas las jugadas guardadas.", "You're tracking for": "Están anotando para", "This match is closed.": "Este partido está cerrado.",
+  "Waiting for the coach to start the next match.": "Esperando a que el entrenador empiece el próximo partido.", "Match over": "Partido terminado",
+  "Thanks for tracking! The coach has every play. You can close this page.": "¡Gracias por anotar! El entrenador tiene todas las jugadas. Pueden cerrar esta página.",
+  "Thanks! Keep this page open: when the coach starts the next match, it shows up here by itself.": "¡Gracias! Dejen esta página abierta: cuando el entrenador empiece el próximo partido, aparecerá aquí sola.",
+  "over": "terminado", "Who serves first in set": "¿Quién saca primero en el set", "Who serves first?": "¿Quién saca primero?",
+  "Tap a player, then what they did. The coach keeps the score.": "Toquen una jugadora o jugador y luego lo que hizo. El entrenador lleva el marcador.",
+  "Tap a player, then what they did. Points without a player go below.": "Toquen una jugadora o jugador y luego lo que hizo. Los puntos sin jugador van abajo.",
+  "Players": "Jugadores", "What they did": "Qué hizo", "Pick a player first.": "Primero elijan un jugador.", "No player:": "Sin jugador:",
+  "Kill": "Remate", "Hit error": "Error de ataque", "Hit (in play)": "Ataque (en juego)", "Serve error": "Error de saque", "Block": "Bloqueo", "Block assist": "Bloqueo compartido", "Dig": "Defensa", "Assist": "Asistencia", "Ace": "Ace",
+  "Their error": "Error de ellos", "Their kill": "Remate de ellos", "Their ace": "Ace de ellos", "Our point (other)": "Punto nuestro (otro)", "Their point (other)": "Punto de ellos (otro)",
+  "Point": "Punto", "Point us": "Punto nuestro", "Point them": "Punto de ellos", "New set": "Nuevo set", "we serve": "sacamos", "they serve": "sacan ellos", "Undo": "Deshacer", "Your last plays": "Sus últimas jugadas",
+  "Only one phone should keep score. If the coach is also tapping points, tell them you've got it.": "Solo un teléfono debe llevar el marcador. Si el entrenador también marca puntos, avísenle que ustedes lo llevan.",
+
   // scoreboard
   "Live · ": "En vivo · ", "Set {n}": "Set {n}", "Final": "Final", "Not started": "Sin empezar", "Starting soon": "Empieza pronto", "End of set {n}": "Fin del set {n}",
   "Sets {a}–{b}": "Sets {a}–{b}", "Sets": "Sets", "Pts": "Pts", "Serving": "Al saque", "{n}-0 run · {team}": "Racha de {n}-0 · {team}", "Score": "Marcador",

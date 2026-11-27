@@ -47,6 +47,11 @@ export function SettingsPage() {
       <SetRow title="Zone numbers on drawing boards"><Switch checked={!s.hideZones} onChange={(v) => setSettings({ hideZones: !v })} label="Show zone numbers" /></SetRow>
     </Card>}
     <InstallCard />
+    {t && !isViewer(t.id) && <Card title="Families">
+      <SetRow title="Wait rule for playing-time talks" sub="Many clubs ask families to wait a day or two after a match before talking with a coach about playing time or decisions. If you have one, it shows on your team page on FloorCall Live, next to the family guide.">
+        <Seg value={t.settings.waitRule || 0} onChange={(v) => setSettings({ waitRule: v || undefined })} options={[[0, "None"], [24, "24 hours"], [48, "48 hours"]]} label="Wait rule" />
+      </SetRow>
+    </Card>}
     {t && !isViewer(t.id) && <Card title="Players' view">
       <SetRow title="See what players see" sub="Players and families who join with a view-only code get Home, Stats and the Team tab: results, the roster, everyone's stats and your announcements. They never see tracking, scouting, practice plans, drills or the court."><button className="btn sm" onClick={() => { setUi({ previewPlayer: true }); go("home"); }}>Preview</button></SetRow>
     </Card>}
@@ -144,7 +149,7 @@ function AiKey() {
 }
 
 /** Setup check: walks through what the live app needs (Supabase schema, sign-in, sync, AI) and says what's missing. */
-const SCHEMA_VERSION = 39;
+const SCHEMA_VERSION = 40;
 type Check = { label: string; state: "ok" | "warn" | "todo" | "wait"; detail: string };
 function SetupCheck() {
   const [checks, setChecks] = useState<Check[] | null>(null), [busy, setBusy] = useState(false);
