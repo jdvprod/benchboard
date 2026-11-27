@@ -6,13 +6,18 @@ export interface TGame {
   opp: string;
   bestOf: number; scoring: string; // scoring like "25", "25c27", "21"
   matchId?: string;
+  /** Who does which job on a work game: job → player ids. */
+  crew?: Record<string, string[]>;
 }
 export interface TOther { id: string; a: string; b: string; sets: [number, number][] }
 export interface Tournament {
   id: string; name: string; start: string; end?: string; site?: string;
   poolName?: string; poolTeams: string[]; bracketName?: string;
   games: TGame[]; others: TOther[]; createdAt: number;
+  /** What families need the night before, shown on FloorCall Live. */
+  info?: TInfo;
 }
+export interface TInfo { arrive?: string; address?: string; jersey?: string; meet?: string; bring?: string; note?: string }
 /** One of our played (or live) games, as the standings need it. */
 export interface OurResult { opp: string; sets: [number, number][]; over: boolean }
 
@@ -49,3 +54,40 @@ export function nextGame(t: Tournament, done: (matchId: string) => boolean): TGa
 /** Is the tournament on (or around) this date? */
 export const isOn = (t: Tournament, today: string) => today >= t.start && today <= (t.end || t.start);
 export const sortGames = (t: Tournament) => t.games.slice().sort((a, b) => ((a.day || t.start) + (a.time || "99")).localeCompare((b.day || t.start) + (b.time || "99")));
+
+/** The jobs on a work game, and how many of each. */
+export const WORK_JOBS: [string, number][] = [["Down ref", 1], ["Scorekeeper", 1], ["Libero tracker", 1], ["Line judges", 2], ["Scoreboard", 1]];
+
+/** How many work jobs each player has had (every tournament given), so duty is shared fairly. */
+export function dutyCounts(ts: Tournament[]): Map<string, number> {
+  const n = new Map<string, number>();
+  for (const t of ts) for (const g of t.games) if (g.stage === "work") for (const ids of Object.values(g.crew || {})) for (const id of ids) n.set(id, (n.get(id) || 0) + 1);
+  return n;
+}
+
+/** Fill a work game's jobs with the players who have worked least so far (ties: the order given, then a seed so it rotates).
+ *  Jobs already filled stay as they are; nobody gets two jobs on one game. */
+export function fairCrew(g: TGame, players: string[], counts: Map<string, number>, seed = 0): Record<string, string[]> {
+  const crew: Record<string, string[]> = {}, used = new Set<string>();
+  for (const [job] of WORK_JOBS) { crew[job] = (g.crew?.[job] || []).filter((id) => players.includes(id)); crew[job].forEach((id) => used.add(id)); }
+  const order = players.map((id, i) => ({ id, n: counts.get(id) || 0, k: (i + seed) % Math.max(1, players.length) })).sort((a, b) => a.n - b.n || a.k - b.k).map((x) => x.id);
+  for (const [job, want] of WORK_JOBS) while (crew[job].length < want) { const id = order.find((x) => !used.has(x)); if (!id) break; crew[job].push(id); used.add(id); }
+  for (const k of Object.keys(crew)) if (!crew[k].length) delete crew[k];
+  return crew;
+}
+
+/** A plain-text update for families: what's next, where, and who's working. */
+export function updateText(t: Tournament, done: (matchId: string) => boolean, name: (id: string) => string, clock: (t?: string) => string): string {
+  const rest = sortGames(t).filter((g) => !(g.matchId && done(g.matchId)));
+  if (!rest.length) return `${t.name}: we're done for the day. Thanks for coming!`;
+  const line = (g: TGame) => {
+    const where = [clock(g.time), g.court ? `Court ${g.court}` : ""].filter(Boolean).join(", ");
+    const what = g.stage === "work" ? `Work: ${g.opp}` : `${g.stage === "bracket" ? (g.round || "Bracket") + " " : ""}vs ${g.opp}`;
+    const crew = g.stage === "work" && g.crew ? " (" + Object.entries(g.crew).map(([j, ids]) => `${j}: ${ids.map(name).join(", ")}`).join("; ") + ")" : "";
+    return `${what}${where ? " at " + where : ""}${crew}`;
+  };
+  return [`${t.name} update`, ...rest.slice(0, 4).map((g) => "• " + line(g)), t.info?.jersey ? `Jersey: ${t.info.jersey}` : ""].filter(Boolean).join("\n");
+}
+
+/** A map search link for a gym address. */
+export const mapUrl = (a: string) => "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(a);

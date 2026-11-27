@@ -1216,3 +1216,19 @@ body.nav-mini .sm-btn span{display:none}
 /* Team plan edges (billing on only) */
 .card.locked{border-style:dashed;display:grid;gap:6px}
 .card.locked p{margin:0}
+/* Tournament game day: family info and work crews */
+.gd-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.gd-grid .wide{grid-column:1/-1}
+@media (max-width:540px){.gd-grid{grid-template-columns:1fr}}
+.gd-send{margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+.tn-crew{grid-column:1/-1;padding-left:82px;color:var(--ink)}
+@media (max-width:540px){.tn-crew{padding-left:0}}
+.crew{display:flex;flex-direction:column;gap:6px}
+.crew-line{color:var(--ink)}
+.crew-jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.crew-job{display:flex;flex-direction:column;gap:4px}
+/* Playing time */
+.pt-t td{white-space:nowrap}
+.pt-bar{display:inline-block;width:56px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden}
+.pt-bar i{display:block;height:100%;background:var(--us)}
+@media (max-width:540px){.pt-bar{display:none}}

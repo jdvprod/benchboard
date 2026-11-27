@@ -51,7 +51,7 @@ export function TeamHub({ code, d, fresh, view }: { code: string; d: SeasonData;
 function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]; team: string; code: string; fresh: string; P: Map<string, LPlayer> }) {
   const live = games.find(isLive), today = todayISO();
   // a tournament happening now (or within the last day, so results stay up the evening after)
-  const tn = (d.team?.tournaments || []).filter((t) => today >= t.start && today <= addDays(t.end || t.start, 1)).sort((a, b) => b.start.localeCompare(a.start))[0];
+  const tn = (d.team?.tournaments || []).filter((t) => today >= addDays(t.start, -1) && today <= addDays(t.end || t.start, 1)).sort((a, b) => b.start.localeCompare(a.start))[0];
   const lastPts = live ? live.R.log.filter((l) => l.kind === "stat" && l.w).slice(-3).reverse() : [];
   const A = aggregate(games.flatMap((g) => g.R.sets));
   const leader = (f: (s: Stat) => number, label: string) => { const top = Object.entries(A.ps).filter(([id]) => P.has(id)).map(([id, s]) => [id, f(s)] as [string, number]).filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1])[0]; return top ? <a className="lv-lead" key={label} href={`#/t/${code}/p/${top[0]}`}><span>{label}</span><b>{+top[1].toFixed(1)}</b><small>{pname(P.get(top[0]))}</small></a> : null; };
@@ -64,7 +64,7 @@ function Home({ d, games, team, code, fresh, P }: { d: SeasonData; games: Game[]
       {lastPts.length > 0 && <ul className="lv-pbp">{lastPts.map((l) => <li key={l.id}><span className={"lv-sc " + (l as any).w}>{(l as any).us}–{(l as any).them}</span><span>{playText(l, team, live.m.opp || "Opponent", P, live.m.oppRoster)}</span></li>)}</ul>}
       <a className="btn primary" href={`#/t/${code}/m/${live.m.id}`}>{tr("Open the gamecast")}</a>
     </section>}
-    {tn && <TournamentCard t={tn} team={team} games={games} code={code} />}
+    {tn && <TournamentCard t={tn} team={team} games={games} code={code} players={d.players} />}
     <Schedule d={d} games={games.filter(isResult).slice(0, 5)} code={code} />
     <SeasonReview games={games.filter(isResult)} P={P} code={code} />
     <NotifyCard code={code} team={team} players={d.players} />
@@ -117,7 +117,7 @@ function Schedule({ d, games, code, all }: { d: SeasonData; games: Game[]; code:
   const R = useRsvps(code), J = useJobs(code);
   const tns = all ? (d.team?.tournaments || []).filter((t) => (t.end || t.start) >= today).sort((a, b) => a.start.localeCompare(b.start)) : [];
   return <>
-    {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} />)}
+    {tns.map((t) => <TournamentCard key={t.id} t={t} team={d.team?.name || "Team"} games={seasonGames(d)} code={code} players={d.players} />)}
     {upcoming.length > 0 && <section className="lv-card"><div className="lv-h"><h2>{tr("Coming up")}</h2>{!all ? <a href={`#/t/${code}/schedule`}>{tr("Full schedule ›")}</a> : <button className="btn sm" onClick={() => addToCalendar(d, code)}>{tr("Add to calendar")}</button>}</div>
       <RsvpFor R={R} players={d.players} />
       <ul className="lv-games">{upcoming.map((x) => <li key={x.id}><span className="lv-date">{fmtDay(x.date)}{x.time ? <small>{fmtTime(x.time)}</small> : null}</span>{x.practice ? <b className="lv-prac">{tr("Practice")}{x.opp && !/^practice$/i.test(x.opp) ? <span className="lv-ev"> · {x.opp}</span> : null}</b> : <b>{tr(x.site === "away" ? "at " : "vs ")}{x.opp}</b>}<span className="lv-ev">{x.event}</span><RsvpRow item={x.id} label={x.practice ? tr("Practice") : x.opp} R={R} />{x.practice && x.plan && x.plan.length > 0 && <PlanList start={x.time} plan={x.plan} />}<JobRow item={x.id} jobs={(x as any).jobs || []} J={J} /></li>)}</ul>

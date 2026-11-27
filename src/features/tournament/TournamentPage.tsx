@@ -8,6 +8,7 @@ import { setUi } from "../../app/ui";
 import { FORMATS, SCORING, parseScoring } from "../track/TrackPage";
 import { isOn, nextGame, OurResult, sortGames, standings, TGame, TOther, Tournament } from "../../tournament/model";
 import { parseSetScores } from "../../import/statsImport";
+import { CrewEditor, GameDayCard } from "./GameDay";
 
 import { todaysTournament, tournamentsOf } from "../../tournament/today";
 export { todaysTournament, tournamentsOf };
@@ -86,6 +87,7 @@ function TournamentView({ t }: { t: Tournament }) {
           <PoolTeams t={t} set={set} />
           <OtherResults t={t} set={set} />
         </Card>
+        <GameDayCard t={t} set={set} done={done} clock={fmtClock} />
         <Card title="Details">
           <div className="two"><label className="field"><span className="label">Pool name</span><input defaultValue={t.poolName} onBlur={(e) => set({ poolName: e.target.value.trim() || undefined })} /></label>
             <label className="field"><span className="label">Bracket</span><input defaultValue={t.bracketName} placeholder="e.g. Gold" onBlur={(e) => set({ bracketName: e.target.value.trim() || undefined })} /></label></div>
@@ -109,6 +111,7 @@ function TGames({ t, games, set }: { t: Tournament; games: TGame[]; set: (p: Par
       <span className="tn-res">{s.m ? <button className={"linkish tn-r " + (s.res === "W" ? "w" : s.res === "L" ? "l" : "")} onClick={() => { if (s.live) { setTeamPatch({ currentMatchId: s.m!.id }); go("track"); } else { setUi({ statsScope: "m:" + s.m!.id }); go("stats"); } }}>{s.res ? s.res + " " : ""}{s.text}</button>
         : g.stage !== "work" ? <button className="btn sm" onClick={() => startGame(t, g)}>Start</button> : null}
         <ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => set({ games: t.games.filter((x) => x.id !== g.id) })}>✕</ConfirmButton></span>
+      {g.stage === "work" && <div className="tn-crew"><CrewEditor t={t} g={g} set={set} /></div>}
     </li>; })}</ul> : <p className="empty">No games yet. Add your pool games from the tournament schedule.</p>}
     {adding ? <form className="stack tn-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
       <Seg value={f.stage} onChange={(v) => setF({ ...f, stage: v, bestOf: v === "pool" ? 2 : v === "bracket" ? 3 : f.bestOf })} options={[["pool", "Pool"], ["bracket", "Bracket"], ["work", "Work (ref)"]]} label="Kind of game" />

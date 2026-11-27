@@ -635,6 +635,24 @@ const scenarios = {
     ok("up next moves to the following game", (await A.locator(".tn-next", { hasText: "vs Central" }).count()) === 1);
     const st = (await A.locator(".card", { hasText: "standings" }).locator("tbody tr").allInnerTexts()).map((r) => r.split("\t")[0].trim());
     ok("pool standings rank by record, then sets, then points", st.join("|") === "TN Club|Central|Fresno Elite|Buchanan", st.join("|"));
+    // game day for families: when to arrive, which jersey, the address; and a fair work crew
+    const gd = A.locator(".card", { hasText: "Game day for families" });
+    await gd.getByLabel("Arrive by").fill("7:15 AM"); await gd.getByLabel("Jersey").fill("White"); await gd.getByLabel("Address").fill("700 M St, Fresno, CA"); await gd.getByLabel("Bring").click(); await A.waitForTimeout(150);
+    const work = A.locator(".tn-games li.work");
+    await work.getByRole("button", { name: "Fill fairly" }).click(); await A.waitForTimeout(200);
+    const crewTxt = await work.locator(".crew-line").innerText();
+    ok("work crew fills jobs in order with different players (2-player roster)", /^Down ref: #22 Nia · Scorekeeper: #7 Maya$|^Down ref: #7 Maya · Scorekeeper: #22 Nia$/.test(crewTxt), crewTxt);
+    await work.getByRole("button", { name: "Edit crew" }).click();
+    ok("each crew job can be changed by hand", (await work.locator(".crew-jobs select").count()) === 6);
+    if (process.env.SHOTS) await A.screenshot({ path: path.join(process.env.SHOTS, "crew.png"), fullPage: true });
+    { const ax = await a11y(A); ok("game day and crew controls all have names", !ax.length, ax.join(" | ")); }
+    await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
+    await go(A, "matchup"); await A.locator(".tn-list button", { hasText: "Fall Classic" }).click(); await A.waitForTimeout(300);
+    await A.getByRole("button", { name: "Send an update to families" }).click();
+    const upd = await A.locator(".gd-send textarea").inputValue();
+    ok("the update lists what's next, the crew and the jersey", /vs Central at 10:00 AM, Court 3/.test(upd) && /Work: Buchanan vs Central at 11:00 AM, Court 3 \(Down ref:/.test(upd) && /Jersey: White/.test(upd), upd);
+    ok("unsynced teams can still copy the update", (await A.getByRole("button", { name: "Copy", exact: true }).count()) === 1);
+    await A.getByRole("button", { name: "Cancel", exact: true }).last().click();
     // families see it on FloorCall Live
     await go(A, "team"); await A.getByRole("button", { name: "Sync now" }).click(); await A.waitForTimeout(800);
     await A.getByRole("button", { name: "Share team page" }).click(); await A.waitForTimeout(1000);
@@ -643,8 +661,11 @@ const scenarios = {
     const card = P.locator(".lv-tn");
     ok("Live team page shows the tournament day", (await card.count()) === 1 && (await card.innerText()).toLowerCase().includes("fall classic"), (await P.locator("body").innerText()).slice(0, 300).replace(/\s+/g, " "));
     ok("Live shows our result, the next game's court and the work duty", /W 2–0/.test(await card.innerText()) && /Court 3/.test(await card.innerText()) && /Working: Buchanan vs Central/.test(await card.innerText()));
+    ok("Live shows game day: arrive by, jersey and a map link", /Arrive by\s*7:15 AM/.test(await card.innerText()) && /Jersey\s*White/.test(await card.innerText()) && (await card.locator(".lv-gd a[href*='maps']").count()) === 1, await card.innerText());
+    ok("Live shows who's working which job", /Scorekeeper: \w+/.test(await card.locator(".lv-crew").innerText()), await card.locator(".lv-crew").innerText().catch(() => ""));
     ok("Live shows pool standings and the bracket path", (await card.locator("tbody tr").count()) === 4 && /Semifinal/.test(await card.innerText()));
     ok("Live tournament fits a phone", (await overflow(P)) <= 1);
+    if (process.env.SHOTS) { await card.screenshot({ path: path.join(process.env.SHOTS, "live-gameday.png") }); }
     { const cx = await contrast(P); ok("Live tournament text has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     // a Spanish-speaking family: the phone's language picks Spanish; the footer switches back
     { const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "es-MX", hasTouch: true });
@@ -1702,6 +1723,10 @@ const scenarios = {
       }
       ok(`quick answers (${tag}): start rotation names one`, await (async () => { const b = card.getByRole("button", { name: /start in/ }); await b.evaluate((e) => e.scrollIntoView({ block: "center" })); await b.click(); await p.waitForTimeout(150); return /^Start in rotation [1-6]/.test(await card.locator(".quick-lead").innerText()); })());
       ok(`quick answers (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+      { const b = p.getByRole("button", { name: "Playing time", exact: true }).first(); await b.evaluate((e) => e.scrollIntoView({ block: "center" })); await b.click(); await p.waitForTimeout(300);
+        const rows = await p.locator(".pt-t tbody tr").allInnerTexts();
+        ok(`playing time (${tag}): every player with sets, rallies and +/-`, rows.length >= 8 && rows.some((r) => /\d+%/.test(r)), rows.slice(0, 3).join(" | "));
+        ok(`playing time (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1); }
       await p.getByRole("button", { name: "Practice", exact: false }).first().click().catch(() => {}); await p.waitForTimeout(200);
       ok(`quick answers (${tag}): no page errors`, !p.errors.length, p.errors.slice(0, 3).join(" | "));
       await p.context().close();
