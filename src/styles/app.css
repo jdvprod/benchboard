@@ -1244,3 +1244,7 @@ body.nav-mini .sm-btn span{display:none}
 .club-next li{display:grid;grid-template-columns:72px auto 1fr;gap:8px;align-items:baseline}
 .club-next li.work span:last-child{color:var(--muted)}
 .club-next small{color:var(--muted)}
+/* Workload */
+.wl-t td{white-space:nowrap}
+.wl-flag td:first-child{font-weight:700}
+.wl-flag td:last-child{color:var(--bad);font-weight:600}

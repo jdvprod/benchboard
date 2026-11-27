@@ -1743,7 +1743,13 @@ const scenarios = {
         const rows = await p.locator(".pt-t tbody tr").allInnerTexts();
         ok(`playing time (${tag}): every player with sets, rallies and +/-`, rows.length >= 8 && rows.some((r) => /\d+%/.test(r)), rows.slice(0, 3).join(" | "));
         ok(`playing time (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1); }
-      await p.getByRole("button", { name: "Practice", exact: false }).first().click().catch(() => {}); await p.waitForTimeout(200);
+      await go(p, "practice"); await p.waitForTimeout(400);
+      { const c = p.locator(".card", { hasText: "Workload this week" });
+        ok(`workload (${tag}): coaches see each player's week against their usual`, (await c.count()) === 1);
+        await c.getByRole("button", { name: /Show every player/ }).click(); await p.waitForTimeout(150);
+        const rows = await c.locator(".wl-t tbody tr").allInnerTexts();
+        ok(`workload (${tag}): every active player, in minutes`, rows.length >= 8 && rows.some((r) => /\d+ min/.test(r)) && !rows.some((r) => /NaN|undefined/.test(r)), rows.slice(0, 2).join(" | "));
+        ok(`workload (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1); }
       ok(`quick answers (${tag}): no page errors`, !p.errors.length, p.errors.slice(0, 3).join(" | "));
       await p.context().close();
     }

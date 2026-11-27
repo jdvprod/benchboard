@@ -17,6 +17,8 @@ import { practiceSuggestPrompt } from "../../ai/prompts";
 import { setUi } from "../../app/ui";
 import { go } from "../../app/router";
 import { AvailabilityLine, useAvailability } from "../matchup/Availability";
+import { WorkloadCard } from "./WorkloadCard";
+import { isViewer } from "../../app/viewAs";
 
 const CAT_COLOR: Record<string, string> = {
   "Warm-up": "#C3C8CE", Serving: "#2B79B0", "Serve receive": "#5FA3D3", Setting: "#9BCBEB", Attacking: "#1D5A85", Blocking: "#7D838C",
@@ -58,6 +60,7 @@ export function PracticePage({ id }: { id?: string } = {}) {
     </div>
     {m && <div className="banner"><p>A match is in progress. Starting practice tracking will finish it.</p></div>}
     {tab === "plan" && <Plans />}
+    {tab === "plan" && !isViewer() && <WorkloadCard />}
     {tab === "scrim" && <ScrimSetup />}
     {tab === "drills" && <DrillLibrary />}
     {tab === "history" && <History />}
