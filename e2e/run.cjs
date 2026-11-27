@@ -1959,6 +1959,44 @@ const scenarios = {
     }
   },
 
+  async tnpaste(browser) {
+    // paste the pool schedule instead of typing it: pick your team, check the games, add them
+    for (const opt of [{ size: { width: 1366, height: 900 } }, { phone: true }]) {
+      const tag = opt.phone ? "phone" : "laptop", A = await newPage(browser, { ...opt, cloud: false });
+      await go(A, "track"); await A.getByRole("button", { name: "Use without an account" }).click(); await A.getByLabel("Team name").fill("16 Black"); await A.getByRole("button", { name: "Create team" }).click(); await A.waitForTimeout(500);
+      await go(A, "matchup"); await A.getByRole("button", { name: "New tournament" }).click();
+      await A.getByLabel("Name", { exact: true }).fill("Winter Kickoff"); await A.getByRole("button", { name: "Create tournament" }).click(); await A.waitForTimeout(300);
+      await A.getByRole("button", { name: "Paste the schedule instead" }).click();
+      await A.getByLabel("Paste the schedule").fill(`Pool 3 - Court 12
+Match 1  8:00 AM  SCVC 16 Black (SC)  vs  Mavericks 16-1 (SC)  W: Coast 16 Navy (SC)
+Match 2  9:00 AM  Coast 16 Navy (SC)  vs  Legacy 16 Red (SC)  W: SCVC 16 Black (SC)
+Match 3  10:00 AM  Mavericks 16-1 (SC)  vs  Legacy 16 Red (SC)  W: Coast 16 Navy (SC)
+Match 4  11:00 AM  Legacy 16 Red (SC)  vs  SCVC 16 Black (SC)  W: Mavericks 16-1 (SC)`);
+      await A.waitForTimeout(200);
+      ok(`paste (${tag}): guesses which team is us`, (await A.getByLabel("Which team is you?").inputValue()) === "SCVC 16 Black (SC)");
+      const found = await A.locator(".tn-paste-list li").allInnerTexts();
+      ok(`paste (${tag}): finds our two matches and our work match`, found.length === 3 && /8:00 AM · Ct 12 vs Mavericks/.test(found[0]) && /9:00 AM · Ct 12 Work: Coast 16 Navy \(SC\) vs Legacy/.test(found[1]) && /11:00 AM · Ct 12 vs Legacy/.test(found[2]), found.join(" | "));
+      await A.locator(".tn-paste-list li").nth(2).locator("input").uncheck();
+      await A.getByRole("button", { name: "Add 2 games" }).click(); await A.waitForTimeout(300);
+      const rows = await A.locator(".tn-games li").allInnerTexts();
+      ok(`paste (${tag}): adds the games that stayed checked`, rows.length === 2 && /vs Mavericks/.test(rows[0]) && /Work: Coast/.test(rows[1]), rows.join(" | "));
+      ok(`paste (${tag}): the pool's teams and name are filled in`, /Pool 3 standings/.test(await A.locator("body").innerText()) && /Legacy 16 Red/.test(await A.locator("body").innerText()));
+      await A.getByRole("button", { name: "Paste the schedule" }).click();
+      await A.getByLabel("Paste the schedule").fill("11am ct 12 vs Legacy 16 Red (SC)\n8:00 AM vs Mavericks 16-1 (SC)");
+      await A.waitForTimeout(200);
+      ok(`paste (${tag}): games already added are marked`, /already added/.test(await A.locator(".tn-paste-list").innerText()) && (await A.getByRole("button", { name: "Add 1 game" }).count()) === 1);
+      { const ax = await a11y(A); ok(`paste (${tag}): every control has a name`, !ax.length, ax.join(" | ")); }
+      await A.getByRole("button", { name: "Cancel", exact: true }).click();
+      await go(A, "club"); await A.waitForTimeout(300);
+      const today = await A.locator(".club-today").innerText().catch(() => "");
+      ok(`club today (${tag}): opens on Today with each team's next game, court and work`, /16 Black/.test(today) && /Winter Kickoff/.test(today) && /8:00 AM\s*Ct 12\s*vs Mavericks/.test(today) && /Work: Coast/.test(today), today);
+      ok(`club today (${tag}): fits the screen`, (await A.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+      ok(`paste (${tag}): fits the screen`, (await A.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+      ok(`paste (${tag}): no page errors`, !A.errors.length, A.errors.slice(0, 3).join(" | "));
+      await A.context().close();
+    }
+  },
+
   async notes(browser) {
     // Notes: a coach writes to the team, to a position group and to one player; players read only what's theirs
     const C = await newPage(browser, { size: { width: 1366, height: 900 } });

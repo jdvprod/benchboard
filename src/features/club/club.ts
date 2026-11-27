@@ -65,3 +65,27 @@ export function clubLeaders(rows: LeaderRow[], n = 10, minSets = 6): LeaderRow[]
 }
 
 export function addDays(iso: string, n: number): string { const x = new Date(iso + "T12:00:00Z"); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); }
+
+/** Club tournament day: each team's next two things today (games and work duty) and how many are left,
+ *  soonest first. Teams with nothing today are left out. `done` says whether a tracked match is finished. */
+export interface TodayItem { time: string; court?: string; label: string; work: boolean }
+export interface TodayRow { teamId: string; team: string; where: string; next: TodayItem[]; left: number }
+export function clubToday(teams: ClubTeam[], today: string, done: (matchId: string) => boolean): TodayRow[] {
+  const rows: TodayRow[] = [];
+  for (const t of teams) {
+    const items: TodayItem[] = [], where: string[] = [];
+    for (const tn of t.tournaments || []) {
+      if (today < tn.start || today > (tn.end || tn.start)) continue;
+      where.push(tn.name + (tn.site ? ", " + tn.site : ""));
+      for (const g of tn.games) {
+        if ((g.day || tn.start) !== today || (g.matchId && done(g.matchId))) continue;
+        items.push({ time: g.time || "", court: g.court, work: g.stage === "work", label: g.stage === "work" ? `Work: ${g.opp}` : `${g.stage === "bracket" ? (g.round || "Bracket") + " " : ""}vs ${g.opp}` });
+      }
+    }
+    for (const s of t.schedule || []) if (s.date === today && !(s as any).matchId) { items.push({ time: s.time || "", work: false, label: `${s.site === "away" ? "at" : "vs"} ${s.opp}` }); if (s.event && !where.includes(s.event)) where.push(s.event); }
+    if (!items.length && !where.length) continue;
+    items.sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
+    rows.push({ teamId: t.id, team: teamLabel(t), where: where.join(" · "), next: items.slice(0, 2), left: items.length });
+  }
+  return rows.sort((a, b) => (a.next[0]?.time || "99").localeCompare(b.next[0]?.time || "99") || a.team.localeCompare(b.team));
+}

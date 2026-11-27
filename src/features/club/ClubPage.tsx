@@ -13,11 +13,12 @@ import { go } from "../../app/router";
 import { isLinked, roleOn } from "../../cloud/sync";
 import { cloudAvailable, currentUser, fn, rpc, userMeta } from "../../cloud/client";
 import { siteUrl } from "../../cloud/links";
-import { ClubEvent, clubEvents, clubIcs, clubLeaders, homeClashes, LeaderRow } from "./club";
+import { ClubEvent, clubEvents, clubIcs, clubLeaders, clubToday, homeClashes, LeaderRow } from "./club";
+import { fmtClock } from "../tournament/TournamentPage";
 import { feePlayers, fmtMoney, stillOwe, summary } from "./fees";
 import { FEES } from "../../app/flags";
 
-type Tab = "teams" | "calendar" | "leaders" | "announce" | "fees";
+type Tab = "today" | "teams" | "calendar" | "leaders" | "announce" | "fees";
 /** Your real teams; the sample team stands in until you add one, so the page can be explored. */
 const teamsOfClub = () => { const ts = all("teams"), real = ts.filter((t) => !t.sample); return (real.length ? real : ts).slice().sort((a, b) => a.name.localeCompare(b.name) || (a.level || "").localeCompare(b.level || "")); };
 const label = (t: Team) => (t.level ? `${t.name} ${t.level}` : t.name);
@@ -25,14 +26,15 @@ const gamesOf = (t: Team) => matchesOf(t.id).filter((m) => m.kind === "match" &&
 const open = (id: string, page = "track") => { setPrefs({ teamId: id }); go(page); };
 
 export function ClubPage() {
-  const teams = teamsOfClub(), [tab, setTab] = useState<Tab>("teams");
+  const teams = teamsOfClub(), busy = clubToday(teams, todayISO(), () => false).length > 0, [tab, setTab] = useState<Tab>(busy ? "today" : "teams");
   const games = teams.map((t) => gamesOf(t)), tot = games.reduce((a, g) => { const r = recordOf(g.map((x) => x.R)); return { W: a.W + r.w, L: a.L + r.l }; }, { W: 0, L: 0 });
   return <div className="page">
     <div className="pagehead"><h1>Club</h1><a className="btn sm" href="#/tryouts">Tryouts</a><span className="muted">{teams.length} {teams.length === 1 ? "team" : "teams"} · {tot.W}–{tot.L} combined</span></div>
     {!teams.length ? <p className="empty">Add a team to see it here.</p> : <>
       {teams.every((t) => t.sample) && <p className="banner small">This is the sample team. Add your own teams and they replace it here.</p>}
-      <Seg value={tab} onChange={setTab} label="Club section" options={[["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"], ...(FEES ? [["fees", "Fees"] as [Tab, string]] : [])]} />
+      <Seg value={tab} onChange={setTab} label="Club section" options={[["today", "Today"], ["teams", "Teams"], ["calendar", "Calendar"], ["leaders", "Leaders"], ["announce", "Announce"], ...(FEES ? [["fees", "Fees"] as [Tab, string]] : [])]} />
       <div style={{ marginTop: 14 }}>
+        {tab === "today" && <Today teams={teams} />}
         {tab === "teams" && <Teams teams={teams} />}
         {tab === "calendar" && <Calendar teams={teams} />}
         {tab === "leaders" && <Leaders teams={teams} />}
@@ -41,6 +43,24 @@ export function ClubPage() {
       </div>
     </>}
   </div>;
+}
+
+/** Tournament day for a director: every team's next game or work duty, court and live score on one screen. */
+function Today({ teams }: { teams: Team[] }) {
+  const today = todayISO(), live = (t: Team) => matchesOf(t.id).find((m) => m.status === "live" && m.date === today);
+  const rows = clubToday(teams, today, (id) => matchesOf().concat(...teams.map((t) => matchesOf(t.id))).some((m) => m.id === id && m.status === "done"));
+  const playing = teams.filter((t) => live(t) && !rows.some((r) => r.teamId === t.id));
+  if (!rows.length && !playing.length) return <p className="empty">No team has a game today. Tournament games and scheduled matches show up here on the day, with courts and work duty.</p>;
+  const score = (t: Team) => { const m = live(t); const R = m && replayOf(m); if (!m || !R) return null; const c = R.cur;
+    return <span className="club-live">Live vs {m.opp}: {c ? `${c.us}–${c.them} in set ${c.n}` : "starting"}{R.sets.length > 1 || (c && c.over) ? ` · sets ${R.wonUs}–${R.wonThem}` : ""}</span>; };
+  const all = [...rows, ...playing.map((t) => ({ teamId: t.id, team: label(t), where: "", next: [], left: 0 }))];
+  return <div className="club-today">{all.map((r) => { const t = teams.find((x) => x.id === r.teamId)!; return <section key={r.teamId} className="card">
+    <div className="row between"><div><b>{r.team}</b>{r.where && <div className="small muted">{r.where}</div>}</div><button className="btn sm" onClick={() => open(r.teamId, r.where ? "matchup" : "track")}>Open</button></div>
+    {score(t)}
+    {r.next.length ? <ul className="club-next">{r.next.map((x, i) => <li key={i} className={x.work ? "work" : ""}><span className="num">{fmtClock(x.time) || "—"}</span>{x.court && <small>Ct {x.court}</small>}<span>{x.label}</span></li>)}</ul>
+      : !live(t) && <p className="small muted" style={{ margin: "6px 0 0" }}>Nothing left on the schedule. Brackets may still be added.</p>}
+    {r.left > 2 && <p className="small muted" style={{ margin: "4px 0 0" }}>{r.left - 2} more today</p>}
+  </section>; })}</div>;
 }
 
 /** The director's view: every team's roster size, staff access, setup and activity in one table, with a CSV. */

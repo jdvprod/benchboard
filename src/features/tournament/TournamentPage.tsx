@@ -9,6 +9,7 @@ import { FORMATS, SCORING, parseScoring } from "../track/TrackPage";
 import { isOn, nextGame, OurResult, sortGames, standings, TGame, TOther, Tournament } from "../../tournament/model";
 import { parseSetScores } from "../../import/statsImport";
 import { CrewEditor, GameDayCard } from "./GameDay";
+import { PasteSchedule } from "./PasteSchedule";
 
 import { todaysTournament, tournamentsOf } from "../../tournament/today";
 export { todaysTournament, tournamentsOf };
@@ -101,7 +102,7 @@ function TournamentView({ t }: { t: Tournament }) {
 const fmtLabel = (g: TGame) => g.bestOf === 2 ? "2 sets" : g.bestOf === 1 ? "1 set" : `Best of ${g.bestOf}` + (g.scoring && g.scoring !== "25" ? " · " + (SCORING.find((s) => s[0] === g.scoring)?.[1] || g.scoring) : "");
 
 function TGames({ t, games, set }: { t: Tournament; games: TGame[]; set: (p: Partial<Tournament>) => void }) {
-  const [adding, setAdding] = useState(!games.length);
+  const [adding, setAdding] = useState(!games.length), [pasting, setPasting] = useState(false);
   const [f, setF] = useState<TGame>({ id: "", stage: "pool", opp: "", bestOf: 2, scoring: "25", time: "", court: "", round: "", day: t.start });
   const add = () => { if (!f.opp.trim()) return; set({ games: t.games.concat({ ...f, id: uid("tg"), opp: f.opp.trim(), round: f.stage === "bracket" ? f.round || "Bracket" : undefined }), poolTeams: f.stage === "pool" && !t.poolTeams.some((x) => x.toLowerCase() === f.opp.trim().toLowerCase()) ? t.poolTeams.concat(f.opp.trim()) : t.poolTeams }); setF({ ...f, opp: "", time: "", court: "" }); setAdding(false); };
   return <div className="stack">
@@ -113,6 +114,7 @@ function TGames({ t, games, set }: { t: Tournament; games: TGame[]; set: (p: Par
         <ConfirmButton className="btn sm ghost" confirmText="Remove?" onConfirm={() => set({ games: t.games.filter((x) => x.id !== g.id) })}>✕</ConfirmButton></span>
       {g.stage === "work" && <div className="tn-crew"><CrewEditor t={t} g={g} set={set} /></div>}
     </li>; })}</ul> : <p className="empty">No games yet. Add your pool games from the tournament schedule.</p>}
+    {pasting ? <PasteSchedule t={t} set={set} clock={fmtClock} done={() => { setPasting(false); setAdding(false); }} /> : <>
     {adding ? <form className="stack tn-add" onSubmit={(e) => { e.preventDefault(); add(); }}>
       <Seg value={f.stage} onChange={(v) => setF({ ...f, stage: v, bestOf: v === "pool" ? 2 : v === "bracket" ? 3 : f.bestOf })} options={[["pool", "Pool"], ["bracket", "Bracket"], ["work", "Work (ref)"]]} label="Kind of game" />
       <label className="field"><span className="label">{f.stage === "work" ? "Match we're working" : "Opponent"}</span><input list="tn-teams" value={f.opp} onChange={(e) => setF({ ...f, opp: e.target.value })} placeholder={f.stage === "work" ? "e.g. Buchanan vs Central" : "e.g. Buchanan"} /><datalist id="tn-teams">{t.poolTeams.map((x) => <option key={x} value={x} />)}</datalist></label>
@@ -124,8 +126,9 @@ function TGames({ t, games, set }: { t: Tournament; games: TGame[]; set: (p: Par
       </div>
       {f.stage !== "work" && <div className="row"><select className="input" style={{ width: "auto" }} aria-label="Format" value={f.bestOf} onChange={(e) => setF({ ...f, bestOf: +e.target.value })}>{FORMATS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select>
         <select className="input" style={{ width: "auto" }} aria-label="Scoring" value={f.scoring} onChange={(e) => setF({ ...f, scoring: e.target.value })}>{SCORING.map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></div>}
-      <div className="row"><button className="btn primary" disabled={!f.opp.trim()}>Add game</button>{games.length > 0 && <button type="button" className="btn" onClick={() => setAdding(false)}>Cancel</button>}</div>
-    </form> : <button className="btn sm" onClick={() => setAdding(true)}>Add a game</button>}
+      <div className="row"><button className="btn primary" disabled={!f.opp.trim()}>Add game</button><button type="button" className="btn" onClick={() => setPasting(true)}>Paste the schedule instead</button>{games.length > 0 && <button type="button" className="btn ghost" onClick={() => setAdding(false)}>Cancel</button>}</div>
+    </form> : <div className="row"><button className="btn sm" onClick={() => setAdding(true)}>Add a game</button><button className="btn sm" onClick={() => setPasting(true)}>Paste the schedule</button></div>}
+    </>}
   </div>;
 }
 

@@ -1232,3 +1232,15 @@ body.nav-mini .sm-btn span{display:none}
 .pt-bar{display:inline-block;width:56px;height:6px;border-radius:3px;background:var(--line);margin-right:8px;vertical-align:middle;overflow:hidden}
 .pt-bar i{display:block;height:100%;background:var(--us)}
 @media (max-width:540px){.pt-bar{display:none}}
+/* Tournament: paste the schedule */
+.tn-paste textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.tn-paste-list{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tn-paste-list li{border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+/* Club: today */
+.club-today{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.club-today .card{margin:0}
+.club-live{display:inline-block;margin-top:8px;font-weight:600;color:var(--us)}
+.club-next{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.club-next li{display:grid;grid-template-columns:72px auto 1fr;gap:8px;align-items:baseline}
+.club-next li.work span:last-child{color:var(--muted)}
+.club-next small{color:var(--muted)}

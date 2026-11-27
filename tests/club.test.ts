@@ -45,3 +45,20 @@ test("club: leaders need enough sets and a real number", () => {
   assert.deepEqual(clubLeaders(rows).map((r) => r.name), ["Ava", "Cy"]);
   assert.equal(addDays("2026-12-31", 1), "2027-01-01");
 });
+
+import { clubToday } from "../src/features/club/club";
+test("club today: each team's next games and work, soonest first, finished games left out", () => {
+  const today = "2026-12-05";
+  const teams: any[] = [
+    { id: "a", name: "16 Black", tournaments: [{ id: "t1", name: "Fall Classic", site: "Fresno", start: today, poolTeams: [], others: [], createdAt: 0, games: [
+      { id: "g1", stage: "pool", opp: "Rivals", time: "08:00", court: "4", bestOf: 2, scoring: "25", matchId: "m1" },
+      { id: "g2", stage: "work", opp: "X vs Y", time: "09:00", court: "4", bestOf: 2, scoring: "25" },
+      { id: "g3", stage: "pool", opp: "Central", time: "10:00", court: "4", bestOf: 2, scoring: "25" }] }] },
+    { id: "b", name: "14 Blue", schedule: [{ id: "s1", date: today, time: "07:30", opp: "Tide", site: "home" }] },
+    { id: "c", name: "12 White", schedule: [{ id: "s2", date: "2026-12-06", time: "09:00", opp: "Wave" }] },
+  ];
+  const rows = clubToday(teams, today, (id) => id === "m1");
+  assert.deepEqual(rows.map((r) => r.team), ["14 Blue", "16 Black"]);
+  assert.deepEqual(rows[1].next.map((x) => x.label), ["Work: X vs Y", "vs Central"]);
+  assert.equal(rows[1].left, 2); assert.equal(rows[1].where, "Fall Classic, Fresno"); assert.equal(rows[1].next[0].work, true);
+});
