@@ -1248,3 +1248,5 @@ body.nav-mini .sm-btn span{display:none}
 .wl-t td{white-space:nowrap}
 .wl-flag td:first-child{font-weight:700}
 .wl-flag td:last-child{color:var(--bad);font-weight:600}
+.wl-hard{margin:0 0 8px;padding:10px 12px;border-left:4px solid var(--us);background:var(--us-soft);border-radius:0 8px 8px 0}
+.wl-planned td:first-child{font-weight:700}

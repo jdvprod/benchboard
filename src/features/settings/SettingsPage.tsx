@@ -52,6 +52,11 @@ export function SettingsPage() {
         <Seg value={t.settings.waitRule || 0} onChange={(v) => setSettings({ waitRule: v || undefined })} options={[[0, "None"], [24, "24 hours"], [48, "48 hours"]]} label="Wait rule" />
       </SetRow>
     </Card>}
+    {t && !isViewer(t.id) && <Card title="Workload">
+      <SetRow title="Workload card" sub="On the Practice page: who's well above their usual week, or hasn't had a day off. Only coaches see it.">
+        <Seg value={t.settings.noWorkload ? "off" : "on"} onChange={(v) => setSettings({ noWorkload: v === "off" || undefined })} options={[["on", "Show"], ["off", "Hide"]]} label="Workload card" />
+      </SetRow>
+    </Card>}
     {t && !isViewer(t.id) && <Card title="Players' view">
       <SetRow title="See what players see" sub="Players and families who join with a view-only code get Home, Stats and the Team tab: results, the roster, everyone's stats and your announcements. They never see tracking, scouting, practice plans, drills or the court."><button className="btn sm" onClick={() => { setUi({ previewPlayer: true }); go("home"); }}>Preview</button></SetRow>
     </Card>}

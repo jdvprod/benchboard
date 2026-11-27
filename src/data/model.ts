@@ -6,6 +6,10 @@ export interface TeamSettings {
   trackMode?: "full" | "basic" | "points";
   /** Hours families wait after a match before talking with a coach about playing time or decisions (0 or unset = no rule). Shown on Live. */
   waitRule?: number;
+  /** Workload card on the Practice page (default on). */
+  noWorkload?: boolean;
+  /** Weeks the coach marked as hard on purpose (the Monday of each week). */
+  hardWeeks?: string[];
   subLimit: number;        // subs allowed per set (0 = no limit)
   bestOf: number;          // default match format (2 = two sets, pool play)
   scoring?: string;        // default scoring: "25", "25c27", "21", "21c23"

@@ -1749,7 +1749,14 @@ const scenarios = {
         await c.getByRole("button", { name: /Show every player/ }).click(); await p.waitForTimeout(150);
         const rows = await c.locator(".wl-t tbody tr").allInnerTexts();
         ok(`workload (${tag}): every active player, in minutes`, rows.length >= 8 && rows.some((r) => /\d+ min/.test(r)) && !rows.some((r) => /NaN|undefined/.test(r)), rows.slice(0, 2).join(" | "));
-        ok(`workload (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1); }
+        ok(`workload (${tag}): fits the screen`, (await p.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 1);
+        await c.getByRole("button", { name: "Hard week on purpose" }).click(); await p.waitForTimeout(150);
+        ok(`workload (${tag}): a coach can mark a hard week on purpose`, /Hard week on purpose\./.test(await c.innerText()) && (await c.getByRole("button", { name: "Not a hard week after all" }).count()) === 1);
+        await c.getByRole("button", { name: "Not a hard week after all" }).click(); await p.waitForTimeout(100);
+        await c.getByRole("button", { name: "Hide this card" }).click(); await p.waitForTimeout(150);
+        ok(`workload (${tag}): the card can be hidden`, (await p.locator(".card", { hasText: "Workload this week" }).count()) === 0);
+        await go(p, "settings"); await p.locator(".card", { hasText: "Workload card" }).getByRole("button", { name: "Show" }).click(); await go(p, "practice"); await p.waitForTimeout(300);
+        ok(`workload (${tag}): and brought back in Settings`, (await p.locator(".card", { hasText: "Workload this week" }).count()) === 1); }
       ok(`quick answers (${tag}): no page errors`, !p.errors.length, p.errors.slice(0, 3).join(" | "));
       await p.context().close();
     }
