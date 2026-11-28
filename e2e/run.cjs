@@ -2860,7 +2860,7 @@ Match 4  11:00 AM  Legacy 16 Red (SC)  vs  SCVC 16 Black (SC)  W: Mavericks 16-1
     const SIZES = [["android-small", 360, 740], ["iphone-se", 375, 667], ["iphone", 390, 844], ["phone-sideways", 844, 390], ["ipad", 768, 1024], ["ipad-sideways", 1024, 768], ["laptop", 1280, 800], ["monitor", 1920, 1080]];
     const only = process.env.MATRIX ? process.env.MATRIX.split(",") : null;
     const APP = ["home", "track", "stats", "team", "lineup", "calendar", "practice", "film", "matchup", "club", "settings", "help"];
-    const SITES = [["live", "live/#/demo"], ["recruit", "recruit/"], ["beach", "beach/"], ["academy", "academy/#/players"], ["academy-coach", "academy/#/coaches"], ["drills", "academy/#/coaches/drills"], ["strength", "academy/#/players/strength"], ["mental", "academy/#/players/mental"], ["iq-test", "academy/#/players/mental/test"], ["serving", "academy/#/players/serving"], ["lessons", "lessons/"], ["product", "about.html"], ["pricing", "pricing.html"], ["contact", "contact.html"], ["privacy", "legal/privacy.html"]];
+    const SITES = [["live", "live/#/demo"], ["recruit", "recruit/"], ["beach", "beach/"], ["academy", "academy/#/players"], ["academy-coach", "academy/#/coaches"], ["family-guide", "live/#/guide"], ["work-school", "academy/#/players/mental/line-judge"], ["helper-link-ended", "live/#/h/HZZZZZZZZZ"], ["flyer", "flyer.html"], ["drills", "academy/#/coaches/drills"], ["strength", "academy/#/players/strength"], ["mental", "academy/#/players/mental"], ["iq-test", "academy/#/players/mental/test"], ["serving", "academy/#/players/serving"], ["lessons", "lessons/"], ["product", "about.html"], ["pricing", "pricing.html"], ["contact", "contact.html"], ["privacy", "legal/privacy.html"]];
     const problems = [];
     for (const [name, w, h] of SIZES) {
       if (only && !only.includes(name)) continue;
@@ -2876,6 +2876,13 @@ Match 4  11:00 AM  Legacy 16 Red (SC)  vs  SCVC 16 Black (SC)  W: Mavericks 16-1
       await go(p, "sample"); await p.waitForTimeout(900);
       for (const r of APP) { await go(p, r); await check("app-" + r); }
       await go(p, "team"); await p.waitForTimeout(300); { const pl = p.locator("a[href*='#/player/']").first(); if (await pl.count()) { await pl.click(); await check("app-player"); } }
+      // this week's additions: Quick answers, Playing time, a tournament with game day, crews and the paste panel
+      await go(p, "stats"); await p.waitForTimeout(300); { const sb = p.getByRole("button", { name: /^Season/ }).first(); if (await sb.count()) await sb.click(); }
+      { const q = p.locator(".qa-card .pick button").first(); if (await q.count()) { await q.evaluate((e) => e.scrollIntoView()); await q.click(); await check("app-stats-quick"); } }
+      { const b = p.getByRole("button", { name: "Playing time", exact: true }).first(); if (await b.count()) { await b.evaluate((e) => e.scrollIntoView()); await b.click(); await check("app-stats-playtime"); } }
+      await go(p, "matchup"); await p.waitForTimeout(300);
+      { const tn = p.locator(".tn-list button").first(); if (await tn.count()) { await tn.click(); await check("app-tournament");
+        const ps = p.getByRole("button", { name: /^Paste the schedule/ }).first(); if (await ps.count()) { await ps.click(); await p.getByLabel("Paste the schedule").fill("Pool 3 - Court 12\n8:00 AM  Sample Team  vs  Mavericks 16-1  W: Coast 16 Navy\n9:00 AM  Coast 16 Navy  vs  Legacy 16 Red  W: Sample Team"); await check("app-tournament-paste"); } } }
       for (const [label, url] of SITES) { await p.goto(U + url); await check(label); }
       ok(`matrix ${name} (${w}×${h}): every page fits and works`, !problems.some((x) => x.startsWith(name + " ·")), problems.filter((x) => x.startsWith(name + " ·")).slice(0, 6).join(" || "));
       await p.context().close();

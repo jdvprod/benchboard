@@ -2,6 +2,7 @@
 import { Drill, Match, Player, PracticePlan } from "./model";
 import { all, appendEvents, createTeam, localISO, save, setTeamPatch, team, uid } from "./store";
 import { SAMPLE_OPP_ROSTER, SAMPLE_ROSTER, sampleMatch } from "../sports/volleyball/sample";
+import { fairCrew, Tournament } from "../tournament/model";
 
 const DRILLS: [string, string, number, string, string[]][] = [
   ["Dynamic warm-up + arm care", "Warm-up", 10, "Jog, skips, lunges, band work for shoulders.", []],
@@ -78,6 +79,18 @@ export function createSampleTeam() {
     { id: uid("sc"), date: iso(12), time: "09:00", opp: "Valley Prep", site: "neutral", event: "Fall Classic" },
   ] });
   const ids = SAMPLE_ROSTER.map((s) => idMap[s.id]);
+  // a weekend tournament coming up: pools, a work match with a crew, and game-day info for families
+  const tday = iso(5), work = { id: uid("tg"), stage: "work" as const, opp: "Coast 16 Navy vs Legacy 16 Red", time: "09:00", court: "12", bestOf: 2, scoring: "25", day: tday };
+  const tn: Tournament = { id: uid("tn"), name: "Winter Classic", site: "Fresno Convention Center", start: tday, end: iso(6), poolName: "Pool 3", poolTeams: ["Mavericks 16-1", "Coast 16 Navy", "Legacy 16 Red"], createdAt: now,
+    info: { arrive: "7:15 AM", jersey: "Saturday white, Sunday navy", address: "848 M St, Fresno, CA", meet: "Main entrance, by the banner", bring: "Both jerseys, knee pads, lunch, water" },
+    games: [
+      { id: uid("tg"), stage: "pool", opp: "Mavericks 16-1", time: "08:00", court: "12", bestOf: 2, scoring: "25", day: tday },
+      { ...work, crew: fairCrew(work, ids, new Map()) },
+      { id: uid("tg"), stage: "pool", opp: "Coast 16 Navy", time: "10:00", court: "12", bestOf: 2, scoring: "25", day: tday },
+      { id: uid("tg"), stage: "pool", opp: "Legacy 16 Red", time: "12:00", court: "12", bestOf: 2, scoring: "25", day: tday },
+    ],
+    others: [{ id: uid("to"), a: "Mavericks 16-1", b: "Legacy 16 Red", sets: [] }] };
+  setTeamPatch({ tournaments: [tn] });
   setTeamPatch({ currentMatchId: live.id, defLineup: { lu: ["1", "7", "9", "14", "4", "12"].map((n) => idMap["sp" + n]), lib: idMap.sp3, libSrv: null } });
   return { team: team()!, ids, all: all("players") };
 }
