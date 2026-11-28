@@ -9,7 +9,8 @@ import { rpc } from "../cloud/client";
 
 const read = <T,>(k: string, d: T): T => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch { return d; } };
 const write = (k: string, v: unknown) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* private window */ } };
-const KINDS: MentalTopic["kind"][] = ["Game IQ", "Mindset", "Team"];
+const KINDS: MentalTopic["kind"][] = ["Game IQ", "Mindset", "Team", "Work team"];
+const KIND_NOTE: Partial<Record<MentalTopic["kind"], string>> = { "Work team": "At tournaments, teams referee each other. Learn each job before your team works a match." };
 
 export function MentalPage({ who, coach, topic }: { who: Who; coach: boolean; topic?: string }) {
   const base = "#/" + (who === "player" ? "players" : "coaches") + "/mental";
@@ -24,10 +25,10 @@ export function MentalPage({ who, coach, topic }: { who: Who; coach: boolean; to
     <header className="ac-lib-hd">
       <a className="ac-back" href={"#/" + (who === "player" ? "players" : "coaches")}>Academy</a>
       <h1>The mental game</h1>
-      <p>Reading the game, making faster decisions, handling pressure and bad days, and being a great teammate and leader. Each topic has the ideas, drills that train them, and real situations to test yourself on.</p>
+      <p>Reading the game, making faster decisions, handling pressure and bad days, being a great teammate and leader, and working a match as line judge, scorekeeper or ref. Each topic has the ideas, drills that train them, and real situations to test yourself on.</p>
     </header>
     <a className="ac-mind-test" href={base + "/test"}><span><b>Take the Game IQ test</b><span>10 situations from every topic. {best.all != null ? `Your best: ${best.all}%` : "See where you stand."}</span></span><svg className="ac-chev" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3.5 4.5 4.5L6 12.5" /></svg></a>
-    {KINDS.map((k) => <section key={k} className="ac-sec" aria-labelledby={"mk-" + k}><h2 id={"mk-" + k}>{k}</h2>
+    {KINDS.map((k) => <section key={k} className="ac-sec" aria-labelledby={"mk-" + k}><h2 id={"mk-" + k}>{k}</h2>{KIND_NOTE[k] && <p className="ac-kind-note">{KIND_NOTE[k]}</p>}
       <ul className="ac-mind-topics">{MENTAL.filter((x) => x.kind === k).map((x) => <li key={x.id}><a href={base + "/" + x.id}>
         <b>{x.name}</b><span>{x.tagline}</span>
         <small>{x.drills.length} drills · {x.questions.length} situations{best[x.id] != null ? ` · best ${best[x.id]}%` : ""}</small></a></li>)}</ul></section>)}

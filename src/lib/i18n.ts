@@ -22,7 +22,7 @@ const ES: Record<string, string> = {
   "First club tournament? Read the family guide": "¿Primer torneo de club? Lean la guía para familias", "Family guide": "Guía para familias", "New to club volleyball?": "¿Nuevos en el voleibol de club?",
   "Read the family guide, and {team}'s {h}-hour rule for talking with coaches.": "Lean la guía para familias y la regla de {h} horas de {team} para hablar con los entrenadores.",
   "Read the family guide: how a tournament day works, work duty, and what to bring.": "Lean la guía para familias: cómo es un día de torneo, el arbitraje y qué llevar.",
-  "In this guide": "En esta guía", "New to club volleyball? Read the family guide": "¿Nuevos en el voleibol de club? Lean la guía para familias", "Every event has its own rules. When in doubt, ask your coach or the tournament desk.": "Cada torneo tiene sus propias reglas. Si tienen dudas, pregunten al entrenador o en la mesa del torneo.",
+  "In this guide": "En esta guía", "Learn each job, with a quiz, in FloorCall Academy": "Aprendan cada tarea, con un cuestionario, en FloorCall Academy", "Working a match? Learn each job": "¿Les toca arbitrar? Aprendan cada tarea", "New to club volleyball? Read the family guide": "¿Nuevos en el voleibol de club? Lean la guía para familias", "Every event has its own rules. When in doubt, ask your coach or the tournament desk.": "Cada torneo tiene sus propias reglas. Si tienen dudas, pregunten al entrenador o en la mesa del torneo.",
   "FloorCall Live": "FloorCall Live",
   // stats helper (a parent tracking from the coach's link)
   "Stats helper": "Ayudante de estadísticas", "This helper link isn't active. Ask the coach for a new one.": "Este enlace de ayudante no está activo. Pidan uno nuevo al entrenador.",

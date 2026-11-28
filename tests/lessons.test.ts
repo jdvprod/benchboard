@@ -128,3 +128,12 @@ test("academy quiz: a difficulty picks only that level, with enough hard situati
   assert.ok(ALL_QUESTIONS.filter((x) => x.level === "Advanced").length >= 40);
   for (const t of MENTAL) { const q = quizFor(t.id, 10, 1, "Advanced"); assert.ok(q.length >= 1, t.id); }
 });
+
+import { WORK_TOPICS } from "../src/academy/workData";
+test("work team school: each job has ideas, a drill and situations at more than one level, and isn't in the Game IQ test", () => {
+  assert.deepEqual(WORK_TOPICS.map((t) => t.id), ["work-basics", "line-judge", "scorekeeper", "libero-tracker", "down-ref"]);
+  for (const t of WORK_TOPICS) { assert.ok(t.ideas.length >= 4 && t.drills.length >= 1 && t.questions.length >= 5, t.id); assert.ok(new Set(t.questions.map((x) => x.level)).size >= 2, t.id); }
+  const work = new Set(WORK_TOPICS.flatMap((t) => t.questions.map((x) => x.q)));
+  for (let s = 1; s < 40; s++) assert.ok(!quizFor("all", 10, s).some((x) => work.has(x.q)));
+  assert.equal(quizFor("line-judge").length, WORK_TOPICS[1].questions.length);
+});

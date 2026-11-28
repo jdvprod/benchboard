@@ -1,18 +1,19 @@
 /** FloorCall Academy → The mental game: reading the game, making faster decisions, handling pressure and bad days,
  * and being a good teammate and leader. Each topic has the ideas, drills that train them (on your own or with a team),
  * and situation questions to test yourself, each with the best answer and why. Plain data, easy to review. */
+import { WORK_TOPICS } from "./workData";
 import type { Drill, Level } from "./content";
 
-export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates" | "talk" | "prepare" | "role" | "coachable" | "better-ball" | "setter-iq" | "growth";
+export type MentalId = "read-game" | "read-block" | "blocking-reads" | "speed" | "pressure" | "bounce-back" | "focus" | "leader" | "teammates" | "talk" | "prepare" | "role" | "coachable" | "better-ball" | "setter-iq" | "growth" | "work-basics" | "line-judge" | "scorekeeper" | "libero-tracker" | "down-ref";
 export interface Question { q: string; options: string[]; answer: number; why: string; level: Level }
-export interface MentalTopic { id: MentalId; name: string; kind: "Game IQ" | "Mindset" | "Team"; tagline: string; intro: string; ideas: { title: string; text: string }[]; drills: Drill[]; questions: Question[] }
+export interface MentalTopic { id: MentalId; name: string; kind: "Game IQ" | "Mindset" | "Team" | "Work team"; tagline: string; intro: string; ideas: { title: string; text: string }[]; drills: Drill[]; questions: Question[] }
 
 const B: Level = "Beginner", I: Level = "Intermediate", A: Level = "Advanced";
 const d = (id: string, name: string, who: "player" | "coach", level: Level, minutes: number, needs: string, how: string[], points: string[]): Drill =>
   ({ id: "mnd-" + id, name, who, level, minutes, needs, how, points });
 const q = (level: Level, question: string, options: string[], answer: number, why: string): Question => ({ q: question, options, answer, why, level });
 
-export const MENTAL: MentalTopic[] = [
+const BASE: MentalTopic[] = [
   {
     id: "read-game", name: "Reading the game", kind: "Game IQ", tagline: "See the play before it happens.",
     intro: "Good readers aren't faster; they start sooner. Every touch gives away where the next one is going: the pass tells you what the setter can do, the setter's body tells you where the set is going, and the hitter's approach tells you where the swing is going. Learn the order to watch, and you'll be moving while others are still reacting.",
@@ -499,18 +500,23 @@ export const MENTAL: MentalTopic[] = [
   },
 ];
 
+/** Every topic: the mental game, then the work team school (refereeing at tournaments). */
+export const MENTAL: MentalTopic[] = [...BASE, ...WORK_TOPICS];
+
 export const MENTAL_DRILLS: (Drill & { topic: MentalId })[] = MENTAL.flatMap((t) => t.drills.map((x) => ({ ...x, topic: t.id })));
 export const ALL_QUESTIONS: (Question & { topic: MentalId })[] = MENTAL.flatMap((t) => t.questions.map((x) => ({ ...x, topic: t.id })));
 
 /** A quiz: questions from one topic (all of them) or `n` drawn from every topic (the Game IQ test), at one level or
  * all, in a stable order for a seed. A topic with too few at a level falls back to all levels. Pure. */
 export function quizFor(topic: MentalId | "all", n = 10, seed = 1, level?: Level | ""): (Question & { topic: MentalId })[] {
-  const base = topic === "all" ? ALL_QUESTIONS : ALL_QUESTIONS.filter((x) => x.topic === topic);
+  const base = topic === "all" ? ALL_QUESTIONS.filter((x) => !WORK_IDS.has(x.topic)) : ALL_QUESTIONS.filter((x) => x.topic === topic);
   const lv = level ? base.filter((x) => x.level === level) : base, pool = lv.length >= 2 ? lv : base;
   let h = seed >>> 0; const rnd = () => ((h = (h * 1664525 + 1013904223) >>> 0) / 4294967296);
   const order = pool.map((x) => ({ x, k: rnd() })).sort((a, b) => a.k - b.k).map((y) => y.x);
   return topic === "all" ? order.slice(0, n) : order;
 }
+/** The work team school isn't part of the Game IQ test. */
+const WORK_IDS = new Set<string>(WORK_TOPICS.map((t) => t.id));
 /** Seconds per situation in timed mode: less time for harder questions. */
 export const TIME_FOR: Record<Level, number> = { Beginner: 30, Intermediate: 25, Advanced: 18 };
 /** The options in a shuffled order (so the best answer isn't always in the same place), with where the answer went. Pure. */

@@ -238,3 +238,4 @@ body{padding-left:0;background:var(--surface)}
 .ac-timed{display:inline-flex;gap:6px;align-items:center;font-weight:600;font-size:14px}
 .ac-quiz-time{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);margin-left:auto;margin-right:10px}
 .ac-quiz-time.low{color:#C8372B}
+.ac-kind-note{margin:-4px 0 10px;color:var(--muted);font-size:15px}

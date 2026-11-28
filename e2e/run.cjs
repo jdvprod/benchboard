@@ -673,6 +673,7 @@ const scenarios = {
     ok("the guide explains a tournament day, work duty and what to bring", (await P.locator(".lv-guide h1").innerText()) === "Club volleyball: a guide for families" && (await P.locator(".lv-guide .lv-card").count()) === 7 && /Libero tracker/.test(await P.locator(".lv-guide").innerText()));
     ok("the guide shows the team's rule", /TN Club has a 24-hour rule/.test(await P.locator(".lv-guide-rule").innerText()));
     ok("the guide fits a phone", (await overflow(P)) <= 1);
+    ok("the guide links to the work team school", (await P.locator(".lv-guide a[href*='mental']").count()) === 1 && (await P.locator(".lv-tn-guide a[href*='mental']").count()) === 0);
     { const cx = await contrast(P); ok("the guide has enough contrast", !cx.length, cx.slice(0, 3).join(" | ")); }
     if (process.env.SHOTS) await P.screenshot({ path: path.join(process.env.SHOTS, "guide.png"), fullPage: true });
     await P.getByRole("link", { name: /TN Club/ }).first().click(); await P.waitForTimeout(400);
@@ -2144,6 +2145,17 @@ Match 4  11:00 AM  Legacy 16 Red (SC)  vs  SCVC 16 Black (SC)  W: Mavericks 16-1
     ok("mental: answering shows the best choice and why", /Right\.|Not quite\./.test(await p.locator(".ac-quiz-why").innerText()) && (await p.locator(".ac-quiz-opts button.right").count()) === 1);
     { const ax = await a11y(p); ok("mental: quiz controls all have names", !ax.length, ax.join(" | ")); }
     ok("mental fits a phone", (await overflow(p)) <= 0);
+    { // work team school: line judge, scorekeeper, libero tracker and down ref, each with a quiz
+      const W = await newPage(browser, { phone: true }); await W.goto(U + "academy/#/players/mental"); await W.waitForTimeout(500);
+      if (await W.locator(".sg .ma").count()) await siteSignUp(W, "work-kid@e2e.test", "athlete", "Wes Work");
+      const sec = W.locator(".ac-sec", { has: W.getByRole("heading", { name: "Work team" }) });
+      ok("work team school: its own group with five jobs", (await sec.locator(".ac-mind-topics li").count()) === 5 && /referee each other/.test(await sec.innerText()));
+      await sec.getByRole("link", { name: /Line judge/ }).click(); await W.waitForTimeout(300);
+      ok("work team school: line judge signals, a drill and a quiz", /Ball out/.test(await W.locator(".ac-str-pr").innerText()) && (await W.locator(".ac-drill").count()) >= 1 && (await W.locator(".ac-quiz").count()) === 1);
+      await W.getByRole("group", { name: "Your answer" }).getByRole("button").first().click(); await W.waitForTimeout(100);
+      ok("work team school: answers explain the call", (await W.locator(".ac-quiz-why").innerText()).length > 40);
+      ok("work team school fits a phone", (await overflow(W)) <= 0);
+      await W.context().close(); }
     let guard = 0; while (!(await p.locator(".ac-quiz-done").count()) && guard++ < 20) { const g = p.getByRole("group", { name: "Your answer" }).getByRole("button"); if (!(await p.locator(".ac-quiz-why").count())) await g.first().click(); await p.getByRole("button", { name: /Next situation|See your score/ }).click(); await p.waitForTimeout(60); }
     ok("mental: finishing shows a score", /of \d+/.test(await p.locator(".ac-quiz-score").innerText()));
     await p.goto(U + "academy/#/players/mental/test"); await p.waitForTimeout(300);

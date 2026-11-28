@@ -1,6 +1,10 @@
 /** The family guide (FloorCall Live, #/guide or #/t/CODE/guide): club volleyball for families who are new to it.
  *  Plain words, no jargon without an explanation, in English and Spanish. Rules vary by event, so it says so. */
 import { getLang, tr } from "../lib/i18n";
+import { placeUrl } from "../cloud/links";
+
+/** The Academy's work team school: what each job is, with a quiz. */
+export const workSchoolUrl = () => placeUrl("academy", "#/players/mental");
 
 interface Sec { id: string; h: string; p?: string[]; dl?: [string, string][]; ul?: string[] }
 
@@ -125,6 +129,7 @@ export function FamilyGuide({ team, waitRule, back }: { team?: string; waitRule?
       {s.p?.map((x, i) => <p key={i}>{x}</p>)}
       {s.dl && <dl className="lv-guide-dl">{s.dl.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>}
       {s.ul && <ul>{s.ul.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+      {s.id === "work" && <p><a href={workSchoolUrl()}>{tr("Learn each job, with a quiz, in FloorCall Academy")}</a></p>}
     </section>)}
     <p className="lv-note">{tr("Every event has its own rules. When in doubt, ask your coach or the tournament desk.")}</p>
   </article>;
